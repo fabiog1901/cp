@@ -1,6 +1,9 @@
 import asyncio
+import random
+
 from .db import pool
 from .models import Msg
+from . import runner
 
 
 async def pull_from_mq():
@@ -13,9 +16,18 @@ async def pull_from_mq():
                         cur.execute("SELECT * FROM mq LIMIT 1 FOR UPDATE SKIP LOCKED;")
                         try:
                             msg = Msg(*cur.fetchone())
+
                             if msg:
                                 print(f"Processing {msg.msg_id}")
-                                await asyncio.sleep(3)
+
+                                if msg.msg_type == "CREATE_CLUSTER":
+                                    print("Processing a CREATE_CLUSTER")
+                                    runner.create_cluster(msg.msg_id, msg.msg_data)
+                                elif msg.msg_type == "DEBUG":
+                                    print("Processing a DEBUG")
+                                    pass
+                                else:
+                                    print("Unknown task type requested")
 
                                 cur.execute(
                                     "DELETE FROM mq WHERE msg_id = %s;",
@@ -24,7 +36,8 @@ async def pull_from_mq():
                         except:
                             pass
 
-            await asyncio.sleep(5)  # add some polling delay to avoid running too often
+            # add some polling delay to avoid running too often
+            await asyncio.sleep(5 * random.uniform(0.7, 1.3))
 
     except asyncio.CancelledError:
         print("Task was stopped")

@@ -70,8 +70,8 @@ def get_all_clusters() -> list[ClusterOverview]:
     )
 
 
-def get_cluster(cluster_id: str) -> Cluster:
-    return execute_stmt(
+def get_cluster(cluster_id: str) -> Cluster | None:
+    c = execute_stmt(
         """
         SELECT * 
         FROM clusters
@@ -79,26 +79,27 @@ def get_cluster(cluster_id: str) -> Cluster:
         """,
         (cluster_id,),
         Cluster,
-    )[0]
+    )
+    if c:
+        return c[0]
+    return None
 
 
 def create_cluster(
-    cluster_id,
-    status,
-    created_by,
-    updated_by,
-) -> ClusterOverview:
+    cluster_id: str,
+    status: str,
+    created_by: str,
+    updated_by: str,
+) -> None:
     return execute_stmt(
         """
         INSERT INTO clusters
             (cluster_id, status, created_by, updated_by)
         VALUES
             (%s, %s, %s, %s)
-        RETURNING cluster_id, created_by, status
         """,
         (cluster_id, status, created_by, updated_by),
-        ClusterOverview,
-    )[0]
+    )
 
 
 def update_cluster(
@@ -115,7 +116,7 @@ def update_cluster(
             updated_by = %s
         WHERE cluster_id = %s
         """,
-        (cluster_id, status, topology, updated_by),
+        (status, topology, updated_by, cluster_id),
     )
 
 
@@ -176,36 +177,60 @@ def get_job(job_id: int) -> list[Job]:
 
 
 def create_job(
+    job_id: int,
+    job_type: str,
+    status: str,
+    created_by: str,
+) -> None:
+    return execute_stmt(
+        """
+        INSERT INTO jobs
+            (job_id, job_type, 
+            status, created_by)
+        VALUES 
+            (%s, %s, %s, %s)
+        """,
+        (job_id, job_type, status, created_by),
+    )
+
+
+def create_job_linked(
     cluster_id: str,
-    job_id: UUID,
+    job_id: int,
     job_type: str,
     status: str,
     created_by: str,
 ) -> list[Job]:
     return execute_stmt(
         """
+        WITH 
+        create_job_linked AS (
+            INSERT INTO map_clusters_jobs 
+                (cluster_id, job_id)
+            VALUES (%s, %s)
+            RETURNING 1
+        )
         INSERT INTO jobs
-            (cluster_id, job_id, job_type, 
+            (job_id, job_type, 
             status, created_by)
         VALUES 
-            (%s, %s, %s, %s, %s)
+            (%s, %s, %s, %s)
         """,
-        (cluster_id, job_id, job_type, status, created_by),
+        (cluster_id, job_id, job_id, job_type, status, created_by),
     )
 
 
 def update_job(
-    cluster_id: str,
-    job_id: UUID,
+    job_id: int,
     status: str,
-) -> list[Job]:
-    return execute_stmt(
+) -> None:
+    execute_stmt(
         """
         UPDATE jobs 
         SET status = %s
-        WHERE (cluster_id, job_id) = (%s, %s)
+        WHERE job_id = %s
         """,
-        (status, cluster_id, job_id),
+        (status, job_id),
     )
 
 
@@ -231,21 +256,20 @@ def get_all_tasks(
 
 
 def create_task(
-    cluster_id: str,
     job_id: UUID,
     task_id: int,
     progress: int,
     created_at: dt.datetime,
-    event: str,
-    event_data: dict,
+    task_type: str,
+    task_data: dict,
 ):
     return execute_stmt(
         """
         INSERT INTO tasks 
-            (cluster_id, job_id, task_id, progress, created_at, event, event_data)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (job_id, task_id, progress, created_at, task_type, task_data)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (cluster_id, job_id, task_id, progress, created_at, event, event_data),
+        (job_id, task_id, progress, created_at, task_type, task_data),
     )
 
 
