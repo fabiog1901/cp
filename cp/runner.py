@@ -31,14 +31,13 @@ def create_cluster(
 
 
 def create_cluster_runner(job_id, cluster):
-
     for x in range(10):
         # actually doing some real work
         time.sleep(5)
 
         # the ansible playbook outputs task events
         db.create_task(
-            cluster['cluster_id'],
+            cluster["cluster_id"],
             job_id,
             x,
             x * 100 // 120,

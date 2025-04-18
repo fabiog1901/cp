@@ -135,9 +135,7 @@ def delete_cluster(cluster_id):
 
 
 def get_all_jobs(cluster_id: str = None) -> list[Job]:
-
     if cluster_id:
-
         return execute_stmt(
             """
             SELECT j.job_id, j.job_type, 
@@ -163,16 +161,16 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
     )
 
 
-def get_job(cluster_id: str, job_id: UUID) -> list[Job]:
+def get_job(job_id: int) -> list[Job]:
     return execute_stmt(
         """
-        SELECT cluster_id, job_id, job_type, 
+        SELECT job_id, job_type, 
             status, created_by, created_at
         FROM jobs
-        WHERE (cluster_id, job_id) = (%s, %s)
+        WHERE job_id = %s
         ORDER BY created_by desc
         """,
-        (cluster_id, job_id),
+        (job_id,),
         Job,
     )[0]
 
@@ -217,17 +215,17 @@ def update_job(
 
 
 def get_all_tasks(
-    cluster_id: str,
     job_id: UUID,
-) -> list[Job]:
+) -> list[Task]:
     return execute_stmt(
         """
-        SELECT cluster_id, job_id, task_id, progress, 
-            created_at, event, event_data
+        SELECT job_id, task_id, progress, 
+            created_at, task_type, task_data
         FROM tasks
-        WHERE (cluster_id, job_id) = (%s, %s)
+        WHERE job_id = %s
+        ORDER BY task_id ASC
         """,
-        (cluster_id, job_id),
+        (job_id,),
         Task,
     )
 

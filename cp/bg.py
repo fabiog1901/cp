@@ -4,7 +4,6 @@ from .models import Msg
 
 
 async def pull_from_mq():
-
     try:
         while True:
             with pool.connection() as conn:
@@ -17,7 +16,7 @@ async def pull_from_mq():
                             if msg:
                                 print(f"Processing {msg.msg_id}")
                                 await asyncio.sleep(3)
-                                
+
                                 cur.execute(
                                     "DELETE FROM mq WHERE msg_id = %s;",
                                     (msg.msg_id,),
@@ -25,8 +24,6 @@ async def pull_from_mq():
                         except:
                             pass
 
-                        
-            
             await asyncio.sleep(5)  # add some polling delay to avoid running too often
 
     except asyncio.CancelledError:

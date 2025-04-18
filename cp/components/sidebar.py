@@ -17,7 +17,7 @@ def get_link(icon: str, name: str, href: str = None):
 def sidebar() -> rx.Component:
     return rx.flex(
         get_link("house", "Home", "/"),
-        get_link("boxes", "Clusters"), 
+        get_link("boxes", "Clusters"),
         get_link("clipboard-list", "Jobs"),
         rx.spacer(),
         get_link("settings", "Settings"),

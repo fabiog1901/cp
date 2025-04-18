@@ -55,7 +55,6 @@ class State(rx.State):
 
     @rx.event
     def create_new_cluster(self, form_data: dict):
-
         msg_id: MsgID = db.insert_msg("CREATE_CLUSTER", form_data, "fabio")
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 

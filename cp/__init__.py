@@ -8,7 +8,7 @@ from .pages import (
     index,
     clusters,
     jobs,
-    # job,
+    job_overview,
     settings,
 )
 

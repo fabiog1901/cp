@@ -7,9 +7,7 @@ from .components.navbar import navbar
 from .components.footer import footer
 
 
-def template(
-    page: Callable[[], rx.Component]
-) -> rx.Component:
+def template(page: Callable[[], rx.Component]) -> rx.Component:
     return rx.flex(
         navbar(),
         rx.flex(

@@ -66,8 +66,8 @@ CREATE TABLE tasks (
   task_id INT2 NOT NULL,
   progress INT2 NULL,
   created_at TIMESTAMPTZ NOT NULL,
-  event_type STRING NULL,
-  event_data JSONB NULL,
+  task_type STRING NULL,
+  task_data JSONB NULL,
   CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC),
   CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE
 );

@@ -3,9 +3,11 @@ import datetime as dt
 from uuid import UUID
 from typing import Any
 
+
 @dataclass
 class MsgID:
     msg_id: str
+
 
 @dataclass
 class Msg:
@@ -14,13 +16,15 @@ class Msg:
     msg_data: dict
     created_at: dt.datetime
     created_by: str
-    
+
+
 @dataclass
 class ClusterOverview:
     cluster_id: str
     created_by: str
     status: str
-    
+
+
 @dataclass
 class Cluster:
     cluster_id: str
@@ -31,28 +35,29 @@ class Cluster:
     updated_at: dt.datetime
     updated_by: str
 
+
 @dataclass
 class Job:
-    job_id: UUID
+    job_id: int
     job_type: str
     status: str
     created_at: dt.datetime
     created_by: str
-    
+
+
 @dataclass
-class Task():
+class Task:
     job_id: UUID
     task_id: UUID
     progress: int
     created_at: dt.datetime
-    event_type: str | None
-    event_data: Any | None
-    
-    
+    task_type: str | None
+    task_data: Any | None
+
+
 @dataclass
 class EventLog:
     created_at: dt.datetime
     created_by: str
-    event_type: str 
+    event_type: str
     details: str
-
