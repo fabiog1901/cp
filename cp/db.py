@@ -17,16 +17,16 @@ if not DB_URL:
 pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
 
 
-
 ########
 #  MQ  #
 ########
+
 
 def insert_msg(
     msg_type: str,
     msg_data: dict,
     created_by: str,
-)-> int:
+) -> int:
     return execute_stmt(
         """
         INSERT INTO mq
@@ -39,6 +39,7 @@ def insert_msg(
         MsgID,
     )[0]
 
+
 def get_msg() -> Msg:
     return execute_stmt(
         """
@@ -50,7 +51,8 @@ def get_msg() -> Msg:
         (),
         Msg,
     )[0]
-    
+
+
 ##############
 #  CLUSTERS  #
 ##############
@@ -85,7 +87,7 @@ def create_cluster(
     status,
     created_by,
     updated_by,
-)-> ClusterOverview:
+) -> ClusterOverview:
     return execute_stmt(
         """
         INSERT INTO clusters
@@ -132,16 +134,31 @@ def delete_cluster(cluster_id):
 ############
 
 
-def get_all_jobs(cluster_id: str) -> list[Job]:
+def get_all_jobs(cluster_id: str = None) -> list[Job]:
+
+    if cluster_id:
+
+        return execute_stmt(
+            """
+            SELECT j.job_id, j.job_type, 
+                j.status, j.created_by, j.created_at
+            FROM map_clusters_jobs m JOIN jobs j
+                ON m.job_id = j.job_id 
+            WHERE m.cluster_id = %s
+            ORDER BY j.created_by DESC
+            """,
+            (cluster_id,),
+            Job,
+        )
+
     return execute_stmt(
         """
-        SELECT cluster_id, job_id, job_type, 
+        SELECT job_id, job_type, 
             status, created_by, created_at
         FROM jobs
-        WHERE cluster_id = %s
-        ORDER BY created_by desc
+        ORDER BY created_by DESC
         """,
-        (cluster_id,),
+        (),
         Job,
     )
 

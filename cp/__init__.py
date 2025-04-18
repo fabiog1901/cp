@@ -4,17 +4,18 @@ load_dotenv(override=True)
 
 from . import state
 from .pages import (
-    cluster,
+    cluster_overview,
     index,
+    clusters,
+    jobs,
+    # job,
     settings,
 )
 
 
-
 __all__ = [
-    "cluster",
+    "cluster_overview",
     "state",
-    
     "index",
-        "settings",
+    "settings",
 ]

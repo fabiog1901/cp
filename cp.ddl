@@ -45,26 +45,31 @@ CREATE TABLE clusters (
 );
 
 CREATE TABLE jobs (
-    cluster_id STRING NOT NULL,
-    job_id UUID NOT NULL,
+    job_id INT8 NOT NULL,
     job_type STRING NULL,
     status STRING NULL,
     created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NULL,
+    CONSTRAINT pk PRIMARY KEY (job_id ASC)
+);
+
+CREATE TABLE map_clusters_jobs (
+    cluster_id STRING NOT NULL,
+    job_id INT8 NOT NULL,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC, job_id ASC),
-    CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES clusters (cluster_id) ON DELETE CASCADE
+    CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES clusters (cluster_id) ON DELETE CASCADE,
+    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE
 );
 
 CREATE TABLE tasks (
-  cluster_id STRING NOT NULL,
-  job_id UUID NOT NULL,
+  job_id INT8 NOT NULL,
   task_id INT2 NOT NULL,
   progress INT2 NULL,
   created_at TIMESTAMPTZ NOT NULL,
-  event STRING NULL,
+  event_type STRING NULL,
   event_data JSONB NULL,
   CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC),
-  CONSTRAINT cluster_id_job_id_in_jobs FOREIGN KEY (cluster_id, job_id) REFERENCES jobs (cluster_id, job_id) ON DELETE CASCADE
+  CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE
 );
 
 

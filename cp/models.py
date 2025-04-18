@@ -33,7 +33,6 @@ class Cluster:
 
 @dataclass
 class Job:
-    cluster_id: str
     job_id: UUID
     job_type: str
     status: str
@@ -42,12 +41,11 @@ class Job:
     
 @dataclass
 class Task():
-    cluster_id: str
     job_id: UUID
     task_id: UUID
     progress: int
     created_at: dt.datetime
-    event: str | None
+    event_type: str | None
     event_data: Any | None
     
     
