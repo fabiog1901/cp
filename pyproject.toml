@@ -12,6 +12,7 @@ psycopg = {extras = ["pool"], version = "^3.2.6"}
 psycopg-binary = "^3.2.6"
 dotenv = "^0.9.9"
 sqlparse = "^0.5.3"
+ansible-runner = "^2.4.1"
 
 
 [build-system]

@@ -3,7 +3,7 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 import os
 import datetime as dt
-from .models import MsgID, Msg, Cluster, EventLog, Task, ClusterOverview, Job
+from .models import MsgID, Msg, Playbook, Cluster, EventLog, Task, ClusterOverview, Job
 from uuid import UUID
 
 
@@ -50,6 +50,21 @@ def get_msg() -> Msg:
         """,
         (),
         Msg,
+    )[0]
+
+
+###############
+#  PLAYBOOKS  #
+###############
+def get_playbook(playbook_id: str) -> Playbook | None:
+    return execute_stmt(
+        """
+        SELECT playbook_id, playbook
+        FROM playbooks
+        WHERE playbook_id = %s
+        """,
+        (playbook_id,),
+        Playbook,
     )[0]
 
 
@@ -245,7 +260,7 @@ def get_all_tasks(
     return execute_stmt(
         """
         SELECT job_id, task_id, progress, 
-            created_at, task_type, task_data
+            created_at, task_name, task_desc
         FROM tasks
         WHERE job_id = %s
         ORDER BY task_id ASC
@@ -256,20 +271,20 @@ def get_all_tasks(
 
 
 def create_task(
-    job_id: UUID,
+    job_id: int,
     task_id: int,
     progress: int,
     created_at: dt.datetime,
-    task_type: str,
-    task_data: dict,
-):
-    return execute_stmt(
+    task_name: str,
+    task_desc: dict,
+) -> None:
+    execute_stmt(
         """
         INSERT INTO tasks 
-            (job_id, task_id, progress, created_at, task_type, task_data)
+            (job_id, task_id, progress, created_at, task_name, task_desc)
         VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (job_id, task_id, progress, created_at, task_type, task_data),
+        (job_id, task_id, progress, created_at, task_name, task_desc),
     )
 
 

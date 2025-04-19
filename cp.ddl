@@ -33,6 +33,12 @@ CREATE TABLE mq (
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;
 
+CREATE TABLE playbooks (
+    playbook_id STRING NOT NULL,
+    playbook JSONB,
+    CONSTRAINT pk PRIMARY KEY (playbook_id ASC)
+);
+
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
     topology JSONB NULL,
@@ -66,11 +72,13 @@ CREATE TABLE tasks (
   task_id INT2 NOT NULL,
   progress INT2 NULL,
   created_at TIMESTAMPTZ NOT NULL,
-  task_type STRING NULL,
-  task_data JSONB NULL,
+  task_name STRING NULL,
+  task_desc STRING NULL,
   CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC),
   CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE
 );
+
+
 
 
 

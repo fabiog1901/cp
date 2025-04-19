@@ -10,6 +10,12 @@ class MsgID:
 
 
 @dataclass
+class Playbook:
+    playbook_id: str
+    playbook: dict
+
+
+@dataclass
 class Msg:
     msg_id: str
     msg_type: str
@@ -37,6 +43,15 @@ class Cluster:
 
 
 @dataclass
+class ClusterRequest:
+    name: str
+    node_count: int
+    node_cpus: int
+    regions: list[str]
+    version: str
+
+
+@dataclass
 class Job:
     job_id: int
     job_type: str
@@ -51,8 +66,8 @@ class Task:
     task_id: UUID
     progress: int
     created_at: dt.datetime
-    task_type: str | None
-    task_data: Any | None
+    task_name: str | None
+    task_desc: str | None
 
 
 @dataclass

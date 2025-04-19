@@ -60,9 +60,9 @@ class State(rx.State):
 def get_task_row(task: Task):
     """Show a job in a table row."""
     return rx.table.row(
-        rx.table.cell(task.task_id),
-        rx.table.cell(task.task_type),
         rx.table.cell(task.created_at),
+        rx.table.cell(task.task_name),
+        rx.table.cell(task.task_desc),
         rx.table.cell(task.progress),
     )
 
@@ -83,9 +83,9 @@ def tasks_table():
         rx.table.root(
             rx.table.header(
                 rx.table.row(
-                    rx.table.column_header_cell("Task ID"),
-                    rx.table.column_header_cell("Task Type"),
                     rx.table.column_header_cell("Created At"),
+                    rx.table.column_header_cell("Task Name"),
+                    rx.table.column_header_cell("Description"),
                     rx.table.column_header_cell("Progress"),
                 ),
             ),

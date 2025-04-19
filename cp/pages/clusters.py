@@ -74,11 +74,9 @@ def new_cluster_dialog():
             rx.form(
                 rx.flex(
                     rx.text("Cluster Name"),
-                    rx.input(
-                        placeholder="Name", name="cluster_id", default_value="fab"
-                    ),
+                    rx.input(placeholder="Name", name="name", default_value="fab"),
                     rx.text("CPU per node"),
-                    rx.input(name="node_cpu", default_value="4"),
+                    rx.input(name="node_cpus", default_value="4"),
                     rx.text("Nodes per Region"),
                     rx.input(name="node_count", default_value="3"),
                     rx.text("Regions"),
