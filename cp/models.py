@@ -14,6 +14,16 @@ class Playbook:
     playbook_id: str
     playbook: dict
 
+@dataclass
+class Region:
+    cloud: str
+    region: str
+    zone: str
+    vpc_id: str
+    security_groups: list[str]
+    subnet: str
+    image: str
+
 
 @dataclass
 class Msg:
@@ -47,6 +57,7 @@ class ClusterRequest:
     name: str
     node_count: int
     node_cpus: int
+    disk_size: int
     regions: list[str]
     version: str
 

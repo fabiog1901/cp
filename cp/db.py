@@ -3,7 +3,7 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 import os
 import datetime as dt
-from .models import MsgID, Msg, Playbook, Cluster, EventLog, Task, ClusterOverview, Job
+from .models import MsgID, Msg, Region, Playbook, Cluster, EventLog, Task, ClusterOverview, Job
 from uuid import UUID
 
 
@@ -66,6 +66,20 @@ def get_playbook(playbook_id: str) -> Playbook | None:
         (playbook_id,),
         Playbook,
     )[0]
+
+#############
+#  REGIONS  #
+#############
+def get_region(cloud: str, region: str) -> list[Region] | None:
+    return execute_stmt(
+        """
+        SELECT cloud, region, zone, vpc_id, security_groups, submet, image
+        FROM regions
+        WHERE (cloud, region) = (%s, %s)
+        """,
+        (cloud, region),
+        Region,
+    )
 
 
 ##############

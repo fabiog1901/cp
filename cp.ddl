@@ -39,6 +39,17 @@ CREATE TABLE playbooks (
     CONSTRAINT pk PRIMARY KEY (playbook_id ASC)
 );
 
+CREATE TABLE regions (
+    cloud STRING NOT NULL,
+    region STRING NOT NULL,
+    zone STRING NOT NULL,
+    vpc_id STRING,
+    security_groups STRING[],
+    subnet STRING,
+    image STRING,
+    CONSTRAINT pk PRIMARY KEY (cloud ASC, region ASC, zone ASC)
+);
+
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
     topology JSONB NULL,

@@ -9,7 +9,7 @@ from .. import db
 
 class State(rx.State):
     current_cluster: Cluster = None
-    jobs: list[ClusterOverview] = []
+    jobs: list[Job] = []
 
     sort_value = ""
     search_value = ""
