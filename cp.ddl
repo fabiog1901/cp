@@ -39,6 +39,27 @@ CREATE TABLE playbooks (
     CONSTRAINT pk PRIMARY KEY (playbook_id ASC)
 );
 
+
+create table plays (
+    playbook_id STRING NOT NULL,
+    play_order INT2 NOT NULL,
+    play_name STRING NOT NULL AS (play ->> 'name') VIRTUAL,
+    play JSONB NOT NULL,
+    CONSTRAINT pk PRIMARY key (playbook_id, play_order),
+    CONSTRAINT playbook_id_in_playbooks foreign key (playbook_id) references playbooks(playbook_id)
+);
+
+create table play_tasks (
+    playbook_id STRING NOT NULL,
+    play_order INT2 NOT NULL,
+    task_name STRING NOT NULL AS (task ->> 'name') VIRTUAL,
+    task_order INT2 NOT NULL,
+    task JSONB NOT NULL,
+    CONSTRAINT pk PRIMARY key (playbook_id, play_order, task_order),
+    constraint play_order_in_plays foreign key (playbook_id, play_order) references plays(playbook_id, play_order)
+);
+
+
 CREATE TABLE regions (
     cloud STRING NOT NULL,
     region STRING NOT NULL,
@@ -47,6 +68,7 @@ CREATE TABLE regions (
     security_groups STRING[],
     subnet STRING,
     image STRING,
+    extras JSONB NULL,
     CONSTRAINT pk PRIMARY KEY (cloud ASC, region ASC, zone ASC)
 );
 

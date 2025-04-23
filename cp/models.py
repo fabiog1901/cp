@@ -10,9 +10,14 @@ class MsgID:
 
 
 @dataclass
-class Playbook:
-    playbook_id: str
-    playbook: dict
+class Play:
+    play_order: int
+    play: dict   
+
+
+@dataclass
+class PlayTask:
+    task: dict    
 
 @dataclass
 class Region:
@@ -23,6 +28,7 @@ class Region:
     security_groups: list[str]
     subnet: str
     image: str
+    extras: dict
 
 
 @dataclass

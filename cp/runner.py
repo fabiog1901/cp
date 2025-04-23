@@ -7,11 +7,11 @@ import yaml
 import datetime as dt
 import ansible_runner
 import json
-from itertools import cycle
+from pprint import pprint
 
-
-from .models import Playbook, ClusterRequest, Region
+from .models import Play, PlayTask, ClusterRequest, Region, Cluster
 from . import db
+from dataclasses import asdict
 
 completed_tasks = 0
 progress = 0
@@ -40,12 +40,9 @@ def create_cluster(
 ) -> None:
 
     cluster_request = ClusterRequest(**cluster)
-    
-    print(cluster_request)
-    return
 
     c = db.get_cluster(cluster_request.name)
-    if c:
+    if c and c.status == "OK":
         # TODO raise an error message that a cluster
         # with the same name already exists
         db.create_job(
@@ -81,11 +78,21 @@ def create_cluster(
 
 
 def create_cluster_worker(job_id, cluster_request: ClusterRequest):
-    playbook = db.get_playbook("CREATE_CLUSTER").playbook
+    playbook = []
+
+    plays = db.get_plays("CREATE_CLUSTER")
+
+    for play in plays:
+
+        tasks = db.get_play_tasks("CREATE_CLUSTER", play.play_order)
+
+        play.play["tasks"] = [x.task for x in tasks]
+
+        playbook.append(play.play)
 
     deployment = []
 
-    for cloud_region in cluster_request.regions.split(","):
+    for cloud_region in cluster_request.regions:
 
         cloud, region = cloud_region.split(":")
 
@@ -99,6 +106,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 "inventory_groups": ["haproxy"],
                 "exact_count": 1,
                 "instance": {"cpu": 4},
+                "instance_type": "e2-medium",
                 "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
                 "tags": {"Name": f"{cluster_request.name}-lb"},
                 "groups": [
@@ -117,6 +125,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                     }
                 ],
             }
+            | env_details[0].extras
         )
 
         # distribute the node_counts over all available zones
@@ -133,6 +142,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                     "inventory_groups": ["cockroachdb"],
                     "exact_count": zone_count,
                     "instance": {"cpu": cluster_request.node_cpus},
+                    "instance_type": "e2-medium",
                     "volumes": {
                         "os": {"size": 20, "type": "standard_ssd"},
                         "data": [
@@ -162,12 +172,52 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                         }
                     ],
                 }
+                | env_details[0].extras
             )
 
     extra_vars = {
         "state": "present",
+        "owner": "fabio",
         "deployment_id": cluster_request.name,
         "deployment": deployment,
+        "certificates_organization_name": "{{ owner }}-org",
+        "certificates_dir": "certs",
+        "certificates_usernames": ["root"],
+        "certificates_hosts": "{{ groups['cockroachdb'] }}",
+        "certificates_loadbalancer": "{{ groups['haproxy'] | default('') }}",
+        "cockroachdb_deployment": "standard",
+        "cockroachdb_secure": True,
+        "cockroachdb_certificates_dir": "certs",
+        "cockroachdb_certificates_clients": ["root"],
+        "cockroachdb_version": cluster_request.version,
+        "cockroachdb_join": [
+            "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[0]].public_ip }}",
+            "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[1]].public_ip }}",
+            "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[2]].public_ip }}",
+        ],
+        "cockroachdb_sql_port": 26257,
+        "cockroachdb_rpc_port": 26357,
+        "cockroachdb_http_addr_ip": "0.0.0.0",
+        "cockroachdb_http_addr_port": "8080",
+        "cockroachdb_cache": ".35",
+        "cockroachdb_max_sql_memory": ".35",
+        "cockroachdb_max_offset": "250ms",
+        "cockroachdb_upgrade_delay": 60,
+        "cockroachdb_locality": "cloud={{ cloud | default('') }},region={{ region | default('') }},zone={{ zone | default('') }}",
+        "cockroachdb_advertise_addr": "{{ public_ip | default('') }}",
+        "cockroachdb_cluster_organization": "Workshop",
+        "cockroachdb_enterprise_license": "crl-0-EJPvvcEGGAIiCFdvcmtzaG9w",
+        "cockroachdb_encryption": False,
+        "cockroachdb_autofinalize": True,
+        "cockroachdb_env_vars": ["KRB5_KTNAME=/var/lib/cockroach/cockroach.keytab"],
+        "dbusers": [
+            {
+                "name": "cockroach",
+                "password": "cockroach",
+                "is_cert": False,
+                "is_admin": True,
+            }
+        ],
     }
 
     total_tasks = sum(len(play.get("tasks", [])) for play in playbook)
@@ -181,8 +231,24 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         task_type = ""
         task_data = ""
 
-        if e["event"] == "verbose":
+        if e["event"] in [
+            "verbose",
+            "playbook_on_no_hosts_matched",
+            "runner_on_skipped",
+            "runner_item_on_skipped",
+            "runner_item_on_ok",
+            "runner_on_ok",
+            "playbook_on_include",
+        ]:
             return
+
+        elif e["event"] == "warning":
+            task_type = "WARNING"
+            task_data = e["stdout"]
+
+        elif e["event"] == "error":
+            task_type = "ERROR"
+            task_data = e["stdout"]
 
         elif e["event"] == "playbook_on_start":
             return
@@ -198,11 +264,11 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         elif e["event"] == "runner_on_start":
             return
 
-        elif e["event"] == "runner_on_ok":
-            task_data = f"ok: [{e['event_data']['host']}]"
-
         elif e["event"] == "runner_on_failed":
             task_data = f"fatal: [{e['event_data']['host']}]\n{json.dumps(e['event_data']['res']['msg'])}"
+
+        elif e["event"] == "runner_item_on_failed":
+            task_data = f"fatal: [{e['event_data']['host']}]\n{e['event_data']['res']['stderr']}"
 
         elif e["event"] == "playbook_on_stats":
             task_type = "PLAY RECAP"
@@ -227,6 +293,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
     # Execute the playbook
     try:
         thread, runner = ansible_runner.run_async(
+            quiet=False,
             playbook=playbook,
             private_data_dir="/tmp",
             extravars=extra_vars,

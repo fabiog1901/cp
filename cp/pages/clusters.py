@@ -35,6 +35,7 @@ regions = [
 
 disk_sizes = ["500 GB", "1 TB", "2 TB"]
 
+
 def multi_action_button(
     icon: str,
     label: str,
@@ -55,12 +56,12 @@ def multi_action_button(
 def multi_selected_item_chip(item: str) -> rx.Component:
     return rx.badge(
         rx.match(
-                item[:3],
-                ("aws", rx.image("/aws.png", width="30px", height="auto")),
-                ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
-                ("azr", rx.image("/azr.png", width="35px", height="auto")),
-                ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
-            ),
+            item[:3],
+            ("aws", rx.image("/aws.png", width="30px", height="auto")),
+            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+            ("azr", rx.image("/azr.png", width="35px", height="auto")),
+            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+        ),
         item[4:],
         rx.icon("circle-x", size=18),
         color_scheme="green",
@@ -155,7 +156,7 @@ def selected_item(item: str) -> rx.Component:
         item,
         color_scheme="mint",
         **chip_props,
-        #on_click=State.setvar("selected_cpu", ""),
+        # on_click=State.setvar("selected_cpu", ""),
     )
 
 
@@ -197,14 +198,12 @@ disk_chip_props = {
 }
 
 
-
-
 def disk_unselected_item(item: str) -> rx.Component:
     return rx.badge(
         item,
         color_scheme="gray",
         **chip_props,
-        on_click=State.setvar("selected_disk", item)
+        on_click=State.setvar("selected_disk", item),
     )
 
 
@@ -249,7 +248,7 @@ def disk_item_selector() -> rx.Component:
 class State(rx.State):
     current_cluster: Cluster = None
     clusters: list[ClusterOverview] = []
-    
+
     # dialog box vars
     selected_regions: list[str] = []
 
@@ -261,11 +260,9 @@ class State(rx.State):
     def multi_remove_selected(self, item: str):
         self.selected_regions.remove(item)
 
-        
-    selected_cpu: str = cpu_sizes[0]
+    selected_cpu: int = cpu_sizes[0]
     selected_disk: str = disk_sizes[0]
 
-        
     sort_value = ""
     search_value = ""
 
@@ -306,20 +303,30 @@ class State(rx.State):
             ]
         return clusters
 
+    node_count: int = 3
+
+    @rx.event
+    def set_node_count(self, item: str):
+        self.node_count = int(item)
+        
     @rx.event
     def create_new_cluster(self, form_data: dict):
-               
-        form_data['node_cpus'] = self.selected_cpu
-        
-        form_data['disk_size'] = {
+
+        form_data["node_cpus"] = self.selected_cpu
+
+        form_data["disk_size"] = {
             "500 GB": 500,
             "1 TB": 1000,
-            "2 TB": 2000
+            "2 TB": 2000,
         }.get(self.selected_disk, "500")
-        
-        form_data['regions'] = self.selected_regions
-        
+
+        form_data["node_count"] = int(self.node_count)
+        form_data["regions"] = self.selected_regions
+
         msg_id: MsgID = db.insert_msg("CREATE_CLUSTER", form_data, "fabio")
+        self.selected_cpu = cpu_sizes[0]
+        self.selected_disk = disk_sizes[0]
+        self.selected_regions = []
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
 
@@ -339,10 +346,19 @@ def new_cluster_dialog():
                 rx.flex(
                     rx.heading("Cluster Name", size="4"),
                     rx.input(placeholder="Name", name="name", default_value="fab"),
+                    rx.divider(),
                     cpu_item_selector(),
+                    rx.divider(),
                     rx.heading("Nodes per region", size="4"),
-                    rx.input(name="node_count", default_value="3"),
+                    rx.radio(
+                        ["1", "2", "3", "4", "5", "6", "7","8"],
+                        on_change=State.set_node_count,
+                        default_value="3",
+                        direction="row",
+                    ),
+                    rx.divider(),
                     disk_item_selector(),
+                    rx.divider(),
                     multi_items_selector(),
                     rx.heading("CockroachDB version", size="4"),
                     rx.input(
@@ -388,7 +404,8 @@ def get_cluster_row(cluster: Cluster):
                 cluster.status,
                 ("OK", rx.icon("circle-check", color="green")),
                 ("WARNING", rx.icon("triangle-alert", color="yellow")),
-                rx.icon("circle-help"),
+                rx.text(cluster.status)
+                #rx.icon("circle-help"),
             )
         ),
         rx.table.cell(

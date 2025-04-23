@@ -3,7 +3,7 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 import os
 import datetime as dt
-from .models import MsgID, Msg, Region, Playbook, Cluster, EventLog, Task, ClusterOverview, Job
+from .models import MsgID, Msg, Region, Play, PlayTask, Cluster, EventLog, Task, ClusterOverview, Job
 from uuid import UUID
 
 
@@ -56,16 +56,27 @@ def get_msg() -> Msg:
 ###############
 #  PLAYBOOKS  #
 ###############
-def get_playbook(playbook_id: str) -> Playbook | None:
+def get_plays(playbook_id: str) -> list[Play] | None:
     return execute_stmt(
         """
-        SELECT playbook_id, playbook
-        FROM playbooks
+        SELECT play_order, play
+        FROM plays
         WHERE playbook_id = %s
         """,
         (playbook_id,),
-        Playbook,
-    )[0]
+        Play,
+    )
+
+def get_play_tasks(playbook_id: str, play_order: int) -> list[PlayTask] | None:
+    return execute_stmt(
+        """
+        SELECT task
+        FROM play_tasks
+        WHERE (playbook_id, play_order) = (%s, %s)
+        """,
+        (playbook_id, play_order),
+        PlayTask,
+    )
 
 #############
 #  REGIONS  #
@@ -73,7 +84,7 @@ def get_playbook(playbook_id: str) -> Playbook | None:
 def get_region(cloud: str, region: str) -> list[Region] | None:
     return execute_stmt(
         """
-        SELECT cloud, region, zone, vpc_id, security_groups, submet, image
+        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
         FROM regions
         WHERE (cloud, region) = (%s, %s)
         """,
