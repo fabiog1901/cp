@@ -33,30 +33,23 @@ CREATE TABLE mq (
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;
 
-CREATE TABLE playbooks (
-    playbook_id STRING NOT NULL,
-    playbook JSONB,
-    CONSTRAINT pk PRIMARY KEY (playbook_id ASC)
-);
-
-
-create table plays (
+CREATE TABLE plays (
     playbook_id STRING NOT NULL,
     play_order INT2 NOT NULL,
-    play_name STRING NOT NULL AS (play ->> 'name') VIRTUAL,
+    play_name STRING NOT NULL AS (play->>'name':::STRING) VIRTUAL,
     play JSONB NOT NULL,
-    CONSTRAINT pk PRIMARY key (playbook_id, play_order),
-    CONSTRAINT playbook_id_in_playbooks foreign key (playbook_id) references playbooks(playbook_id)
+    CONSTRAINT pk PRIMARY KEY (playbook_id ASC, play_order ASC)
 );
 
-create table play_tasks (
+
+CREATE TABLE play_tasks (
     playbook_id STRING NOT NULL,
     play_order INT2 NOT NULL,
-    task_name STRING NOT NULL AS (task ->> 'name') VIRTUAL,
+    task_name STRING NOT NULL AS (task->>'name':::STRING) VIRTUAL,
     task_order INT2 NOT NULL,
     task JSONB NOT NULL,
-    CONSTRAINT pk PRIMARY key (playbook_id, play_order, task_order),
-    constraint play_order_in_plays foreign key (playbook_id, play_order) references plays(playbook_id, play_order)
+    CONSTRAINT pk PRIMARY KEY (playbook_id ASC, play_order ASC, task_order ASC),
+    CONSTRAINT play_order_in_plays FOREIGN KEY (playbook_id, play_order) REFERENCES public.plays(playbook_id, play_order)
 );
 
 

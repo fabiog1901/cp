@@ -53,7 +53,7 @@ def create_cluster(
         )
         return
 
-    db.create_cluster(
+    db.insert_cluster(
         cluster_request.name,
         "PROVISIONING",
         "root",
@@ -106,7 +106,6 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 "inventory_groups": ["haproxy"],
                 "exact_count": 1,
                 "instance": {"cpu": 4},
-                "instance_type": "e2-medium",
                 "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
                 "tags": {"Name": f"{cluster_request.name}-lb"},
                 "groups": [
@@ -142,7 +141,6 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                     "inventory_groups": ["cockroachdb"],
                     "exact_count": zone_count,
                     "instance": {"cpu": cluster_request.node_cpus},
-                    "instance_type": "e2-medium",
                     "volumes": {
                         "os": {"size": 20, "type": "standard_ssd"},
                         "data": [
@@ -327,5 +325,173 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
             cluster_request.name,
             "FAILED",
             {},
+            "root",
+        )
+
+
+def delete_cluster(
+    job_id: int,
+    cluster: dict,
+) -> None:
+
+    cluster_id = cluster.get("cluster_id")
+
+    c = db.get_cluster(cluster_id)
+    if not c or c.status in ["DELETED", "DELETING..."]:
+        # TODO if cluster doesn't exists or it's already marked as deleted,
+        # fail the job
+        db.create_job(
+            job_id,
+            "DELETE_CLUSTER",
+            "FAILED",
+            "root",
+        )
+        return
+
+    db.update_cluster_status(
+        cluster_id,
+        "DELETING...",
+        "root",
+    )
+
+    db.create_job_linked(
+        cluster_id,
+        job_id,
+        "DELETE_CLUSTER",
+        "STARTED",
+        "root",
+    )
+
+    threading.Thread(
+        target=delete_cluster_worker,
+        args=(
+            job_id,
+            cluster_id,
+        ),
+    ).start()
+
+
+def delete_cluster_worker(job_id, cluster_id: str):
+    playbook = []
+
+    plays = db.get_plays("DELETE_CLUSTER")
+
+    for play in plays:
+
+        tasks = db.get_play_tasks("DELETE_CLUSTER", play.play_order)
+
+        play.play["tasks"] = [x.task for x in tasks]
+
+        playbook.append(play.play)
+
+    extra_vars = {
+        "deployment_id": cluster_id,
+    }
+
+    total_tasks = sum(len(play.get("tasks", [])) for play in playbook)
+
+    def my_status_handler(status, runner_config):
+        return
+
+    def my_event_handler(e):
+        global completed_tasks, progress
+
+        task_type = ""
+        task_data = ""
+
+        if e["event"] in [
+            "verbose",
+            "playbook_on_no_hosts_matched",
+            "runner_on_skipped",
+            "runner_item_on_skipped",
+            "runner_item_on_ok",
+            "runner_on_ok",
+            "playbook_on_include",
+        ]:
+            return
+
+        elif e["event"] == "warning":
+            task_type = "WARNING"
+            task_data = e["stdout"]
+
+        elif e["event"] == "error":
+            task_type = "ERROR"
+            task_data = e["stdout"]
+
+        elif e["event"] == "playbook_on_start":
+            return
+
+        elif e["event"] == "playbook_on_play_start":
+            task_type = f"PLAY [{e['event_data']['play']}]"
+
+        elif e["event"] == "playbook_on_task_start":
+            completed_tasks += 1
+            progress = int((completed_tasks / total_tasks) * 100)
+            task_type = f"TASK [{e['event_data']['task']}]"
+
+        elif e["event"] == "runner_on_start":
+            return
+
+        elif e["event"] == "runner_on_failed":
+            task_data = f"fatal: [{e['event_data']['host']}]\n{json.dumps(e['event_data']['res']['msg'])}"
+
+        elif e["event"] == "runner_item_on_failed":
+            task_data = f"fatal: [{e['event_data']['host']}]\n{e['event_data']['res']['stderr']}"
+
+        elif e["event"] == "playbook_on_stats":
+            task_type = "PLAY RECAP"
+            task_data = (
+                f"ok: {e['event_data']['ok']} \nfailures: {e['event_data']['failures']}"
+            )
+
+        else:
+            task_type = e["event"]
+            task_data = json.dumps(e)
+            print(f"==========> this is a new event! {e}")
+
+        db.create_task(
+            job_id,
+            e["counter"],
+            progress,
+            e["created"],
+            task_type,
+            task_data,
+        )
+
+    # Execute the playbook
+    try:
+        thread, runner = ansible_runner.run_async(
+            quiet=False,
+            playbook=playbook,
+            private_data_dir="/tmp",
+            extravars=extra_vars,
+            event_handler=my_event_handler,
+            status_handler=my_status_handler,
+        )
+    except Exception as e:
+        raise Exception(f"Error running playbook: {e}")
+
+    # wait for the Runner thread to complete
+    db.update_job(job_id, "RUNNING")
+    thread.join()
+
+    # resetting for next execution
+    global completed_tasks, progress
+    completed_tasks = 0
+    progress = 0
+
+    if runner.status == "successful":
+        db.update_job(job_id, "COMPLETED")
+        db.update_cluster_status(
+            cluster_id,
+            "DELETED",
+            "root",
+        )
+
+    else:
+        db.update_job(job_id, "FAILED")
+        db.update_cluster_status(
+            cluster_id,
+            "DELETE_FAILED",
             "root",
         )

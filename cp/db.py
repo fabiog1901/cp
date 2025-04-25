@@ -3,7 +3,18 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 import os
 import datetime as dt
-from .models import MsgID, Msg, Region, Play, PlayTask, Cluster, EventLog, Task, ClusterOverview, Job
+from .models import (
+    MsgID,
+    Msg,
+    Region,
+    Play,
+    PlayTask,
+    Cluster,
+    EventLog,
+    Task,
+    ClusterOverview,
+    Job,
+)
 from uuid import UUID
 
 
@@ -67,6 +78,7 @@ def get_plays(playbook_id: str) -> list[Play] | None:
         Play,
     )
 
+
 def get_play_tasks(playbook_id: str, play_order: int) -> list[PlayTask] | None:
     return execute_stmt(
         """
@@ -77,6 +89,7 @@ def get_play_tasks(playbook_id: str, play_order: int) -> list[PlayTask] | None:
         (playbook_id, play_order),
         PlayTask,
     )
+
 
 #############
 #  REGIONS  #
@@ -125,7 +138,7 @@ def get_cluster(cluster_id: str) -> Cluster | None:
     return None
 
 
-def create_cluster(
+def insert_cluster(
     cluster_id: str,
     status: str,
     created_by: str,
@@ -157,6 +170,21 @@ def update_cluster(
         WHERE cluster_id = %s
         """,
         (status, topology, updated_by, cluster_id),
+    )
+
+def update_cluster_status(
+    cluster_id: str,
+    status: str,
+    updated_by: str,
+):
+    execute_stmt(
+        """
+        UPDATE clusters SET
+            status = %s,
+            updated_by = %s
+        WHERE cluster_id = %s
+        """,
+        (status, updated_by, cluster_id),
     )
 
 

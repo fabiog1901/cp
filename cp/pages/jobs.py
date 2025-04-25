@@ -75,7 +75,7 @@ def get_job_row(job: Job):
                 job.status,
                 ("OK", rx.icon("circle-check", color="green")),
                 ("WARNING", rx.icon("triangle-alert", color="yellow")),
-                rx.icon("circle-help"),
+                rx.text(job.status),
             )
         ),
     )

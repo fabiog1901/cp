@@ -23,6 +23,9 @@ async def pull_from_mq():
                                 if msg.msg_type == "CREATE_CLUSTER":
                                     print("Processing a CREATE_CLUSTER")
                                     runner.create_cluster(msg.msg_id, msg.msg_data)
+                                elif msg.msg_type == "DELETE_CLUSTER":
+                                    print("Processing a DELETE_CLUSTER")
+                                    runner.delete_cluster(msg.msg_id, msg.msg_data)
                                 elif msg.msg_type == "DEBUG":
                                     print("Processing a DEBUG")
                                     pass

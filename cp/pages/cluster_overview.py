@@ -6,7 +6,6 @@ from ..models import Cluster, ClusterOverview, MsgID, Job
 from ..cp import app
 from .. import db
 
-
 class State(rx.State):
     current_cluster: Cluster = None
     jobs: list[Job] = []
@@ -73,7 +72,7 @@ def get_job_row(job: Job):
                 job.status,
                 ("OK", rx.icon("circle-check", color="green")),
                 ("WARNING", rx.icon("triangle-alert", color="yellow")),
-                rx.icon("circle-help"),
+                rx.text(job.status),
             )
         ),
     )
@@ -114,30 +113,58 @@ def jobs_table():
     )
 
 
+def sidebar() -> rx.Component:
+    return rx.flex(
+        rx.link(rx.text("Overview"), href="/"),
+        rx.link(rx.text("SQL Shell"), href="/"),
+        #rx.divider(),
+        rx.heading("Data", class_name="pb-2 pt-8"),
+        rx.link(rx.text("Databases"), href="/"),
+        rx.link(rx.text("Backup and Restore"), href="/"),
+        rx.link(rx.text("Migrations"), href="/"),
+        #rx.divider(),
+        rx.heading("Security", class_name="pb-2 pt-8"),
+        rx.link(rx.text("SQL Users"), href="/"),
+        rx.link(rx.text("Networking"), href="/"),
+        #rx.divider(),
+        rx.heading("Monitoring", class_name="pb-2 pt-8"),
+        rx.link(rx.text("Tools"), href="/"),
+        rx.link(rx.text("Metrics"), href="/"),
+        rx.link(rx.text("SQL Activity"), href="/"),
+        rx.link(rx.text("Insights"), href="/"),
+        rx.link(rx.text("Jobs"), href="/"),
+        class_name="border-r flex-col min-w-48 p-2",
+    )
+
+
 @rx.page(route="/clusters/[c_id]", on_load=State.fetch_cluster)
 @template
 def cluster():
     return rx.flex(
-        rx.heading(State.cluster_id),
+        sidebar(),
         rx.flex(
-            rx.heading("Name"),
-            rx.text(State.current_cluster.cluster_id),
-            # rx.heading("Topology"),
-            # rx.text(InMemoryTableState.current_cluster.topology),
-            rx.heading("Status"),
-            rx.text(State.current_cluster.status),
-            rx.heading("Created by"),
-            rx.text(State.current_cluster.created_by),
-            rx.heading("Created at"),
-            rx.text(State.current_cluster.created_at),
-            rx.heading("Updated by"),
-            rx.text(State.current_cluster.updated_by),
-            rx.heading("Updated at"),
-            rx.text(State.current_cluster.updated_at),
-            class_name="align-start flex-col",
+            rx.heading(State.cluster_id),
+            rx.flex(
+                rx.heading("Name"),
+                rx.text(State.current_cluster.cluster_id),
+                # rx.heading("Topology"),
+                # rx.text(InMemoryTableState.current_cluster.topology),
+                rx.heading("Status"),
+                rx.text(State.current_cluster.status),
+                rx.heading("Created by"),
+                rx.text(State.current_cluster.created_by),
+                rx.heading("Created at"),
+                rx.text(State.current_cluster.created_at),
+                rx.heading("Updated by"),
+                rx.text(State.current_cluster.updated_by),
+                rx.heading("Updated at"),
+                rx.text(State.current_cluster.updated_at),
+                class_name="align-start flex-col",
+            ),
+            rx.vstack(
+                jobs_table(),
+            ),
+            class_name="flex-1 flex-col overflow-y-scroll p-2",
         ),
-        rx.vstack(
-            jobs_table(),
-        ),
-        class_name="flex-1 flex-col overflow-y-scroll p-2",
+        class_name="flex-1"
     )

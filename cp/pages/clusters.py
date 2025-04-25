@@ -6,6 +6,7 @@ from ..template import template
 from ..models import Cluster, ClusterOverview, MsgID
 from ..cp import app
 from .. import db
+from ..util import get_funny_name
 
 
 # MULTISELECT
@@ -262,6 +263,11 @@ class State(rx.State):
 
     selected_cpu: int = cpu_sizes[0]
     selected_disk: str = disk_sizes[0]
+    selected_name: str = "fgfg"
+    
+    @rx.event
+    def load_funny_name(self):
+        self.selected_name = get_funny_name()
 
     sort_value = ""
     search_value = ""
@@ -329,6 +335,11 @@ class State(rx.State):
         self.selected_regions = []
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
+    @rx.event
+    def delete_cluster(self, cluster_id: str):
+        msg_id: MsgID = db.insert_msg("DELETE_CLUSTER", {"cluster_id": cluster_id}, "fabio")
+
+        return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
 def new_cluster_dialog():
     return rx.dialog.root(
@@ -345,7 +356,7 @@ def new_cluster_dialog():
             rx.form(
                 rx.flex(
                     rx.heading("Cluster Name", size="4"),
-                    rx.input(placeholder="Name", name="name", default_value="fab"),
+                    rx.input(placeholder="Name", name="name", default_value=State.selected_name, on_mount=State.load_funny_name),
                     rx.divider(),
                     cpu_item_selector(),
                     rx.divider(),
@@ -411,9 +422,10 @@ def get_cluster_row(cluster: Cluster):
         rx.table.cell(
             rx.link(
                 rx.icon("trash-2", color="gray"),
-                # on_click=lambda: State.bingo(cluster.cluster_id),
+                on_click=lambda: State.delete_cluster(cluster.cluster_id),
             )
         ),
+        on_mount=State.load_funny_name,
     )
 
 
