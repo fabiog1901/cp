@@ -13,7 +13,7 @@ def template(page: Callable[[], rx.Component]) -> rx.Component:
         rx.flex(
             sidebar(),
             page(),
-            class_name="p-2 flex-1",
+            class_name="p-2 flex-1 overflow-y-hidden",
         ),
         footer(),
         class_name="flex-col h-screen",

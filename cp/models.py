@@ -4,6 +4,19 @@ from typing import Any
 from uuid import UUID
 
 
+TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
+
+'''
+Created
+Pending
+Running
+Paused (or Suspended)
+Retrying
+Succeeded (or Completed)
+Failed
+Canceled (or Aborted)
+Archived
+'''
 @dataclass
 class MsgID:
     msg_id: str
@@ -74,8 +87,8 @@ class Job:
     job_id: int
     job_type: str
     status: str
-    created_at: dt.datetime
     created_by: str
+    created_at: dt.datetime
 
 
 @dataclass

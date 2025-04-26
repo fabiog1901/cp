@@ -239,7 +239,6 @@ def get_job(job_id: int) -> list[Job]:
             status, created_by, created_at
         FROM jobs
         WHERE job_id = %s
-        ORDER BY created_by desc
         """,
         (job_id,),
         Job,
@@ -310,7 +309,7 @@ def update_job(
 
 
 def get_all_tasks(
-    job_id: UUID,
+    job_id: int,
 ) -> list[Task]:
     return execute_stmt(
         """
@@ -318,7 +317,7 @@ def get_all_tasks(
             created_at, task_name, task_desc
         FROM tasks
         WHERE job_id = %s
-        ORDER BY task_id ASC
+        ORDER BY task_id DESC
         """,
         (job_id,),
         Task,

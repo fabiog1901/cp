@@ -268,7 +268,7 @@ class State(rx.State):
 
     sort_value = ""
     search_value = ""
-    bg_task: bool  = False
+    bg_task: bool = False
 
     @rx.event(background=True)
     async def fetch_all_clusters(self):
@@ -276,7 +276,7 @@ class State(rx.State):
             return
         async with self:
             self.bg_task = True
-        
+
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/clusters":
@@ -284,7 +284,7 @@ class State(rx.State):
                 async with self:
                     self.bg_task = False
                 break
-            
+
             async with self:
                 self.clusters = db.get_all_clusters()
             await asyncio.sleep(5)
@@ -357,9 +357,7 @@ def new_cluster_dialog():
             ),
         ),
         rx.dialog.content(
-            rx.dialog.title(
-                "Create New Cluster",
-            ),
+            rx.dialog.title("Create New Cluster", class_name="text-4xl pb-4"),
             rx.form(
                 rx.flex(
                     rx.heading("Cluster Name", size="4"),
@@ -368,16 +366,25 @@ def new_cluster_dialog():
                         name="name",
                         default_value=State.selected_name,
                         on_mount=State.load_funny_name,
+                        color_scheme="mint",
+                        class_name="",
                     ),
                     rx.divider(),
                     cpu_item_selector(),
                     rx.divider(),
-                    rx.heading("Nodes per region", size="4"),
+                    rx.hstack(
+                        rx.icon("database", size=20),
+                        rx.heading("Nodes per Region", size="4"),
+                        spacing="2",
+                        align="center",
+                        width="100%",
+                    ),
                     rx.radio(
                         ["1", "2", "3", "4", "5", "6", "7", "8"],
                         on_change=State.set_node_count,
                         default_value="3",
                         direction="row",
+                        color_scheme="mint",
                     ),
                     rx.divider(),
                     disk_item_selector(),
@@ -385,7 +392,10 @@ def new_cluster_dialog():
                     multi_items_selector(),
                     rx.heading("CockroachDB version", size="4"),
                     rx.input(
-                        name="version", placeholder="latest", default_value="latest"
+                        name="version",
+                        placeholder="latest",
+                        default_value="latest",
+                        color_scheme="mint",
                     ),
                     rx.flex(
                         rx.dialog.close(
@@ -418,7 +428,7 @@ def get_cluster_row(cluster: Cluster):
         # CLUSTER_ID
         rx.table.cell(
             rx.link(
-                rx.heading(cluster.cluster_id, size="2"),
+                rx.text(cluster.cluster_id, class_name="text-2xl font-semibold"),
                 href=f"/clusters/{cluster.cluster_id}",
             )
         ),
@@ -432,14 +442,28 @@ def get_cluster_row(cluster: Cluster):
                     "OK",
                     rx.badge(
                         "AVAILABLE",
-                        class_name="rounded bg-green-600 text-white font-bold p-1 border ",
+                        class_name="rounded bg-green-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "DELETE_FAILED",
+                    rx.badge(
+                        "DELETE FAILED",
+                        class_name="rounded bg-red-600 text-white px-4 text-xl font-semibold",
                     ),
                 ),
                 (
                     "DELETED",
                     rx.badge(
                         "DELETED",
-                        class_name="rounded bg-slate-400 text-black font-bold p-1",
+                        class_name="rounded bg-slate-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "PROVISIONING",
+                    rx.badge(
+                        "PROVISIONING...",
+                        class_name="rounded animate-pulse bg-orange-600 text-white px-4 text-xl font-semibold",
                     ),
                 ),
                 rx.text(cluster.status),
@@ -515,6 +539,7 @@ def clusters_table():
         ),
         rx.text(f"Showing {State.clusters.length()} clusters"),
         width="100%",
+        size="3"
     )
 
 
@@ -527,5 +552,5 @@ def clusters():
             direction="row-reverse",
         ),
         clusters_table(),
-        class_name="flex-1 flex-col overflow-hidden p-2",
+        class_name="flex-1 flex-col overflow-y-scroll p-2",
     )

@@ -3,20 +3,14 @@ import asyncio
 import reflex as rx
 
 from .. import db
-from ..cp import app
-from ..models import Job, MsgID
-
-# from ..state import State
+from ..models import Job
 from ..template import template
 
 
 class State(rx.State):
-    current_job: Job = None
     jobs: list[Job] = []
 
-    sort_value = ""
-    search_value = ""
-    bg_task: bool  = False
+    bg_task: bool = False
 
     @rx.event(background=True)
     async def fetch_all_jobs(self):
@@ -24,7 +18,7 @@ class State(rx.State):
             return
         async with self:
             self.bg_task = True
-            
+
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/jobs":
@@ -37,43 +31,13 @@ class State(rx.State):
                 self.jobs = db.get_all_jobs()
             await asyncio.sleep(5)
 
-    @rx.var(cache=True)
-    def table_jobs(self) -> list[Job]:
-        jobs = self.jobs
-
-        if self.sort_value != "":
-            jobs = sorted(
-                jobs,
-                key=lambda user: getattr(user, self.sort_value).lower(),
-            )
-
-        if self.search_value != "":
-            jobs = [
-                job
-                for job in jobs
-                if any(
-                    self.search_value.lower() in getattr(job, attr).lower()
-                    for attr in [
-                        "job_id",
-                        "email",
-                        "group",
-                    ]
-                )
-            ]
-        return jobs
-
-    @rx.event
-    def get_job(self, job_id):
-        self.current_job = db.get_job(job_id)
-
 
 def get_job_row(job: Job):
     """Show a job in a table row."""
     return rx.table.row(
         rx.table.cell(
             rx.link(
-                job.job_id,
-                on_click=State.get_job(job.job_id),
+                rx.text(job.job_id, class_name="text-2xl font-semibold"),
                 href=f"/jobs/{job.job_id}",
             )
         ),
@@ -82,27 +46,49 @@ def get_job_row(job: Job):
         rx.table.cell(
             rx.match(
                 job.status,
-                ("OK", rx.icon("circle-check", color="green")),
-                ("WARNING", rx.icon("triangle-alert", color="yellow")),
+                (
+                    "RUNNING",
+                    rx.badge(
+                        "RUNNING...",
+                        class_name="rounded animate-pulse bg-orange-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "COMPLETED",
+                    rx.badge(
+                        "COMPLETED",
+                        class_name="rounded bg-green-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "FAILED",
+                    rx.badge(
+                        "FAILED",
+                        class_name="rounded bg-red-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "PENDING",
+                    rx.badge(
+                        "PENDING...",
+                        class_name="rounded bg-purple-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
+                (
+                    "ABORTED",
+                    rx.badge(
+                        "ABORTED",
+                        class_name="rounded bg-gray-600 text-white px-4 text-xl font-semibold",
+                    ),
+                ),
                 rx.text(job.status),
-            )
+            ),
         ),
     )
 
 
 def jobs_table():
     return rx.vstack(
-        rx.hstack(
-            rx.select(
-                ["job_id", "email", "group"],
-                placeholder="Sort By: job_id",
-                on_change=State.set_sort_value,
-            ),
-            rx.input(
-                placeholder="Search here...",
-                on_change=State.set_search_value,
-            ),
-        ),
         rx.table.root(
             rx.table.header(
                 rx.table.row(
@@ -114,11 +100,12 @@ def jobs_table():
             ),
             rx.table.body(
                 rx.foreach(
-                    State.table_jobs,
+                    State.jobs,
                     get_job_row,
                 )
             ),
             width="100%",
+            size="3",
         ),
         rx.text(f"Showing {State.jobs.length()} jobs"),
         width="100%",
@@ -129,9 +116,13 @@ def jobs_table():
 @template
 def jobs():
     return rx.flex(
-        rx.hstack(
-            direction="row-reverse",
+        rx.text(
+            "Jobs",
+            class_name="p-2 text-8xl font-semibold",
         ),
-        jobs_table(),
+        rx.vstack(
+            jobs_table(),
+            class_name="pt-8",
+        ),
         class_name="flex-1 flex-col overflow-y-scroll p-2",
     )
