@@ -1,9 +1,9 @@
 import asyncio
 import random
 
+from . import runner
 from .db import pool
 from .models import Msg
-from . import runner
 
 
 async def pull_from_mq():

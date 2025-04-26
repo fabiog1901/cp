@@ -1,12 +1,13 @@
-import reflex as rx
 import asyncio
 
+import reflex as rx
+
+from .. import db
+from ..cp import app
+from ..models import Job, MsgID
 
 # from ..state import State
 from ..template import template
-from ..models import Job, MsgID
-from ..cp import app
-from .. import db
 
 
 class State(rx.State):
@@ -15,13 +16,21 @@ class State(rx.State):
 
     sort_value = ""
     search_value = ""
+    bg_task: bool  = False
 
     @rx.event(background=True)
     async def fetch_all_jobs(self):
+        if self.bg_task:
+            return
+        async with self:
+            self.bg_task = True
+            
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/jobs":
                 print("jobs.py: Stopping background task.")
+                async with self:
+                    self.bg_task = False
                 break
 
             async with self:

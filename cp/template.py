@@ -2,9 +2,9 @@ from typing import Callable
 
 import reflex as rx
 
-from .components.sidebar import sidebar
-from .components.navbar import navbar
 from .components.footer import footer
+from .components.navbar import navbar
+from .components.sidebar import sidebar
 
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:
@@ -13,8 +13,8 @@ def template(page: Callable[[], rx.Component]) -> rx.Component:
         rx.flex(
             sidebar(),
             page(),
-            class_name="p-2 flex-1 overflow-y-scroll",
+            class_name="p-2 flex-1",
         ),
         footer(),
-        class_name="flex-col h-screen overflow-hidden",
+        class_name="flex-col h-screen",
     )

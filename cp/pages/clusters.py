@@ -1,18 +1,15 @@
-import reflex as rx
 import asyncio
 
-
-from ..template import template
-from ..models import Cluster, ClusterOverview, MsgID
-from ..cp import app
-from .. import db
-from ..util import get_funny_name
-
+import reflex as rx
 
 # MULTISELECT
-from reflex.components.radix.themes.base import (
-    LiteralAccentColor,
-)
+from reflex.components.radix.themes.base import LiteralAccentColor
+
+from .. import db
+from ..cp import app
+from ..models import Cluster, ClusterOverview, MsgID
+from ..template import template
+from ..util import get_funny_name
 
 chip_props = {
     "radius": "full",
@@ -263,23 +260,31 @@ class State(rx.State):
 
     selected_cpu: int = cpu_sizes[0]
     selected_disk: str = disk_sizes[0]
-    selected_name: str = "fgfg"
-    
+    selected_name: str = get_funny_name()
+
     @rx.event
     def load_funny_name(self):
         self.selected_name = get_funny_name()
 
     sort_value = ""
     search_value = ""
+    bg_task: bool  = False
 
     @rx.event(background=True)
     async def fetch_all_clusters(self):
+        if self.bg_task:
+            return
+        async with self:
+            self.bg_task = True
+        
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/clusters":
                 print("clusters.py: Stopping background task.")
+                async with self:
+                    self.bg_task = False
                 break
-
+            
             async with self:
                 self.clusters = db.get_all_clusters()
             await asyncio.sleep(5)
@@ -314,10 +319,9 @@ class State(rx.State):
     @rx.event
     def set_node_count(self, item: str):
         self.node_count = int(item)
-        
+
     @rx.event
     def create_new_cluster(self, form_data: dict):
-
         form_data["node_cpus"] = self.selected_cpu
 
         form_data["disk_size"] = {
@@ -337,9 +341,12 @@ class State(rx.State):
 
     @rx.event
     def delete_cluster(self, cluster_id: str):
-        msg_id: MsgID = db.insert_msg("DELETE_CLUSTER", {"cluster_id": cluster_id}, "fabio")
+        msg_id: MsgID = db.insert_msg(
+            "DELETE_CLUSTER", {"cluster_id": cluster_id}, "fabio"
+        )
 
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
+
 
 def new_cluster_dialog():
     return rx.dialog.root(
@@ -356,13 +363,18 @@ def new_cluster_dialog():
             rx.form(
                 rx.flex(
                     rx.heading("Cluster Name", size="4"),
-                    rx.input(placeholder="Name", name="name", default_value=State.selected_name, on_mount=State.load_funny_name),
+                    rx.input(
+                        placeholder="Name",
+                        name="name",
+                        default_value=State.selected_name,
+                        on_mount=State.load_funny_name,
+                    ),
                     rx.divider(),
                     cpu_item_selector(),
                     rx.divider(),
                     rx.heading("Nodes per region", size="4"),
                     rx.radio(
-                        ["1", "2", "3", "4", "5", "6", "7","8"],
+                        ["1", "2", "3", "4", "5", "6", "7", "8"],
                         on_change=State.set_node_count,
                         default_value="3",
                         direction="row",
@@ -403,29 +415,71 @@ def new_cluster_dialog():
 def get_cluster_row(cluster: Cluster):
     """Show a cluster in a table row."""
     return rx.table.row(
+        # CLUSTER_ID
         rx.table.cell(
             rx.link(
-                cluster.cluster_id,
+                rx.heading(cluster.cluster_id, size="2"),
                 href=f"/clusters/{cluster.cluster_id}",
             )
         ),
+        # CREATED BY
         rx.table.cell(cluster.created_by),
+        # STATUS
         rx.table.cell(
             rx.match(
                 cluster.status,
-                ("OK", rx.icon("circle-check", color="green")),
-                ("WARNING", rx.icon("triangle-alert", color="yellow")),
-                rx.text(cluster.status)
-                #rx.icon("circle-help"),
+                (
+                    "OK",
+                    rx.badge(
+                        "AVAILABLE",
+                        class_name="rounded bg-green-600 text-white font-bold p-1 border ",
+                    ),
+                ),
+                (
+                    "DELETED",
+                    rx.badge(
+                        "DELETED",
+                        class_name="rounded bg-slate-400 text-black font-bold p-1",
+                    ),
+                ),
+                rx.text(cluster.status),
+                # rx.icon("circle-help"),
             )
         ),
+        # ACTION
         rx.table.cell(
-            rx.link(
-                rx.icon("trash-2", color="gray"),
-                on_click=lambda: State.delete_cluster(cluster.cluster_id),
+            rx.match(
+                cluster.status,
+                ("DELETED", rx.box()),
+                ("DELETING...", rx.box()),
+                rx.hstack(
+                    rx.tooltip(
+                        rx.icon(
+                            "trash-2",
+                            color="gray",
+                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                        ),
+                        content="Delete the cluster",
+                    ),
+                    rx.tooltip(
+                        rx.icon(
+                            "circle-fading-arrow-up",
+                            color="gray",
+                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                        ),
+                        content="Upgrade the cluster",
+                    ),
+                    rx.tooltip(
+                        rx.icon(
+                            "bug-play",
+                            color="gray",
+                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                        ),
+                        content="Debug the cluster",
+                    ),
+                ),
             )
         ),
-        on_mount=State.load_funny_name,
     )
 
 
@@ -473,5 +527,5 @@ def clusters():
             direction="row-reverse",
         ),
         clusters_table(),
-        class_name="flex-1 flex-col overflow-y-scroll p-2",
+        class_name="flex-1 flex-col overflow-hidden p-2",
     )

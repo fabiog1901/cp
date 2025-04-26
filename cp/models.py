@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 import datetime as dt
-from uuid import UUID
+from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 
 @dataclass
@@ -12,12 +12,13 @@ class MsgID:
 @dataclass
 class Play:
     play_order: int
-    play: dict   
+    play: dict
 
 
 @dataclass
 class PlayTask:
-    task: dict    
+    task: dict
+
 
 @dataclass
 class Region:
@@ -81,7 +82,6 @@ class Job:
 class Task:
     job_id: UUID
     task_id: UUID
-    progress: int
     created_at: dt.datetime
     task_name: str | None
     task_desc: str | None

@@ -1,22 +1,23 @@
-from psycopg_pool import ConnectionPool
-from psycopg.types.array import ListDumper
-from psycopg.types.json import Jsonb, JsonbDumper
-import os
 import datetime as dt
-from .models import (
-    MsgID,
-    Msg,
-    Region,
-    Play,
-    PlayTask,
-    Cluster,
-    EventLog,
-    Task,
-    ClusterOverview,
-    Job,
-)
+import os
 from uuid import UUID
 
+from psycopg.types.array import ListDumper
+from psycopg.types.json import Jsonb, JsonbDumper
+from psycopg_pool import ConnectionPool
+
+from .models import (
+    Cluster,
+    ClusterOverview,
+    EventLog,
+    Job,
+    Msg,
+    MsgID,
+    Play,
+    PlayTask,
+    Region,
+    Task,
+)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -172,6 +173,7 @@ def update_cluster(
         (status, topology, updated_by, cluster_id),
     )
 
+
 def update_cluster_status(
     cluster_id: str,
     status: str,
@@ -212,7 +214,7 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
             FROM map_clusters_jobs m JOIN jobs j
                 ON m.job_id = j.job_id 
             WHERE m.cluster_id = %s
-            ORDER BY j.created_by DESC
+            ORDER BY j.created_at DESC
             """,
             (cluster_id,),
             Job,
@@ -223,7 +225,7 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
         SELECT job_id, job_type, 
             status, created_by, created_at
         FROM jobs
-        ORDER BY created_by DESC
+        ORDER BY created_at DESC
         """,
         (),
         Job,
@@ -262,7 +264,7 @@ def create_job(
     )
 
 
-def create_job_linked(
+def insert_mapped_job(
     cluster_id: str,
     job_id: int,
     job_type: str,
@@ -312,7 +314,7 @@ def get_all_tasks(
 ) -> list[Task]:
     return execute_stmt(
         """
-        SELECT job_id, task_id, progress, 
+        SELECT job_id, task_id, 
             created_at, task_name, task_desc
         FROM tasks
         WHERE job_id = %s
@@ -323,10 +325,9 @@ def get_all_tasks(
     )
 
 
-def create_task(
+def insert_task(
     job_id: int,
     task_id: int,
-    progress: int,
     created_at: dt.datetime,
     task_name: str,
     task_desc: dict,
@@ -334,10 +335,10 @@ def create_task(
     execute_stmt(
         """
         INSERT INTO tasks 
-            (job_id, task_id, progress, created_at, task_name, task_desc)
-        VALUES (%s, %s, %s, %s, %s, %s)
+            (job_id, task_id, created_at, task_name, task_desc)
+        VALUES (%s, %s, %s, %s, %s)
         """,
-        (job_id, task_id, progress, created_at, task_name, task_desc),
+        (job_id, task_id, created_at, task_name, task_desc),
     )
 
 

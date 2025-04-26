@@ -442,4 +442,3 @@ funny_words = [
 
 def get_funny_name():
     return "-".join(random.choices(funny_words, k=2))
-

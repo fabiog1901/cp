@@ -96,7 +96,6 @@ CREATE TABLE map_clusters_jobs (
 CREATE TABLE tasks (
   job_id INT8 NOT NULL,
   task_id INT2 NOT NULL,
-  progress INT2 NULL,
   created_at TIMESTAMPTZ NOT NULL,
   task_name STRING NULL,
   task_desc STRING NULL,

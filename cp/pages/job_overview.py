@@ -1,10 +1,11 @@
-import reflex as rx
 import asyncio
 
-from ..template import template
-from ..models import Job, MsgID, Job, Task
-from ..cp import app
+import reflex as rx
+
 from .. import db
+from ..cp import app
+from ..models import Job, MsgID, Task
+from ..template import template
 
 
 class State(rx.State):
@@ -18,12 +19,21 @@ class State(rx.State):
     def job_id(self) -> str | None:
         return self.router.page.params.get("j_id") or None
 
+    bg_task: bool  = False
+    
     @rx.event(background=True)
     async def fetch_tasks(self):
+        if self.bg_task:
+            return
+        async with self:
+            self.bg_task = True
+            
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/jobs/[j_id]":
                 print("job_overview.py: Stopping background task.")
+                async with self:
+                    self.bg_task = False
                 break
 
             async with self:
@@ -56,6 +66,9 @@ class State(rx.State):
             ]
         return tasks
 
+    
+
+
 
 def get_task_row(task: Task):
     """Show a job in a table row."""
@@ -63,7 +76,6 @@ def get_task_row(task: Task):
         rx.table.cell(task.created_at),
         rx.table.cell(task.task_name),
         rx.table.cell(task.task_desc),
-        rx.table.cell(task.progress),
     )
 
 
@@ -86,7 +98,6 @@ def tasks_table():
                     rx.table.column_header_cell("Created At"),
                     rx.table.column_header_cell("Task Name"),
                     rx.table.column_header_cell("Description"),
-                    rx.table.column_header_cell("Progress"),
                 ),
             ),
             rx.table.body(
