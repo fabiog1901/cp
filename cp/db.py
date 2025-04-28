@@ -6,18 +6,8 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (
-    Cluster,
-    ClusterOverview,
-    EventLog,
-    Job,
-    Msg,
-    MsgID,
-    Play,
-    PlayTask,
-    Region,
-    Task,
-)
+from .models import (Cluster, ClusterOverview, EventLog, Job, Msg, MsgID, Play,
+                     PlayTask, Region, Task)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -32,8 +22,6 @@ pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
 ########
 #  MQ  #
 ########
-
-
 def insert_msg(
     msg_type: str,
     msg_data: dict,
@@ -41,13 +29,26 @@ def insert_msg(
 ) -> int:
     return execute_stmt(
         """
-        INSERT INTO mq
-            (msg_type, msg_data, created_by)
-        VALUES
-            (%s, %s, %s)
-        RETURNING msg_id
+        WITH 
+        create_new_job AS (
+            INSERT INTO mq
+                (msg_type, msg_data, created_by)
+            VALUES
+                (%s, %s, %s)
+            RETURNING msg_id
+        ) 
+        INSERT INTO jobs (job_id, job_type, status, description, created_by) 
+        VALUES (create_new_job.msg_id, %s, %s, %s) RETURNING create_new_job.msg_id
         """,
-        (msg_type, msg_data, created_by),
+        (
+            msg_type,
+            msg_data,
+            created_by,
+            msg_type,
+            "QUEUED",
+            msg_data,
+            created_by,
+        ),
         MsgID,
     )[0]
 
@@ -209,12 +210,16 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
     if cluster_id:
         return execute_stmt(
             """
-            SELECT j.job_id, j.job_type, 
-                j.status, j.created_by, j.created_at
-            FROM map_clusters_jobs m JOIN jobs j
-                ON m.job_id = j.job_id 
-            WHERE m.cluster_id = %s
-            ORDER BY j.created_at DESC
+            WITH
+            cluster_jobs AS (
+                SELECT job_id
+                FROM map_clusters_jobs
+                WHERE cluster_id = %s
+            ) 
+            SELECT * 
+            FROM jobs 
+            WHERE job_id IN (SELECT job_id FROM cluster_jobs)
+            ORDER BY created_at DESC
             """,
             (cluster_id,),
             Job,
@@ -222,8 +227,7 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
 
     return execute_stmt(
         """
-        SELECT job_id, job_type, 
-            status, created_by, created_at
+        SELECT *
         FROM jobs
         ORDER BY created_at DESC
         """,
@@ -235,8 +239,7 @@ def get_all_jobs(cluster_id: str = None) -> list[Job]:
 def get_job(job_id: int) -> list[Job]:
     return execute_stmt(
         """
-        SELECT job_id, job_type, 
-            status, created_by, created_at
+        SELECT *
         FROM jobs
         WHERE job_id = %s
         """,
@@ -266,9 +269,7 @@ def create_job(
 def insert_mapped_job(
     cluster_id: str,
     job_id: int,
-    job_type: str,
     status: str,
-    created_by: str,
 ) -> list[Job]:
     return execute_stmt(
         """
@@ -279,13 +280,11 @@ def insert_mapped_job(
             VALUES (%s, %s)
             RETURNING 1
         )
-        INSERT INTO jobs
-            (job_id, job_type, 
-            status, created_by)
-        VALUES 
-            (%s, %s, %s, %s)
+        UPDATE jobs
+        SET status = %s
+        WHERE job_id = %s
         """,
-        (cluster_id, job_id, job_id, job_type, status, created_by),
+        (cluster_id, job_id, status, job_id),
     )
 
 
@@ -300,6 +299,23 @@ def update_job(
         WHERE job_id = %s
         """,
         (status, job_id),
+    )
+
+
+def fail_zombie_jobs():
+    execute_stmt(
+        """
+        WITH
+        fail_zombie_jobs AS (
+            UPDATE jobs
+            SET status= 'FAILED' 
+            WHERE status in ('RUNNING', 'SCHEDULED')
+                AND updated_at + INTERVAL '60s' < now()
+            RETURNING 1
+        )
+        INSERT INTO mq (msg_type, created_by) 
+            VALUES ('FAIL_ZOMBIE_JOBS', 'system')
+        """
     )
 
 

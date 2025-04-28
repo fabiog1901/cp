@@ -1,5 +1,6 @@
 import json
-import threading
+import time
+from threading import Thread
 
 import ansible_runner
 
@@ -27,6 +28,7 @@ def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
 def create_cluster(
     job_id: int,
     cluster: dict,
+    created_by: str,
 ) -> None:
     cluster_request = ClusterRequest(**cluster)
 
@@ -34,11 +36,9 @@ def create_cluster(
     if c and c.status == "OK":
         # TODO raise an error message that a cluster
         # with the same name already exists
-        db.create_job(
+        db.update_job(
             job_id,
-            "CREATE_CLUSTER",
             "FAILED",
-            "root",
         )
         return
 
@@ -52,12 +52,10 @@ def create_cluster(
     db.insert_mapped_job(
         cluster_request.name,
         job_id,
-        "CREATE_CLUSTER",
-        "STARTED",
-        "root",
+        "SCHEDULED",
     )
 
-    threading.Thread(
+    Thread(
         target=create_cluster_worker,
         args=(
             job_id,
@@ -240,12 +238,10 @@ def delete_cluster(
     db.insert_mapped_job(
         cluster_id,
         job_id,
-        "DELETE_CLUSTER",
-        "STARTED",
-        "root",
+        "SCHEDULED",
     )
 
-    threading.Thread(
+    Thread(
         target=delete_cluster_worker,
         args=(
             job_id,
@@ -273,6 +269,11 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
             "DELETE_FAILED",
             "root",
         )
+
+
+def fail_zombie_jobs():
+    time.sleep(60)
+    db.fail_zombie_jobs()
 
 
 def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
@@ -350,7 +351,7 @@ def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
 
     # Execute the playbook
     try:
-        runner = ansible_runner.run(
+        thread, runner = ansible_runner.run_async(
             quiet=False,
             playbook=playbook,
             private_data_dir="/tmp",
@@ -361,6 +362,15 @@ def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
     except Exception as e:
         db.update_job(job_id, "FAILED")
         raise Exception(f"Error running playbook: {e}")
+
+    heartbeat_ts = time.time() + 60
+    while thread.is_alive():
+        # send hb messsage periodically
+        if time.time() > heartbeat_ts:
+            db.update_job(job_id, "RUNNING")
+            heartbeat_ts = time.time() + 60
+
+        time.sleep(1)
 
     # update the Job status
     if runner.status == "successful":

@@ -3,6 +3,7 @@ import asyncio
 import reflex as rx
 
 from .. import db
+from ..components.BadgeJobStatus import get_job_status_badge
 from ..models import Job
 from ..template import template
 
@@ -43,47 +44,7 @@ def get_job_row(job: Job):
         ),
         rx.table.cell(job.job_type),
         rx.table.cell(job.created_by),
-        rx.table.cell(
-            rx.match(
-                job.status,
-                (
-                    "RUNNING",
-                    rx.badge(
-                        "RUNNING...",
-                        class_name="rounded animate-pulse bg-orange-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "COMPLETED",
-                    rx.badge(
-                        "COMPLETED",
-                        class_name="rounded bg-green-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "FAILED",
-                    rx.badge(
-                        "FAILED",
-                        class_name="rounded bg-red-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "PENDING",
-                    rx.badge(
-                        "PENDING...",
-                        class_name="rounded bg-purple-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "ABORTED",
-                    rx.badge(
-                        "ABORTED",
-                        class_name="rounded bg-gray-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                rx.text(job.status),
-            ),
-        ),
+        rx.table.cell(get_job_status_badge(job.status)),
     )
 
 
@@ -122,7 +83,7 @@ def jobs():
         ),
         rx.vstack(
             jobs_table(),
-            class_name="pt-8",
+            class_name="flex-1 flex-col overflow-y-scroll pt-8",
         ),
-        class_name="flex-1 flex-col overflow-y-scroll p-2",
+        class_name="flex-1 flex-col overflow-hidden",
     )

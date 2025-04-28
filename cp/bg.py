@@ -18,19 +18,22 @@ async def pull_from_mq():
                             msg = Msg(*cur.fetchone())
 
                             if msg:
-                                print(f"Processing {msg.msg_id}")
-
                                 if msg.msg_type == "CREATE_CLUSTER":
                                     print("Processing a CREATE_CLUSTER")
-                                    runner.create_cluster(msg.msg_id, msg.msg_data)
+                                    runner.create_cluster(
+                                        msg.msg_id, msg.msg_data, msg.created_by
+                                    )
                                 elif msg.msg_type == "DELETE_CLUSTER":
                                     print("Processing a DELETE_CLUSTER")
                                     runner.delete_cluster(msg.msg_id, msg.msg_data)
                                 elif msg.msg_type == "DEBUG":
                                     print("Processing a DEBUG")
                                     pass
+                                elif msg.msg_type == "FAIL_ZOMBIE_JOBS":
+                                    print("Processing a FAIL_ZOMBIE_JOBS")
+                                    runner.fail_zombie_jobs()
                                 else:
-                                    print("Unknown task type requested")
+                                    print(f"Unknown task type requested: {msg.msg_type}")
 
                                 cur.execute(
                                     "DELETE FROM mq WHERE msg_id = %s;",

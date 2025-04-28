@@ -1,11 +1,11 @@
 import asyncio
 
 import reflex as rx
-
 # MULTISELECT
 from reflex.components.radix.themes.base import LiteralAccentColor
 
 from .. import db
+from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..cp import app
 from ..models import Cluster, ClusterOverview, MsgID
 from ..template import template
@@ -32,23 +32,6 @@ regions = [
 ]
 
 disk_sizes = ["500 GB", "1 TB", "2 TB"]
-
-
-def multi_action_button(
-    icon: str,
-    label: str,
-    on_click: callable,
-    color_scheme: LiteralAccentColor,
-) -> rx.Component:
-    return rx.button(
-        rx.icon(icon, size=16),
-        label,
-        variant="soft",
-        size="2",
-        on_click=on_click,
-        color_scheme=color_scheme,
-        cursor="pointer",
-    )
 
 
 def multi_selected_item_chip(item: str) -> rx.Component:
@@ -352,8 +335,7 @@ def new_cluster_dialog():
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
-                rx.icon("plus"),
-                rx.text("New Cluster"),
+                rx.icon("plus"), rx.text("New Cluster"), class_name="cursor-pointer"
             ),
         ),
         rx.dialog.content(
@@ -435,41 +417,7 @@ def get_cluster_row(cluster: Cluster):
         # CREATED BY
         rx.table.cell(cluster.created_by),
         # STATUS
-        rx.table.cell(
-            rx.match(
-                cluster.status,
-                (
-                    "OK",
-                    rx.badge(
-                        "AVAILABLE",
-                        class_name="rounded bg-green-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "DELETE_FAILED",
-                    rx.badge(
-                        "DELETE FAILED",
-                        class_name="rounded bg-red-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "DELETED",
-                    rx.badge(
-                        "DELETED",
-                        class_name="rounded bg-slate-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                (
-                    "PROVISIONING",
-                    rx.badge(
-                        "PROVISIONING...",
-                        class_name="rounded animate-pulse bg-orange-600 text-white px-4 text-xl font-semibold",
-                    ),
-                ),
-                rx.text(cluster.status),
-                # rx.icon("circle-help"),
-            )
-        ),
+        rx.table.cell(get_cluster_status_badge(cluster.status)),
         # ACTION
         rx.table.cell(
             rx.match(
@@ -509,17 +457,6 @@ def get_cluster_row(cluster: Cluster):
 
 def clusters_table():
     return rx.vstack(
-        rx.hstack(
-            rx.select(
-                ["cluster_id", "email", "group"],
-                placeholder="Sort By: cluster_id",
-                on_change=State.set_sort_value,
-            ),
-            rx.input(
-                placeholder="Search here...",
-                on_change=State.set_search_value,
-            ),
-        ),
         rx.table.root(
             rx.table.header(
                 rx.table.row(
@@ -539,7 +476,7 @@ def clusters_table():
         ),
         rx.text(f"Showing {State.clusters.length()} clusters"),
         width="100%",
-        size="3"
+        size="3",
     )
 
 
@@ -547,10 +484,11 @@ def clusters_table():
 @template
 def clusters():
     return rx.flex(
-        rx.hstack(
-            new_cluster_dialog(),
-            direction="row-reverse",
+        rx.text(
+            "Clusters",
+            class_name="p-2 text-8xl font-semibold",
         ),
-        clusters_table(),
-        class_name="flex-1 flex-col overflow-y-scroll p-2",
+        rx.hstack(new_cluster_dialog(), direction="row-reverse", class_name="p-4"),
+        rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
+        class_name="flex-1 flex-col overflow-hidden",
     )

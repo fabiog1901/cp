@@ -4,8 +4,10 @@ import reflex as rx
 
 from .. import db
 from ..cp import app
-from ..models import Cluster, Job
+from ..models import TS_FORMAT, Cluster, Job
 from ..template import template
+from ..components.BadgeClusterStatus import get_cluster_status_badge
+from ..components.BadgeJobStatus import get_job_status_badge
 
 
 class State(rx.State):
@@ -15,9 +17,8 @@ class State(rx.State):
     @rx.var
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
-    
-    bg_task: bool  = False
 
+    bg_task: bool = False
 
     @rx.event(background=True)
     async def fetch_cluster(self):
@@ -25,7 +26,7 @@ class State(rx.State):
             return
         async with self:
             self.bg_task = True
-            
+
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/clusters/[c_id]":
@@ -45,26 +46,18 @@ def get_job_row(job: Job):
     return rx.table.row(
         rx.table.cell(
             rx.link(
-                rx.heading(job.job_id, size="2"),
+                rx.text(job.job_id, class_name="text-2xl font-semibold"),
                 href=f"/jobs/{job.job_id}",
             )
         ),
         rx.table.cell(job.job_type),
         rx.table.cell(job.created_by),
-        rx.table.cell(
-            rx.match(
-                job.status,
-                ("OK", rx.icon("circle-check", color="green")),
-                ("WARNING", rx.icon("triangle-alert", color="yellow")),
-                rx.text(job.status),
-            )
-        ),
+        rx.table.cell(get_job_status_badge(job.status)),
     )
 
 
 def jobs_table():
     return rx.vstack(
-        rx.box(class_name="p-4"),
         rx.table.root(
             rx.table.header(
                 rx.table.row(
@@ -81,13 +74,14 @@ def jobs_table():
                 )
             ),
             width="100%",
+            size="3",
         ),
         rx.text(f"Showing {State.jobs.length()} jobs"),
         width="100%",
     )
 
 
-def sidebar() -> rx.Component:
+def cluster_sidebar() -> rx.Component:
     return rx.flex(
         rx.link(rx.text("Overview", class_name="py-2"), href="/"),
         rx.link(rx.text("SQL Shell", class_name="py-2"), href="/"),
@@ -116,34 +110,34 @@ def sidebar() -> rx.Component:
 def cluster():
     return rx.flex(
         rx.hstack(
-            rx.icon("boxes", size=48),
-            rx.heading(State.current_cluster.cluster_id, size="8"),
-            class_name="p-2",
-        ),
-        rx.divider(size="4"),
-        rx.flex(
-            sidebar(),
-            rx.flex(
-                rx.flex(
-                    rx.heading("Status"),
-                    rx.text(State.current_cluster.status),
-                    rx.heading("Created by"),
-                    rx.text(State.current_cluster.created_by),
-                    rx.heading("Created at"),
-                    rx.text(State.current_cluster.created_at),
-                    rx.heading("Updated by"),
-                    rx.text(State.current_cluster.updated_by),
-                    rx.heading("Updated at"),
-                    rx.text(State.current_cluster.updated_at),
-                    class_name="align-start flex-col",
-                ),
-                # rx.flex(
-                #     jobs_table(),
-                #     class_name="flex-1 flex-col overflow-y-scroll p-2",
-                # ),
-                class_name="flex-1 flex-col overflow-y-hidden p-2",
+            rx.icon("boxes", size=100, class_name="p-2"),
+            rx.text(
+                State.current_cluster.cluster_id,
+                class_name="p-2 text-8xl font-semibold",
             ),
-            class_name="flex-1 overflow-hidden",
+            rx.divider(orientation="vertical", size="4", class_name="mx-8"),
+            get_cluster_status_badge(State.current_cluster.status),
+            rx.vstack(
+                rx.text("Created At"),
+                rx.moment(State.current_cluster.created_at, format=TS_FORMAT),
+                class_name="mx-16",
+                align="center",
+            ),
+            rx.vstack(
+                rx.text("Created By"),
+                rx.text(State.current_cluster.created_by, format=TS_FORMAT),
+                class_name="mx-16",
+                align="center",
+            ),
+            align="center",
+        ),
+        rx.flex(
+            cluster_sidebar(),
+            rx.flex(
+                jobs_table(),
+                class_name="flex-1 flex-col overflow-y-scroll p-2",
+            ),
+            class_name="flex-1 overflow-hidden pt-8",
         ),
         class_name="flex-col flex-1 overflow-hidden",
     )

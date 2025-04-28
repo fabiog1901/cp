@@ -3,10 +3,9 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 
-'''
+"""
 Created
 Pending
 Running
@@ -16,7 +15,29 @@ Succeeded (or Completed)
 Failed
 Canceled (or Aborted)
 Archived
-'''
+
+NotInstalled
+Installing
+Installed
+Configuring
+Starting
+Running
+Paused
+Stopping
+Stopped
+Upgrading
+Degraded
+Unresponsive
+Failed
+Terminated
+Archived
+Unknown
+
+"""
+
+
+
+
 @dataclass
 class MsgID:
     msg_id: str
@@ -87,9 +108,11 @@ class Job:
     job_id: int
     job_type: str
     status: str
-    created_by: str
+    description: dict
     created_at: dt.datetime
-
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str
 
 @dataclass
 class Task:

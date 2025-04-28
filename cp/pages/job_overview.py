@@ -3,12 +3,15 @@ import asyncio
 import reflex as rx
 
 from .. import db
-from ..models import Job, Task, TS_FORMAT
+from ..components.BadgeJobStatus import get_job_status_badge
+from ..models import TS_FORMAT, Job, Task
 from ..template import template
+import yaml
 
 
 class State(rx.State):
     current_job: Job = None
+    current_job_description: str = ""
     tasks: list[Task] = []
 
     @rx.var
@@ -33,7 +36,9 @@ class State(rx.State):
                 break
 
             async with self:
-                self.current_job = db.get_job(int(self.job_id))
+                job: Job = db.get_job(int(self.job_id))
+                self.current_job_description = yaml.dump(job.description)
+                self.current_job = job
                 self.tasks = db.get_all_tasks(self.job_id)
             await asyncio.sleep(5)
 
@@ -81,32 +86,30 @@ def job():
                     class_name="p-2 text-8xl font-semibold",
                 ),
                 rx.divider(orientation="vertical", size="4", class_name="mx-8"),
-                rx.match(
-                    State.current_job.status,
-                    (
-                        "COMPLETED",
-                        rx.box(
-                            rx.text("COMPLETED"),
-                            class_name="rounded bg-green-600 text-white p-2 text-xl font-bold",
-                        ),
-                    ),
-                    (
-                        "FAILED",
-                        rx.box(
-                            "FAILED",
-                            class_name="rounded bg-red-600 text-white p-2 text-xl font-bold",
-                        ),
-                    ),
-                ),
+                get_job_status_badge(State.current_job.status),
                 rx.vstack(
                     rx.text("Created At"),
-                    rx.moment(State.current_job.created_at, format=TS_FORMAT),
+                    rx.moment(
+                        State.current_job.created_at,
+                        format=TS_FORMAT,
+                        class_name="text-lg font-semibold",
+                    ),
                     class_name="mx-16",
                     align="center",
                 ),
                 rx.vstack(
                     rx.text("Created By"),
-                    rx.text(State.current_job.created_by, format=TS_FORMAT),
+                    rx.text(
+                        State.current_job.created_by, class_name="text-lg font-semibold"
+                    ),
+                    class_name="mx-16",
+                    align="center",
+                ),
+                rx.vstack(
+                    rx.text("Job Type"),
+                    rx.text(
+                        State.current_job.job_type, class_name="text-lg font-semibold"
+                    ),
                     class_name="mx-16",
                     align="center",
                 ),
@@ -114,9 +117,17 @@ def job():
             ),
             class_name="align-start flex-col",
         ),
+        rx.hstack(
+            rx.code_block(
+                State.current_job_description,
+                language="json",
+                show_line_numbers=True,
+            ),
+            class_name="p-2",
+        ),
         rx.vstack(
             tasks_table(),
-            class_name="pt-8",
+            class_name="pt-8 overflow-y-scroll",
         ),
-        class_name="flex-1 flex-col overflow-y-scroll p-2",
+        class_name="flex-1 flex-col overflow-hidden p-2",
     )
