@@ -160,18 +160,18 @@ def insert_cluster(
 def update_cluster(
     cluster_id: str,
     status: str,
-    topology: dict,
+    description: dict,
     updated_by: str,
 ):
     execute_stmt(
         """
         UPDATE clusters SET
             status = %s,
-            topology = %s,
+            description = %s,
             updated_by = %s
         WHERE cluster_id = %s
         """,
-        (status, topology, updated_by, cluster_id),
+        (status, description, updated_by, cluster_id),
     )
 
 

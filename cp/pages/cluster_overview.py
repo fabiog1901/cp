@@ -8,10 +8,12 @@ from ..models import TS_FORMAT, Cluster, Job
 from ..template import template
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
+import yaml
 
 
 class State(rx.State):
     current_cluster: Cluster = None
+    current_cluster_description: str = ""
     jobs: list[Job] = []
 
     @rx.var
@@ -36,7 +38,10 @@ class State(rx.State):
                 break
 
             async with self:
-                self.current_cluster = db.get_cluster(self.cluster_id)
+
+                cluster: Cluster = db.get_cluster(self.cluster_id)
+                self.current_cluster_description = yaml.safe_dump(cluster.description)
+                self.current_cluster = cluster
                 self.jobs = db.get_all_jobs(self.cluster_id)
             await asyncio.sleep(5)
 
@@ -134,10 +139,18 @@ def cluster():
         rx.flex(
             cluster_sidebar(),
             rx.flex(
-                jobs_table(),
-                class_name="flex-1 flex-col overflow-y-scroll p-2",
+                rx.code_block(
+                    State.current_cluster_description,
+                    language="yaml",
+                    show_line_numbers=True,
+                ),
+                rx.flex(
+                    jobs_table(),
+                    class_name="flex-1 flex-col overflow-y-scroll p-2",
+                ),
+                class_name="flex-1 flex-col overflow-hidden"
             ),
-            class_name="flex-1 overflow-hidden pt-8",
+            class_name="flex-1 pt-8 overflow-hidden",
         ),
         class_name="flex-col flex-1 overflow-hidden",
     )

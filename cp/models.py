@@ -85,7 +85,7 @@ class ClusterOverview:
 @dataclass
 class Cluster:
     cluster_id: str
-    topology: Any | None
+    description: Any | None
     status: str
     created_at: dt.datetime
     created_by: str

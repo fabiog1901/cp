@@ -144,7 +144,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                         }
                     ],
                 }
-                | env_details[0].extras
+                | env_details[idx].extras
             )
 
     extra_vars = {
@@ -197,7 +197,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
     if job_status == "successful":
         db.update_cluster(
             cluster_request.name,
-            "OK",
+            "RUNNING",
             data,  # {"lbs": ["10.10.15.48", "10.10.68.175"]},
             "root",
         )

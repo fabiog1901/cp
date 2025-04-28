@@ -117,13 +117,13 @@ def job():
             ),
             class_name="align-start flex-col",
         ),
-        rx.hstack(
+        rx.flex(
             rx.code_block(
                 State.current_job_description,
-                language="json",
+                language="yaml",
                 show_line_numbers=True,
             ),
-            class_name="p-2",
+            class_name="flex-col flex-1 p-2",
         ),
         rx.vstack(
             tasks_table(),

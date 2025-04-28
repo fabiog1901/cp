@@ -67,7 +67,7 @@ CREATE TABLE regions (
 
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
-    topology JSONB NULL,
+    description JSONB NULL,
     status STRING NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NOT NULL,
