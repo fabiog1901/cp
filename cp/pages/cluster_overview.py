@@ -13,7 +13,9 @@ import yaml
 
 class State(rx.State):
     current_cluster: Cluster = None
-    current_cluster_description: str = ""
+    current_cluster_description: dict = {}
+    current_cluster_regions: list[dict[str, str | list[str]]] = []
+    current_cluster_lbs: list[dict] = []
     jobs: list[Job] = []
 
     @rx.var
@@ -40,7 +42,9 @@ class State(rx.State):
             async with self:
 
                 cluster: Cluster = db.get_cluster(self.cluster_id)
-                self.current_cluster_description = yaml.safe_dump(cluster.description)
+                self.current_cluster_description = cluster.description
+                self.current_cluster_regions = cluster.description.get("cluster")
+                self.current_cluster_lbs = cluster.description.get("lbs")
                 self.current_cluster = cluster
                 self.jobs = db.get_all_jobs(self.cluster_id)
             await asyncio.sleep(5)
@@ -124,13 +128,47 @@ def cluster():
             get_cluster_status_badge(State.current_cluster.status),
             rx.vstack(
                 rx.text("Created At"),
-                rx.moment(State.current_cluster.created_at, format=TS_FORMAT),
+                rx.moment(
+                    State.current_cluster.created_at,
+                    format=TS_FORMAT,
+                    class_name="text-lg font-semibold",
+                ),
                 class_name="mx-16",
                 align="center",
             ),
             rx.vstack(
                 rx.text("Created By"),
-                rx.text(State.current_cluster.created_by, format=TS_FORMAT),
+                rx.text(
+                    State.current_cluster.created_by,
+                    class_name="text-lg font-semibold",
+                ),
+                class_name="mx-16",
+                align="center",
+            ),
+            rx.vstack(
+                rx.text("Version"),
+                rx.text(
+                    State.current_cluster_description.version,
+                    class_name="text-lg font-semibold",
+                ),
+                class_name="mx-16",
+                align="center",
+            ),
+            rx.vstack(
+                rx.text("Node CPUs"),
+                rx.text(
+                    State.current_cluster_description.node_cpus,
+                    class_name="text-lg font-semibold",
+                ),
+                class_name="mx-16",
+                align="center",
+            ),
+            rx.vstack(
+                rx.text("Disk Size GB"),
+                rx.text(
+                    State.current_cluster_description.disk_size,
+                    class_name="text-lg font-semibold",
+                ),
                 class_name="mx-16",
                 align="center",
             ),
@@ -139,16 +177,29 @@ def cluster():
         rx.flex(
             cluster_sidebar(),
             rx.flex(
-                rx.code_block(
-                    State.current_cluster_description,
-                    language="yaml",
-                    show_line_numbers=True,
+                rx.hstack(
+                    rx.card(
+                        rx.foreach(
+                            State.current_cluster_regions,
+                            lambda x: rx.box(
+                                rx.text(x.cloud),
+                                rx.text(x.region),
+                                rx.foreach(
+                                    x.nodes,
+                                    lambda z: rx.text(z),
+                                ),
+                            ),
+                        ),
+                    ),
+                    rx.card(
+                        # rx.text(State.current_cluster_lbs),
+                    ),
                 ),
                 rx.flex(
                     jobs_table(),
                     class_name="flex-1 flex-col overflow-y-scroll p-2",
                 ),
-                class_name="flex-1 flex-col overflow-hidden"
+                class_name="flex-1 flex-col overflow-hidden",
             ),
             class_name="flex-1 pt-8 overflow-hidden",
         ),
