@@ -4,7 +4,7 @@ import reflex as rx
 
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
-from ..models import TS_FORMAT, Job, Task
+from ..models import TS_FORMAT, Job, Task, MsgID
 from ..template import template
 import yaml
 
@@ -20,6 +20,13 @@ class State(rx.State):
 
     bg_task: bool = False
 
+    @rx.event
+    def reschedule_job(self):
+        # TODO fix so we can use self.current_job.descripton
+        j: Job = db.get_job(self.current_job.job_id)
+        msg_id: MsgID = db.insert_msg(self.current_job.job_type, j.description, "fab")
+        return rx.toast.info(f"Job {msg_id.msg_id} requested.")
+    
     @rx.event(background=True)
     async def fetch_tasks(self):
         if self.bg_task:
@@ -113,6 +120,7 @@ def job():
                     class_name="mx-16",
                     align="center",
                 ),
+                rx.button("restart", on_click=State.reschedule_job),
                 align="center",
             ),
             class_name="align-start flex-col",

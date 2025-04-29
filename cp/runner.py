@@ -45,6 +45,7 @@ def create_cluster(
     db.insert_cluster(
         cluster_request.name,
         "PROVISIONING",
+        {"cluster":[], "lbs":[], "disk_size": 0, "node_cpus": 0, "version":""},
         "root",
         "root",
     )
@@ -192,13 +193,48 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         ],
     }
 
-    job_status, data = launch_runner("CREATE_CLUSTER", job_id, extra_vars)
+    job_status, raw_data = MyRunner(job_id).launch_runner("CREATE_CLUSTER", extra_vars)
+
+    data = {
+        "version": cluster_request.version,
+        "node_cpus": cluster_request.node_cpus,
+        "disk_size": cluster_request.disk_size,
+        "cluster": [],
+        "lbs": [],
+    }
+
+    for cloud_region in cluster_request.regions:
+        cloud, region = cloud_region.split(":")
+
+        region_nodes = []
+
+        for i in raw_data["cockroachdb"]:
+            if raw_data["hv"][i]["cloud"] == cloud and raw_data["hv"][i]["region"] == region:
+                region_nodes.append(raw_data["hv"][i]["public_ip"])
+
+        data["cluster"].append(
+            {
+                "cloud": cloud,
+                "region": region,
+                "nodes": region_nodes,
+            }
+        )
+
+        for i in raw_data["haproxy"]:
+            if raw_data["hv"][i]["cloud"] == cloud and raw_data["hv"][i]["region"] == region:
+                data["lbs"].append(
+                    {
+                        "cloud": cloud,
+                        "region": region,
+                        "dns_address": raw_data["hv"][i]["public_ip"],
+                    }
+                )
 
     if job_status == "successful":
         db.update_cluster(
             cluster_request.name,
             "RUNNING",
-            data,  # {"lbs": ["10.10.15.48", "10.10.68.175"]},
+            data,
             "root",
         )
 
@@ -255,7 +291,7 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
         "deployment_id": cluster_id,
     }
 
-    job_status = launch_runner("DELETE_CLUSTER", job_id, extra_vars)
+    job_status, data = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
 
     if job_status == "successful":
         db.update_cluster_status(
@@ -276,22 +312,16 @@ def fail_zombie_jobs():
     db.fail_zombie_jobs()
 
 
-def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
-    playbook = []
+class MyRunner:
 
-    # load all plays for the playbook
-    plays = db.get_plays(playbook_name)
+    def __init__(self, job_id: int):
+        self.data = {}
+        self.job_id = job_id
 
-    # for each play, load all tasks
-    for play in plays:
-        tasks = db.get_play_tasks(playbook_name, play.play_order)
-        play.play["tasks"] = [x.task for x in tasks]
-        playbook.append(play.play)
-
-    def my_status_handler(status, runner_config):
+    def my_status_handler(self, status, runner_config):
         return
 
-    def my_event_handler(e):
+    def my_event_handler(self, e):
         task_type = ""
         task_data = ""
 
@@ -303,10 +333,14 @@ def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
             "runner_item_on_skipped",
             "runner_item_on_ok",
             "runner_on_start",
-            "runner_on_ok",
             "playbook_on_include",
         ]:
             return
+
+        elif e["event"] == "runner_on_ok":
+            if e.get("event_data")["task"] == "data":
+                self.data = e["event_data"]["res"]["msg"]
+            return 
 
         elif e["event"] == "warning":
             task_type = "WARNING"
@@ -340,42 +374,54 @@ def launch_runner(playbook_name: str, job_id: int, extra_vars: dict) -> str:
             task_data = json.dumps(e)
 
         db.insert_task(
-            job_id,
+            self.job_id,
             e["counter"],
             e["created"],
             task_type,
             task_data,
         )
 
-    db.update_job(job_id, "RUNNING")
+    def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
+        playbook = []
 
-    # Execute the playbook
-    try:
-        thread, runner = ansible_runner.run_async(
-            quiet=False,
-            playbook=playbook,
-            private_data_dir="/tmp",
-            extravars=extra_vars,
-            event_handler=my_event_handler,
-            status_handler=my_status_handler,
-        )
-    except Exception as e:
-        db.update_job(job_id, "FAILED")
-        raise Exception(f"Error running playbook: {e}")
+        # load all plays for the playbook
+        plays = db.get_plays(playbook_name)
 
-    heartbeat_ts = time.time() + 60
-    while thread.is_alive():
-        # send hb messsage periodically
-        if time.time() > heartbeat_ts:
-            db.update_job(job_id, "RUNNING")
-            heartbeat_ts = time.time() + 60
+        # for each play, load all tasks
+        for play in plays:
+            tasks = db.get_play_tasks(playbook_name, play.play_order)
+            play.play["tasks"] = [x.task for x in tasks]
+            playbook.append(play.play)
 
-        time.sleep(1)
+        db.update_job(self.job_id, "RUNNING")
 
-    # update the Job status
-    if runner.status == "successful":
-        db.update_job(job_id, "COMPLETED")
-    else:
-        db.update_job(job_id, "FAILED")
+        # Execute the playbook
+        try:
+            thread, runner = ansible_runner.run_async(
+                quiet=False,
+                playbook=playbook,
+                private_data_dir="/tmp",
+                extravars=extra_vars,
+                event_handler=self.my_event_handler,
+                status_handler=self.my_status_handler,
+            )
+        except Exception as e:
+            db.update_job(self.job_id, "FAILED")
+            raise Exception(f"Error running playbook: {e}")
 
-    return runner.status
+        heartbeat_ts = time.time() + 60
+        while thread.is_alive():
+            # send hb messsage periodically
+            if time.time() > heartbeat_ts:
+                db.update_job(self.job_id, "RUNNING")
+                heartbeat_ts = time.time() + 60
+
+            time.sleep(1)
+
+        # update the Job status
+        if runner.status == "successful":
+            db.update_job(self.job_id, "COMPLETED")
+        else:
+            db.update_job(self.job_id, "FAILED")
+
+        return runner.status, self.data

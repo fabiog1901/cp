@@ -38,7 +38,7 @@ def insert_msg(
             RETURNING msg_id
         ) 
         INSERT INTO jobs (job_id, job_type, status, description, created_by) 
-        VALUES (create_new_job.msg_id, %s, %s, %s) RETURNING create_new_job.msg_id
+        VALUES ((select msg_id from create_new_job), %s, %s, %s, %s) RETURNING job_id
         """,
         (
             msg_type,
@@ -143,17 +143,18 @@ def get_cluster(cluster_id: str) -> Cluster | None:
 def insert_cluster(
     cluster_id: str,
     status: str,
+    description: dict,
     created_by: str,
     updated_by: str,
 ) -> None:
     return execute_stmt(
         """
         INSERT INTO clusters
-            (cluster_id, status, created_by, updated_by)
+            (cluster_id, status, description, created_by, updated_by)
         VALUES
             (%s, %s, %s, %s)
         """,
-        (cluster_id, status, created_by, updated_by),
+        (cluster_id, status, description, created_by, updated_by),
     )
 
 

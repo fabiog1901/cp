@@ -108,7 +108,7 @@ class Job:
     job_id: int
     job_type: str
     status: str
-    description: dict
+    description: dict[str, int | str | list[str]]
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime
