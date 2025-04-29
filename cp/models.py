@@ -36,8 +36,6 @@ Unknown
 """
 
 
-
-
 @dataclass
 class MsgID:
     msg_id: str
@@ -113,6 +111,7 @@ class Job:
     created_by: str
     updated_at: dt.datetime
     updated_by: str
+
 
 @dataclass
 class Task:

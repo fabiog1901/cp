@@ -33,7 +33,9 @@ async def pull_from_mq():
                                     print("Processing a FAIL_ZOMBIE_JOBS")
                                     runner.fail_zombie_jobs()
                                 else:
-                                    print(f"Unknown task type requested: {msg.msg_type}")
+                                    print(
+                                        f"Unknown task type requested: {msg.msg_type}"
+                                    )
 
                                 cur.execute(
                                     "DELETE FROM mq WHERE msg_id = %s;",

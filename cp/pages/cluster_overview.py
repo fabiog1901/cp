@@ -1,14 +1,14 @@
 import asyncio
 
 import reflex as rx
+import yaml
 
 from .. import db
+from ..components.BadgeClusterStatus import get_cluster_status_badge
+from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
 from ..models import TS_FORMAT, Cluster, Job
 from ..template import template
-from ..components.BadgeClusterStatus import get_cluster_status_badge
-from ..components.BadgeJobStatus import get_job_status_badge
-import yaml
 
 
 class State(rx.State):
@@ -40,7 +40,6 @@ class State(rx.State):
                 break
 
             async with self:
-
                 cluster: Cluster = db.get_cluster(self.cluster_id)
                 self.current_cluster_description = cluster.description
                 self.current_cluster_regions = cluster.description.get("cluster", [])

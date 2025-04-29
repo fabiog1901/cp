@@ -1,12 +1,12 @@
 import asyncio
 
 import reflex as rx
+import yaml
 
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
-from ..models import TS_FORMAT, Job, Task, MsgID
+from ..models import TS_FORMAT, Job, MsgID, Task
 from ..template import template
-import yaml
 
 
 class State(rx.State):
@@ -26,7 +26,7 @@ class State(rx.State):
         j: Job = db.get_job(self.current_job.job_id)
         msg_id: MsgID = db.insert_msg(self.current_job.job_type, j.description, "fab")
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
-    
+
     @rx.event(background=True)
     async def fetch_tasks(self):
         if self.bg_task:

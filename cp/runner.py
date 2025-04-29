@@ -45,7 +45,7 @@ def create_cluster(
     db.insert_cluster(
         cluster_request.name,
         "PROVISIONING",
-        {"cluster":[], "lbs":[], "disk_size": 0, "node_cpus": 0, "version":""},
+        {"cluster": [], "lbs": [], "disk_size": 0, "node_cpus": 0, "version": ""},
         "root",
         "root",
     )
@@ -209,7 +209,10 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         region_nodes = []
 
         for i in raw_data["cockroachdb"]:
-            if raw_data["hv"][i]["cloud"] == cloud and raw_data["hv"][i]["region"] == region:
+            if (
+                raw_data["hv"][i]["cloud"] == cloud
+                and raw_data["hv"][i]["region"] == region
+            ):
                 region_nodes.append(raw_data["hv"][i]["public_ip"])
 
         data["cluster"].append(
@@ -221,7 +224,10 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         )
 
         for i in raw_data["haproxy"]:
-            if raw_data["hv"][i]["cloud"] == cloud and raw_data["hv"][i]["region"] == region:
+            if (
+                raw_data["hv"][i]["cloud"] == cloud
+                and raw_data["hv"][i]["region"] == region
+            ):
                 data["lbs"].append(
                     {
                         "cloud": cloud,
@@ -313,7 +319,6 @@ def fail_zombie_jobs():
 
 
 class MyRunner:
-
     def __init__(self, job_id: int):
         self.data = {}
         self.job_id = job_id
@@ -340,7 +345,7 @@ class MyRunner:
         elif e["event"] == "runner_on_ok":
             if e.get("event_data")["task"] == "data":
                 self.data = e["event_data"]["res"]["msg"]
-            return 
+            return
 
         elif e["event"] == "warning":
             task_type = "WARNING"
