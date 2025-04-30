@@ -23,12 +23,16 @@ CREATE SEQUENCE mq_seq PER NODE CACHE 100;
 
 CREATE TABLE mq (
     msg_id INT8 NOT NULL DEFAULT nextval('mq_seq'),
+    start_after TIMESTAMPTZ NOT NULL default now(),
     msg_type STRING NOT NULL,
     msg_data JSONB NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
-    created_by STRING NOT NULL,
+    created_by STRING NOT NULL default 'system',
     CONSTRAINT pk PRIMARY KEY (msg_id ASC)
 );
+
+-- plant the seed
+INSERT INTO mq (msg_type) VALUES ('FAIL_ZOMBIE_JOBS');
 
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;

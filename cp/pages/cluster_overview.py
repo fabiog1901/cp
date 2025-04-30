@@ -326,6 +326,7 @@ def cluster():
                                     rx.moment(
                                         State.current_cluster.created_at,
                                         format=TS_FORMAT,
+                                        tz="UTC",
                                     ),
                                     class_name="text-lg font-semibold",
                                 ),
@@ -348,6 +349,7 @@ def cluster():
                                     rx.moment(
                                         State.current_cluster.updated_at,
                                         format=TS_FORMAT,
+                                        tz="UTC",
                                     ),
                                     class_name="text-lg font-semibold",
                                 ),

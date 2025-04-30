@@ -6,8 +6,19 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (Cluster, ClusterOverview, EventLog, Job, Msg, MsgID, Play,
-                     PlayTask, Region, Task)
+from .models import (
+    Cluster,
+    ClusterOverview,
+    EventLog,
+    Job,
+    JobID,
+    Msg,
+    MsgID,
+    Play,
+    PlayTask,
+    Region,
+    Task,
+)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -140,7 +151,7 @@ def get_cluster(cluster_id: str) -> Cluster | None:
     return None
 
 
-def insert_cluster(
+def upsert_cluster(
     cluster_id: str,
     status: str,
     description: dict,
@@ -149,7 +160,7 @@ def insert_cluster(
 ) -> None:
     return execute_stmt(
         """
-        INSERT INTO clusters
+        UPSERT INTO clusters
             (cluster_id, status, description, created_by, updated_by)
         VALUES
             (%s, %s, %s, %s, %s)
@@ -303,20 +314,23 @@ def update_job(
     )
 
 
-def fail_zombie_jobs():
-    execute_stmt(
+def fail_zombie_jobs() -> list[JobID]:
+    return execute_stmt(
         """
         WITH
         fail_zombie_jobs AS (
-            UPDATE jobs
-            SET status= 'FAILED' 
-            WHERE status in ('RUNNING', 'SCHEDULED')
-                AND updated_at + INTERVAL '60s' < now()
+            INSERT INTO mq (msg_type, start_after) 
+            VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s')
             RETURNING 1
         )
-        INSERT INTO mq (msg_type, created_by) 
-            VALUES ('FAIL_ZOMBIE_JOBS', 'system')
-        """
+        UPDATE jobs
+        SET status = 'FAILED' 
+        WHERE status in ('RUNNING', 'SCHEDULED')
+            AND now() > updated_at + INTERVAL '60s'
+        RETURNING job_id
+        """,
+        (),
+        JobID,
     )
 
 

@@ -28,14 +28,14 @@ def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
 
 
 def create_cluster(
-    job_id: int,
-    cluster: dict,
-    created_by: str,
+    job_id: int, cluster: dict, created_by: str, recreate: bool = False
 ) -> None:
     cluster_request = ClusterRequest(**cluster)
 
+    # check if cluster with same cluster_id exists
     c = db.get_cluster(cluster_request.name)
-    if c and c.status == "DELETED":
+
+    if not recreate and c and c.status == "DELETED":
         # TODO raise an error message that a cluster
         # with the same name already exists
         db.update_job(
@@ -44,7 +44,7 @@ def create_cluster(
         )
         return
 
-    db.insert_cluster(
+    db.upsert_cluster(
         cluster_request.name,
         "PROVISIONING",
         {"cluster": [], "lbs": [], "disk_size": 0, "node_cpus": 0, "version": ""},
@@ -239,6 +239,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 )
 
     if job_status == "successful":
+        
         db.update_cluster(
             cluster_request.name,
             "RUNNING",
@@ -316,7 +317,6 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
 
 
 def fail_zombie_jobs():
-    time.sleep(60)
     db.fail_zombie_jobs()
 
 
@@ -437,43 +437,49 @@ class MyRunner:
 async def pull_from_mq():
     try:
         while True:
-            with db.pool.connection() as conn:
-                with conn.transaction() as tx:
-                    with conn.cursor() as cur:
-                        print("Polling from MQ...")
-                        cur.execute("SELECT * FROM mq LIMIT 1 FOR UPDATE SKIP LOCKED;")
-                        try:
-                            msg = Msg(*cur.fetchone())
-
-                            if msg:
-                                if msg.msg_type == "CREATE_CLUSTER":
-                                    print("Processing a CREATE_CLUSTER")
-                                    create_cluster(
-                                        msg.msg_id, msg.msg_data, msg.created_by
-                                    )
-                                elif msg.msg_type == "DELETE_CLUSTER":
-                                    print("Processing a DELETE_CLUSTER")
-                                    delete_cluster(msg.msg_id, msg.msg_data)
-                                elif msg.msg_type == "DEBUG":
-                                    print("Processing a DEBUG")
-                                    pass
-                                elif msg.msg_type == "FAIL_ZOMBIE_JOBS":
-                                    print("Processing a FAIL_ZOMBIE_JOBS")
-                                    fail_zombie_jobs()
-                                else:
-                                    print(
-                                        f"Unknown task type requested: {msg.msg_type}"
-                                    )
-
-                                cur.execute(
-                                    "DELETE FROM mq WHERE msg_id = %s;",
-                                    (msg.msg_id,),
-                                )
-                        except:
-                            pass
-
             # add some polling delay to avoid running too often
             await asyncio.sleep(5 * random.uniform(0.7, 1.3))
+
+            with db.pool.connection() as conn:
+                with conn.cursor() as cur:
+                    with conn.transaction():
+                        rs = cur.execute(
+                            """
+                            SELECT * 
+                            FROM mq 
+                            WHERE now() > start_after 
+                            LIMIT 1 
+                            FOR UPDATE SKIP LOCKED
+                            """
+                        ).fetchone()
+
+                        if rs is None:
+                            continue
+
+                        msg = Msg(*rs)
+
+                        match msg.msg_type:
+                            case "CREATE_CLUSTER":
+                                print("Processing a CREATE_CLUSTER")
+                                create_cluster(msg.msg_id, msg.msg_data, msg.created_by)
+                            case "RECREATE_CLUSTER":
+                                print("Processing a RECREATE_CLUSTER")
+                                create_cluster(
+                                    msg.msg_id, msg.msg_data, msg.created_by, True
+                                )
+                            case "DELETE_CLUSTER":
+                                print("Processing a DELETE_CLUSTER")
+                                delete_cluster(msg.msg_id, msg.msg_data)
+                            case "FAIL_ZOMBIE_JOBS":
+                                print("Processing a FAIL_ZOMBIE_JOBS")
+                                fail_zombie_jobs()
+                            case _:
+                                print(f"Unknown task type requested: {msg.msg_type}")
+
+                        cur.execute(
+                            "DELETE FROM mq WHERE msg_id = %s;",
+                            (msg.msg_id,),
+                        )
 
     except asyncio.CancelledError:
         print("Task was stopped")

@@ -24,7 +24,14 @@ class State(rx.State):
     def reschedule_job(self):
         # TODO fix so we can use self.current_job.descripton
         j: Job = db.get_job(self.current_job.job_id)
-        msg_id: MsgID = db.insert_msg(self.current_job.job_type, j.description, "fab")
+
+        job_type = (
+            "RECREATE_CLUSTER"
+            if self.current_job.job_type == "CREATE_CLUSTER"
+            else self.current_job.job_type
+        )
+
+        msg_id: MsgID = db.insert_msg(job_type, j.description, "fab")
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
     @rx.event(background=True)
@@ -53,7 +60,7 @@ class State(rx.State):
 def get_task_row(task: Task):
     """Show a job in a table row."""
     return rx.table.row(
-        rx.table.cell(rx.moment(task.created_at, format=TS_FORMAT)),
+        rx.table.cell(rx.moment(task.created_at, format=TS_FORMAT, tz="UTC")),
         rx.table.cell(task.task_name),
         rx.table.cell(task.task_desc),
     )
@@ -99,6 +106,7 @@ def job():
                     rx.moment(
                         State.current_job.created_at,
                         format=TS_FORMAT,
+                        tz="UTC",
                         class_name="text-lg font-semibold",
                     ),
                     class_name="mx-16",

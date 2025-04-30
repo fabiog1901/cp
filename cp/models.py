@@ -40,6 +40,10 @@ Unknown
 class MsgID:
     msg_id: str
 
+@dataclass
+class JobID:
+    job_id: str
+
 
 @dataclass
 class Play:
@@ -67,6 +71,7 @@ class Region:
 @dataclass
 class Msg:
     msg_id: str
+    start_after: dt.datetime
     msg_type: str
     msg_data: dict
     created_at: dt.datetime
