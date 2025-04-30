@@ -6,8 +6,7 @@ from threading import Thread
 
 import ansible_runner
 
-from . import db, runner
-from .db import pool
+from . import db
 from .models import ClusterRequest, Msg, Region
 
 
@@ -36,7 +35,7 @@ def create_cluster(
     cluster_request = ClusterRequest(**cluster)
 
     c = db.get_cluster(cluster_request.name)
-    if c and c.status == "OK":
+    if c and c.status == "DELETED":
         # TODO raise an error message that a cluster
         # with the same name already exists
         db.update_job(
@@ -406,7 +405,7 @@ class MyRunner:
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
-                quiet=False,
+                quiet=True,
                 playbook=playbook,
                 private_data_dir="/tmp",
                 extravars=extra_vars,
@@ -438,7 +437,7 @@ class MyRunner:
 async def pull_from_mq():
     try:
         while True:
-            with pool.connection() as conn:
+            with db.pool.connection() as conn:
                 with conn.transaction() as tx:
                     with conn.cursor() as cur:
                         print("Polling from MQ...")
@@ -449,18 +448,18 @@ async def pull_from_mq():
                             if msg:
                                 if msg.msg_type == "CREATE_CLUSTER":
                                     print("Processing a CREATE_CLUSTER")
-                                    runner.create_cluster(
+                                    create_cluster(
                                         msg.msg_id, msg.msg_data, msg.created_by
                                     )
                                 elif msg.msg_type == "DELETE_CLUSTER":
                                     print("Processing a DELETE_CLUSTER")
-                                    runner.delete_cluster(msg.msg_id, msg.msg_data)
+                                    delete_cluster(msg.msg_id, msg.msg_data)
                                 elif msg.msg_type == "DEBUG":
                                     print("Processing a DEBUG")
                                     pass
                                 elif msg.msg_type == "FAIL_ZOMBIE_JOBS":
                                     print("Processing a FAIL_ZOMBIE_JOBS")
-                                    runner.fail_zombie_jobs()
+                                    fail_zombie_jobs()
                                 else:
                                     print(
                                         f"Unknown task type requested: {msg.msg_type}"

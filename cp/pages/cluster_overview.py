@@ -1,7 +1,6 @@
 import asyncio
 
 import reflex as rx
-import yaml
 
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge

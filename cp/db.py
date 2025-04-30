@@ -152,7 +152,7 @@ def insert_cluster(
         INSERT INTO clusters
             (cluster_id, status, description, created_by, updated_by)
         VALUES
-            (%s, %s, %s, %s)
+            (%s, %s, %s, %s, %s)
         """,
         (cluster_id, status, description, created_by, updated_by),
     )
