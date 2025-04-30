@@ -5,13 +5,14 @@ import yaml
 
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
-from ..models import TS_FORMAT, Job, MsgID, Task
+from ..models import TS_FORMAT, Job, MsgID, Task, ClusterID
 from ..template import template
 
 
 class State(rx.State):
     current_job: Job = None
     current_job_description: str = ""
+    linked_clusters: list[ClusterID] = []
     tasks: list[Task] = []
 
     @rx.var
@@ -54,6 +55,7 @@ class State(rx.State):
                 self.current_job_description = yaml.dump(job.description)
                 self.current_job = job
                 self.tasks = db.get_all_tasks(self.job_id)
+                self.linked_clusters = db.get_linked_clusters_from_job(self.job_id)
             await asyncio.sleep(5)
 
 
@@ -101,25 +103,7 @@ def job():
                 ),
                 rx.divider(orientation="vertical", size="4", class_name="mx-8"),
                 get_job_status_badge(State.current_job.status),
-                rx.vstack(
-                    rx.text("Created At"),
-                    rx.moment(
-                        State.current_job.created_at,
-                        format=TS_FORMAT,
-                        tz="UTC",
-                        class_name="text-lg font-semibold",
-                    ),
-                    class_name="mx-16",
-                    align="center",
-                ),
-                rx.vstack(
-                    rx.text("Created By"),
-                    rx.text(
-                        State.current_job.created_by, class_name="text-lg font-semibold"
-                    ),
-                    class_name="mx-16",
-                    align="center",
-                ),
+                rx.spacer(),
                 rx.vstack(
                     rx.text("Job Type"),
                     rx.text(
@@ -128,18 +112,96 @@ def job():
                     class_name="mx-16",
                     align="center",
                 ),
-                rx.button("restart", on_click=State.reschedule_job),
+                rx.button(
+                    "Restart Job",
+                    on_click=State.reschedule_job,
+                    class_name="cursor-pointer text-lg font-semibold",
+                ),
                 align="center",
             ),
-            class_name="align-start flex-col",
+            class_name="align-start flex-col mx-2",
         ),
         rx.flex(
-            rx.code_block(
-                State.current_job_description,
-                language="yaml",
-                show_line_numbers=True,
+            rx.card(
+                rx.text("Description", class_name="text-2xl font-semibold"),
+                rx.divider(class_name="my-2"),
+                rx.code_block(
+                    State.current_job_description,
+                    language="yaml",
+                    show_line_numbers=True,
+                ),
+                class_name="min-w-96",
             ),
-            class_name="flex-col flex-1 p-2",
+            rx.card(
+                rx.text("Details", class_name="text-2xl font-semibold"),
+                rx.divider(class_name="my-2"),
+                rx.flex(
+                    rx.hstack(
+                        rx.text("Created By"),
+                        rx.text(
+                            State.current_job.created_by,
+                            class_name="text-lg font-semibold",
+                        ),
+                        class_name="py-2",
+                        align="center",
+                    ),
+                    rx.hstack(
+                        rx.text("Created At"),
+                        rx.text(
+                            rx.moment(
+                                State.current_job.created_at,
+                                format=TS_FORMAT,
+                                tz="UTC",
+                            ),
+                            class_name="text-lg font-semibold",
+                        ),
+                        class_name="py-2",
+                        align="center",
+                    ),
+                    rx.box(class_name="py-2"),
+                    rx.hstack(
+                        rx.text("Last Updated By"),
+                        rx.text(
+                            State.current_job.updated_by,
+                            class_name="text-lg font-semibold",
+                        ),
+                        class_name="py-2",
+                        align="center",
+                    ),
+                    rx.hstack(
+                        rx.text("Last Updated At"),
+                        rx.text(
+                            rx.moment(
+                                State.current_job.updated_at,
+                                format=TS_FORMAT,
+                                tz="UTC",
+                            ),
+                            class_name="text-lg font-semibold",
+                        ),
+                        class_name="py-2",
+                        align="center",
+                    ),
+                    class_name="flex-col",
+                ),
+                class_name="min-w-96 ml-8",
+            ),
+            rx.card(
+                rx.text("Linked To", class_name="text-2xl font-semibold"),
+                rx.divider(class_name="my-2"),
+                rx.flex(
+                    rx.foreach(
+                        State.linked_clusters,
+                        lambda lc: rx.hstack(
+                            rx.link(lc.cluster_id, href=f"/clusters/{lc.cluster_id}"),
+                            class_name="py-2",
+                            align="center",
+                        ),
+                    ),
+                    class_name="flex-col",
+                ),
+                class_name="min-w-96 ml-8",
+            ),
+            class_name="flex-1 p-2 pt-8",
         ),
         rx.vstack(
             tasks_table(),

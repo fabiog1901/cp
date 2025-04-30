@@ -426,18 +426,56 @@ def get_cluster_row(cluster: Cluster):
                 ("DELETED", rx.box()),
                 ("DELETING...", rx.box()),
                 rx.hstack(
-                    rx.tooltip(
-                        rx.icon(
-                            "trash-2",
-                            color="gray",
-                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                    rx.alert_dialog.root(
+                        rx.alert_dialog.trigger(
+                            rx.box(
+                                rx.tooltip(
+                                    rx.icon(
+                                        "trash-2",
+                                        color="gray",
+                                        size=30,
+                                        class_name="cursor-pointer  hover:text-green-500",
+                                    ),
+                                    content="Delete",
+                                ),
+                            ),
                         ),
-                        content="Delete the cluster",
+                        rx.alert_dialog.content(
+                            rx.alert_dialog.title(cluster.cluster_id),
+                            rx.alert_dialog.description(
+                                size="2",
+                            ),
+                            rx.flex(
+                                rx.alert_dialog.cancel(
+                                    rx.button(
+                                        "Cancel",
+                                        variant="soft",
+                                        color_scheme="gray",
+                                    ),
+                                ),
+                                rx.alert_dialog.action(
+                                    rx.button(
+                                        "Delete Cluster",
+                                        color_scheme="red",
+                                        variant="solid",
+                                        on_click=lambda: State.delete_cluster(
+                                            cluster.cluster_id
+                                        ),
+                                    ),
+                                ),
+                                spacing="3",
+                                margin_top="16px",
+                                justify="end",
+                            ),
+                            style={"max_width": 450},
+                        ),
                     ),
                     rx.tooltip(
                         rx.icon(
                             "circle-fading-arrow-up",
                             color="gray",
+                            size=30,
+                            class_name="cursor-pointer hover:text-green-500",
                             on_click=lambda: State.delete_cluster(cluster.cluster_id),
                         ),
                         content="Upgrade the cluster",
@@ -446,6 +484,8 @@ def get_cluster_row(cluster: Cluster):
                         rx.icon(
                             "bug-play",
                             color="gray",
+                            size=30,
+                            class_name="cursor-pointer  hover:text-green-500",
                             on_click=lambda: State.delete_cluster(cluster.cluster_id),
                         ),
                         content="Debug the cluster",

@@ -97,7 +97,8 @@ CREATE TABLE map_clusters_jobs (
     job_id INT8 NOT NULL,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC, job_id ASC),
     CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES clusters (cluster_id) ON DELETE CASCADE,
-    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE
+    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES jobs (job_id) ON DELETE CASCADE,
+    INDEX map_jobs_clusters (job_id ASC)
 );
 
 CREATE TABLE tasks (

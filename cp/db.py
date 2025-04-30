@@ -8,6 +8,7 @@ from psycopg_pool import ConnectionPool
 
 from .models import (
     Cluster,
+    ClusterID,
     ClusterOverview,
     EventLog,
     Job,
@@ -217,7 +218,19 @@ def delete_cluster(cluster_id):
 #   JOBS   #
 ############
 
-
+def get_linked_clusters_from_job(job_id: int) -> list[ClusterID]:
+    return execute_stmt(
+        """
+        SELECT cluster_id 
+        FROM map_clusters_jobs
+        WHERE job_id = %s
+        ORDER BY cluster_id
+        """,
+        (job_id,),
+        ClusterID,
+    )
+    
+        
 def get_all_jobs(cluster_id: str = None) -> list[Job]:
     if cluster_id:
         return execute_stmt(
@@ -326,7 +339,7 @@ def fail_zombie_jobs() -> list[JobID]:
         UPDATE jobs
         SET status = 'FAILED' 
         WHERE status in ('RUNNING', 'SCHEDULED')
-            AND now() > updated_at + INTERVAL '60s'
+            AND now() > updated_at + INTERVAL '120s'
         RETURNING job_id
         """,
         (),
