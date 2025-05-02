@@ -15,8 +15,9 @@ from .models import (
     JobID,
     Msg,
     MsgID,
-    Play,
-    PlayTask,
+    AnsiblePlaybook,
+    AnsiblePlay,
+    AnsibleTask,
     Region,
     Task,
 )
@@ -81,28 +82,41 @@ def get_msg() -> Msg:
 ###############
 #  PLAYBOOKS  #
 ###############
-def get_plays(playbook_id: str) -> list[Play] | None:
+
+
+def get_ansible_playbook(playbook_name: str) -> AnsiblePlaybook:
     return execute_stmt(
         """
-        SELECT play_order, play
-        FROM plays
-        WHERE playbook_id = %s
+        SELECT plays
+        FROM ansible_playbooks
+        WHERE name = %s
         """,
-        (playbook_id,),
-        Play,
-    )
+        (playbook_name,),
+        AnsiblePlaybook,
+    )[0]
 
 
-def get_play_tasks(playbook_id: str, play_order: int) -> list[PlayTask] | None:
+def get_ansible_play(play_name: str) -> AnsiblePlay:
+    return execute_stmt(
+        """
+        SELECT play, tasks
+        FROM ansible_plays
+        WHERE name = %s
+        """,
+        (play_name,),
+        AnsiblePlay,
+    )[0]
+    
+def get_ansible_task(task_name: str) -> AnsibleTask:
     return execute_stmt(
         """
         SELECT task
-        FROM play_tasks
-        WHERE (playbook_id, play_order) = (%s, %s)
+        FROM ansible_tasks
+        WHERE name = %s
         """,
-        (playbook_id, play_order),
-        PlayTask,
-    )
+        (task_name,),
+        AnsibleTask,
+    )[0]
 
 
 #############
@@ -218,6 +232,7 @@ def delete_cluster(cluster_id):
 #   JOBS   #
 ############
 
+
 def get_linked_clusters_from_job(job_id: int) -> list[ClusterID]:
     return execute_stmt(
         """
@@ -229,8 +244,8 @@ def get_linked_clusters_from_job(job_id: int) -> list[ClusterID]:
         (job_id,),
         ClusterID,
     )
-    
-        
+
+
 def get_all_jobs(cluster_id: str = None) -> list[Job]:
     if cluster_id:
         return execute_stmt(

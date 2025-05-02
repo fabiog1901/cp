@@ -40,23 +40,30 @@ Unknown
 class MsgID:
     msg_id: str
 
+
 @dataclass
 class JobID:
     job_id: str
-    
+
+
 @dataclass
 class ClusterID:
     cluster_id: str
 
 
 @dataclass
-class Play:
-    play_order: int
-    play: dict
+class AnsiblePlaybook:
+    plays: list[str]
 
 
 @dataclass
-class PlayTask:
+class AnsiblePlay:
+    play: dict
+    tasks: list[str]
+
+
+@dataclass
+class AnsibleTask:
     task: dict
 
 

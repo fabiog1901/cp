@@ -7,7 +7,7 @@ from threading import Thread
 import ansible_runner
 
 from . import db
-from .models import ClusterRequest, Msg, Region
+from .models import ClusterRequest, Msg, Region, AnsiblePlaybook
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -205,6 +205,15 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         "lbs": [],
     }
 
+    if job_status != "successful":
+        db.update_cluster(
+            cluster_request.name,
+            "FAILED",
+            {},
+            "root",
+        )
+        return
+        
     for cloud_region in cluster_request.regions:
         cloud, region = cloud_region.split(":")
 
@@ -238,23 +247,12 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                     }
                 )
 
-    if job_status == "successful":
-        
-        db.update_cluster(
+    db.update_cluster(
             cluster_request.name,
             "RUNNING",
             data,
             "root",
         )
-
-    else:
-        db.update_cluster(
-            cluster_request.name,
-            "FAILED",
-            {},
-            "root",
-        )
-
 
 def delete_cluster(
     job_id: int,
@@ -263,7 +261,7 @@ def delete_cluster(
     cluster_id = cluster.get("cluster_id")
 
     c = db.get_cluster(cluster_id)
-    if not c or c.status in ["DELETED", "DELETING..."]:
+    if not c or c.status == "DELETED":
         # TODO if cluster doesn't exists or it's already marked as deleted,
         # fail the job
         db.create_job(
@@ -345,7 +343,7 @@ class MyRunner:
             return
 
         elif e["event"] == "runner_on_ok":
-            if e.get("event_data")["task"] == "data":
+            if e.get("event_data")["task"] == "Data":
                 self.data = e["event_data"]["res"]["msg"]
             return
 
@@ -391,21 +389,29 @@ class MyRunner:
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
         playbook = []
 
-        # load all plays for the playbook
-        plays = db.get_plays(playbook_name)
+        # fetch all plays for a playbook
+        ansible_playbook = db.get_ansible_playbook(playbook_name)
 
-        # for each play, load all tasks
-        for play in plays:
-            tasks = db.get_play_tasks(playbook_name, play.play_order)
-            play.play["tasks"] = [x.task for x in tasks]
-            playbook.append(play.play)
+        # for each play, fetch the play details and the list of tasks
+        for p in ansible_playbook.plays:
+
+            current_play_tasks = []
+            ansible_play = db.get_ansible_play(p)
+
+            for t in ansible_play.tasks:
+                ansible_task = db.get_ansible_task(t)
+                current_play_tasks.append(ansible_task.task)
+
+            ansible_play.play["tasks"] = current_play_tasks
+
+            playbook.append(ansible_play.play)
 
         db.update_job(self.job_id, "RUNNING")
 
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
-                quiet=True,
+                quiet=False,
                 playbook=playbook,
                 private_data_dir="/tmp",
                 extravars=extra_vars,
@@ -414,7 +420,7 @@ class MyRunner:
             )
         except Exception as e:
             db.update_job(self.job_id, "FAILED")
-            raise Exception(f"Error running playbook: {e}")
+            print(f"Error running playbook: {e}")
 
         heartbeat_ts = time.time() + 60
         while thread.is_alive():
