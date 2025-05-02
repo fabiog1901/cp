@@ -7,7 +7,7 @@ from threading import Thread
 import ansible_runner
 
 from . import db
-from .models import ClusterRequest, Msg, Region, AnsiblePlaybook
+from .models import ClusterRequest, Msg, Region, AnsiblePlaybook, Link
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -213,7 +213,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
             "root",
         )
         return
-        
+
     for cloud_region in cluster_request.regions:
         cloud, region = cloud_region.split(":")
 
@@ -248,11 +248,12 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 )
 
     db.update_cluster(
-            cluster_request.name,
-            "RUNNING",
-            data,
-            "root",
-        )
+        cluster_request.name,
+        "RUNNING",
+        data,
+        "root",
+    )
+
 
 def delete_cluster(
     job_id: int,
@@ -390,21 +391,28 @@ class MyRunner:
         playbook = []
 
         # fetch all plays for a playbook
-        ansible_playbook = db.get_ansible_playbook(playbook_name)
+        link = db.get_playbook(playbook_name)
 
-        # for each play, fetch the play details and the list of tasks
-        for p in ansible_playbook.plays:
+        import requests
 
-            current_play_tasks = []
-            ansible_play = db.get_ansible_play(p)
+        r = requests.get(link.link)
 
-            for t in ansible_play.tasks:
-                ansible_task = db.get_ansible_task(t)
-                current_play_tasks.append(ansible_task.task)
+        with open("/tmp/playbook.yaml", "wb") as f:
+            f.write(r.content)
 
-            ansible_play.play["tasks"] = current_play_tasks
+        # # for each play, fetch the play details and the list of tasks
+        # for p in ansible_playbook.plays:
 
-            playbook.append(ansible_play.play)
+        #     current_play_tasks = []
+        #     ansible_play = db.get_ansible_play(p)
+
+        #     for t in ansible_play.tasks:
+        #         ansible_task = db.get_ansible_task(t)
+        #         current_play_tasks.append(ansible_task.task)
+
+        #     ansible_play.play["tasks"] = current_play_tasks
+
+        #     playbook.append(ansible_play.play)
 
         db.update_job(self.job_id, "RUNNING")
 
@@ -412,7 +420,7 @@ class MyRunner:
         try:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
-                playbook=playbook,
+                playbook="/tmp/playbook.yaml",
                 private_data_dir="/tmp",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,

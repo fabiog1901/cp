@@ -45,6 +45,10 @@ class MsgID:
 class JobID:
     job_id: str
 
+@dataclass
+class Link:
+    link: str
+
 
 @dataclass
 class ClusterID:

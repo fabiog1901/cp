@@ -37,23 +37,10 @@ INSERT INTO mq (msg_type) VALUES ('FAIL_ZOMBIE_JOBS');
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;
 
-CREATE TABLE ansible_playbooks (
-    name STRING NOT NULL,
-    plays STRING[] NULL,
-    CONSTRAINT pk PRIMARY KEY (name ASC)
-);
-
-CREATE TABLE ansible_plays (
-    name STRING NOT NULL AS (play->>'name':::STRING) STORED,
-    play JSONB NOT NULL,
-    tasks STRING[] NULL,
-    CONSTRAINT pk PRIMARY KEY (name ASC)
-);
-
-CREATE TABLE ansible_tasks (
-    name STRING NOT NULL AS (task->>'name':::STRING) STORED,
-    task JSONB NOT NULL,
-    CONSTRAINT pk PRIMARY KEY (name ASC)
+CREATE TABLE playbooks (
+   name STRING NOT NULL,
+   link STRING NOT NULL,
+   CONSTRAINT pk PRIMARY KEY (name ASC)
 );
 
 CREATE TABLE regions (

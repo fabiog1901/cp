@@ -20,6 +20,7 @@ from .models import (
     AnsibleTask,
     Region,
     Task,
+    Link,
 )
 
 DB_URL = os.getenv("DB_URL")
@@ -84,6 +85,18 @@ def get_msg() -> Msg:
 ###############
 
 
+def get_playbook(playbook_name: str) -> Link:
+    return execute_stmt(
+        """
+        select link 
+        from playbooks
+        where name  = %s
+        """,
+        (playbook_name,),
+        Link,
+    )[0]
+
+
 def get_ansible_playbook(playbook_name: str) -> AnsiblePlaybook:
     return execute_stmt(
         """
@@ -106,7 +119,8 @@ def get_ansible_play(play_name: str) -> AnsiblePlay:
         (play_name,),
         AnsiblePlay,
     )[0]
-    
+
+
 def get_ansible_task(task_name: str) -> AnsibleTask:
     return execute_stmt(
         """
