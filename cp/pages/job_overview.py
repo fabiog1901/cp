@@ -32,7 +32,7 @@ class State(rx.State):
             else self.current_job.job_type
         )
 
-        msg_id: MsgID = db.insert_msg(job_type, j.description, "fab")
+        msg_id: MsgID = db.insert_msg_and_get_jobid(job_type, j.description, "fab")
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
     @rx.event(background=True)

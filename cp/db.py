@@ -1,14 +1,24 @@
 import datetime as dt
 import os
-from uuid import UUID
+from typing import Any
 
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (AnsiblePlay, AnsiblePlaybook, AnsibleTask, Cluster,
-                     ClusterID, ClusterOverview, EventLog, Job, JobID, Link,
-                     Msg, MsgID, Region, Task)
+from .models import (
+    Cluster,
+    ClusterID,
+    ClusterOverview,
+    EventLog,
+    Job,
+    JobID,
+    Link,
+    Msg,
+    MsgID,
+    Region,
+    Task,
+)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -23,11 +33,11 @@ pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
 ########
 #  MQ  #
 ########
-def insert_msg(
+def insert_msg_and_get_jobid(
     msg_type: str,
     msg_data: dict,
     created_by: str,
-) -> int:
+) -> MsgID:
     return execute_stmt(
         """
         WITH 
@@ -39,7 +49,8 @@ def insert_msg(
             RETURNING msg_id
         ) 
         INSERT INTO jobs (job_id, job_type, status, description, created_by) 
-        VALUES ((select msg_id from create_new_job), %s, %s, %s, %s) RETURNING job_id
+        VALUES ((select msg_id from create_new_job), %s, %s, %s, %s) 
+        RETURNING job_id
         """,
         (
             msg_type,
@@ -51,20 +62,8 @@ def insert_msg(
             created_by,
         ),
         MsgID,
-    )[0]
-
-
-def get_msg() -> Msg:
-    return execute_stmt(
-        """
-        SELECT * 
-        FROM mq
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED
-        """,
-        (),
-        Msg,
-    )[0]
+        return_list=False,
+    )
 
 
 ###############
@@ -72,58 +71,23 @@ def get_msg() -> Msg:
 ###############
 
 
-def get_playbook(playbook_name: str) -> Link:
+def get_playbook_link(playbook_name: str) -> Link:
     return execute_stmt(
         """
-        select link 
-        from playbooks
-        where name  = %s
+        SELECT link 
+        FROM playbooks
+        WHERE name  = %s
         """,
         (playbook_name,),
         Link,
-    )[0]
-
-
-def get_ansible_playbook(playbook_name: str) -> AnsiblePlaybook:
-    return execute_stmt(
-        """
-        SELECT plays
-        FROM ansible_playbooks
-        WHERE name = %s
-        """,
-        (playbook_name,),
-        AnsiblePlaybook,
-    )[0]
-
-
-def get_ansible_play(play_name: str) -> AnsiblePlay:
-    return execute_stmt(
-        """
-        SELECT play, tasks
-        FROM ansible_plays
-        WHERE name = %s
-        """,
-        (play_name,),
-        AnsiblePlay,
-    )[0]
-
-
-def get_ansible_task(task_name: str) -> AnsibleTask:
-    return execute_stmt(
-        """
-        SELECT task
-        FROM ansible_tasks
-        WHERE name = %s
-        """,
-        (task_name,),
-        AnsibleTask,
-    )[0]
+        return_list=False,
+    )
 
 
 #############
 #  REGIONS  #
 #############
-def get_region(cloud: str, region: str) -> list[Region] | None:
+def get_region_details(cloud: str, region: str) -> list[Region]:
     return execute_stmt(
         """
         SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
@@ -153,7 +117,7 @@ def get_all_clusters() -> list[ClusterOverview]:
 
 
 def get_cluster(cluster_id: str) -> Cluster | None:
-    c = execute_stmt(
+    return execute_stmt(
         """
         SELECT * 
         FROM clusters
@@ -161,10 +125,8 @@ def get_cluster(cluster_id: str) -> Cluster | None:
         """,
         (cluster_id,),
         Cluster,
+        return_list=False,
     )
-    if c:
-        return c[0]
-    return None
 
 
 def upsert_cluster(
@@ -174,7 +136,7 @@ def upsert_cluster(
     created_by: str,
     updated_by: str,
 ) -> None:
-    return execute_stmt(
+    execute_stmt(
         """
         UPSERT INTO clusters
             (cluster_id, status, description, created_by, updated_by)
@@ -286,7 +248,8 @@ def get_job(job_id: int) -> list[Job]:
         """,
         (job_id,),
         Job,
-    )[0]
+        return_list=False
+    )
 
 
 def create_job(
@@ -295,7 +258,7 @@ def create_job(
     status: str,
     created_by: str,
 ) -> None:
-    return execute_stmt(
+    execute_stmt(
         """
         INSERT INTO jobs
             (job_id, job_type, 
@@ -311,8 +274,8 @@ def insert_mapped_job(
     cluster_id: str,
     job_id: int,
     status: str,
-) -> list[Job]:
-    return execute_stmt(
+) -> None:
+    execute_stmt(
         """
         WITH 
         create_job_linked AS (
@@ -444,10 +407,8 @@ class DictJsonbDumper(JsonbDumper):
 
 
 def execute_stmt(
-    stmt: str,
-    bind_args: tuple,
-    model=None,
-) -> list:
+    stmt: str, bind_args: tuple, model=None, return_list: bool = True
+) -> Any | list[Any] | None:
     with pool.connection() as conn:
         # convert a set to a psycopg list
         conn.adapters.register_dumper(set, ListDumper)
@@ -460,8 +421,15 @@ def execute_stmt(
                 print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
 
-                if model:
-                    return [model(*x) for x in cur.fetchall()]
+                if model is None:
+                    return
+
+                if return_list:
+                    rs = cur.fetchall()
+                    return [model(*x) for x in rs]
+                else:
+                    rs = cur.fetchone()
+                    return model(*rs)
 
             except Exception as e:
                 # TODO correctly handle error such as PK violations

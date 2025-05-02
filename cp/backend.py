@@ -8,7 +8,7 @@ import ansible_runner
 import requests
 
 from . import db
-from .models import AnsiblePlaybook, ClusterRequest, Link, Msg, Region
+from .models import ClusterRequest, Msg, Region
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -74,7 +74,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
     for cloud_region in cluster_request.regions:
         cloud, region = cloud_region.split(":")
 
-        env_details: list[Region] = db.get_region(cloud, region)
+        env_details: list[Region] = db.get_region_details(cloud, region)
 
         # add 1 HAProxy per region
         deployment.append(
@@ -392,7 +392,7 @@ class MyRunner:
         playbook = []
 
         # fetch all plays for a playbook
-        link = db.get_playbook(playbook_name)
+        link = db.get_playbook_link(playbook_name)
 
         r = requests.get(link.link)
 
@@ -404,7 +404,7 @@ class MyRunner:
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
-                quiet=False,
+                quiet=True,
                 playbook="/tmp/playbook.yaml",
                 private_data_dir="/tmp",
                 extravars=extra_vars,

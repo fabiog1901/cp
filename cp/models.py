@@ -43,7 +43,7 @@ class MsgID:
 
 @dataclass
 class JobID:
-    job_id: str
+    job_id: int
 
 
 @dataclass
@@ -54,22 +54,6 @@ class Link:
 @dataclass
 class ClusterID:
     cluster_id: str
-
-
-@dataclass
-class AnsiblePlaybook:
-    plays: list[str]
-
-
-@dataclass
-class AnsiblePlay:
-    play: dict
-    tasks: list[str]
-
-
-@dataclass
-class AnsibleTask:
-    task: dict
 
 
 @dataclass

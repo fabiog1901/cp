@@ -1,6 +1,7 @@
 import asyncio
 
 import reflex as rx
+
 # MULTISELECT
 from reflex.components.radix.themes.base import LiteralAccentColor
 
@@ -316,7 +317,9 @@ class State(rx.State):
         form_data["node_count"] = int(self.node_count)
         form_data["regions"] = self.selected_regions
 
-        msg_id: MsgID = db.insert_msg("CREATE_CLUSTER", form_data, "fabio")
+        msg_id: MsgID = db.insert_msg_and_get_jobid(
+            "CREATE_CLUSTER", form_data, "fabio"
+        )
         self.selected_cpu = cpu_sizes[0]
         self.selected_disk = disk_sizes[0]
         self.selected_regions = []
@@ -324,7 +327,7 @@ class State(rx.State):
 
     @rx.event
     def delete_cluster(self, cluster_id: str):
-        msg_id: MsgID = db.insert_msg(
+        msg_id: MsgID = db.insert_msg_and_get_jobid(
             "DELETE_CLUSTER", {"cluster_id": cluster_id}, "fabio"
         )
 
