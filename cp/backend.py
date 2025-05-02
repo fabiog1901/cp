@@ -5,9 +5,10 @@ import time
 from threading import Thread
 
 import ansible_runner
+import requests
 
 from . import db
-from .models import ClusterRequest, Msg, Region, AnsiblePlaybook, Link
+from .models import AnsiblePlaybook, ClusterRequest, Link, Msg, Region
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -393,26 +394,10 @@ class MyRunner:
         # fetch all plays for a playbook
         link = db.get_playbook(playbook_name)
 
-        import requests
-
         r = requests.get(link.link)
 
         with open("/tmp/playbook.yaml", "wb") as f:
             f.write(r.content)
-
-        # # for each play, fetch the play details and the list of tasks
-        # for p in ansible_playbook.plays:
-
-        #     current_play_tasks = []
-        #     ansible_play = db.get_ansible_play(p)
-
-        #     for t in ansible_play.tasks:
-        #         ansible_task = db.get_ansible_task(t)
-        #         current_play_tasks.append(ansible_task.task)
-
-        #     ansible_play.play["tasks"] = current_play_tasks
-
-        #     playbook.append(ansible_play.play)
 
         db.update_job(self.job_id, "RUNNING")
 

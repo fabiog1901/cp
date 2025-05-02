@@ -6,22 +6,9 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (
-    Cluster,
-    ClusterID,
-    ClusterOverview,
-    EventLog,
-    Job,
-    JobID,
-    Msg,
-    MsgID,
-    AnsiblePlaybook,
-    AnsiblePlay,
-    AnsibleTask,
-    Region,
-    Task,
-    Link,
-)
+from .models import (AnsiblePlay, AnsiblePlaybook, AnsibleTask, Cluster,
+                     ClusterID, ClusterOverview, EventLog, Job, JobID, Link,
+                     Msg, MsgID, Region, Task)
 
 DB_URL = os.getenv("DB_URL")
 

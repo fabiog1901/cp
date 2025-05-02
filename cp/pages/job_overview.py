@@ -5,7 +5,7 @@ import yaml
 
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
-from ..models import TS_FORMAT, Job, MsgID, Task, ClusterID
+from ..models import TS_FORMAT, ClusterID, Job, MsgID, Task
 from ..template import template
 
 
