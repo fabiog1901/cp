@@ -37,6 +37,17 @@ Unknown
 
 
 @dataclass
+class User:
+    username: str
+    password_hash: str
+    salt: bytes
+    hash_algo: str
+    iterations: int
+    role: str
+    attempts: int
+
+
+@dataclass
 class MsgID:
     msg_id: str
 

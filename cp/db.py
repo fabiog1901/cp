@@ -6,19 +6,8 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (
-    Cluster,
-    ClusterID,
-    ClusterOverview,
-    EventLog,
-    Job,
-    JobID,
-    Link,
-    Msg,
-    MsgID,
-    Region,
-    Task,
-)
+from .models import (Cluster, ClusterID, ClusterOverview, EventLog, Job, JobID,
+                     Link, Msg, MsgID, Region, Task, User)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -248,7 +237,7 @@ def get_job(job_id: int) -> list[Job]:
         """,
         (job_id,),
         Job,
-        return_list=False
+        return_list=False,
     )
 
 
@@ -397,6 +386,46 @@ def create_event_log(
             event_type,
             details,
         ),
+    )
+
+
+###########
+#  USERS  #
+###########
+
+
+def get_user(username: str) -> User | None:
+    return execute_stmt(
+        """
+        SELECT * 
+        FROM users 
+        WHERE username = %s
+        """,
+        (username,),
+        User,
+        False,
+    )
+
+
+def increase_attempt(username: str) -> None:
+    execute_stmt(
+        """
+        UPDATE users 
+        SET attempts = attempts +1
+        WHERE username = %s
+        """,
+        (username,),
+    )
+
+
+def reset_attempts(username: str) -> None:
+    execute_stmt(
+        """
+        UPDATE users 
+        SET attempts = 0
+        WHERE username = %s
+        """,
+        (username,),
     )
 
 

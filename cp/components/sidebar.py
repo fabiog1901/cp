@@ -1,5 +1,7 @@
 import reflex as rx
 
+from ..state.base import BaseState
+
 
 def get_link(icon: str, name: str, href: str = None):
     return (
@@ -28,6 +30,10 @@ def sidebar() -> rx.Component:
         rx.link("Audit Logs", class_name="py-1"),
         rx.link("Enterprise Licenses", class_name="py-1"),
         rx.spacer(),
-        get_link("settings", "Settings"),
+        rx.cond(
+            BaseState.user.role == "admin",
+            get_link("settings", "Settings"),
+            rx.box(),
+        ),
         class_name="border-r flex-col min-w-48 p-2",
     )

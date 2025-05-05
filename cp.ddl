@@ -110,3 +110,16 @@ CREATE TABLE event_log (
   CONSTRAINT pk PRIMARY KEY (created_at, created_by)
 ) WITH (ttl_expiration_expression = $$(created_at::TIMESTAMPTZ + '90 days')$$, ttl_job_cron = '@daily')
 ;
+
+-- USERS
+CREATE TABLE users (
+  username STRING(50),
+  password_hash BYTES, 
+  salt BYTES,
+  hash_algo STRING(10),
+  iterations INT,
+  role string,
+  locked int not null default 0, 
+  CONSTRAINT pk primary key (username)
+);
+

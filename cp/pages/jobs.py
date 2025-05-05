@@ -5,6 +5,7 @@ import reflex as rx
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..models import Job
+from ..state.base import BaseState
 from ..template import template
 
 
@@ -73,7 +74,7 @@ def jobs_table():
     )
 
 
-@rx.page(route="/jobs", title="Jobs", on_load=State.fetch_all_jobs)
+@rx.page(route="/jobs", title="Jobs", on_load=BaseState.check_login)
 @template
 def jobs():
     return rx.flex(
@@ -86,4 +87,5 @@ def jobs():
             class_name="flex-1 flex-col overflow-y-scroll pt-8",
         ),
         class_name="flex-1 flex-col overflow-hidden",
+        on_mount=State.fetch_all_jobs,
     )

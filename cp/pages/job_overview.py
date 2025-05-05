@@ -6,6 +6,7 @@ import yaml
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..models import TS_FORMAT, ClusterID, Job, MsgID, Task
+from ..state.base import BaseState
 from ..template import template
 
 
@@ -91,7 +92,7 @@ def tasks_table():
     )
 
 
-@rx.page(route="/jobs/[j_id]", on_load=State.fetch_tasks)
+@rx.page(route="/jobs/[j_id]", on_load=BaseState.check_login)
 @template
 def job():
     return rx.flex(
@@ -112,10 +113,21 @@ def job():
                     class_name="mx-16",
                     align="center",
                 ),
-                rx.button(
-                    "Restart Job",
-                    on_click=State.reschedule_job,
-                    class_name="cursor-pointer text-lg font-semibold",
+                rx.cond(
+                    (BaseState.user.role == "admin") | (BaseState.user.role == "rw"),
+                    rx.button(
+                        "Restart Job",
+                        on_click=State.reschedule_job,
+                        class_name="cursor-pointer text-lg font-semibold",
+                    ),
+                    rx.tooltip(
+                        rx.button(
+                            "Restart Job",
+                            disabled=True,
+                            class_name="cursor-pointer text-lg font-semibold",
+                        ),
+                        content="You need to have admin or rw role to create new clusters",
+                    ),
                 ),
                 align="center",
             ),
@@ -208,4 +220,5 @@ def job():
             class_name="pt-8 overflow-y-scroll",
         ),
         class_name="flex-1 flex-col overflow-hidden p-2",
+        on_mount=State.fetch_tasks,
     )

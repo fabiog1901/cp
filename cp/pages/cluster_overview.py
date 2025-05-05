@@ -7,6 +7,7 @@ from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
 from ..models import TS_FORMAT, Cluster, Job
+from ..state.base import BaseState
 from ..template import template
 
 
@@ -112,7 +113,7 @@ def cluster_sidebar() -> rx.Component:
     )
 
 
-@rx.page(route="/clusters/[c_id]", on_load=State.fetch_cluster)
+@rx.page(route="/clusters/[c_id]", on_load=BaseState.check_login)
 @template
 def cluster():
     return rx.flex(
@@ -370,4 +371,5 @@ def cluster():
             class_name="flex-1 pt-8 overflow-hidden",
         ),
         class_name="flex-col flex-1 overflow-hidden",
+        on_mount=State.fetch_cluster,
     )

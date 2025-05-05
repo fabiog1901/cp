@@ -1,7 +1,6 @@
 import asyncio
 
 import reflex as rx
-
 # MULTISELECT
 from reflex.components.radix.themes.base import LiteralAccentColor
 
@@ -9,6 +8,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..cp import app
 from ..models import Cluster, ClusterOverview, MsgID
+from ..state.base import BaseState
 from ..template import template
 from ..util import get_funny_name
 
@@ -335,74 +335,86 @@ class State(rx.State):
 
 
 def new_cluster_dialog():
-    return rx.dialog.root(
-        rx.dialog.trigger(
-            rx.button(
-                rx.icon("plus"), rx.text("New Cluster"), class_name="cursor-pointer"
+    return rx.cond(
+        (BaseState.user.role == "admin") | (BaseState.user.role == "rw"),
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.button(
+                    rx.icon("plus"), rx.text("New Cluster"), class_name="cursor-pointer"
+                ),
+            ),
+            rx.dialog.content(
+                rx.dialog.title("Create New Cluster", class_name="text-4xl pb-4"),
+                rx.form(
+                    rx.flex(
+                        rx.heading("Cluster Name", size="4"),
+                        rx.input(
+                            placeholder="Name",
+                            name="name",
+                            default_value=State.selected_name,
+                            on_mount=State.load_funny_name,
+                            color_scheme="mint",
+                            class_name="",
+                        ),
+                        rx.divider(),
+                        cpu_item_selector(),
+                        rx.divider(),
+                        rx.hstack(
+                            rx.icon("database", size=20),
+                            rx.heading("Nodes per Region", size="4"),
+                            spacing="2",
+                            align="center",
+                            width="100%",
+                        ),
+                        rx.radio(
+                            ["1", "2", "3", "4", "5", "6", "7", "8"],
+                            on_change=State.set_node_count,
+                            default_value="3",
+                            direction="row",
+                            color_scheme="mint",
+                        ),
+                        rx.divider(),
+                        disk_item_selector(),
+                        rx.divider(),
+                        multi_items_selector(),
+                        rx.heading("CockroachDB version", size="4"),
+                        rx.input(
+                            name="version",
+                            placeholder="latest",
+                            default_value="latest",
+                            color_scheme="mint",
+                        ),
+                        rx.flex(
+                            rx.dialog.close(
+                                rx.button(
+                                    "Cancel",
+                                    variant="soft",
+                                    color_scheme="gray",
+                                ),
+                            ),
+                            rx.dialog.close(
+                                rx.button("Submit", type="submit"),
+                            ),
+                            spacing="3",
+                            justify="end",
+                        ),
+                        direction="column",
+                        spacing="4",
+                    ),
+                    on_submit=State.create_new_cluster,
+                    reset_on_submit=False,
+                ),
+                max_width="450px",
             ),
         ),
-        rx.dialog.content(
-            rx.dialog.title("Create New Cluster", class_name="text-4xl pb-4"),
-            rx.form(
-                rx.flex(
-                    rx.heading("Cluster Name", size="4"),
-                    rx.input(
-                        placeholder="Name",
-                        name="name",
-                        default_value=State.selected_name,
-                        on_mount=State.load_funny_name,
-                        color_scheme="mint",
-                        class_name="",
-                    ),
-                    rx.divider(),
-                    cpu_item_selector(),
-                    rx.divider(),
-                    rx.hstack(
-                        rx.icon("database", size=20),
-                        rx.heading("Nodes per Region", size="4"),
-                        spacing="2",
-                        align="center",
-                        width="100%",
-                    ),
-                    rx.radio(
-                        ["1", "2", "3", "4", "5", "6", "7", "8"],
-                        on_change=State.set_node_count,
-                        default_value="3",
-                        direction="row",
-                        color_scheme="mint",
-                    ),
-                    rx.divider(),
-                    disk_item_selector(),
-                    rx.divider(),
-                    multi_items_selector(),
-                    rx.heading("CockroachDB version", size="4"),
-                    rx.input(
-                        name="version",
-                        placeholder="latest",
-                        default_value="latest",
-                        color_scheme="mint",
-                    ),
-                    rx.flex(
-                        rx.dialog.close(
-                            rx.button(
-                                "Cancel",
-                                variant="soft",
-                                color_scheme="gray",
-                            ),
-                        ),
-                        rx.dialog.close(
-                            rx.button("Submit", type="submit"),
-                        ),
-                        spacing="3",
-                        justify="end",
-                    ),
-                    direction="column",
-                    spacing="4",
-                ),
-                on_submit=State.create_new_cluster,
-                reset_on_submit=False,
+        rx.tooltip(
+            rx.button(
+                rx.icon("plus"),
+                rx.text("New Cluster"),
+                disabled=True,
+                class_name="cursor-pointer",
             ),
-            max_width="450px",
+            content="You need to have admin or rw role to create new clusters",
         ),
     )
 
@@ -428,70 +440,105 @@ def get_cluster_row(cluster: Cluster):
                 ("DELETED", rx.box()),
                 ("DELETING...", rx.box()),
                 rx.hstack(
-                    rx.alert_dialog.root(
-                        rx.alert_dialog.trigger(
-                            rx.box(
-                                rx.tooltip(
-                                    rx.icon(
-                                        "trash-2",
-                                        color="gray",
-                                        size=30,
-                                        class_name="cursor-pointer  hover:text-green-500",
-                                    ),
-                                    content="Delete",
-                                ),
-                            ),
-                        ),
-                        rx.alert_dialog.content(
-                            rx.alert_dialog.title(cluster.cluster_id),
-                            rx.alert_dialog.description(
-                                size="2",
-                            ),
-                            rx.flex(
-                                rx.alert_dialog.cancel(
-                                    rx.button(
-                                        "Cancel",
-                                        variant="soft",
-                                        color_scheme="gray",
+                    rx.cond(
+                        (BaseState.user.role == "admin")
+                        | (BaseState.user.role == "rw"),
+                        rx.alert_dialog.root(
+                            rx.alert_dialog.trigger(
+                                rx.box(
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "trash-2",
+                                            color=None,
+                                            size=30,
+                                            class_name="cursor-pointer text-red-500 hover:text-red-300",
+                                        ),
+                                        content="Delete the cluster",
                                     ),
                                 ),
-                                rx.alert_dialog.action(
-                                    rx.button(
-                                        "Delete Cluster",
-                                        color_scheme="red",
-                                        variant="solid",
-                                        on_click=lambda: State.delete_cluster(
-                                            cluster.cluster_id
+                            ),
+                            rx.alert_dialog.content(
+                                rx.alert_dialog.title(cluster.cluster_id),
+                                rx.alert_dialog.description(
+                                    size="2",
+                                ),
+                                rx.flex(
+                                    rx.alert_dialog.cancel(
+                                        rx.button(
+                                            "Cancel",
+                                            variant="soft",
+                                            color_scheme="gray",
                                         ),
                                     ),
+                                    rx.alert_dialog.action(
+                                        rx.button(
+                                            "Delete Cluster",
+                                            color_scheme="red",
+                                            variant="solid",
+                                            on_click=lambda: State.delete_cluster(
+                                                cluster.cluster_id
+                                            ),
+                                        ),
+                                    ),
+                                    spacing="3",
+                                    margin_top="16px",
+                                    justify="end",
                                 ),
-                                spacing="3",
-                                margin_top="16px",
-                                justify="end",
+                                style={"max_width": 450},
                             ),
-                            style={"max_width": 450},
+                        ),
+                        rx.tooltip(
+                            rx.icon(
+                                "trash-2",
+                                size=30,
+                                color="gray",
+                            ),
+                            content="You need to have admin or rw role to delete a cluster",
                         ),
                     ),
-                    rx.tooltip(
-                        rx.icon(
-                            "circle-fading-arrow-up",
-                            color="gray",
-                            size=30,
-                            class_name="cursor-pointer hover:text-green-500",
-                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                    rx.cond(
+                        (BaseState.user.role == "admin")
+                        | (BaseState.user.role == "rw"),
+                        rx.tooltip(
+                            rx.icon(
+                                "circle-fading-arrow-up",
+                                color=None,
+                                size=30,
+                                class_name="cursor-pointer text-green-500 hover:text-green-300",
+                            ),
+                            content="Upgrade the cluster",
                         ),
-                        content="Upgrade the cluster",
-                    ),
-                    rx.tooltip(
-                        rx.icon(
-                            "bug-play",
-                            color="gray",
-                            size=30,
-                            class_name="cursor-pointer  hover:text-green-500",
-                            on_click=lambda: State.delete_cluster(cluster.cluster_id),
+                        rx.tooltip(
+                            rx.icon(
+                                "circle-fading-arrow-up",
+                                color="gray",
+                                size=30,
+                            ),
+                            content="You need to have admin or rw role to upgrade a cluster",
                         ),
-                        content="Debug the cluster",
                     ),
+                    rx.cond(
+                        (BaseState.user.role == "admin")
+                        | (BaseState.user.role == "rw"),
+                        rx.tooltip(
+                            rx.icon(
+                                "bug-play",
+                                size=30,
+                                color=None,
+                                class_name="cursor-pointer text-blue-500 hover:text-blue-300",
+                            ),
+                            content="Debug the cluster",
+                        ),
+                        rx.tooltip(
+                            rx.icon(
+                                "bug-play",
+                                color="gray",
+                                size=30,
+                            ),
+                            content="You need to have admin or rw role to debug a cluster",
+                        ),
+                    ),
+                    spacing="6",
                 ),
             )
         ),
@@ -523,7 +570,7 @@ def clusters_table():
     )
 
 
-@rx.page(route="/clusters", title="Clusters", on_load=State.fetch_all_clusters)
+@rx.page(route="/clusters", title="Clusters", on_load=BaseState.check_login)
 @template
 def clusters():
     return rx.flex(
@@ -534,4 +581,5 @@ def clusters():
         rx.hstack(new_cluster_dialog(), direction="row-reverse", class_name="p-4"),
         rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
         class_name="flex-1 flex-col overflow-hidden",
+        on_mount=State.fetch_all_clusters,
     )
