@@ -74,9 +74,7 @@ def jobs_table():
     )
 
 
-@rx.page(
-    route="/jobs", title="Jobs", on_load=BaseState.check_login(original_url="/jobs")
-)
+@rx.page(route="/jobs", title="Jobs", on_load=BaseState.check_login)
 @template
 def jobs():
     return rx.flex(

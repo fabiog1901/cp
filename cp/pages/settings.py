@@ -9,7 +9,7 @@ from ..template import template
 @rx.page(
     route="/settings",
     title="Settings",
-    on_load=BaseState.check_login(original_url="/settings"),
+    on_load=BaseState.check_login,
 )
 @template
 def settings():

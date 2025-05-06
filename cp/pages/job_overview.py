@@ -95,9 +95,7 @@ def tasks_table():
     )
 
 
-@rx.page(
-    route="/jobs/[j_id]", on_load=BaseState.check_login(original_url="/jobs/[j_id]")
-)
+@rx.page(route="/jobs/[j_id]", on_load=BaseState.check_login)
 @template
 def job():
     return rx.flex(

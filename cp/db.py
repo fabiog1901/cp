@@ -6,8 +6,20 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from .models import (Cluster, ClusterID, ClusterOverview, EventLog, Job, JobID,
-                     Link, Msg, MsgID, Region, Task, User)
+from .models import (
+    Cluster,
+    ClusterID,
+    ClusterOverview,
+    EventLog,
+    Job,
+    JobID,
+    Link,
+    Msg,
+    MsgID,
+    Region,
+    Task,
+    User,
+)
 
 DB_URL = os.getenv("DB_URL")
 

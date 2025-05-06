@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import reflex as rx
+
 # MULTISELECT
 from reflex.components.radix.themes.base import LiteralAccentColor
 
@@ -578,7 +579,7 @@ def clusters_table():
 @rx.page(
     route="/clusters",
     title="Clusters",
-    on_load=BaseState.check_login(original_url="/clusters"),
+    on_load=BaseState.check_login,
 )
 @template
 def clusters():

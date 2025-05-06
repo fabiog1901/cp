@@ -17,8 +17,8 @@ class BaseState(rx.State):
         self.reset()
         return rx.redirect("/")
 
-    def check_login(self, original_url: str):
-        self.original_url = original_url
+    def check_login(self):
+        self.original_url = self.router.page.raw_path
         if not self.logged_in:
             return rx.redirect("/login")
 
