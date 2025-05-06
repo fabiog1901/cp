@@ -2,8 +2,9 @@ import asyncio
 
 import reflex as rx
 
-from .. import app, db
+from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
+from ..cp import app
 from ..models import Job
 from ..state.base import BaseState
 from ..template import template

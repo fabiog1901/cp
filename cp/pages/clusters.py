@@ -264,7 +264,6 @@ class State(rx.State):
             self.is_already_running = True
 
         while True:
-            # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if (
                 self.router.page.path != "/clusters"
                 or self.router.session.client_token
