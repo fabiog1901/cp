@@ -6,7 +6,11 @@ from ..state.base import BaseState
 from ..template import template
 
 
-@rx.page(route="/settings", title="Settings", on_load=BaseState.check_login)
+@rx.page(
+    route="/settings",
+    title="Settings",
+    on_load=BaseState.check_login(original_url="/settings"),
+)
 @template
 def settings():
     return rx.cond(

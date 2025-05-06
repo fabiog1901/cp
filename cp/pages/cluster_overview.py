@@ -113,7 +113,10 @@ def cluster_sidebar() -> rx.Component:
     )
 
 
-@rx.page(route="/clusters/[c_id]", on_load=BaseState.check_login)
+@rx.page(
+    route="/clusters/[c_id]",
+    on_load=BaseState.check_login(original_url="/clusters/[c_id]"),
+)
 @template
 def cluster():
     return rx.flex(

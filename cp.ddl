@@ -122,4 +122,3 @@ CREATE TABLE users (
   locked int not null default 0, 
   CONSTRAINT pk primary key (username)
 );
-

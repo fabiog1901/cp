@@ -33,7 +33,10 @@ class State(rx.State):
             else self.current_job.job_type
         )
 
-        msg_id: MsgID = db.insert_msg_and_get_jobid(job_type, j.description, "fab")
+        msg_id: MsgID = db.insert_msg_and_get_jobid(
+            job_type, j.description, BaseState.user.username
+        )
+        db.insert_event_log(BaseState.user.username, job_type, j.description)
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
     @rx.event(background=True)
@@ -92,7 +95,9 @@ def tasks_table():
     )
 
 
-@rx.page(route="/jobs/[j_id]", on_load=BaseState.check_login)
+@rx.page(
+    route="/jobs/[j_id]", on_load=BaseState.check_login(original_url="/jobs/[j_id]")
+)
 @template
 def job():
     return rx.flex(

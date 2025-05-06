@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import reflex as rx
 # MULTISELECT
@@ -252,21 +253,21 @@ class State(rx.State):
 
     sort_value = ""
     search_value = ""
-    bg_task: bool = False
+    is_already_running: bool = False
 
     @rx.event(background=True)
     async def fetch_all_clusters(self):
-        if self.bg_task:
+        if self.is_already_running:
             return
         async with self:
-            self.bg_task = True
+            self.is_already_running = True
 
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if self.router.page.path != "/clusters":
                 print("clusters.py: Stopping background task.")
                 async with self:
-                    self.bg_task = False
+                    self.is_already_running = False
                 break
 
             async with self:
@@ -318,8 +319,12 @@ class State(rx.State):
         form_data["regions"] = self.selected_regions
 
         msg_id: MsgID = db.insert_msg_and_get_jobid(
-            "CREATE_CLUSTER", form_data, "fabio"
+            "CREATE_CLUSTER", form_data, BaseState.user.username
         )
+        db.insert_event_log(
+            BaseState.user.username, "CREATE_CLUSTER", json.dumps(form_data)
+        )
+
         self.selected_cpu = cpu_sizes[0]
         self.selected_disk = disk_sizes[0]
         self.selected_regions = []
@@ -328,9 +333,9 @@ class State(rx.State):
     @rx.event
     def delete_cluster(self, cluster_id: str):
         msg_id: MsgID = db.insert_msg_and_get_jobid(
-            "DELETE_CLUSTER", {"cluster_id": cluster_id}, "fabio"
+            "DELETE_CLUSTER", {"cluster_id": cluster_id}, BaseState.user.username
         )
-
+        db.insert_event_log(BaseState.user.username, "DELETE_CLUSTER", cluster_id)
         return rx.toast.info(f"Job {msg_id.msg_id} requested.")
 
 
@@ -570,7 +575,11 @@ def clusters_table():
     )
 
 
-@rx.page(route="/clusters", title="Clusters", on_load=BaseState.check_login)
+@rx.page(
+    route="/clusters",
+    title="Clusters",
+    on_load=BaseState.check_login(original_url="/clusters"),
+)
 @template
 def clusters():
     return rx.flex(

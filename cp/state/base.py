@@ -10,13 +10,15 @@ class BaseState(rx.State):
 
     user: Optional[User] = None
 
+    original_url: str = "/"
+
     def logout(self):
         """Log out a user."""
         self.reset()
         return rx.redirect("/")
 
-    def check_login(self):
-        """Check if a user is logged in."""
+    def check_login(self, original_url: str):
+        self.original_url = original_url
         if not self.logged_in:
             return rx.redirect("/login")
 

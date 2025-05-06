@@ -369,22 +369,22 @@ def get_all_event_logs() -> list[EventLog] | None:
     )
 
 
-def create_event_log(
+def insert_event_log(
     created_by: str,
     event_type: str,
-    details: str,
+    event_details: str = None,
 ):
     execute_stmt(
         """
         INSERT INTO event_log (
-            created_by, event_type, details) 
+            created_by, event_type, event_details) 
         VALUES 
             (%s, %s, %s)
         """,
         (
             created_by,
             event_type,
-            details,
+            event_details,
         ),
     )
 
