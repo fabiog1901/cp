@@ -32,8 +32,11 @@ class State(rx.State):
             self.bg_task = True
 
         while True:
-            # if self.router.session.client_token not in app.event_namespace.token_to_sid:
-            if self.router.page.path != "/clusters/[c_id]":
+            if (
+                self.router.page.path != "/clusters/[c_id]"
+                or self.router.session.client_token
+                not in app.event_namespace.token_to_sid
+            ):
                 print("cluster_overview.py: Stopping background task.")
                 async with self:
                     self.bg_task = False

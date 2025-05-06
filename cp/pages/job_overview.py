@@ -5,6 +5,7 @@ import yaml
 
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
+from ..cp import app
 from ..models import TS_FORMAT, ClusterID, Job, MsgID, Task
 from ..state.base import BaseState
 from ..template import template
@@ -48,7 +49,11 @@ class State(rx.State):
 
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
-            if self.router.page.path != "/jobs/[j_id]":
+            if (
+                self.router.page.path != "/jobs/[j_id]"
+                or self.router.session.client_token
+                not in app.event_namespace.token_to_sid
+            ):
                 print("job_overview.py: Stopping background task.")
                 async with self:
                     self.bg_task = False

@@ -2,7 +2,7 @@ import asyncio
 
 import reflex as rx
 
-from .. import db
+from .. import app, db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..models import Job
 from ..state.base import BaseState
@@ -23,7 +23,11 @@ class State(rx.State):
 
         while True:
             # if self.router.session.client_token not in app.event_namespace.token_to_sid:
-            if self.router.page.path != "/jobs":
+            if (
+                self.router.page.path != "/jobs"
+                or self.router.session.client_token
+                not in app.event_namespace.token_to_sid
+            ):
                 print("jobs.py: Stopping background task.")
                 async with self:
                     self.bg_task = False
