@@ -34,7 +34,7 @@ pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
 ########
 #  MQ  #
 ########
-def insert_msg_and_get_jobid(
+def insert_into_mq(
     msg_type: str,
     msg_data: dict,
     created_by: str,
@@ -168,15 +168,24 @@ def upsert_cluster(
     description: dict,
     created_by: str,
     updated_by: str,
+    grp: str,
 ) -> None:
     execute_stmt(
         """
         UPSERT INTO clusters
-            (cluster_id, status, description, created_by, updated_by)
+            (cluster_id, status, description, 
+            created_by, updated_by, grp)
         VALUES
-            (%s, %s, %s, %s, %s)
+            (%s, %s, %s, %s, %s, %s)
         """,
-        (cluster_id, status, description, created_by, updated_by),
+        (
+            cluster_id,
+            status,
+            description,
+            created_by,
+            updated_by,
+            grp,
+        ),
     )
 
 

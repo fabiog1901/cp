@@ -320,9 +320,7 @@ class State(rx.State):
         form_data["node_count"] = int(self.node_count)
         form_data["regions"] = self.selected_regions
 
-        msg_id: StrID = db.insert_msg_and_get_jobid(
-            "CREATE_CLUSTER", form_data, webuser.username
-        )
+        msg_id: StrID = db.insert_into_mq("CREATE_CLUSTER", form_data, webuser.username)
         db.insert_event_log(
             webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
         )
@@ -334,10 +332,16 @@ class State(rx.State):
 
     @rx.event
     def delete_cluster(self, cluster_id: str, webuser: WebUser):
-        msg_id: StrID = db.insert_msg_and_get_jobid(
-            "DELETE_CLUSTER", {"cluster_id": cluster_id}, webuser.username
+        msg_id: StrID = db.insert_into_mq(
+            "DELETE_CLUSTER",
+            {"cluster_id": cluster_id},
+            webuser.username,
         )
-        db.insert_event_log(webuser.username, "DELETE_CLUSTER", cluster_id)
+        db.insert_event_log(
+            webuser.username,
+            "DELETE_CLUSTER",
+            {"cluster_id": cluster_id, "job_id": msg_id.id},
+        )
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
 
@@ -408,12 +412,12 @@ def new_cluster_dialog():
                         direction="column",
                         spacing="4",
                     ),
-                    on_submit=lambda x: State.create_new_cluster(
-                        x, BaseState.webuser.username
+                    on_submit=lambda form_data: State.create_new_cluster(
+                        form_data, BaseState.webuser
                     ),
                     reset_on_submit=False,
                 ),
-                max_width="450px",
+                max_width="750px",
             ),
         ),
         rx.tooltip(

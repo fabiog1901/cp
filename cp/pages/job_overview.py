@@ -16,7 +16,7 @@ class State(rx.State):
     current_job_description: str = ""
     linked_clusters: list[StrID] = []
     tasks: list[Task] = []
-
+    
     @rx.var
     def job_id(self) -> str | None:
         return self.router.page.params.get("j_id") or None
@@ -24,9 +24,9 @@ class State(rx.State):
     is_running: bool = False
 
     @rx.event
-    def reschedule_job(self, username: str):
+    def reschedule_job(self, webuser: WebUser):
         # TODO fix so we can use self.current_job.descripton
-        j: Job = db.get_job(self.current_job.job_id)
+        j: Job = db.get_job(webuser.groups, self.current_job.job_id)
 
         job_type = (
             "RECREATE_CLUSTER"
@@ -34,12 +34,14 @@ class State(rx.State):
             else self.current_job.job_type
         )
 
-        msg_id: StrID = db.insert_msg_and_get_jobid(job_type, j.description, username)
-        db.insert_event_log(username, job_type, j.description | {"job_id": msg_id.id})
+        msg_id: StrID = db.insert_into_mq(job_type, j.description, webuser.username)
+        db.insert_event_log(
+            webuser.username, job_type, j.description | {"job_id": msg_id.id}
+        )
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
-    async def fetch_tasks(self,  webuser: WebUser):
+    async def fetch_tasks(self, webuser: WebUser):
         if self.is_running:
             return
         async with self:
@@ -61,7 +63,7 @@ class State(rx.State):
                 if job is None:
                     self.is_running = False
                     return rx.redirect("/404", replace=True)
-                                    
+
                 self.current_job_description = yaml.dump(job.description)
                 self.current_job = job
                 self.tasks = db.get_all_tasks(self.job_id)
@@ -128,7 +130,7 @@ def job():
                     rx.button(
                         "Restart Job",
                         on_click=lambda: State.reschedule_job(
-                            BaseState.webuser.username
+                            BaseState.webuser
                         ),
                         class_name="cursor-pointer text-lg font-semibold",
                     ),
