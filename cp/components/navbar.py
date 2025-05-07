@@ -2,6 +2,7 @@ import reflex as rx
 
 from .main import user_profile_menu
 
+from ..state.base import BaseState
 
 def navbar():
     return rx.flex(
@@ -16,6 +17,7 @@ def navbar():
         ),
         rx.spacer(),
         rx.color_mode.button(class_name="mx-2"),
+        rx.text(BaseState.webuser.username, class_name="font-semibold text-xl mx-2"),
         user_profile_menu(),
         class_name="font-bold p-4 align-center ",
     )

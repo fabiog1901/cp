@@ -5,7 +5,7 @@ import reflex as rx
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import Job
+from ..models import Job, WebUser
 from ..state.base import BaseState
 from ..template import template
 
@@ -13,17 +13,16 @@ from ..template import template
 class State(rx.State):
     jobs: list[Job] = []
 
-    bg_task: bool = False
+    is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_jobs(self):
-        if self.bg_task:
+    async def fetch_all_jobs(self, webuser: WebUser):
+        if self.is_running:
             return
         async with self:
-            self.bg_task = True
+            self.is_running = True
 
         while True:
-            # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if (
                 self.router.page.path != "/jobs"
                 or self.router.session.client_token
@@ -31,11 +30,11 @@ class State(rx.State):
             ):
                 print("jobs.py: Stopping background task.")
                 async with self:
-                    self.bg_task = False
+                    self.is_running = False
                 break
 
             async with self:
-                self.jobs = db.get_all_jobs()
+                self.jobs = db.get_all_jobs(webuser.groups)
             await asyncio.sleep(5)
 
 
@@ -92,5 +91,9 @@ def jobs():
             class_name="flex-1 flex-col overflow-y-scroll pt-8",
         ),
         class_name="flex-1 flex-col overflow-hidden",
-        on_mount=State.fetch_all_jobs,
+        on_mount=rx.cond(
+            BaseState.is_logged_in,
+            State.fetch_all_jobs(BaseState.webuser),
+            BaseState.just_return,
+        ),
     )

@@ -1,5 +1,6 @@
 import reflex as rx
 
+from ..state.base import BaseState
 
 def status_badge(state):
     return rx.text(
@@ -39,23 +40,23 @@ def user_profile_menu():
             )
         ),
         rx.menu.content(
-            rx.menu.item("Edit", shortcut="⌘ E"),
-            rx.menu.item("Duplicate", shortcut="⌘ D"),
-            rx.menu.separator(),
-            rx.menu.item("Archive", shortcut="⌘ N"),
-            rx.menu.sub(
-                rx.menu.sub_trigger("More"),
-                rx.menu.sub_content(
-                    rx.menu.item("Move to project…"),
-                    rx.menu.item("Move to folder…"),
-                    rx.menu.separator(),
-                    rx.menu.item("Advanced options…"),
-                ),
-            ),
-            rx.menu.separator(),
-            rx.menu.item("Share"),
-            rx.menu.item("Add to favorites"),
-            rx.menu.separator(),
-            rx.menu.item("Delete", shortcut="⌘ ⌫", color="red"),
+            # rx.menu.item("Edit", shortcut="⌘ E"),
+            # rx.menu.item("Duplicate", shortcut="⌘ D"),
+            # rx.menu.separator(),
+            # rx.menu.item("Archive", shortcut="⌘ N"),
+            # rx.menu.sub(
+            #     rx.menu.sub_trigger("More"),
+            #     rx.menu.sub_content(
+            #         rx.menu.item("Move to project…"),
+            #         rx.menu.item("Move to folder…"),
+            #         rx.menu.separator(),
+            #         rx.menu.item("Advanced options…"),
+            #     ),
+            # ),
+            # rx.menu.separator(),
+            # rx.menu.item("Share"),
+            # rx.menu.item("Add to favorites"),
+            # rx.menu.separator(),
+            rx.menu.item("Logout", shortcut="⌘ ⌫", color="red", on_click=BaseState.logout),
         ),
     )

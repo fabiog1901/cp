@@ -37,34 +37,32 @@ Unknown
 
 
 @dataclass
+class WebUser:
+    username: str
+    role: str
+    groups: list[str]
+
+
+@dataclass
 class User:
     username: str
     password_hash: str
     salt: bytes
     hash_algo: str
     iterations: int
-    role: str
     attempts: int
+    role: str
+    groups: list[str]
 
 
 @dataclass
-class MsgID:
-    msg_id: str
+class StrID:
+    id: str
 
 
 @dataclass
-class JobID:
-    job_id: int
-
-
-@dataclass
-class Link:
-    link: str
-
-
-@dataclass
-class ClusterID:
-    cluster_id: str
+class IntID:
+    id: int
 
 
 @dataclass
@@ -92,6 +90,7 @@ class Msg:
 @dataclass
 class ClusterOverview:
     cluster_id: str
+    grp: str
     created_by: str
     status: str
 
@@ -105,6 +104,7 @@ class Cluster:
     created_by: str
     updated_at: dt.datetime
     updated_by: str
+    grp: str
 
 
 @dataclass

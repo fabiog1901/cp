@@ -8,14 +8,14 @@ from psycopg_pool import ConnectionPool
 
 from .models import (
     Cluster,
-    ClusterID,
+    StrID,
     ClusterOverview,
     EventLog,
     Job,
-    JobID,
-    Link,
+    IntID,
+    StrID,
     Msg,
-    MsgID,
+    StrID,
     Region,
     Task,
     User,
@@ -38,7 +38,7 @@ def insert_msg_and_get_jobid(
     msg_type: str,
     msg_data: dict,
     created_by: str,
-) -> MsgID:
+) -> StrID:
     return execute_stmt(
         """
         WITH 
@@ -62,7 +62,7 @@ def insert_msg_and_get_jobid(
             msg_data,
             created_by,
         ),
-        MsgID,
+        StrID,
         return_list=False,
     )
 
@@ -72,7 +72,7 @@ def insert_msg_and_get_jobid(
 ###############
 
 
-def get_playbook_link(playbook_name: str) -> Link:
+def get_playbook_link(playbook_name: str) -> StrID:
     return execute_stmt(
         """
         SELECT link 
@@ -80,7 +80,7 @@ def get_playbook_link(playbook_name: str) -> Link:
         WHERE name  = %s
         """,
         (playbook_name,),
-        Link,
+        StrID,
         return_list=False,
     )
 
@@ -105,26 +105,58 @@ def get_region_details(cloud: str, region: str) -> list[Region]:
 ##############
 
 
-def get_all_clusters() -> list[ClusterOverview]:
+def get_all_clusters(
+    groups: list[str] = None,
+) -> list[ClusterOverview]:
+
+    if "admin" in groups:
+        return execute_stmt(
+            """
+            SELECT cluster_id, grp, created_by, status 
+            FROM clusters
+            ORDER BY created_at DESC
+            """,
+            (),
+            ClusterOverview,
+        )
+
     return execute_stmt(
         """
-        SELECT cluster_id, created_by, status 
+        SELECT cluster_id, grp, created_by, status 
         FROM clusters
-        ORDER BY cluster_id
+        WHERE grp = ANY (%s)
+        ORDER BY created_at DESC
         """,
-        (),
+        (groups,),
         ClusterOverview,
     )
 
 
-def get_cluster(cluster_id: str) -> Cluster | None:
+def get_cluster(
+    groups: list[str],
+    cluster_id: str,
+) -> Cluster | None:
+
+    if "admin" in groups:
+        return execute_stmt(
+            """
+            SELECT * 
+            FROM clusters
+            WHERE cluster_id = %s
+            """,
+            (cluster_id,),
+            Cluster,
+            return_list=False,
+        )
+
     return execute_stmt(
         """
         SELECT * 
         FROM clusters
-        WHERE cluster_id = %s
+        WHERE grp = ANY (%s)
+            AND cluster_id = %s
         """,
-        (cluster_id,),
+        (groups, cluster_id),
         Cluster,
         return_list=False,
     )
@@ -197,7 +229,7 @@ def delete_cluster(cluster_id):
 ############
 
 
-def get_linked_clusters_from_job(job_id: int) -> list[ClusterID]:
+def get_linked_clusters_from_job(job_id: int) -> list[StrID]:
     return execute_stmt(
         """
         SELECT cluster_id 
@@ -206,48 +238,97 @@ def get_linked_clusters_from_job(job_id: int) -> list[ClusterID]:
         ORDER BY cluster_id
         """,
         (job_id,),
-        ClusterID,
+        StrID,
     )
 
 
-def get_all_jobs(cluster_id: str = None) -> list[Job]:
-    if cluster_id:
+def get_all_linked_jobs(cluster_id: str) -> list[Job]:
+    return execute_stmt(
+        """
+        WITH
+        cluster_jobs AS (
+            SELECT job_id
+            FROM map_clusters_jobs
+            WHERE cluster_id = %s
+        ) 
+        SELECT * 
+        FROM jobs 
+        WHERE job_id IN (SELECT job_id FROM cluster_jobs)
+        ORDER BY created_at DESC
+        """,
+        (cluster_id,),
+        Job,
+    )
+
+
+def get_all_jobs(groups: list[str] = None) -> list[Job]:
+    if "admin" in groups:
         return execute_stmt(
             """
-            WITH
-            cluster_jobs AS (
-                SELECT job_id
-                FROM map_clusters_jobs
-                WHERE cluster_id = %s
-            ) 
             SELECT * 
             FROM jobs 
-            WHERE job_id IN (SELECT job_id FROM cluster_jobs)
             ORDER BY created_at DESC
             """,
-            (cluster_id,),
+            (),
             Job,
         )
 
     return execute_stmt(
         """
-        SELECT *
-        FROM jobs
-        ORDER BY created_at DESC
+        WITH 
+        c AS (
+            SELECT cluster_id 
+            FROM clusters 
+            WHERE grp = ANY (%s)
+        ),                                
+        cj AS (
+            SELECT job_id 
+            FROM map_clusters_jobs 
+            WHERE cluster_id IN (SELECT * FROM c)
+        )                                
+        SELECT * 
+        FROM jobs 
+        WHERE job_id IN (SELECT * FROM cj); 
         """,
-        (),
+        (groups,),
         Job,
     )
 
 
-def get_job(job_id: int) -> list[Job]:
+def get_job(
+    groups: list[str],
+    job_id: int,
+) -> Job | None:
+    if "admin" in groups:
+        return execute_stmt(
+            """
+            SELECT *
+            FROM jobs
+            WHERE job_id = %s
+            """,
+            (job_id,),
+            Job,
+            return_list=False,
+        )
     return execute_stmt(
         """
-        SELECT *
-        FROM jobs
-        WHERE job_id = %s
+        WITH 
+        c AS (
+            SELECT cluster_id 
+            FROM clusters 
+            WHERE grp = ANY (%s)
+        ),                                
+        cj AS (
+            SELECT job_id 
+            FROM map_clusters_jobs 
+            WHERE cluster_id IN (SELECT * FROM c)
+        )                                
+        SELECT * 
+        FROM jobs 
+        WHERE job_id IN (SELECT * FROM cj)
+            AND job_id = %s 
         """,
-        (job_id,),
+        (groups, job_id),
         Job,
         return_list=False,
     )
@@ -307,7 +388,7 @@ def update_job(
     )
 
 
-def fail_zombie_jobs() -> list[JobID]:
+def fail_zombie_jobs() -> list[IntID]:
     return execute_stmt(
         """
         WITH
@@ -323,7 +404,7 @@ def fail_zombie_jobs() -> list[JobID]:
         RETURNING job_id
         """,
         (),
-        JobID,
+        IntID,
     )
 
 
@@ -470,7 +551,8 @@ def execute_stmt(
                     return [model(*x) for x in rs]
                 else:
                     rs = cur.fetchone()
-                    return model(*rs)
+
+                    return model(*rs) if rs else None
 
             except Exception as e:
                 # TODO correctly handle error such as PK violations

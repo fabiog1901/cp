@@ -6,7 +6,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job
+from ..models import TS_FORMAT, Cluster, Job, WebUser
 from ..state.base import BaseState
 from ..template import template
 
@@ -22,14 +22,14 @@ class State(rx.State):
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
 
-    bg_task: bool = False
+    is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_cluster(self):
-        if self.bg_task:
+    async def fetch_cluster(self, webuser: WebUser):
+        if self.is_running:
             return
         async with self:
-            self.bg_task = True
+            self.is_running = True
 
         while True:
             if (
@@ -39,16 +39,22 @@ class State(rx.State):
             ):
                 print("cluster_overview.py: Stopping background task.")
                 async with self:
-                    self.bg_task = False
+                    self.is_running = False
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(self.cluster_id)
+                cluster: Cluster = db.get_cluster(webuser.groups, self.cluster_id)
+                if cluster is None:
+                    self.is_running = False
+                    # TODO redirect is buggy
+                    return rx.redirect("/404", replace=True)
+                    
+                
                 self.current_cluster_description = cluster.description
                 self.current_cluster_regions = cluster.description.get("cluster", [])
                 self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
-                self.jobs = db.get_all_jobs(self.cluster_id)
+                self.jobs = db.get_all_linked_jobs(self.cluster_id)
             await asyncio.sleep(5)
 
 
@@ -377,5 +383,9 @@ def cluster():
             class_name="flex-1 pt-8 overflow-hidden",
         ),
         class_name="flex-col flex-1 overflow-hidden",
-        on_mount=State.fetch_cluster,
+        on_mount=rx.cond(
+            BaseState.is_logged_in,
+            State.fetch_cluster(BaseState.webuser),
+            BaseState.just_return,
+        ),
     )

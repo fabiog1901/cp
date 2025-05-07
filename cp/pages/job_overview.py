@@ -6,7 +6,7 @@ import yaml
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, ClusterID, Job, MsgID, Task
+from ..models import TS_FORMAT, StrID, Job, Task, WebUser
 from ..state.base import BaseState
 from ..template import template
 
@@ -14,17 +14,17 @@ from ..template import template
 class State(rx.State):
     current_job: Job = None
     current_job_description: str = ""
-    linked_clusters: list[ClusterID] = []
+    linked_clusters: list[StrID] = []
     tasks: list[Task] = []
 
     @rx.var
     def job_id(self) -> str | None:
         return self.router.page.params.get("j_id") or None
 
-    bg_task: bool = False
+    is_running: bool = False
 
     @rx.event
-    def reschedule_job(self):
+    def reschedule_job(self, username: str):
         # TODO fix so we can use self.current_job.descripton
         j: Job = db.get_job(self.current_job.job_id)
 
@@ -34,21 +34,18 @@ class State(rx.State):
             else self.current_job.job_type
         )
 
-        msg_id: MsgID = db.insert_msg_and_get_jobid(
-            job_type, j.description, BaseState.user.username
-        )
-        db.insert_event_log(BaseState.user.username, job_type, j.description)
-        return rx.toast.info(f"Job {msg_id.msg_id} requested.")
+        msg_id: StrID = db.insert_msg_and_get_jobid(job_type, j.description, username)
+        db.insert_event_log(username, job_type, j.description | {"job_id": msg_id.id})
+        return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
-    async def fetch_tasks(self):
-        if self.bg_task:
+    async def fetch_tasks(self,  webuser: WebUser):
+        if self.is_running:
             return
         async with self:
-            self.bg_task = True
+            self.is_running = True
 
         while True:
-            # if self.router.session.client_token not in app.event_namespace.token_to_sid:
             if (
                 self.router.page.path != "/jobs/[j_id]"
                 or self.router.session.client_token
@@ -56,11 +53,15 @@ class State(rx.State):
             ):
                 print("job_overview.py: Stopping background task.")
                 async with self:
-                    self.bg_task = False
+                    self.is_running = False
                 break
 
             async with self:
-                job: Job = db.get_job(int(self.job_id))
+                job: Job = db.get_job(webuser.groups, int(self.job_id))
+                if job is None:
+                    self.is_running = False
+                    return rx.redirect("/404", replace=True)
+                                    
                 self.current_job_description = yaml.dump(job.description)
                 self.current_job = job
                 self.tasks = db.get_all_tasks(self.job_id)
@@ -122,10 +123,13 @@ def job():
                     align="center",
                 ),
                 rx.cond(
-                    (BaseState.user.role == "admin") | (BaseState.user.role == "rw"),
+                    (BaseState.webuser.role == "admin")
+                    | (BaseState.webuser.role == "rw"),
                     rx.button(
                         "Restart Job",
-                        on_click=State.reschedule_job,
+                        on_click=lambda: State.reschedule_job(
+                            BaseState.webuser.username
+                        ),
                         class_name="cursor-pointer text-lg font-semibold",
                     ),
                     rx.tooltip(
@@ -212,7 +216,7 @@ def job():
                     rx.foreach(
                         State.linked_clusters,
                         lambda lc: rx.hstack(
-                            rx.link(lc.cluster_id, href=f"/clusters/{lc.cluster_id}"),
+                            rx.link(lc.id, href=f"/clusters/{lc.id}"),
                             class_name="py-2",
                             align="center",
                         ),
@@ -228,5 +232,9 @@ def job():
             class_name="pt-8 overflow-y-scroll",
         ),
         class_name="flex-1 flex-col overflow-hidden p-2",
-        on_mount=State.fetch_tasks,
+        on_mount=rx.cond(
+            BaseState.is_logged_in,
+            State.fetch_tasks(BaseState.webuser),
+            BaseState.just_return,
+        ),
     )

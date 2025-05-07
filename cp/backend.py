@@ -394,7 +394,7 @@ class MyRunner:
         # fetch all plays for a playbook
         link = db.get_playbook_link(playbook_name)
 
-        r = requests.get(link.link)
+        r = requests.get(link.id)
 
         with open("/tmp/playbook.yaml", "wb") as f:
             f.write(r.content)

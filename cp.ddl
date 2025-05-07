@@ -63,6 +63,7 @@ CREATE TABLE clusters (
     created_by STRING NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     updated_by STRING NOT NULL,
+    grp STRING,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC)
 );
 
@@ -113,12 +114,13 @@ CREATE TABLE event_log (
 
 -- USERS
 CREATE TABLE users (
-  username STRING(50),
+  username STRING,
   password_hash BYTES, 
   salt BYTES,
-  hash_algo STRING(10),
+  hash_algo STRING,
   iterations INT,
+  attempts int2 not null default 0,
   role string,
-  locked int not null default 0, 
+  groups string[],
   CONSTRAINT pk primary key (username)
 );

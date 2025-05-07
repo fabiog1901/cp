@@ -10,7 +10,7 @@ from .state.base import BaseState
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:
     return rx.cond(
-        ~BaseState.logged_in,
+        ~BaseState.is_logged_in,
         rx.spinner(),
         rx.flex(
             navbar(),

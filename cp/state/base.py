@@ -2,15 +2,19 @@ from typing import Optional
 
 import reflex as rx
 
-from ..models import User
+from ..models import WebUser
 
 
 class BaseState(rx.State):
     """The base state for the app."""
 
-    user: Optional[User] = None
+    webuser: Optional[WebUser] = None
 
     original_url: str = "/"
+    
+    @rx.event()
+    async def just_return(self):
+        return
 
     def logout(self):
         """Log out a user."""
@@ -19,10 +23,10 @@ class BaseState(rx.State):
 
     def check_login(self):
         self.original_url = self.router.page.raw_path
-        if not self.logged_in:
+        if not self.is_logged_in:
             return rx.redirect("/login")
 
     @rx.var
-    def logged_in(self) -> bool:
+    def is_logged_in(self) -> bool:
         """Check if a user is logged in."""
-        return self.user is not None
+        return self.webuser is not None

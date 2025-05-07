@@ -3,13 +3,10 @@ import json
 
 import reflex as rx
 
-# MULTISELECT
-from reflex.components.radix.themes.base import LiteralAccentColor
-
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..cp import app
-from ..models import Cluster, ClusterOverview, MsgID
+from ..models import Cluster, ClusterOverview, StrID, WebUser
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_funny_name
@@ -254,14 +251,14 @@ class State(rx.State):
 
     sort_value = ""
     search_value = ""
-    is_already_running: bool = False
+    is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_clusters(self):
-        if self.is_already_running:
+    async def fetch_all_clusters(self, webuser: WebUser):
+        if self.is_running:
             return
         async with self:
-            self.is_already_running = True
+            self.is_running = True
 
         while True:
             if (
@@ -271,11 +268,12 @@ class State(rx.State):
             ):
                 print("clusters.py: Stopping background task.")
                 async with self:
-                    self.is_already_running = False
+                    self.is_running = False
                 break
 
             async with self:
-                self.clusters = db.get_all_clusters()
+                self.clusters = db.get_all_clusters(webuser.groups)
+
             await asyncio.sleep(5)
 
     @rx.var(cache=True)
@@ -310,7 +308,7 @@ class State(rx.State):
         self.node_count = int(item)
 
     @rx.event
-    def create_new_cluster(self, form_data: dict):
+    def create_new_cluster(self, form_data: dict, webuser: WebUser):
         form_data["node_cpus"] = self.selected_cpu
 
         form_data["disk_size"] = {
@@ -322,30 +320,30 @@ class State(rx.State):
         form_data["node_count"] = int(self.node_count)
         form_data["regions"] = self.selected_regions
 
-        msg_id: MsgID = db.insert_msg_and_get_jobid(
-            "CREATE_CLUSTER", form_data, BaseState.user.username
+        msg_id: StrID = db.insert_msg_and_get_jobid(
+            "CREATE_CLUSTER", form_data, webuser.username
         )
         db.insert_event_log(
-            BaseState.user.username, "CREATE_CLUSTER", json.dumps(form_data)
+            webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
         )
 
         self.selected_cpu = cpu_sizes[0]
         self.selected_disk = disk_sizes[0]
         self.selected_regions = []
-        return rx.toast.info(f"Job {msg_id.msg_id} requested.")
+        return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event
-    def delete_cluster(self, cluster_id: str):
-        msg_id: MsgID = db.insert_msg_and_get_jobid(
-            "DELETE_CLUSTER", {"cluster_id": cluster_id}, BaseState.user.username
+    def delete_cluster(self, cluster_id: str, webuser: WebUser):
+        msg_id: StrID = db.insert_msg_and_get_jobid(
+            "DELETE_CLUSTER", {"cluster_id": cluster_id}, webuser.username
         )
-        db.insert_event_log(BaseState.user.username, "DELETE_CLUSTER", cluster_id)
-        return rx.toast.info(f"Job {msg_id.msg_id} requested.")
+        db.insert_event_log(webuser.username, "DELETE_CLUSTER", cluster_id)
+        return rx.toast.info(f"Job {msg_id.id} requested.")
 
 
 def new_cluster_dialog():
     return rx.cond(
-        (BaseState.user.role == "admin") | (BaseState.user.role == "rw"),
+        (BaseState.webuser.role == "admin") | (BaseState.webuser.role == "rw"),
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -410,7 +408,9 @@ def new_cluster_dialog():
                         direction="column",
                         spacing="4",
                     ),
-                    on_submit=State.create_new_cluster,
+                    on_submit=lambda x: State.create_new_cluster(
+                        x, BaseState.webuser.username
+                    ),
                     reset_on_submit=False,
                 ),
                 max_width="450px",
@@ -438,6 +438,8 @@ def get_cluster_row(cluster: Cluster):
                 href=f"/clusters/{cluster.cluster_id}",
             )
         ),
+        # GROUP
+        rx.table.cell(cluster.grp),
         # CREATED BY
         rx.table.cell(cluster.created_by),
         # STATUS
@@ -450,8 +452,8 @@ def get_cluster_row(cluster: Cluster):
                 ("DELETING...", rx.box()),
                 rx.hstack(
                     rx.cond(
-                        (BaseState.user.role == "admin")
-                        | (BaseState.user.role == "rw"),
+                        (BaseState.webuser.role == "admin")
+                        | (BaseState.webuser.role == "rw"),
                         rx.alert_dialog.root(
                             rx.alert_dialog.trigger(
                                 rx.box(
@@ -485,7 +487,8 @@ def get_cluster_row(cluster: Cluster):
                                             color_scheme="red",
                                             variant="solid",
                                             on_click=lambda: State.delete_cluster(
-                                                cluster.cluster_id
+                                                cluster.cluster_id,
+                                                BaseState.webuser,
                                             ),
                                         ),
                                     ),
@@ -506,8 +509,8 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        (BaseState.user.role == "admin")
-                        | (BaseState.user.role == "rw"),
+                        (BaseState.webuser.role == "admin")
+                        | (BaseState.webuser.role == "rw"),
                         rx.tooltip(
                             rx.icon(
                                 "circle-fading-arrow-up",
@@ -527,8 +530,8 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        (BaseState.user.role == "admin")
-                        | (BaseState.user.role == "rw"),
+                        (BaseState.webuser.role == "admin")
+                        | (BaseState.webuser.role == "rw"),
                         rx.tooltip(
                             rx.icon(
                                 "bug-play",
@@ -560,6 +563,7 @@ def clusters_table():
             rx.table.header(
                 rx.table.row(
                     rx.table.column_header_cell("Name"),
+                    rx.table.column_header_cell("Group"),
                     rx.table.column_header_cell("Created By"),
                     rx.table.column_header_cell("Status"),
                     rx.table.column_header_cell("Actions"),
@@ -594,5 +598,9 @@ def clusters():
         rx.hstack(new_cluster_dialog(), direction="row-reverse", class_name="p-4"),
         rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
         class_name="flex-1 flex-col overflow-hidden",
-        on_mount=State.fetch_all_clusters,
+        on_mount=rx.cond(
+            BaseState.is_logged_in,
+            State.fetch_all_clusters(BaseState.webuser),
+            BaseState.just_return,
+        ),
     )

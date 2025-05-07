@@ -3,6 +3,16 @@ import reflex as rx
 from ..state.auth import AuthState
 
 
+class State(rx.State):
+    query: str = ""
+
+    def on_enter(self, event):
+        # event.key is the name of the key pressed
+        if event == "Enter":
+            # return is important so Reflex knows to dispatch the inner event
+            return AuthState.login
+
+
 @rx.page(route="/login", title="Login")
 def login():
     return rx.flex(
@@ -36,7 +46,7 @@ def login():
                     rx.input(
                         placeholder="",
                         type="username",
-                        on_blur=AuthState.set_username,
+                        on_change=AuthState.set_username,
                         size="3",
                         width="100%",
                     ),
@@ -62,14 +72,21 @@ def login():
                     rx.input(
                         placeholder="Enter your password",
                         type="password",
-                        on_blur=AuthState.set_password,
+                        on_change=AuthState.set_password,
+                        on_key_down=State.on_enter,
                         size="3",
                         width="100%",
                     ),
                     spacing="2",
                     width="100%",
                 ),
-                rx.button("Log in", on_click=AuthState.login, size="3", width="100%"),
+                rx.button(
+                    "Log in",
+                    on_click=AuthState.login,
+                    size="3",
+                    width="100%",
+                    
+                ),
                 spacing="6",
                 width="100%",
             ),

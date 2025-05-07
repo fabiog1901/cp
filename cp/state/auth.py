@@ -8,7 +8,8 @@ import time
 import reflex as rx
 
 from .. import db
-from .base import BaseState, User
+from .base import BaseState
+from ..models import WebUser, User
 
 PEPPER = os.getenv("PEPPER")
 
@@ -20,7 +21,7 @@ class AuthState(BaseState):
     password: str
 
     def login(self):
-        user = db.get_user(self.username)
+        user: User = db.get_user(self.username)
 
         if not user:
             # mask how long it takes to come to this code path
@@ -29,6 +30,8 @@ class AuthState(BaseState):
 
         # lock the user after 3 failed login attempts
         if user.attempts >= 3:
+            # mask how long it takes to come to this code path
+            time.sleep(random.random() + 1)
             return rx.window_alert("User is locked. Contact your administrator.")
 
         # Recompute hash from user entered password
@@ -40,7 +43,9 @@ class AuthState(BaseState):
         )
 
         if password_hash == user.password_hash:
-            self.user = user
+            # create a WebUser out of the User
+            self.webuser = WebUser(user.username, user.role, user.groups)
+
             # reset the attempts if there were any previous unsuccessful attempts to login
             if user.attempts > 0:
                 db.reset_attempts(self.username)
