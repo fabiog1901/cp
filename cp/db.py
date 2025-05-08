@@ -8,6 +8,7 @@ from psycopg_pool import ConnectionPool
 
 from .models import (
     Cluster,
+    DiskSize,
     StrID,
     ClusterOverview,
     EventLog,
@@ -489,6 +490,8 @@ def insert_event_log(
             event_details,
         ),
     )
+
+
 ##############
 #  SETTINGS  #
 ##############
@@ -505,6 +508,7 @@ def get_versions() -> list[StrID]:
         StrID,
     )
 
+
 def get_regions() -> list[StrID]:
     return execute_stmt(
         """
@@ -516,7 +520,8 @@ def get_regions() -> list[StrID]:
         StrID,
     )
 
-def get_nodes_per_region() -> list[StrID]:
+
+def get_node_counts() -> list[StrID]:
     return execute_stmt(
         """
         SELECT nodes
@@ -527,6 +532,7 @@ def get_nodes_per_region() -> list[StrID]:
         StrID,
     )
 
+
 def get_cpus_per_node() -> list[IntID]:
     return execute_stmt(
         """
@@ -536,6 +542,17 @@ def get_cpus_per_node() -> list[IntID]:
         """,
         (),
         IntID,
+    )
+
+def get_disk_sizes() -> list[DiskSize]:
+    return execute_stmt(
+        """
+        SELECT size_name, size_gb
+        FROM disk_sizes
+        ORDER BY size_name ASC
+        """,
+        (),
+        DiskSize,
     )
 
 

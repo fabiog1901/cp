@@ -123,6 +123,12 @@ create table nodes_per_region (
     constraint pk primary key (nodes)
 );
 
+create table disk_sizes (
+    size_name string not null,
+    size_gb INT2,
+    constraint pk primary key (size_name)
+);
+
 CREATE TABLE event_log (
   created_at TIMESTAMPTZ NOT NULL default now(),
   created_by STRING NOT NULL,

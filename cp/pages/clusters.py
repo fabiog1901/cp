@@ -95,7 +95,7 @@ def region_selector() -> rx.Component:
         rx.divider(),
         # Unselected Items
         rx.flex(
-            rx.foreach(State.regions, multi_unselected_item_chip),
+            rx.foreach(State.available_regions, multi_unselected_item_chip),
             wrap="wrap",
             spacing="2",
             justify_content="start",
@@ -146,7 +146,7 @@ def cpu_item_selector() -> rx.Component:
             width="100%",
         ),
         rx.hstack(
-            rx.foreach(State.cpus_per_node, item_chip),
+            rx.foreach(State.available_cpus_per_node, item_chip),
             wrap="wrap",
             spacing="2",
         ),
@@ -187,7 +187,7 @@ def disk_selected_item(item: str) -> rx.Component:
 
 def disk_item_chip(item: str) -> rx.Component:
     return rx.cond(
-        State.selected_disk == item,
+        State.selected_disk_size == item,
         disk_selected_item(item),
         disk_unselected_item(item),
     )
@@ -217,9 +217,6 @@ class State(BaseState):
     current_cluster: Cluster = None
     clusters: list[ClusterOverview] = []
 
-    # dialog box vars
-    selected_regions: list[str] = []
-
     @rx.event
     def multi_add_selected(self, item: str):
         self.selected_regions.append(item)
@@ -228,16 +225,22 @@ class State(BaseState):
     def multi_remove_selected(self, item: str):
         self.selected_regions.remove(item)
 
-    # CREATE NEW CLUSTER DIALOG PARAMETERS
-    selected_cpu: int = None
-    selected_disk: str = disk_sizes[0]
+    # CREATE NEW CLUSTER DIALOG
+    # AVAILABLE PARAMETERS
+    available_cpus_per_node: list[int] = []
+    available_node_counts: list[str] = []
+    available_disk_sizes: dict[str: int]
+    available_regions: list[StrID] = []
+    available_versions: list[str] = []
+
+    # SELECTED FROM THE DIALOG
     selected_name: str = get_funny_name()
-    versions: list[str] = []
-    regions: list[StrID] = []
-    version: str = ""
-    cluster_group: str = ""
-    nodes_per_region: list[str] = []
-    cpus_per_node: list[int] = []
+    selected_cpu: int = None
+    selected_node_count: int = None
+    selected_disk_size: str = ""
+    selected_regions: list[str] = []
+    selected_version: str = ""
+    selected_group: str = ""
 
     @rx.event
     def load_funny_name(self):
@@ -253,18 +256,21 @@ class State(BaseState):
             return
         async with self:
             # fetch this data only once
-            self.versions = [x.id for x in db.get_versions()]
-            self.version = self.versions[0]
+            self.available_versions = [x.id for x in db.get_versions()]
+            self.selected_version = self.available_versions[0]
 
-            self.nodes_per_region = [x.id for x in db.get_nodes_per_region()]
-            self.node_count = int(self.nodes_per_region[0])
+            self.available_node_counts = [x.id for x in db.get_node_counts()]
+            self.selected_node_count = int(self.available_node_counts[0])
 
-            self.cpus_per_node = [x.id for x in db.get_cpus_per_node()]
-            self.selected_cpu = self.cpus_per_node[0]
+            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+            self.selected_cpu = self.available_cpus_per_node[0]
+            
+            # self.available_disk_sizes = dict(db.get_disk_sizes())
+            # self.selected_disk_size = next(iter(self.available_disk_sizes))
 
-            self.regions = db.get_regions()
+            self.available_regions = db.get_regions()
 
-            self.cluster_group = self.webuser.groups[0]
+            self.selected_group = self.webuser.groups[0]
             self.is_running = True
 
         while True:
@@ -310,11 +316,9 @@ class State(BaseState):
             ]
         return clusters
 
-    node_count: int = 3
-
     @rx.event
     def set_node_count(self, item: str):
-        self.node_count = int(item)
+        self.selected_node_count = int(item)
 
     @rx.event
     def create_new_cluster(self, form_data: dict):
@@ -325,12 +329,12 @@ class State(BaseState):
             "500 GB": 500,
             "1 TB": 1000,
             "2 TB": 2000,
-        }.get(self.selected_disk, "500")
+        }.get(self.selected_disk_size, "500")
 
-        form_data["node_count"] = int(self.node_count)
+        form_data["node_count"] = int(self.selected_node_count)
         form_data["regions"] = list(self.selected_regions)
-        form_data["version"] = self.version
-        form_data["group"] = self.cluster_group
+        form_data["version"] = self.selected_version
+        form_data["group"] = self.selected_group
 
         print(form_data)
         msg_id: StrID = db.insert_into_mq(
@@ -340,8 +344,8 @@ class State(BaseState):
             self.webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
         )
 
-        self.selected_cpu = self.cpus_per_node[0]
-        self.selected_disk = disk_sizes[0]
+        self.selected_cpu = self.available_cpus_per_node[0]
+        self.selected_disk_size = disk_sizes[0]
         self.selected_regions = []
         self.selected_name = get_funny_name()
         return rx.toast.info(f"Job {msg_id.id} requested.")
@@ -395,7 +399,7 @@ def new_cluster_dialog():
                                     width="100%",
                                 ),
                                 rx.radio(
-                                    State.nodes_per_region,
+                                    State.available_node_counts,
                                     on_change=State.set_node_count,
                                     default_value="3",
                                     direction="row",
@@ -412,12 +416,12 @@ def new_cluster_dialog():
                             rx.vstack(
                                 rx.heading("CockroachDB version", size="4"),
                                 rx.select(
-                                    State.versions,
-                                    value=State.version,
+                                    State.available_versions,
+                                    value=State.selected_version,
                                     on_change=State.set_version,
                                     color_scheme="mint",
                                     required=True,
-                                    class_name="min-w-64"
+                                    class_name="min-w-64",
                                 ),
                                 class_name="min-w-64",
                             ),
@@ -426,11 +430,11 @@ def new_cluster_dialog():
                                 rx.heading("Cluster group", size="4"),
                                 rx.select(
                                     State.webuser.groups,
-                                    value=State.cluster_group,
+                                    value=State.selected_group,
                                     on_change=State.set_cluster_group,
                                     color_scheme="mint",
                                     required=True,
-                                    class_name="min-w-64"
+                                    class_name="min-w-64",
                                 ),
                                 class_name="min-w-64",
                             ),
