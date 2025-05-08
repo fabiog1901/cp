@@ -6,12 +6,12 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job, WebUser
+from ..models import TS_FORMAT, Cluster, Job
 from ..state.base import BaseState
 from ..template import template
 
 
-class State(rx.State):
+class State(BaseState):
     current_cluster: Cluster = None
     current_cluster_description: dict = {}
     current_cluster_regions: list[dict[str, str | list[str]]] = []
@@ -25,7 +25,7 @@ class State(rx.State):
     is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_cluster(self, webuser: WebUser):
+    async def fetch_cluster(self):
         if self.is_running:
             return
         async with self:
@@ -43,7 +43,7 @@ class State(rx.State):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(webuser.groups, self.cluster_id)
+                cluster: Cluster = db.get_cluster(list(self.webuser.groups), self.cluster_id)
                 if cluster is None:
                     self.is_running = False
                     # TODO redirect is buggy
@@ -153,7 +153,7 @@ def cluster():
             align="center",
         ),
         rx.flex(
-            cluster_sidebar(),
+            # cluster_sidebar(),
             rx.flex(
                 rx.hstack(
                     rx.card(
@@ -385,7 +385,7 @@ def cluster():
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=rx.cond(
             BaseState.is_logged_in,
-            State.fetch_cluster(BaseState.webuser),
+            State.fetch_cluster,
             BaseState.just_return,
         ),
     )

@@ -115,6 +115,7 @@ class ClusterRequest:
     disk_size: int
     regions: list[str]
     version: str
+    group: str
 
 
 @dataclass

@@ -6,12 +6,12 @@ import yaml
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, StrID, Job, Task, WebUser
+from ..models import TS_FORMAT, StrID, Job, Task
 from ..state.base import BaseState
 from ..template import template
 
 
-class State(rx.State):
+class State(BaseState):
     current_job: Job = None
     current_job_description: str = ""
     linked_clusters: list[StrID] = []
@@ -24,9 +24,9 @@ class State(rx.State):
     is_running: bool = False
 
     @rx.event
-    def reschedule_job(self, webuser: WebUser):
+    def reschedule_job(self):
         # TODO fix so we can use self.current_job.descripton
-        j: Job = db.get_job(webuser.groups, self.current_job.job_id)
+        j: Job = db.get_job(list(self.webuser.groups), self.current_job.job_id)
 
         job_type = (
             "RECREATE_CLUSTER"
@@ -34,14 +34,16 @@ class State(rx.State):
             else self.current_job.job_type
         )
 
-        msg_id: StrID = db.insert_into_mq(job_type, j.description, webuser.username)
+        msg_id: StrID = db.insert_into_mq(job_type, j.description, self.webuser.username)
+        
         db.insert_event_log(
-            webuser.username, job_type, j.description | {"job_id": msg_id.id}
+            self.webuser.username, job_type, j.description | {"job_id": msg_id.id}
         )
+        
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
-    async def fetch_tasks(self, webuser: WebUser):
+    async def fetch_tasks(self):
         if self.is_running:
             return
         async with self:
@@ -59,7 +61,7 @@ class State(rx.State):
                 break
 
             async with self:
-                job: Job = db.get_job(webuser.groups, int(self.job_id))
+                job: Job = db.get_job(list(self.webuser.groups), int(self.job_id))
                 if job is None:
                     self.is_running = False
                     return rx.redirect("/404", replace=True)
@@ -113,7 +115,8 @@ def job():
                     f"Job {State.current_job.job_id}",
                     class_name="p-2 text-8xl font-semibold",
                 ),
-                rx.divider(orientation="vertical", size="4", class_name="mx-8"),
+                rx.divider(orientation="vertical", size="4", 
+                           class_name="mx-8"),
                 get_job_status_badge(State.current_job.status),
                 rx.spacer(),
                 rx.vstack(
@@ -129,9 +132,7 @@ def job():
                     | (BaseState.webuser.role == "rw"),
                     rx.button(
                         "Restart Job",
-                        on_click=lambda: State.reschedule_job(
-                            BaseState.webuser
-                        ),
+                        on_click=lambda: State.reschedule_job,
                         class_name="cursor-pointer text-lg font-semibold",
                     ),
                     rx.tooltip(
@@ -236,7 +237,7 @@ def job():
         class_name="flex-1 flex-col overflow-hidden p-2",
         on_mount=rx.cond(
             BaseState.is_logged_in,
-            State.fetch_tasks(BaseState.webuser),
+            State.fetch_tasks,
             BaseState.just_return,
         ),
     )

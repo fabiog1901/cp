@@ -5,18 +5,18 @@ import reflex as rx
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import Job, WebUser
+from ..models import Job
 from ..state.base import BaseState
 from ..template import template
 
 
-class State(rx.State):
+class State(BaseState):
     jobs: list[Job] = []
 
     is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_jobs(self, webuser: WebUser):
+    async def fetch_all_jobs(self):
         if self.is_running:
             return
         async with self:
@@ -34,7 +34,7 @@ class State(rx.State):
                 break
 
             async with self:
-                self.jobs = db.get_all_jobs(webuser.groups)
+                self.jobs = db.get_all_jobs(list(self.webuser.groups))
             await asyncio.sleep(5)
 
 
@@ -93,7 +93,7 @@ def jobs():
         class_name="flex-1 flex-col overflow-hidden",
         on_mount=rx.cond(
             BaseState.is_logged_in,
-            State.fetch_all_jobs(BaseState.webuser),
+            State.fetch_all_jobs,
             BaseState.just_return,
         ),
     )

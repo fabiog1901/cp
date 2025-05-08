@@ -19,6 +19,8 @@ GRANT USAGE ON schema cp.public TO cp;
 ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON TABLES TO cp WITH GRANT OPTION;
 ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON SEQUENCES TO cp WITH GRANT OPTION;
 
+
+-- MQ
 CREATE SEQUENCE mq_seq PER NODE CACHE 100;
 
 CREATE TABLE mq (
@@ -37,23 +39,7 @@ INSERT INTO mq (msg_type) VALUES ('FAIL_ZOMBIE_JOBS');
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;
 
-CREATE TABLE playbooks (
-   name STRING NOT NULL,
-   link STRING NOT NULL,
-   CONSTRAINT pk PRIMARY KEY (name ASC)
-);
-
-CREATE TABLE regions (
-    cloud STRING NOT NULL,
-    region STRING NOT NULL,
-    zone STRING NOT NULL,
-    vpc_id STRING,
-    security_groups STRING[],
-    subnet STRING,
-    image STRING,
-    extras JSONB NULL,
-    CONSTRAINT pk PRIMARY KEY (cloud ASC, region ASC, zone ASC)
-);
+-- OBJECTS
 
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
@@ -99,10 +85,44 @@ CREATE TABLE tasks (
 );
 
 
+/* 
+    SETTINGS
+*/
 
 
+CREATE TABLE playbooks (
+   name STRING NOT NULL,
+   link STRING NOT NULL,
+   CONSTRAINT pk PRIMARY KEY (name ASC)
+);
 
--- TODO
+CREATE TABLE regions (
+    cloud STRING NOT NULL,
+    region STRING NOT NULL,
+    zone STRING NOT NULL,
+    vpc_id STRING,
+    security_groups STRING[],
+    subnet STRING,
+    image STRING,
+    extras JSONB NULL,
+    CONSTRAINT pk PRIMARY KEY (cloud ASC, region ASC, zone ASC)
+);
+
+create table versions (
+    version STRING not null,
+    constraint pk primary key (version)
+);
+
+create table cpus_per_node (
+    cpus int2 not null,
+    constraint pk primary key (cpus)
+);
+
+create table nodes_per_region (
+    nodes string not null,
+    constraint pk primary key (nodes)
+);
+
 CREATE TABLE event_log (
   created_at TIMESTAMPTZ NOT NULL default now(),
   created_by STRING NOT NULL,

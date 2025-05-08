@@ -108,7 +108,6 @@ def get_region_details(cloud: str, region: str) -> list[Region]:
 def get_all_clusters(
     groups: list[str] = None,
 ) -> list[ClusterOverview]:
-
     if "admin" in groups:
         return execute_stmt(
             """
@@ -488,6 +487,54 @@ def insert_event_log(
             event_type,
             event_details,
         ),
+    )
+##############
+#  SETTINGS  #
+##############
+
+
+def get_versions() -> list[StrID]:
+    return execute_stmt(
+        """
+        SELECT version
+        FROM versions 
+        ORDER BY version DESC
+        """,
+        (),
+        StrID,
+    )
+
+def get_regions() -> list[StrID]:
+    return execute_stmt(
+        """
+        SELECT cloud || ':' || region AS cr
+        FROM regions
+        ORDER BY cr ASC
+        """,
+        (),
+        StrID,
+    )
+
+def get_nodes_per_region() -> list[StrID]:
+    return execute_stmt(
+        """
+        SELECT nodes
+        FROM nodes_per_region
+        ORDER BY nodes ASC
+        """,
+        (),
+        StrID,
+    )
+
+def get_cpus_per_node() -> list[IntID]:
+    return execute_stmt(
+        """
+        SELECT cpus
+        FROM cpus_per_node
+        ORDER BY cpus ASC
+        """,
+        (),
+        IntID,
     )
 
 

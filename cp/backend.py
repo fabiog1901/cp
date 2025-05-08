@@ -29,7 +29,10 @@ def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
 
 
 def create_cluster(
-    job_id: int, cluster: dict, created_by: str, recreate: bool = False
+    job_id: int,
+    cluster: dict,
+    created_by: str,
+    recreate: bool = False,
 ) -> None:
     cluster_request = ClusterRequest(**cluster)
 
@@ -51,6 +54,7 @@ def create_cluster(
         {"cluster": [], "lbs": [], "disk_size": 0, "node_cpus": 0, "version": ""},
         created_by,
         created_by,
+        cluster['group'],
     )
 
     db.insert_mapped_job(
@@ -455,6 +459,9 @@ async def pull_from_mq():
                         if rs is None:
                             continue
 
+                        print("==================")
+                        print(rs)
+                        print("==============================")
                         msg = Msg(*rs)
 
                         match msg.msg_type:

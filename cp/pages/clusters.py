@@ -19,17 +19,6 @@ chip_props = {
     "style": {"_hover": {"opacity": 0.75}},
 }
 
-regions = [
-    "aws:us-east-1",
-    "aws:us-east-2",
-    "aws:ca-central-1",
-    "gcp:us-east4",
-    "azr:eastus",
-    "vmw:TX",
-    "vmw:VA",
-    "vmw:PA",
-    "vmw:NY",
-]
 
 disk_sizes = ["500 GB", "1 TB", "2 TB"]
 
@@ -51,28 +40,28 @@ def multi_selected_item_chip(item: str) -> rx.Component:
     )
 
 
-def multi_unselected_item_chip(item: str) -> rx.Component:
+def multi_unselected_item_chip(item: StrID) -> rx.Component:
     return rx.cond(
-        State.selected_regions.contains(item),
+        State.selected_regions.contains(item.id),
         rx.fragment(),
         rx.badge(
             rx.match(
-                item[:3],
+                item.id[:3],
                 ("aws", rx.image("/aws.png", width="30px", height="auto")),
                 ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
                 ("azr", rx.image("/azr.png", width="35px", height="auto")),
                 ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
             ),
-            item[4:],
+            item.id[4:],
             rx.icon("circle-plus", size=18),
             color_scheme="gray",
             **chip_props,
-            on_click=State.multi_add_selected(item),
+            on_click=State.multi_add_selected(item.id),
         ),
     )
 
 
-def multi_items_selector() -> rx.Component:
+def region_selector() -> rx.Component:
     return rx.vstack(
         rx.flex(
             rx.hstack(
@@ -106,7 +95,7 @@ def multi_items_selector() -> rx.Component:
         rx.divider(),
         # Unselected Items
         rx.flex(
-            rx.foreach(regions, multi_unselected_item_chip),
+            rx.foreach(State.regions, multi_unselected_item_chip),
             wrap="wrap",
             spacing="2",
             justify_content="start",
@@ -118,8 +107,6 @@ def multi_items_selector() -> rx.Component:
 
 
 # SINGLE SELECT CPU
-
-cpu_sizes = [4, 8, 16, 32]
 
 
 def unselected_item(item: str) -> rx.Component:
@@ -159,7 +146,7 @@ def cpu_item_selector() -> rx.Component:
             width="100%",
         ),
         rx.hstack(
-            rx.foreach(cpu_sizes, item_chip),
+            rx.foreach(State.cpus_per_node, item_chip),
             wrap="wrap",
             spacing="2",
         ),
@@ -226,7 +213,7 @@ def disk_item_selector() -> rx.Component:
     )
 
 
-class State(rx.State):
+class State(BaseState):
     current_cluster: Cluster = None
     clusters: list[ClusterOverview] = []
 
@@ -241,9 +228,16 @@ class State(rx.State):
     def multi_remove_selected(self, item: str):
         self.selected_regions.remove(item)
 
-    selected_cpu: int = cpu_sizes[0]
+    # CREATE NEW CLUSTER DIALOG PARAMETERS
+    selected_cpu: int = None
     selected_disk: str = disk_sizes[0]
     selected_name: str = get_funny_name()
+    versions: list[str] = []
+    regions: list[StrID] = []
+    version: str = ""
+    cluster_group: str = ""
+    nodes_per_region: list[str] = []
+    cpus_per_node: list[int] = []
 
     @rx.event
     def load_funny_name(self):
@@ -254,10 +248,23 @@ class State(rx.State):
     is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_clusters(self, webuser: WebUser):
+    async def fetch_all_clusters(self):
         if self.is_running:
             return
         async with self:
+            # fetch this data only once
+            self.versions = [x.id for x in db.get_versions()]
+            self.version = self.versions[0]
+
+            self.nodes_per_region = [x.id for x in db.get_nodes_per_region()]
+            self.node_count = int(self.nodes_per_region[0])
+
+            self.cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+            self.selected_cpu = self.cpus_per_node[0]
+
+            self.regions = db.get_regions()
+
+            self.cluster_group = self.webuser.groups[0]
             self.is_running = True
 
         while True:
@@ -272,7 +279,9 @@ class State(rx.State):
                 break
 
             async with self:
-                self.clusters = db.get_all_clusters(webuser.groups)
+                # NOTE for some reason, `groups` has to be casted to a list
+                # even though it's already a list[str]
+                self.clusters = db.get_all_clusters(list(self.webuser.groups))
 
             await asyncio.sleep(5)
 
@@ -308,7 +317,8 @@ class State(rx.State):
         self.node_count = int(item)
 
     @rx.event
-    def create_new_cluster(self, form_data: dict, webuser: WebUser):
+    def create_new_cluster(self, form_data: dict):
+
         form_data["node_cpus"] = self.selected_cpu
 
         form_data["disk_size"] = {
@@ -318,27 +328,33 @@ class State(rx.State):
         }.get(self.selected_disk, "500")
 
         form_data["node_count"] = int(self.node_count)
-        form_data["regions"] = self.selected_regions
+        form_data["regions"] = list(self.selected_regions)
+        form_data["version"] = self.version
+        form_data["group"] = self.cluster_group
 
-        msg_id: StrID = db.insert_into_mq("CREATE_CLUSTER", form_data, webuser.username)
+        print(form_data)
+        msg_id: StrID = db.insert_into_mq(
+            "CREATE_CLUSTER", form_data, self.webuser.username
+        )
         db.insert_event_log(
-            webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
+            self.webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
         )
 
-        self.selected_cpu = cpu_sizes[0]
+        self.selected_cpu = self.cpus_per_node[0]
         self.selected_disk = disk_sizes[0]
         self.selected_regions = []
+        self.selected_name = get_funny_name()
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event
-    def delete_cluster(self, cluster_id: str, webuser: WebUser):
+    def delete_cluster(self, cluster_id: str):
         msg_id: StrID = db.insert_into_mq(
             "DELETE_CLUSTER",
             {"cluster_id": cluster_id},
-            webuser.username,
+            self.webuser.username,
         )
         db.insert_event_log(
-            webuser.username,
+            self.webuser.username,
             "DELETE_CLUSTER",
             {"cluster_id": cluster_id, "job_id": msg_id.id},
         )
@@ -368,33 +384,58 @@ def new_cluster_dialog():
                             class_name="",
                         ),
                         rx.divider(),
-                        cpu_item_selector(),
-                        rx.divider(),
                         rx.hstack(
-                            rx.icon("database", size=20),
-                            rx.heading("Nodes per Region", size="4"),
-                            spacing="2",
-                            align="center",
-                            width="100%",
-                        ),
-                        rx.radio(
-                            ["1", "2", "3", "4", "5", "6", "7", "8"],
-                            on_change=State.set_node_count,
-                            default_value="3",
-                            direction="row",
-                            color_scheme="mint",
+                            cpu_item_selector(),
+                            rx.vstack(
+                                rx.hstack(
+                                    rx.icon("database", size=20),
+                                    rx.heading("Nodes per Region", size="4"),
+                                    spacing="2",
+                                    align="center",
+                                    width="100%",
+                                ),
+                                rx.radio(
+                                    State.nodes_per_region,
+                                    on_change=State.set_node_count,
+                                    default_value="3",
+                                    direction="row",
+                                    color_scheme="mint",
+                                ),
+                            ),
                         ),
                         rx.divider(),
                         disk_item_selector(),
                         rx.divider(),
-                        multi_items_selector(),
-                        rx.heading("CockroachDB version", size="4"),
-                        rx.input(
-                            name="version",
-                            placeholder="latest",
-                            default_value="latest",
-                            color_scheme="mint",
+                        region_selector(),
+                        rx.divider(),
+                        rx.hstack(
+                            rx.vstack(
+                                rx.heading("CockroachDB version", size="4"),
+                                rx.select(
+                                    State.versions,
+                                    value=State.version,
+                                    on_change=State.set_version,
+                                    color_scheme="mint",
+                                    required=True,
+                                    class_name="min-w-64"
+                                ),
+                                class_name="min-w-64",
+                            ),
+                            rx.spacer(),
+                            rx.vstack(
+                                rx.heading("Cluster group", size="4"),
+                                rx.select(
+                                    State.webuser.groups,
+                                    value=State.cluster_group,
+                                    on_change=State.set_cluster_group,
+                                    color_scheme="mint",
+                                    required=True,
+                                    class_name="min-w-64"
+                                ),
+                                class_name="min-w-64",
+                            ),
                         ),
+                        rx.divider(),
                         rx.flex(
                             rx.dialog.close(
                                 rx.button(
@@ -417,7 +458,7 @@ def new_cluster_dialog():
                     ),
                     reset_on_submit=False,
                 ),
-                max_width="750px",
+                max_width="850px",
             ),
         ),
         rx.tooltip(
@@ -492,7 +533,6 @@ def get_cluster_row(cluster: Cluster):
                                             variant="solid",
                                             on_click=lambda: State.delete_cluster(
                                                 cluster.cluster_id,
-                                                BaseState.webuser,
                                             ),
                                         ),
                                     ),
