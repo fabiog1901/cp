@@ -27,7 +27,7 @@ def multi_selected_item_chip(item: str) -> rx.Component:
     return rx.badge(
         rx.match(
             item[:3],
-            ("aws", rx.image("/aws.png", width="30px", height="auto")),
+            ("aws", rx.image("/aws.png", width="35px", height="auto")),
             ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
             ("azr", rx.image("/azr.png", width="35px", height="auto")),
             ("vmw", rx.image("/vmw.png", width="30px", height="auto")),

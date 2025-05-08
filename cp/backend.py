@@ -459,9 +459,6 @@ async def pull_from_mq():
                         if rs is None:
                             continue
 
-                        print("==================")
-                        print(rs)
-                        print("==============================")
                         msg = Msg(*rs)
 
                         match msg.msg_type:

@@ -8,6 +8,7 @@ from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
 from ..models import TS_FORMAT, Cluster, Job
 from ..state.base import BaseState
+from .clusters import State as ClusterState
 from ..template import template
 
 
@@ -43,13 +44,14 @@ class State(BaseState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(list(self.webuser.groups), self.cluster_id)
+                cluster: Cluster = db.get_cluster(
+                    list(self.webuser.groups), self.cluster_id
+                )
                 if cluster is None:
                     self.is_running = False
                     # TODO redirect is buggy
                     return rx.redirect("/404", replace=True)
-                    
-                
+
                 self.current_cluster_description = cluster.description
                 self.current_cluster_regions = cluster.description.get("cluster", [])
                 self.current_cluster_lbs = cluster.description.get("lbs", [])
@@ -210,7 +212,7 @@ def cluster():
                                 class_name="flex-col",
                             ),
                         ),
-                        class_name="min-w-96",
+                        class_name="min-w-80 min-h-96",
                     ),
                     rx.card(
                         rx.text("Load Balancers", class_name="text-2xl font-semibold"),
@@ -257,49 +259,65 @@ def cluster():
                                     rx.text(x.region),
                                     class_name="text-lg p-2",
                                 ),
-                                rx.button(
-                                    "DBConsole",
-                                    on_click=rx.redirect(
-                                        f"https://{x.dns_address}:8080",
-                                        is_external=True,
+                                rx.cond(
+                                    State.current_cluster.status == "DELETED",
+                                    rx.button(
+                                        "DBConsole",
+                                        disabled=True,
+                                        class_name="p-2 mt-2 mx-12 cursor-pointer font-semibold text-lg",
                                     ),
-                                    class_name="p-2 mt-2 mx-12 cursor-pointer font-semibold text-lg",
-                                ),
-                                rx.popover.root(
-                                    rx.popover.trigger(
-                                        rx.button(
-                                            "Connect",
-                                            color_scheme="mint",
-                                            class_name="p-2 mt-2 mb-8 mx-12 cursor-pointer font-semibold text-lg",
+                                    rx.button(
+                                        "DBConsole",
+                                        on_click=rx.redirect(
+                                            f"https://{x.dns_address}:8080",
+                                            is_external=True,
                                         ),
+                                        class_name="p-2 mt-2 mx-12 cursor-pointer font-semibold text-lg",
                                     ),
-                                    rx.popover.content(
-                                        rx.flex(
-                                            rx.tooltip(
-                                                rx.code(
-                                                    f"postgres://cockroach:cockroach@{x.dns_address}:26257/defaultdb?sslmode=require",
-                                                    on_click=rx.set_clipboard(
-                                                        f"postgres://cockroach:cockroach@{x.dns_address}:26257/defaultdb?sslmode=require"
+                                ),
+                                rx.cond(
+                                    State.current_cluster.status == "DELETED",
+                                    rx.button(
+                                        "Connect",
+                                        disabled=True,
+                                        class_name="p-2 mt-2 mb-8 mx-12 cursor-pointer font-semibold text-lg",
+                                    ),
+                                    rx.popover.root(
+                                        rx.popover.trigger(
+                                            rx.button(
+                                                "Connect",
+                                                color_scheme="mint",
+                                                class_name="p-2 mt-2 mb-8 mx-12 cursor-pointer font-semibold text-lg",
+                                            ),
+                                        ),
+                                        rx.popover.content(
+                                            rx.flex(
+                                                rx.tooltip(
+                                                    rx.code(
+                                                        f"postgres://cockroach:cockroach@{x.dns_address}:26257/defaultdb?sslmode=require",
+                                                        on_click=rx.set_clipboard(
+                                                            f"postgres://cockroach:cockroach@{x.dns_address}:26257/defaultdb?sslmode=require"
+                                                        ),
+                                                        class_name="cursor-pointer hover:underline",
                                                     ),
-                                                    class_name="cursor-pointer hover:underline",
+                                                    content="Copy to Clipboard",
                                                 ),
-                                                content="Copy to Clipboard",
-                                            ),
-                                            rx.popover.close(
-                                                rx.button(
-                                                    "Close",
-                                                    color_scheme="mint",
+                                                rx.popover.close(
+                                                    rx.button(
+                                                        "Close",
+                                                        color_scheme="mint",
+                                                    ),
                                                 ),
+                                                direction="column",
+                                                spacing="3",
                                             ),
-                                            direction="column",
-                                            spacing="3",
                                         ),
                                     ),
                                 ),
                                 class_name="flex-col",
                             ),
                         ),
-                        class_name="min-w-96 ml-8",
+                        class_name="min-w-80 min-h-96 ml-4",
                     ),
                     rx.card(
                         rx.text("Details", class_name="text-2xl font-semibold"),
@@ -371,7 +389,144 @@ def cluster():
                             ),
                             class_name="flex-col",
                         ),
-                        class_name="min-w-96 ml-8",
+                        class_name="min-w-80 min-h-96 ml-4",
+                    ),
+                    rx.card(
+                        rx.text("Actions", class_name="text-2xl font-semibold"),
+                        rx.divider(class_name="my-2"),
+                        rx.hstack(
+                            # DELETE CLUSTER
+                            rx.cond(
+                                State.current_cluster.status == "DELETED",
+                                rx.box(),
+                                rx.cond(
+                                    (BaseState.webuser.role == "admin")
+                                    | (BaseState.webuser.role == "rw"),
+                                    rx.alert_dialog.root(
+                                        rx.alert_dialog.trigger(
+                                            rx.box(
+                                                rx.tooltip(
+                                                    rx.icon(
+                                                        "trash-2",
+                                                        color=None,
+                                                        size=30,
+                                                        class_name="cursor-pointer text-red-500 hover:text-red-300 mr-4",
+                                                    ),
+                                                    content="Delete the cluster",
+                                                ),
+                                            ),
+                                        ),
+                                        rx.alert_dialog.content(
+                                            rx.alert_dialog.title(
+                                                State.current_cluster.cluster_id
+                                            ),
+                                            rx.alert_dialog.description(
+                                                size="2",
+                                            ),
+                                            rx.flex(
+                                                rx.alert_dialog.cancel(
+                                                    rx.button(
+                                                        "Cancel",
+                                                        variant="soft",
+                                                        color_scheme="gray",
+                                                    ),
+                                                ),
+                                                rx.alert_dialog.action(
+                                                    rx.button(
+                                                        "Delete Cluster",
+                                                        color_scheme="red",
+                                                        variant="solid",
+                                                        on_click=lambda: ClusterState.delete_cluster(
+                                                            State.current_cluster.cluster_id,
+                                                        ),
+                                                    ),
+                                                ),
+                                                spacing="3",
+                                                margin_top="16px",
+                                                justify="end",
+                                            ),
+                                            style={"max_width": 450},
+                                        ),
+                                    ),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "trash-2",
+                                            size=30,
+                                            color="gray",
+                                            class_name="mr-4"
+                                        ),
+                                        content="You need to have admin or rw role to delete a cluster",
+                                    ),
+                                ),
+                            ),
+                            # UPGRADE CLUSTER
+                            rx.cond(
+                                State.current_cluster.status == "DELETED",
+                                rx.box(),
+                                rx.cond(
+                                    (BaseState.webuser.role == "admin")
+                                    | (BaseState.webuser.role == "rw"),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "circle-fading-arrow-up",
+                                            color=None,
+                                            size=30,
+                                            class_name="cursor-pointer text-green-500 hover:text-green-300 mr-4",
+                                        ),
+                                        content="Upgrade the cluster",
+                                    ),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "circle-fading-arrow-up",
+                                            color="gray",
+                                            size=30,
+                                            class_name="mr-4"
+                                        ),
+                                        content="You need to have admin or rw role to upgrade a cluster",
+                                    ),
+                                ),
+                            ),
+                            # DEBUG CLUSTER
+                            rx.cond(
+                                State.current_cluster.status == "DELETED",
+                                rx.box(),
+                                rx.cond(
+                                    (BaseState.webuser.role == "admin")
+                                    | (BaseState.webuser.role == "rw"),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "bug-play",
+                                            size=30,
+                                            color=None,
+                                            class_name="cursor-pointer text-blue-500 hover:text-blue-300 mr-4",
+                                        ),
+                                        content="Debug the cluster",
+                                    ),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "bug-play",
+                                            color="gray",
+                                            size=30,
+                                            class_name="mr-4",
+                                        ),
+                                        content="You need to have admin or rw role to debug a cluster",
+                                    ),
+                                ),
+                            ),
+                            rx.tooltip(
+                                rx.icon(
+                                    "clipboard-list",
+                                    size=30,
+                                    color=None,
+                                    class_name="cursor-pointer text-fuchsia-500 hover:text-fuchsia-300 mr-4",
+                                ),
+                                content="List Jobs",
+                            ),
+                            spacing="0",
+                            class_name="",
+                        ),
+
+                        class_name="min-w-80 min-h-96 ml-4",
                     ),
                 ),
                 rx.flex(

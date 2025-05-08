@@ -7,6 +7,5 @@ from ..template import template
 @template
 def index():
     return rx.flex(
-        rx.heading("HOME SWEET HOME!"),
         class_name="flex-1 flex-col overflow-y-scroll p-2",
     )

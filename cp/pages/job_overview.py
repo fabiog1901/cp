@@ -186,15 +186,15 @@ def job():
                         align="center",
                     ),
                     rx.box(class_name="py-2"),
-                    rx.hstack(
-                        rx.text("Last Updated By"),
-                        rx.text(
-                            State.current_job.updated_by,
-                            class_name="text-lg font-semibold",
-                        ),
-                        class_name="py-2",
-                        align="center",
-                    ),
+                    # rx.hstack(
+                    #     rx.text("Last Updated By"),
+                    #     rx.text(
+                    #         State.current_job.updated_by,
+                    #         class_name="text-lg font-semibold",
+                    #     ),
+                    #     class_name="py-2",
+                    #     align="center",
+                    # ),
                     rx.hstack(
                         rx.text("Last Updated At"),
                         rx.text(

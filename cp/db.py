@@ -296,7 +296,8 @@ def get_all_jobs(groups: list[str] = None) -> list[Job]:
         )                                
         SELECT * 
         FROM jobs 
-        WHERE job_id IN (SELECT * FROM cj); 
+        WHERE job_id IN (SELECT * FROM cj)
+        ORDER BY created_at DESC; 
         """,
         (groups,),
         Job,
@@ -507,7 +508,7 @@ def get_versions() -> list[StrID]:
 def get_regions() -> list[StrID]:
     return execute_stmt(
         """
-        SELECT cloud || ':' || region AS cr
+        SELECT DISTINCT cloud || ':' || region AS cr
         FROM regions
         ORDER BY cr ASC
         """,
