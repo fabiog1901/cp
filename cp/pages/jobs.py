@@ -34,7 +34,7 @@ class State(BaseState):
                 break
 
             async with self:
-                self.jobs = db.get_all_jobs(list(self.webuser.groups))
+                self.jobs = db.fetch_all_jobs(list(self.webuser.groups), self.is_admin)
             await asyncio.sleep(5)
 
 

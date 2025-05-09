@@ -85,7 +85,6 @@ def login():
                     on_click=AuthState.login,
                     size="3",
                     width="100%",
-                    
                 ),
                 spacing="6",
                 width="100%",

@@ -1,8 +1,8 @@
 import reflex as rx
 
+from ..state.base import BaseState
 from .main import user_profile_menu
 
-from ..state.base import BaseState
 
 def navbar():
     return rx.flex(

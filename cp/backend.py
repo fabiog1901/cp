@@ -37,7 +37,7 @@ def create_cluster(
     cluster_request = ClusterRequest(**cluster)
 
     # check if cluster with same cluster_id exists
-    c = db.get_cluster(["admin"], cluster_request.name)
+    c = db.get_cluster(cluster_request.name, [], True)
 
     if not recreate and c and c.status == "DELETED":
         # TODO raise an error message that a cluster
@@ -54,7 +54,7 @@ def create_cluster(
         {"cluster": [], "lbs": [], "disk_size": 0, "node_cpus": 0, "version": ""},
         created_by,
         created_by,
-        cluster['group'],
+        cluster["group"],
     )
 
     db.insert_mapped_job(
@@ -266,22 +266,20 @@ def delete_cluster(
 ) -> None:
     cluster_id = cluster.get("cluster_id")
 
-    c = db.get_cluster(["admin"], cluster_id)
+    c = db.get_cluster(cluster_id, [], True)
     if not c or c.status == "DELETED":
         # TODO if cluster doesn't exists or it's already marked as deleted,
         # fail the job
-        db.create_job(
+        db.update_job(
             job_id,
-            "DELETE_CLUSTER",
             "FAILED",
-            "root",
         )
         return
 
     db.update_cluster_status(
         cluster_id,
         "DELETING...",
-        "root",
+        "system",
     )
 
     db.insert_mapped_job(
@@ -310,13 +308,13 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
         db.update_cluster_status(
             cluster_id,
             "DELETED",
-            "root",
+            "system",
         )
     else:
         db.update_cluster_status(
             cluster_id,
             "DELETE_FAILED",
-            "root",
+            "system",
         )
 
 

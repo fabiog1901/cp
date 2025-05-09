@@ -6,7 +6,7 @@ import reflex as rx
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..cp import app
-from ..models import Cluster, ClusterOverview, StrID, DiskSize
+from ..models import Cluster, ClusterOverview, DiskSize, StrID
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_funny_name
@@ -155,6 +155,7 @@ def cpu_item_selector() -> rx.Component:
 
 # SINGLE SELECT DISK
 
+
 def disk_unselected_item(item: DiskSize) -> rx.Component:
     return rx.badge(
         item.size_name,
@@ -219,7 +220,7 @@ class State(BaseState):
     available_regions: list[StrID] = []
     available_node_counts: list[str] = []
     available_cpus_per_node: list[int] = []
-    available_disk_sizes: list[DiskSize] = [] 
+    available_disk_sizes: list[DiskSize] = []
 
     selected_name: str = ""
     selected_cpus_per_node: int = None
@@ -251,7 +252,7 @@ class State(BaseState):
 
             self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
             self.selected_cpus_per_node = self.available_cpus_per_node[0]
-            
+
             self.available_disk_sizes = db.get_disk_sizes()
             self.selected_disk_size = self.available_disk_sizes[0].size_gb
 
@@ -274,7 +275,10 @@ class State(BaseState):
             async with self:
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
-                self.clusters = db.get_all_clusters(list(self.webuser.groups))
+                print(list(self.webuser.groups), self.is_admin)
+                self.clusters = db.fetch_all_clusters(
+                    list(self.webuser.groups), self.is_admin
+                )
 
             await asyncio.sleep(5)
 
@@ -309,7 +313,6 @@ class State(BaseState):
 
     @rx.event
     def create_new_cluster(self, form_data: dict):
-
         form_data["node_cpus"] = self.selected_cpus_per_node
         form_data["disk_size"] = self.selected_disk_size
         form_data["node_count"] = int(self.selected_node_count)
@@ -319,10 +322,14 @@ class State(BaseState):
 
         print(form_data)
         msg_id: StrID = db.insert_into_mq(
-            "CREATE_CLUSTER", form_data, self.webuser.username
+            "CREATE_CLUSTER",
+            form_data,
+            self.webuser.username,
         )
         db.insert_event_log(
-            self.webuser.username, "CREATE_CLUSTER", form_data | {"job_id": msg_id.id}
+            self.webuser.username,
+            "CREATE_CLUSTER",
+            form_data | {"job_id": msg_id.id},
         )
 
         self.selected_name = get_funny_name()
@@ -332,7 +339,7 @@ class State(BaseState):
         self.selected_cpus_per_node = self.available_cpus_per_node[0]
         self.selected_disk_size = self.available_disk_sizes[0].size_gb
         self.selected_group = self.webuser.groups[0]
-            
+
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event
@@ -352,7 +359,7 @@ class State(BaseState):
 
 def new_cluster_dialog():
     return rx.cond(
-        BaseState.is_admin_or_rw(),
+        BaseState.is_admin_or_rw,
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -386,7 +393,7 @@ def new_cluster_dialog():
                                 rx.radio(
                                     State.available_node_counts,
                                     on_change=State.set_node_count,
-                                    default_value="3",
+                                    default_value=str(State.selected_node_count),
                                     direction="row",
                                     color_scheme="mint",
                                 ),
@@ -406,7 +413,7 @@ def new_cluster_dialog():
                                     on_change=State.set_selected_version,
                                     color_scheme="mint",
                                     required=True,
-                                    class_name="min-w-64"
+                                    class_name="min-w-64",
                                 ),
                                 class_name="min-w-64",
                             ),
@@ -419,7 +426,7 @@ def new_cluster_dialog():
                                     on_change=State.set_selected_group,
                                     color_scheme="mint",
                                     required=True,
-                                    class_name="min-w-64"
+                                    class_name="min-w-64",
                                 ),
                                 class_name="min-w-64",
                             ),
@@ -486,7 +493,7 @@ def get_cluster_row(cluster: Cluster):
                 ("DELETING...", rx.box()),
                 rx.hstack(
                     rx.cond(
-                        BaseState.is_admin_or_rw(),
+                        BaseState.is_admin_or_rw,
                         rx.alert_dialog.root(
                             rx.alert_dialog.trigger(
                                 rx.box(
@@ -541,7 +548,7 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        BaseState.is_admin_or_rw(),
+                        BaseState.is_admin_or_rw,
                         rx.tooltip(
                             rx.icon(
                                 "circle-fading-arrow-up",
@@ -561,7 +568,7 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        BaseState.is_admin_or_rw(),
+                        BaseState.is_admin_or_rw,
                         rx.tooltip(
                             rx.icon(
                                 "bug-play",

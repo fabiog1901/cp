@@ -2,6 +2,7 @@ import reflex as rx
 
 from ..state.base import BaseState
 
+
 def status_badge(state):
     return rx.text(
         state,
@@ -57,6 +58,8 @@ def user_profile_menu():
             # rx.menu.item("Share"),
             # rx.menu.item("Add to favorites"),
             # rx.menu.separator(),
-            rx.menu.item("Logout", shortcut="⌘ ⌫", color="red", on_click=BaseState.logout),
+            rx.menu.item(
+                "Logout", shortcut="⌘ ⌫", color="red", on_click=BaseState.logout
+            ),
         ),
     )

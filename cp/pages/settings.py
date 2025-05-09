@@ -14,7 +14,7 @@ from ..template import template
 @template
 def settings():
     return rx.cond(
-        BaseState.is_admin(),
+        BaseState.is_admin,
         rx.flex(
             rx.text("Settings", class_name="font-bold border-b text-3xl"),
             class_name="flex-1 flex-col overflow-y-scroll p-2",

@@ -6,7 +6,7 @@ import yaml
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, StrID, Job, Task
+from ..models import TS_FORMAT, Job, StrID, Task
 from ..state.base import BaseState
 from ..template import template
 
@@ -16,7 +16,7 @@ class State(BaseState):
     current_job_description: str = ""
     linked_clusters: list[StrID] = []
     tasks: list[Task] = []
-    
+
     @rx.var
     def job_id(self) -> str | None:
         return self.router.page.params.get("j_id") or None
@@ -26,7 +26,9 @@ class State(BaseState):
     @rx.event
     def reschedule_job(self):
         # TODO fix so we can use self.current_job.descripton
-        j: Job = db.get_job(list(self.webuser.groups), self.current_job.job_id)
+        j: Job = db.fetch_job(
+            self.current_job.job_id, list(self.webuser.groups), self.is_admin
+        )
 
         job_type = (
             "RECREATE_CLUSTER"
@@ -34,12 +36,14 @@ class State(BaseState):
             else self.current_job.job_type
         )
 
-        msg_id: StrID = db.insert_into_mq(job_type, j.description, self.webuser.username)
-        
+        msg_id: StrID = db.insert_into_mq(
+            job_type, j.description, self.webuser.username
+        )
+
         db.insert_event_log(
             self.webuser.username, job_type, j.description | {"job_id": msg_id.id}
         )
-        
+
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
@@ -61,7 +65,9 @@ class State(BaseState):
                 break
 
             async with self:
-                job: Job = db.get_job(list(self.webuser.groups), int(self.job_id))
+                job: Job = db.fetch_job(
+                    int(self.job_id), list(self.webuser.groups), self.is_admin
+                )
                 if job is None:
                     self.is_running = False
                     return rx.redirect("/404", replace=True)
@@ -115,8 +121,7 @@ def job():
                     f"Job {State.current_job.job_id}",
                     class_name="p-2 text-8xl font-semibold",
                 ),
-                rx.divider(orientation="vertical", size="4", 
-                           class_name="mx-8"),
+                rx.divider(orientation="vertical", size="4", class_name="mx-8"),
                 get_job_status_badge(State.current_job.status),
                 rx.spacer(),
                 rx.vstack(
@@ -128,7 +133,7 @@ def job():
                     align="center",
                 ),
                 rx.cond(
-                    BaseState.is_admin_or_rw(),
+                    BaseState.is_admin_or_rw,
                     rx.button(
                         "Restart Job",
                         on_click=lambda: State.reschedule_job,

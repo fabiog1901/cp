@@ -11,17 +11,23 @@ class BaseState(rx.State):
     webuser: Optional[WebUser] = None
 
     original_url: str = "/"
-    
+
     @rx.event()
     async def just_return(self):
         return
 
+    @rx.var
     def is_admin_or_rw(self) -> bool:
-        return (BaseState.webuser.roles.contains("admin")) | (BaseState.webuser.roles.contains("rw"))
-    
+        if self.webuser is not None:
+            return ("admin" in self.webuser.roles) or ("rw" in self.webuser.roles)
+        return False
+
+    @rx.var
     def is_admin(self) -> bool:
-        return BaseState.webuser.roles.contains("admin")
-    
+        if self.webuser is not None:
+            return "admin" in self.webuser.roles
+        return False
+
     def logout(self):
         """Log out a user."""
         self.reset()

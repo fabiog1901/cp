@@ -8,8 +8,8 @@ import time
 import reflex as rx
 
 from .. import db
+from ..models import User, WebUser
 from .base import BaseState
-from ..models import WebUser, User
 
 PEPPER = os.getenv("PEPPER")
 
@@ -47,7 +47,6 @@ class AuthState(BaseState):
         )
 
         if password_hash == user.password_hash:
-
             # create a WebUser out of the User
             # assign all roles and groups
             user_roles = set[str]()
@@ -59,12 +58,19 @@ class AuthState(BaseState):
                         user_groups.add(g)
 
             self.webuser = WebUser(user.username, list(user_roles), list(user_groups))
-            
+
             # reset the attempts if there were any previous unsuccessful attempts to login
             if user.attempts > 0:
                 db.reset_attempts(self.webuser.username)
 
-            db.insert_event_log(self.webuser.username, "LOGIN")
+            db.insert_event_log(
+                self.webuser.username,
+                "LOGIN",
+                {
+                    "roles": list(self.webuser.roles),
+                    "groups": list(self.webuser.groups),
+                },
+            )
             return rx.redirect(self.original_url)
         else:
             db.insert_event_log(self.webuser.username, "LOGIN FAILURE")

@@ -8,17 +8,15 @@ from psycopg_pool import ConnectionPool
 
 from .models import (
     Cluster,
-    DiskSize,
-    GroupRoleMap,
-    StrID,
     ClusterOverview,
+    DiskSize,
     EventLog,
-    Job,
+    GroupRoleMap,
     IntID,
-    StrID,
+    Job,
     Msg,
-    StrID,
     Region,
+    StrID,
     Task,
     User,
 )
@@ -107,10 +105,11 @@ def get_region_details(cloud: str, region: str) -> list[Region]:
 ##############
 
 
-def get_all_clusters(
-    groups: list[str] = None,
+def fetch_all_clusters(
+    groups: list[str],
+    is_admin: bool = False,
 ) -> list[ClusterOverview]:
-    if "admin" in groups:
+    if is_admin:
         return execute_stmt(
             """
             SELECT cluster_id, grp, created_by, status 
@@ -134,11 +133,11 @@ def get_all_clusters(
 
 
 def get_cluster(
-    groups: list[str],
     cluster_id: str,
+    groups: list[str],
+    is_admin: bool = False,
 ) -> Cluster | None:
-
-    if "admin" in groups:
+    if is_admin:
         return execute_stmt(
             """
             SELECT * 
@@ -271,8 +270,11 @@ def get_all_linked_jobs(cluster_id: str) -> list[Job]:
     )
 
 
-def get_all_jobs(groups: list[str] = None) -> list[Job]:
-    if "admin" in groups:
+def fetch_all_jobs(
+    groups: list[str] = None,
+    is_admin: bool = False,
+) -> list[Job]:
+    if is_admin:
         return execute_stmt(
             """
             SELECT * 
@@ -306,11 +308,12 @@ def get_all_jobs(groups: list[str] = None) -> list[Job]:
     )
 
 
-def get_job(
-    groups: list[str],
+def fetch_job(
     job_id: int,
+    groups: list[str],
+    is_admin: bool = False,
 ) -> Job | None:
-    if "admin" in groups:
+    if is_admin:
         return execute_stmt(
             """
             SELECT *

@@ -53,11 +53,13 @@ class User:
     attempts: int
     groups: list[str]
 
+
 @dataclass
 class GroupRoleMap:
     role: str
     groups: list[str]
-    
+
+
 @dataclass
 class StrID:
     id: str
@@ -66,6 +68,7 @@ class StrID:
 @dataclass
 class IntID:
     id: int
+
 
 @dataclass
 class DiskSize:
@@ -135,7 +138,6 @@ class Job:
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime
-    updated_by: str
 
 
 @dataclass

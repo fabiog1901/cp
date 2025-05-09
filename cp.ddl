@@ -61,7 +61,6 @@ CREATE TABLE jobs (
     created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NULL,
     updated_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ on update now(),
-    updated_by STRING NULL,
     CONSTRAINT pk PRIMARY KEY (job_id ASC)
 );
 

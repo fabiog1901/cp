@@ -8,8 +8,8 @@ from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
 from ..models import TS_FORMAT, Cluster, Job
 from ..state.base import BaseState
-from .clusters import State as ClusterState
 from ..template import template
+from .clusters import State as ClusterState
 
 
 class State(BaseState):
@@ -45,7 +45,9 @@ class State(BaseState):
 
             async with self:
                 cluster: Cluster = db.get_cluster(
-                    list(self.webuser.groups), self.cluster_id
+                    self.cluster_id,
+                    list(self.webuser.groups),
+                    self.is_admin,
                 )
                 if cluster is None:
                     self.is_running = False
@@ -400,7 +402,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw(),
+                                    BaseState.is_admin_or_rw,
                                     rx.alert_dialog.root(
                                         rx.alert_dialog.trigger(
                                             rx.box(
@@ -452,7 +454,7 @@ def cluster():
                                             "trash-2",
                                             size=30,
                                             color="gray",
-                                            class_name="mr-4"
+                                            class_name="mr-4",
                                         ),
                                         content="You need to have admin or rw role to delete a cluster",
                                     ),
@@ -463,7 +465,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw(),
+                                    BaseState.is_admin_or_rw,
                                     rx.tooltip(
                                         rx.icon(
                                             "circle-fading-arrow-up",
@@ -478,7 +480,7 @@ def cluster():
                                             "circle-fading-arrow-up",
                                             color="gray",
                                             size=30,
-                                            class_name="mr-4"
+                                            class_name="mr-4",
                                         ),
                                         content="You need to have admin or rw role to upgrade a cluster",
                                     ),
@@ -489,7 +491,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw(),
+                                    BaseState.is_admin_or_rw,
                                     rx.tooltip(
                                         rx.icon(
                                             "bug-play",
@@ -522,7 +524,6 @@ def cluster():
                             spacing="0",
                             class_name="",
                         ),
-
                         class_name="min-w-80 min-h-96 ml-4",
                     ),
                 ),
