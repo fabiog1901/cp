@@ -275,7 +275,6 @@ class State(BaseState):
             async with self:
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
-                print(list(self.webuser.groups), self.is_admin)
                 self.clusters = db.fetch_all_clusters(
                     list(self.webuser.groups), self.is_admin
                 )
@@ -320,7 +319,6 @@ class State(BaseState):
         form_data["version"] = self.selected_version
         form_data["group"] = self.selected_group
 
-        print(form_data)
         msg_id: StrID = db.insert_into_mq(
             "CREATE_CLUSTER",
             form_data,
@@ -393,7 +391,7 @@ def new_cluster_dialog():
                                 rx.radio(
                                     State.available_node_counts,
                                     on_change=State.set_node_count,
-                                    default_value=str(State.selected_node_count),
+                                    default_value=State.available_node_counts[0],
                                     direction="row",
                                     color_scheme="mint",
                                 ),
