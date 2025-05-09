@@ -39,7 +39,7 @@ Unknown
 @dataclass
 class WebUser:
     username: str
-    role: str
+    roles: list[str]
     groups: list[str]
 
 
@@ -51,10 +51,13 @@ class User:
     hash_algo: str
     iterations: int
     attempts: int
-    role: str
     groups: list[str]
 
-
+@dataclass
+class GroupRoleMap:
+    role: str
+    groups: list[str]
+    
 @dataclass
 class StrID:
     id: str

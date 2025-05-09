@@ -31,7 +31,7 @@ def sidebar() -> rx.Component:
         rx.link("Enterprise Licenses", class_name="py-1"),
         rx.spacer(),
         rx.cond(
-            BaseState.webuser.role == "admin",
+            BaseState.is_admin(),
             get_link("settings", "Settings"),
             rx.box(),
         ),

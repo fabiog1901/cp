@@ -128,8 +128,7 @@ def job():
                     align="center",
                 ),
                 rx.cond(
-                    (BaseState.webuser.role == "admin")
-                    | (BaseState.webuser.role == "rw"),
+                    BaseState.is_admin_or_rw(),
                     rx.button(
                         "Restart Job",
                         on_click=lambda: State.reschedule_job,

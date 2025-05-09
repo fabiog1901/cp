@@ -146,7 +146,12 @@ CREATE TABLE users (
   hash_algo STRING,
   iterations INT,
   attempts int2 not null default 0,
-  role string,
   groups string[],
   CONSTRAINT pk primary key (username)
+);
+
+create table role_to_groups_mappings (
+    role string,
+    groups string[],
+    constraint pk primary key (app_role)
 );

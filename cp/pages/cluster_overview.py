@@ -400,8 +400,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    (BaseState.webuser.role == "admin")
-                                    | (BaseState.webuser.role == "rw"),
+                                    BaseState.is_admin_or_rw(),
                                     rx.alert_dialog.root(
                                         rx.alert_dialog.trigger(
                                             rx.box(
@@ -464,8 +463,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    (BaseState.webuser.role == "admin")
-                                    | (BaseState.webuser.role == "rw"),
+                                    BaseState.is_admin_or_rw(),
                                     rx.tooltip(
                                         rx.icon(
                                             "circle-fading-arrow-up",
@@ -491,8 +489,7 @@ def cluster():
                                 State.current_cluster.status == "DELETED",
                                 rx.box(),
                                 rx.cond(
-                                    (BaseState.webuser.role == "admin")
-                                    | (BaseState.webuser.role == "rw"),
+                                    BaseState.is_admin_or_rw(),
                                     rx.tooltip(
                                         rx.icon(
                                             "bug-play",

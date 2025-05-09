@@ -16,6 +16,12 @@ class BaseState(rx.State):
     async def just_return(self):
         return
 
+    def is_admin_or_rw(self) -> bool:
+        return (BaseState.webuser.roles.contains("admin")) | (BaseState.webuser.roles.contains("rw"))
+    
+    def is_admin(self) -> bool:
+        return BaseState.webuser.roles.contains("admin")
+    
     def logout(self):
         """Log out a user."""
         self.reset()

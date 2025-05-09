@@ -352,7 +352,7 @@ class State(BaseState):
 
 def new_cluster_dialog():
     return rx.cond(
-        (BaseState.webuser.role == "admin") | (BaseState.webuser.role == "rw"),
+        BaseState.is_admin_or_rw(),
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -486,8 +486,7 @@ def get_cluster_row(cluster: Cluster):
                 ("DELETING...", rx.box()),
                 rx.hstack(
                     rx.cond(
-                        (BaseState.webuser.role == "admin")
-                        | (BaseState.webuser.role == "rw"),
+                        BaseState.is_admin_or_rw(),
                         rx.alert_dialog.root(
                             rx.alert_dialog.trigger(
                                 rx.box(
@@ -542,8 +541,7 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        (BaseState.webuser.role == "admin")
-                        | (BaseState.webuser.role == "rw"),
+                        BaseState.is_admin_or_rw(),
                         rx.tooltip(
                             rx.icon(
                                 "circle-fading-arrow-up",
@@ -563,8 +561,7 @@ def get_cluster_row(cluster: Cluster):
                         ),
                     ),
                     rx.cond(
-                        (BaseState.webuser.role == "admin")
-                        | (BaseState.webuser.role == "rw"),
+                        BaseState.is_admin_or_rw(),
                         rx.tooltip(
                             rx.icon(
                                 "bug-play",

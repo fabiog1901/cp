@@ -9,6 +9,7 @@ from psycopg_pool import ConnectionPool
 from .models import (
     Cluster,
     DiskSize,
+    GroupRoleMap,
     StrID,
     ClusterOverview,
     EventLog,
@@ -544,6 +545,7 @@ def get_cpus_per_node() -> list[IntID]:
         IntID,
     )
 
+
 def get_disk_sizes() -> list[DiskSize]:
     return execute_stmt(
         """
@@ -593,6 +595,17 @@ def reset_attempts(username: str) -> None:
         WHERE username = %s
         """,
         (username,),
+    )
+
+
+def get_role_to_groups_mappings() -> list[GroupRoleMap]:
+    return execute_stmt(
+        """
+        SELECT role, groups 
+        FROM role_to_groups_mappings;
+        """,
+        (),
+        GroupRoleMap,
     )
 
 
