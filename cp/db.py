@@ -549,7 +549,7 @@ def get_disk_sizes() -> list[DiskSize]:
         """
         SELECT size_name, size_gb
         FROM disk_sizes
-        ORDER BY size_name ASC
+        ORDER BY size_gb
         """,
         (),
         DiskSize,
