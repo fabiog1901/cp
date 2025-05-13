@@ -84,6 +84,13 @@ CREATE TABLE tasks (
 );
 
 
+
+CREATE TABLE secrets (
+    id STRING NOT NULL,
+    data STRING NULL,
+    CONSTRAINT pk PRIMARY KEY (id ASC)
+);
+
 /* 
     SETTINGS
 */

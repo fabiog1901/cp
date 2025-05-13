@@ -162,6 +162,19 @@ def get_cluster(
     )
 
 
+def get_running_clusters() -> list[Cluster]:
+    return execute_stmt(
+        """
+        SELECT * 
+        FROM clusters
+        WHERE status = 'RUNNING'
+        ORDER BY created_at ASC
+        """,
+        (),
+        Cluster,
+    )
+
+
 def upsert_cluster(
     cluster_id: str,
     status: str,
@@ -457,6 +470,21 @@ def insert_task(
         VALUES (%s, %s, %s, %s, %s)
         """,
         (job_id, task_id, created_at, task_name, task_desc),
+    )
+
+
+def get_secret(
+    id: str,
+) -> StrID:
+    return execute_stmt(
+        """
+        SELECT data
+        FROM secrets
+        WHERE id = %s
+        """,
+        (id,),
+        StrID,
+        return_list=False,
     )
 
 

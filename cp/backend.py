@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import random
 import time
 from threading import Thread
@@ -78,7 +79,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
     for cloud_region in cluster_request.regions:
         cloud, region = cloud_region.split(":")
 
-        env_details: list[Region] = db.get_region_details(cloud, region)
+        region_details: list[Region] = db.get_region_details(cloud, region)
 
         # add 1 HAProxy per region
         deployment.append(
@@ -97,22 +98,22 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                         "public_key_id": "workshop",
                         "tags": {"owner": "fabio"},
                         "cloud": cloud,
-                        "image": env_details[0].image,
+                        "image": region_details[0].image,
                         "region": region,
-                        "vpc_id": env_details[0].vpc_id,
-                        "security_groups": env_details[0].security_groups,
-                        "zone": env_details[0].zone,
-                        "subnet": env_details[0].subnet,
+                        "vpc_id": region_details[0].vpc_id,
+                        "security_groups": region_details[0].security_groups,
+                        "zone": region_details[0].zone,
+                        "subnet": region_details[0].subnet,
                     }
                 ],
             }
-            | env_details[0].extras
+            | region_details[0].extras
         )
 
         # distribute the node_counts over all available zones
 
         node_count_per_zone = get_node_count_per_zone(
-            len(env_details), cluster_request.node_count
+            len(region_details), cluster_request.node_count
         )
 
         for idx, zone_count in enumerate(node_count_per_zone):
@@ -143,16 +144,16 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                             "public_key_id": "workshop",
                             "tags": {"owner": "fabio"},
                             "cloud": cloud,
-                            "image": env_details[idx].image,
+                            "image": region_details[idx].image,
                             "region": region,
-                            "vpc_id": env_details[idx].vpc_id,
-                            "security_groups": env_details[idx].security_groups,
-                            "zone": env_details[idx].zone,
-                            "subnet": env_details[idx].subnet,
+                            "vpc_id": region_details[idx].vpc_id,
+                            "security_groups": region_details[idx].security_groups,
+                            "zone": region_details[idx].zone,
+                            "subnet": region_details[idx].subnet,
                         }
                     ],
                 }
-                | env_details[idx].extras
+                | region_details[idx].extras
             )
 
     extra_vars = {
@@ -256,7 +257,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
         cluster_request.name,
         "RUNNING",
         data,
-        "root",
+        "system",
     )
 
 
@@ -320,6 +321,66 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
 
 def fail_zombie_jobs():
     db.fail_zombie_jobs()
+
+
+def healthcheck_clusters(job_id: int) -> None:
+    running_clusters = db.get_running_clusters()
+
+    for cluster in running_clusters:
+        ssh_key_name = cluster.description["ssh_key"]
+
+        if not os.path.exists(f"/tmp/{ssh_key_name}"):
+            ssh_key = db.get_secret(ssh_key_name)
+
+            with open(f"/tmp/{ssh_key_name}", "w") as f:
+                f.write(ssh_key.id)
+
+        cockroachdb_nodes = []
+        for region in cluster.description["cluster"]:
+            cockroachdb_nodes += region["nodes"]
+
+        Thread(
+            target=healthcheck_clusters_worker,
+            args=(
+                job_id,
+                cluster.cluster_id,
+                cockroachdb_nodes,
+                f"/tmp/{ssh_key_name}",
+            ),
+        ).start()
+
+
+def healthcheck_clusters_worker(
+    job_id: int,
+    cluster_id: str,
+    cockroachdb_nodes: list[str],
+    ssh_key: str,
+):
+    extra_vars = {
+        "deployment_id": cluster_id,
+        "cockroachdb_nodes": cockroachdb_nodes,
+        "ssh_key": ssh_key,
+    }
+
+    job_status, data = MyRunnerLite(job_id).launch_runner(
+        "HEALTHCHECK_CLUSTERS", extra_vars
+    )
+
+    if not data or job_status != "successful":
+        db.update_cluster(
+            cluster_id,
+            "UNHEALTHY",
+            data,
+            "system",
+        )
+
+    for node in data["data"]:
+        if node["is_live"] == "false":
+            db.update_cluster_status(
+                cluster_id,
+                "UNHEALTHY",
+                "system",
+            )
 
 
 class MyRunner:
@@ -391,8 +452,6 @@ class MyRunner:
         )
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
-        playbook = []
-
         # fetch all plays for a playbook
         link = db.get_playbook_link(playbook_name)
 
@@ -435,6 +494,46 @@ class MyRunner:
         return runner.status, self.data
 
 
+class MyRunnerLite:
+    def __init__(self, job_id: int):
+        self.data = {}
+        self.job_id = job_id
+
+    def my_status_handler(self, status, runner_config):
+        return
+
+    def my_event_handler(self, e):
+        if e["event"] == "runner_on_ok":
+            if e.get("event_data")["task"] == "Data":
+                self.data = e["event_data"]["res"]["msg"]
+
+    def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
+        # fetch all plays for a playbook
+        link = db.get_playbook_link(playbook_name)
+
+        r = requests.get(link.id)
+
+        with open("/tmp/healthcheck_clusters.yaml", "wb") as f:
+            f.write(r.content)
+
+        # Execute the playbook
+        try:
+            thread, runner = ansible_runner.run_async(
+                quiet=True,
+                playbook="/tmp/healthcheck_clusters.yaml",
+                private_data_dir="/tmp",
+                extravars=extra_vars,
+                event_handler=self.my_event_handler,
+                status_handler=self.my_status_handler,
+            )
+        except Exception as e:
+            print(f"Error running playbook: {e}")
+
+        thread.join()
+
+        return runner.status, self.data
+
+
 async def pull_from_mq():
     try:
         while True:
@@ -463,6 +562,7 @@ async def pull_from_mq():
                             case "CREATE_CLUSTER":
                                 print("Processing a CREATE_CLUSTER")
                                 create_cluster(msg.msg_id, msg.msg_data, msg.created_by)
+
                             case "RECREATE_CLUSTER":
                                 print("Processing a RECREATE_CLUSTER")
                                 create_cluster(
@@ -471,9 +571,20 @@ async def pull_from_mq():
                             case "DELETE_CLUSTER":
                                 print("Processing a DELETE_CLUSTER")
                                 delete_cluster(msg.msg_id, msg.msg_data)
+
                             case "FAIL_ZOMBIE_JOBS":
                                 print("Processing a FAIL_ZOMBIE_JOBS")
                                 fail_zombie_jobs()
+
+                            case "HEALTHCHECK_CLUSTERS":
+                                print("Processing a HEALTHCHECK_CLUSTERS")
+                                healthcheck_clusters(msg.msg_id)
+                                cur.execute(
+                                    """
+                                    INSERT INTO mq (msg_type, start_after) 
+                                    VALUES ('HEALTHCHECK_CLUSTERS', now() + INTERVAL '60s')
+                                    """
+                                )
                             case _:
                                 print(f"Unknown task type requested: {msg.msg_type}")
 

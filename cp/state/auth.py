@@ -73,8 +73,8 @@ class AuthState(BaseState):
             )
             return rx.redirect(self.original_url)
         else:
-            db.insert_event_log(self.webuser.username, "LOGIN FAILURE")
-            db.increase_attempt(self.webuser.username)
+            db.insert_event_log(self.username, "LOGIN FAILURE")
+            db.increase_attempt(self.username)
             # mask how long it takes to come to this code path
             time.sleep(random.random() + 1)
             return rx.window_alert("Invalid username or password.")
