@@ -362,15 +362,12 @@ def healthcheck_clusters_worker(
         "ssh_key": ssh_key,
     }
 
-    job_status, data = MyRunnerLite(job_id).launch_runner(
-        "HEALTHCHECK_CLUSTERS", extra_vars
-    )
+    job_status, data = MyRunnerLite().launch_runner("HEALTHCHECK_CLUSTERS", extra_vars)
 
     if not data or job_status != "successful":
-        db.update_cluster(
+        db.update_cluster_status(
             cluster_id,
             "UNHEALTHY",
-            data,
             "system",
         )
 
@@ -495,9 +492,8 @@ class MyRunner:
 
 
 class MyRunnerLite:
-    def __init__(self, job_id: int):
+    def __init__(self):
         self.data = {}
-        self.job_id = job_id
 
     def my_status_handler(self, status, runner_config):
         return
@@ -508,19 +504,24 @@ class MyRunnerLite:
                 self.data = e["event_data"]["res"]["msg"]
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
-        # fetch all plays for a playbook
-        link = db.get_playbook_link(playbook_name)
+        # fetch the playbook if it doesn't exists locally or
+        # it's older than 24h
+        if (
+            not os.path.exists(f"/tmp/{playbook_name}.yaml")
+            or os.path.getmtime(f"/tmp/{playbook_name}.yaml") + 86400 < time.time()
+        ):
+            link = db.get_playbook_link(playbook_name)
 
-        r = requests.get(link.id)
+            r = requests.get(link.id)
 
-        with open("/tmp/healthcheck_clusters.yaml", "wb") as f:
-            f.write(r.content)
+            with open(f"/tmp/{playbook_name}.yaml", "wb") as f:
+                f.write(r.content)
 
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
                 quiet=True,
-                playbook="/tmp/healthcheck_clusters.yaml",
+                playbook=f"/tmp/{playbook_name}.yaml",
                 private_data_dir="/tmp",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
@@ -582,7 +583,7 @@ async def pull_from_mq():
                                 cur.execute(
                                     """
                                     INSERT INTO mq (msg_type, start_after) 
-                                    VALUES ('HEALTHCHECK_CLUSTERS', now() + INTERVAL '60s')
+                                    VALUES ('HEALTHCHECK_CLUSTERS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
                                     """
                                 )
                             case _:

@@ -421,7 +421,7 @@ def fail_zombie_jobs() -> list[IntID]:
         WITH
         fail_zombie_jobs AS (
             INSERT INTO mq (msg_type, start_after) 
-            VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s')
+            VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
             RETURNING 1
         )
         UPDATE jobs

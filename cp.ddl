@@ -33,8 +33,10 @@ CREATE TABLE mq (
     CONSTRAINT pk PRIMARY KEY (msg_id ASC)
 );
 
--- plant the seed
+-- plant the seeds
 INSERT INTO mq (msg_type) VALUES ('FAIL_ZOMBIE_JOBS');
+INSERT INTO mq (msg_type) VALUES ('HEALTHCHECK_CLUSTERS');
+
 
 ALTER TABLE mq CONFIGURE ZONE USING
     gc.ttlseconds = 120;
@@ -159,5 +161,5 @@ CREATE TABLE users (
 create table role_to_groups_mappings (
     role string,
     groups string[],
-    constraint pk primary key (app_role)
+    constraint pk primary key (role)
 );
