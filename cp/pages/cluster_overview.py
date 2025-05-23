@@ -17,7 +17,6 @@ class State(BaseState):
     current_cluster_description: dict = {}
     current_cluster_regions: list[dict[str, str | list[str]]] = []
     current_cluster_lbs: list[dict[str, str]] = []
-    jobs: list[Job] = []
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -58,48 +57,7 @@ class State(BaseState):
                 self.current_cluster_regions = cluster.description.get("cluster", [])
                 self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
-                self.jobs = db.get_all_linked_jobs(self.cluster_id)
             await asyncio.sleep(5)
-
-
-def get_job_row(job: Job):
-    """Show a job in a table row."""
-    return rx.table.row(
-        rx.table.cell(
-            rx.link(
-                rx.text(job.job_id, class_name="text-2xl font-semibold"),
-                href=f"/jobs/{job.job_id}",
-            )
-        ),
-        rx.table.cell(job.job_type),
-        rx.table.cell(job.created_by),
-        rx.table.cell(get_job_status_badge(job.status)),
-    )
-
-
-def jobs_table():
-    return rx.vstack(
-        rx.table.root(
-            rx.table.header(
-                rx.table.row(
-                    rx.table.column_header_cell("Job ID"),
-                    rx.table.column_header_cell("Job Type"),
-                    rx.table.column_header_cell("Created By"),
-                    rx.table.column_header_cell("Status"),
-                ),
-            ),
-            rx.table.body(
-                rx.foreach(
-                    State.jobs,
-                    get_job_row,
-                )
-            ),
-            width="100%",
-            size="3",
-        ),
-        rx.text(f"Showing {State.jobs.length()} jobs"),
-        width="100%",
-    )
 
 
 def cluster_sidebar() -> rx.Component:
@@ -513,11 +471,14 @@ def cluster():
                                 ),
                             ),
                             rx.tooltip(
-                                rx.icon(
-                                    "clipboard-list",
-                                    size=30,
-                                    color=None,
-                                    class_name="cursor-pointer text-fuchsia-500 hover:text-fuchsia-300 mr-4",
+                                rx.link(
+                                    rx.icon(
+                                        "clipboard-list",
+                                        size=30,
+                                        color=None,
+                                        class_name="cursor-pointer text-fuchsia-500 hover:text-fuchsia-300 mr-4",
+                                    ),
+                                    href=f"/clusters/{State.cluster_id}/jobs",
                                 ),
                                 content="List Jobs",
                             ),
@@ -526,10 +487,6 @@ def cluster():
                         ),
                         class_name="min-w-80 min-h-96 ml-4",
                     ),
-                ),
-                rx.flex(
-                    jobs_table(),
-                    class_name="flex-1 flex-col overflow-y-scroll p-2 pt-8",
                 ),
                 class_name="flex-1 flex-col overflow-hidden",
             ),

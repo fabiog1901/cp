@@ -4,6 +4,7 @@ load_dotenv(override=True)
 
 from .pages import (
     cluster_overview,
+    cluster_jobs,
     clusters,
     index,
     job_overview,
