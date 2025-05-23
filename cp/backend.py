@@ -371,7 +371,7 @@ def healthcheck_clusters_worker(
             "system",
         )
 
-    for node in data["data"]:
+    for node in data.get("data", []):
         if node["is_live"] == "false":
             db.update_cluster_status(
                 cluster_id,

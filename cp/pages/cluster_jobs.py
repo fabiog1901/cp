@@ -54,8 +54,6 @@ class State(BaseState):
                     return rx.redirect("/404", replace=True)
 
                 self.current_cluster_description = cluster.description
-                #self.current_cluster_regions = cluster.description.get("cluster", [])
-                #self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
                 self.jobs = db.get_all_linked_jobs(self.cluster_id)
             await asyncio.sleep(5)
@@ -140,11 +138,11 @@ def cluster():
                             State.cluster_id,
                             class_name="p-2 pt-2 font-semibold text-2xl",
                         ),
-                        href=f"/clusters/{State.cluster_id}"
+                        href=f"/clusters/{State.cluster_id}",
                     ),
                     rx.text(" > ", class_name="p-2 pt-2 font-semibold text-2xl"),
                     rx.text("Jobs", class_name="p-2 pt-2 font-semibold text-2xl"),
-                    class_name="p-2"
+                    class_name="p-2",
                 ),
                 rx.flex(
                     jobs_table(),

@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from .pages import (
-    cluster_overview,
     cluster_jobs,
+    cluster_overview,
     clusters,
     index,
     job_overview,
