@@ -86,6 +86,7 @@ class Region:
     subnet: str
     image: str
     extras: dict
+    tags: dict
 
 
 @dataclass
@@ -127,6 +128,14 @@ class ClusterRequest:
     regions: list[str]
     version: str
     group: str
+
+@dataclass
+class ClusterScaleRequest:
+    name: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
+    regions: list[str]
 
 
 @dataclass

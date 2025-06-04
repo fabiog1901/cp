@@ -91,7 +91,7 @@ def get_playbook_link(playbook_name: str) -> StrID:
 def get_region_details(cloud: str, region: str) -> list[Region]:
     return execute_stmt(
         """
-        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
+        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras, tags
         FROM regions
         WHERE (cloud, region) = (%s, %s)
         """,
@@ -658,7 +658,7 @@ def execute_stmt(
             try:
                 stmt = " ".join([s.strip() for s in stmt.split("\n")])
 
-                print(f"SQL> {stmt}; {bind_args}")
+                #print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
 
                 if model is None:

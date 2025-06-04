@@ -6,7 +6,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job
+from ..models import TS_FORMAT, Cluster, Job, StrID, DiskSize
 from ..state.base import BaseState
 from ..template import template
 from .clusters import State as ClusterState
@@ -18,17 +18,88 @@ class State(BaseState):
     current_cluster_regions: list[dict[str, str | list[str]]] = []
     current_cluster_lbs: list[dict[str, str]] = []
 
+    @rx.event
+    def multi_add_selected(self, item: str):
+        self.selected_regions.append(item)
+
+    @rx.event
+    def multi_remove_selected(self, item: str):
+        self.selected_regions.remove(item)
+
+    # CREATE NEW CLUSTER DIALOG PARAMETERS
+    available_versions: list[str] = []
+    available_regions: list[StrID] = []
+    available_node_counts: list[str] = []
+    available_cpus_per_node: list[int] = []
+    available_disk_sizes: list[DiskSize] = []
+
+    selected_name: str = ""
+    selected_cpus_per_node: int = None
+    selected_node_count: int = None
+    selected_disk_size: int = None
+    selected_regions: list[str] = []
+    selected_version: str = ""
+    selected_group: str = ""
+
+    @rx.event
+    def set_node_count(self, item: str):
+        self.selected_node_count = int(item)
+
+    @rx.event
+    def scale_cluster(self, form_data: dict):
+        form_data["name"] = self.current_cluster.cluster_id
+        form_data["node_cpus"] = self.selected_cpus_per_node
+        form_data["disk_size"] = self.selected_disk_size
+        form_data["node_count"] = int(self.selected_node_count)
+        form_data["regions"] = list(self.selected_regions)
+
+        msg_id: StrID = db.insert_into_mq(
+            "SCALE_CLUSTER",
+            form_data,
+            self.webuser.username,
+        )
+        db.insert_event_log(
+            self.webuser.username,
+            "SCALE_CLUSTER",
+            form_data | {"job_id": msg_id.id},
+        )
+
+        # self.selected_regions = []
+        # self.selected_version = self.available_versions[0]
+        # self.selected_node_count = int(self.available_node_counts[0])
+        # self.selected_cpus_per_node = self.available_cpus_per_node[0]
+        # self.selected_disk_size = self.available_disk_sizes[0].size_gb
+        # self.selected_group = self.webuser.groups[0]
+
+        return rx.toast.info(f"Job {msg_id.id} requested.")
+
     @rx.var
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
 
     is_running: bool = False
+    just_once: bool = True
+    
+    
+    # self.selected_version = self.current_cluster.description.version
+    # self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
+    # self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
+    # self.selected_disk_size = self.current_cluster.description['disk_size']
+    # self.available_regions = [StrID(x.get("cloud") + ":" + x.get("region")) for x in self.current_cluster.description['cluster']]
+            
+            
 
     @rx.event(background=True)
     async def fetch_cluster(self):
         if self.is_running:
             return
         async with self:
+            # fetch this data only once
+            self.available_versions = [x.id for x in db.get_versions()]
+            self.available_node_counts = [x.id for x in db.get_node_counts()]
+            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+            self.available_disk_sizes = db.get_disk_sizes()
+            self.available_regions = db.get_regions()
             self.is_running = True
 
         while True:
@@ -57,7 +128,291 @@ class State(BaseState):
                 self.current_cluster_regions = cluster.description.get("cluster", [])
                 self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
+                
+                if self.just_once and self.current_cluster_description:
+                    self.just_once = False
+                    self.selected_version = self.current_cluster.description.get("version", "")
+                    self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
+                    self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
+                    self.selected_disk_size = self.current_cluster.description['disk_size']
+                    self.selected_regions = [x.get("cloud") + ":" + x.get("region") for x in self.current_cluster.description['cluster']]
+            
             await asyncio.sleep(5)
+
+
+    @rx.event
+    def load_cluster_data(self):
+        if self.current_cluster:
+            self.selected_version = self.current_cluster.description.get("version", "")
+            self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
+            self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
+            self.selected_disk_size = self.current_cluster.description['disk_size']
+            self.selected_regions = [x.get("cloud") + ":" + x.get("region") for x in self.current_cluster.description['cluster']]
+            
+        
+        
+chip_props = {
+    "radius": "full",
+    "variant": "surface",
+    "size": "3",
+    "cursor": "pointer",
+    "style": {"_hover": {"opacity": 0.75}},
+}
+
+
+def multi_selected_item_chip(item: str) -> rx.Component:
+    return rx.badge(
+        rx.match(
+            item[:3],
+            ("aws", rx.image("/aws.png", width="35px", height="auto")),
+            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+            ("azr", rx.image("/azr.png", width="35px", height="auto")),
+            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+        ),
+        item[4:],
+        rx.icon("circle-x", size=18),
+        color_scheme="green",
+        **chip_props,
+        on_click=State.multi_remove_selected(item),
+    )
+
+
+def multi_unselected_item_chip(item: StrID) -> rx.Component:
+    return rx.cond(
+        State.selected_regions.contains(item.id),
+        rx.fragment(),
+        rx.badge(
+            rx.match(
+                item.id[:3],
+                ("aws", rx.image("/aws.png", width="30px", height="auto")),
+                ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+                ("azr", rx.image("/azr.png", width="35px", height="auto")),
+                ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+            ),
+            item.id[4:],
+            rx.icon("circle-plus", size=18),
+            color_scheme="gray",
+            **chip_props,
+            on_click=State.multi_add_selected(item.id),
+        ),
+    )
+
+
+def region_selector() -> rx.Component:
+    return rx.vstack(
+        rx.flex(
+            rx.hstack(
+                rx.icon("earth", size=20),
+                rx.heading(
+                    "Regions" + f" ({State.selected_regions.length()})",
+                    size="4",
+                ),
+                spacing="1",
+                align="center",
+                width="100%",
+                justify_content=["end", "start"],
+            ),
+            justify="between",
+            flex_direction=["column", "row"],
+            align="center",
+            spacing="2",
+            margin_bottom="10px",
+            width="100%",
+        ),
+        # Selected Items
+        rx.flex(
+            rx.foreach(
+                State.selected_regions,
+                multi_selected_item_chip,
+            ),
+            wrap="wrap",
+            spacing="2",
+            justify_content="start",
+        ),
+        rx.divider(),
+        # Unselected Items
+        rx.flex(
+            rx.foreach(State.available_regions, multi_unselected_item_chip),
+            wrap="wrap",
+            spacing="2",
+            justify_content="start",
+        ),
+        justify_content="start",
+        align_items="start",
+        width="100%",
+    )
+
+
+# SINGLE SELECT CPU
+
+
+def unselected_item(item: str) -> rx.Component:
+    return rx.badge(
+        item,
+        color_scheme="gray",
+        **chip_props,
+        on_click=State.setvar("selected_cpus_per_node", item),
+    )
+
+
+def selected_item(item: str) -> rx.Component:
+    return rx.badge(
+        rx.icon("check", size=18),
+        item,
+        color_scheme="mint",
+        **chip_props,
+        # on_click=State.setvar("selected_cpu", ""),
+    )
+
+
+def item_chip(item: str) -> rx.Component:
+    return rx.cond(
+        State.selected_cpus_per_node == item,
+        selected_item(item),
+        unselected_item(item),
+    )
+
+
+def cpu_item_selector() -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.icon("cpu", size=20),
+            rx.heading("CPU:", size="4"),
+            spacing="2",
+            align="center",
+            width="100%",
+        ),
+        rx.hstack(
+            rx.foreach(State.available_cpus_per_node, item_chip),
+            wrap="wrap",
+            spacing="2",
+        ),
+        align_items="start",
+        spacing="4",
+        width="100%",
+    )
+
+
+# SINGLE SELECT DISK
+
+
+def disk_unselected_item(item: DiskSize) -> rx.Component:
+    return rx.badge(
+        item.size_name,
+        color_scheme="gray",
+        **chip_props,
+        on_click=State.setvar("selected_disk_size", item.size_gb),
+    )
+
+
+def disk_selected_item(item: DiskSize) -> rx.Component:
+    return rx.badge(
+        rx.icon("check", size=18),
+        item.size_name,
+        color_scheme="mint",
+        **chip_props,
+        # on_click=State.setvar("selected_disk", ""),
+    )
+
+
+def disk_item_chip(item: DiskSize) -> rx.Component:
+    return rx.cond(
+        State.selected_disk_size == item.size_gb,
+        disk_selected_item(item),
+        disk_unselected_item(item),
+    )
+
+
+def disk_item_selector() -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.icon("hard-drive", size=20),
+            rx.heading("Disk:", size="4"),
+            spacing="2",
+            align="center",
+            width="100%",
+        ),
+        rx.hstack(
+            rx.foreach(State.available_disk_sizes, disk_item_chip),
+            wrap="wrap",
+            spacing="2",
+        ),
+        align_items="start",
+        spacing="4",
+        width="100%",
+    )
+
+
+def scale_cluster_dialog() -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.box(
+                rx.tooltip(
+                    rx.icon(
+                        "expand",
+                        color=None,
+                        size=30,
+                        class_name="cursor-pointer text-yellow-500 hover:text-red-300 mr-4",
+                    ),
+                    content="Scale the cluster",
+                ),
+            ),
+        ),
+        rx.dialog.content(
+            rx.dialog.title(f"Scale {State.cluster_id}", class_name="text-4xl pb-4"),
+            rx.form(
+                rx.flex(
+                    rx.hstack(
+                        cpu_item_selector(),
+                        rx.vstack(
+                            rx.hstack(
+                                rx.icon("database", size=20),
+                                rx.heading("Nodes per Region", size="4"),
+                                spacing="2",
+                                align="center",
+                                width="100%",
+                            ),
+                            rx.radio(
+                                State.available_node_counts,
+                                on_change=State.set_node_count,
+                                default_value=State.selected_node_count.to_string(),
+                                direction="row",
+                                color_scheme="mint",
+                            ),
+                        ),
+                    ),
+                    rx.divider(),
+                    disk_item_selector(),
+                    rx.divider(),
+                    region_selector(),
+                    rx.divider(),
+                    rx.flex(
+                        rx.dialog.close(
+                            rx.button(
+                                "Cancel",
+                                variant="soft",
+                                color_scheme="gray",
+                            ),
+                        ),
+                        rx.dialog.close(
+                            rx.button("Submit", type="submit"),
+                        ),
+                        spacing="3",
+                        justify="end",
+                    ),
+                    direction="column",
+                    spacing="4",
+                ),
+                on_submit=lambda form_data: State.scale_cluster(
+                    form_data, BaseState.webuser
+                ),
+                reset_on_submit=False,
+            ),
+            max_width="850px",
+            on_open_auto_focus=State.load_cluster_data
+        ),
+        
+    )
 
 
 def cluster_sidebar() -> rx.Component:
@@ -415,6 +770,24 @@ def cluster():
                                             class_name="mr-4",
                                         ),
                                         content="You need to have admin or rw role to delete a cluster",
+                                    ),
+                                ),
+                            ),
+                            # SCALE CLUSTER
+                            rx.cond(
+                                State.current_cluster.status == "DELETED",
+                                rx.box(),
+                                rx.cond(
+                                    BaseState.is_admin_or_rw,
+                                    scale_cluster_dialog(),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "expand",
+                                            size=30,
+                                            color="gray",
+                                            class_name="mr-4",
+                                        ),
+                                        content="You need to have admin or rw role to scale a cluster",
                                     ),
                                 ),
                             ),
