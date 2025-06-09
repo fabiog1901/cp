@@ -618,6 +618,15 @@ def scale_cluster_worker(
                 }
             ],
         }
+        
+        extra_vars = {
+            "deployment_id": cluster_scale_request.name,
+            "deployment": deployment,
+            "current_hosts": [
+                x for sublist in current_desc["cluster"] for x in sublist["nodes"]
+            ],
+            "cockroachdb_version": current_desc["version"],
+        }
 
         job_status, raw_data = MyRunner(job_id).launch_runner(
             "SCALE_CLUSTER", extra_vars

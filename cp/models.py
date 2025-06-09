@@ -69,13 +69,6 @@ class StrID:
 class IntID:
     id: int
 
-
-@dataclass
-class DiskSize:
-    size_name: str
-    size_gb: int
-
-
 @dataclass
 class Region:
     cloud: str

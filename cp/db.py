@@ -9,12 +9,10 @@ from psycopg_pool import ConnectionPool
 from .models import (
     Cluster,
     ClusterOverview,
-    DiskSize,
     EventLog,
     GroupRoleMap,
     IntID,
     Job,
-    Msg,
     Region,
     StrID,
     Task,
@@ -553,7 +551,7 @@ def get_regions() -> list[StrID]:
     )
 
 
-def get_node_counts() -> list[StrID]:
+def get_node_counts() -> list[IntID]:
     return execute_stmt(
         """
         SELECT nodes
@@ -561,7 +559,7 @@ def get_node_counts() -> list[StrID]:
         ORDER BY nodes ASC
         """,
         (),
-        StrID,
+        IntID,
     )
 
 
@@ -577,15 +575,15 @@ def get_cpus_per_node() -> list[IntID]:
     )
 
 
-def get_disk_sizes() -> list[DiskSize]:
+def get_disk_sizes() -> list[IntID]:
     return execute_stmt(
         """
-        SELECT size_name, size_gb
+        SELECT size_gb
         FROM disk_sizes
         ORDER BY size_gb
         """,
         (),
-        DiskSize,
+        IntID,
     )
 
 

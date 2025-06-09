@@ -5,11 +5,13 @@ import reflex as rx
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
+from ..components.main import item_selector, chip_props
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job, StrID, DiskSize
+from ..models import TS_FORMAT, Cluster, Job, StrID
 from ..state.base import BaseState
 from ..template import template
 from .clusters import State as ClusterState
+from ..util import get_human_size
 
 
 class State(BaseState):
@@ -26,31 +28,28 @@ class State(BaseState):
     def multi_remove_selected(self, item: str):
         self.selected_regions.remove(item)
 
-    # CREATE NEW CLUSTER DIALOG PARAMETERS
+    # SCALE CLUSTER DIALOG PARAMETERS
     available_versions: list[str] = []
     available_regions: list[StrID] = []
-    available_node_counts: list[str] = []
+    available_node_counts: list[int] = []
     available_cpus_per_node: list[int] = []
-    available_disk_sizes: list[DiskSize] = []
+    disk_fmt_2_size_map: dict[str, int] = {}
+    available_disk_sizes: list[str] = []
 
     selected_name: str = ""
     selected_cpus_per_node: int = None
     selected_node_count: int = None
-    selected_disk_size: int = None
+    selected_disk_size: str = None
     selected_regions: list[str] = []
     selected_version: str = ""
     selected_group: str = ""
 
     @rx.event
-    def set_node_count(self, item: str):
-        self.selected_node_count = int(item)
-
-    @rx.event
     def scale_cluster(self, form_data: dict):
         form_data["name"] = self.current_cluster.cluster_id
         form_data["node_cpus"] = self.selected_cpus_per_node
-        form_data["disk_size"] = self.selected_disk_size
-        form_data["node_count"] = int(self.selected_node_count)
+        form_data["disk_size"] = self.disk_fmt_2_size_map[self.selected_disk_size]
+        form_data["node_count"] = self.selected_node_count
         form_data["regions"] = list(self.selected_regions)
 
         msg_id: StrID = db.insert_into_mq(
@@ -66,7 +65,7 @@ class State(BaseState):
 
         # self.selected_regions = []
         # self.selected_version = self.available_versions[0]
-        # self.selected_node_count = int(self.available_node_counts[0])
+        # self.selected_node_count = self.available_node_counts[0]
         # self.selected_cpus_per_node = self.available_cpus_per_node[0]
         # self.selected_disk_size = self.available_disk_sizes[0].size_gb
         # self.selected_group = self.webuser.groups[0]
@@ -79,15 +78,27 @@ class State(BaseState):
 
     is_running: bool = False
     just_once: bool = True
-    
-    
+
     # self.selected_version = self.current_cluster.description.version
     # self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
     # self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
     # self.selected_disk_size = self.current_cluster.description['disk_size']
     # self.available_regions = [StrID(x.get("cloud") + ":" + x.get("region")) for x in self.current_cluster.description['cluster']]
-            
-            
+
+    @rx.event
+    def load_cluster_data(self):
+        if self.current_cluster:
+            self.selected_version = self.current_cluster.description.get("version", "")
+            self.selected_node_count = len(
+                self.current_cluster.description["cluster"][0]["nodes"]
+            )
+            self.selected_cpus_per_node = self.current_cluster.description["node_cpus"]
+            self.selected_disk_size = get_human_size(self.current_cluster.description["disk_size"])
+            self.selected_regions = [
+                x.get("cloud") + ":" + x.get("region")
+                for x in self.current_cluster.description["cluster"]
+            ]
+
 
     @rx.event(background=True)
     async def fetch_cluster(self):
@@ -98,7 +109,11 @@ class State(BaseState):
             self.available_versions = [x.id for x in db.get_versions()]
             self.available_node_counts = [x.id for x in db.get_node_counts()]
             self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
-            self.available_disk_sizes = db.get_disk_sizes()
+            self.disk_fmt_2_size_map = {
+                get_human_size(x.id): x.id for x in db.get_disk_sizes()
+            }
+            self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
+            # self.selected_disk_size = self.available_disk_sizes[0]
             self.available_regions = db.get_regions()
             self.is_running = True
 
@@ -128,29 +143,29 @@ class State(BaseState):
                 self.current_cluster_regions = cluster.description.get("cluster", [])
                 self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
-                
+
                 if self.just_once and self.current_cluster_description:
                     self.just_once = False
-                    self.selected_version = self.current_cluster.description.get("version", "")
-                    self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
-                    self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
-                    self.selected_disk_size = self.current_cluster.description['disk_size']
-                    self.selected_regions = [x.get("cloud") + ":" + x.get("region") for x in self.current_cluster.description['cluster']]
-            
+                    self.selected_version = self.current_cluster.description.get(
+                        "version", ""
+                    )
+                    self.selected_node_count = len(
+                        self.current_cluster.description["cluster"][0]["nodes"]
+                    )
+                    self.selected_cpus_per_node = self.current_cluster.description[
+                        "node_cpus"
+                    ]
+                    self.selected_disk_size = get_human_size(self.current_cluster.description[
+                        "disk_size"
+                    ])
+                    self.selected_regions = [
+                        x.get("cloud") + ":" + x.get("region")
+                        for x in self.current_cluster.description["cluster"]
+                    ]
+
             await asyncio.sleep(5)
 
 
-    @rx.event
-    def load_cluster_data(self):
-        if self.current_cluster:
-            self.selected_version = self.current_cluster.description.get("version", "")
-            self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
-            self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
-            self.selected_disk_size = self.current_cluster.description['disk_size']
-            self.selected_regions = [x.get("cloud") + ":" + x.get("region") for x in self.current_cluster.description['cluster']]
-            
-        
-        
 chip_props = {
     "radius": "full",
     "variant": "surface",
@@ -243,106 +258,6 @@ def region_selector() -> rx.Component:
     )
 
 
-# SINGLE SELECT CPU
-
-
-def unselected_item(item: str) -> rx.Component:
-    return rx.badge(
-        item,
-        color_scheme="gray",
-        **chip_props,
-        on_click=State.setvar("selected_cpus_per_node", item),
-    )
-
-
-def selected_item(item: str) -> rx.Component:
-    return rx.badge(
-        rx.icon("check", size=18),
-        item,
-        color_scheme="mint",
-        **chip_props,
-        # on_click=State.setvar("selected_cpu", ""),
-    )
-
-
-def item_chip(item: str) -> rx.Component:
-    return rx.cond(
-        State.selected_cpus_per_node == item,
-        selected_item(item),
-        unselected_item(item),
-    )
-
-
-def cpu_item_selector() -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.icon("cpu", size=20),
-            rx.heading("CPU:", size="4"),
-            spacing="2",
-            align="center",
-            width="100%",
-        ),
-        rx.hstack(
-            rx.foreach(State.available_cpus_per_node, item_chip),
-            wrap="wrap",
-            spacing="2",
-        ),
-        align_items="start",
-        spacing="4",
-        width="100%",
-    )
-
-
-# SINGLE SELECT DISK
-
-
-def disk_unselected_item(item: DiskSize) -> rx.Component:
-    return rx.badge(
-        item.size_name,
-        color_scheme="gray",
-        **chip_props,
-        on_click=State.setvar("selected_disk_size", item.size_gb),
-    )
-
-
-def disk_selected_item(item: DiskSize) -> rx.Component:
-    return rx.badge(
-        rx.icon("check", size=18),
-        item.size_name,
-        color_scheme="mint",
-        **chip_props,
-        # on_click=State.setvar("selected_disk", ""),
-    )
-
-
-def disk_item_chip(item: DiskSize) -> rx.Component:
-    return rx.cond(
-        State.selected_disk_size == item.size_gb,
-        disk_selected_item(item),
-        disk_unselected_item(item),
-    )
-
-
-def disk_item_selector() -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.icon("hard-drive", size=20),
-            rx.heading("Disk:", size="4"),
-            spacing="2",
-            align="center",
-            width="100%",
-        ),
-        rx.hstack(
-            rx.foreach(State.available_disk_sizes, disk_item_chip),
-            wrap="wrap",
-            spacing="2",
-        ),
-        align_items="start",
-        spacing="4",
-        width="100%",
-    )
-
-
 def scale_cluster_dialog() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
@@ -363,26 +278,32 @@ def scale_cluster_dialog() -> rx.Component:
             rx.form(
                 rx.flex(
                     rx.hstack(
-                        cpu_item_selector(),
-                        rx.vstack(
-                            rx.hstack(
-                                rx.icon("database", size=20),
-                                rx.heading("Nodes per Region", size="4"),
-                                spacing="2",
-                                align="center",
-                                width="100%",
-                            ),
-                            rx.radio(
-                                State.available_node_counts,
-                                on_change=State.set_node_count,
-                                default_value=State.selected_node_count.to_string(),
-                                direction="row",
-                                color_scheme="mint",
-                            ),
+                        item_selector(
+                            State,
+                            State.available_cpus_per_node,
+                            State.selected_cpus_per_node,
+                            icon="cpu",
+                            title="CPU:",
+                            var="selected_cpus_per_node",
+                        ),
+                        item_selector(
+                            State,
+                            State.available_node_counts,
+                            State.selected_node_count,
+                            icon="database",
+                            title="Nodes Per Region:",
+                            var="selected_node_count",
                         ),
                     ),
                     rx.divider(),
-                    disk_item_selector(),
+                    item_selector(
+                        State,
+                        State.available_disk_sizes,
+                        State.selected_disk_size,
+                        "hard-drive",
+                        "Disk",
+                        "selected_disk_size",
+                    ),
                     rx.divider(),
                     region_selector(),
                     rx.divider(),
@@ -409,9 +330,8 @@ def scale_cluster_dialog() -> rx.Component:
                 reset_on_submit=False,
             ),
             max_width="850px",
-            on_open_auto_focus=State.load_cluster_data
+            on_open_auto_focus=State.load_cluster_data,
         ),
-        
     )
 
 

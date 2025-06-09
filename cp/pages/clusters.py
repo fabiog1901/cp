@@ -1,23 +1,168 @@
 import asyncio
-import json
 
 import reflex as rx
 
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
+from ..components.main import item_selector, chip_props
 from ..cp import app
-from ..models import Cluster, ClusterOverview, DiskSize, StrID
+from ..models import Cluster, ClusterOverview, StrID
 from ..state.base import BaseState
 from ..template import template
-from ..util import get_funny_name
+from ..util import get_funny_name, get_human_size
 
-chip_props = {
-    "radius": "full",
-    "variant": "surface",
-    "size": "3",
-    "cursor": "pointer",
-    "style": {"_hover": {"opacity": 0.75}},
-}
+
+
+class State(BaseState):
+    current_cluster: Cluster = None
+    clusters: list[ClusterOverview] = []
+
+    sort_value = ""
+    search_value = ""
+    is_running: bool = False
+
+    # CREATE NEW CLUSTER DIALOG PARAMETERS
+    available_versions: list[str] = []
+    available_regions: list[StrID] = []
+    available_node_counts: list[int] = []
+    available_cpus_per_node: list[int] = []
+    disk_fmt_2_size_map: dict[str, int] = {}
+    available_disk_sizes: list[str] = []
+
+    selected_name: str = ""
+    selected_cpus_per_node: int = None
+    selected_node_count: int = None
+    selected_disk_size: str = None
+    selected_regions: list[str] = []
+    selected_version: str = ""
+    selected_group: str = ""
+
+    @rx.event
+    def multi_add_selected(self, item: str):
+        self.selected_regions.append(item)
+
+    @rx.event
+    def multi_remove_selected(self, item: str):
+        self.selected_regions.remove(item)
+
+    @rx.event
+    def load_funny_name(self):
+        self.selected_name = get_funny_name()
+
+    @rx.var(cache=True)
+    def table_clusters(self) -> list[ClusterOverview]:
+        clusters = self.clusters
+
+        if self.sort_value != "":
+            clusters = sorted(
+                clusters,
+                key=lambda user: getattr(user, self.sort_value).lower(),
+            )
+
+        if self.search_value != "":
+            clusters = [
+                cluster
+                for cluster in clusters
+                if any(
+                    self.search_value.lower() in getattr(cluster, attr).lower()
+                    for attr in [
+                        "cluster_id",
+                        "email",
+                        "group",
+                    ]
+                )
+            ]
+        return clusters
+
+    @rx.event
+    def create_new_cluster(self, form_data: dict):
+        form_data["node_cpus"] = self.selected_cpus_per_node
+        form_data["disk_size"] = self.disk_fmt_2_size_map[self.selected_disk_size]
+        form_data["node_count"] = self.selected_node_count
+        form_data["regions"] = list(self.selected_regions)
+        form_data["version"] = self.selected_version
+        form_data["group"] = self.selected_group
+
+        msg_id: StrID = db.insert_into_mq(
+            "CREATE_CLUSTER",
+            form_data,
+            self.webuser.username,
+        )
+        db.insert_event_log(
+            self.webuser.username,
+            "CREATE_CLUSTER",
+            form_data | {"job_id": msg_id.id},
+        )
+
+        self.selected_name = get_funny_name()
+        self.selected_regions = []
+        self.selected_version = self.available_versions[0]
+        self.selected_node_count = self.available_node_counts[0]
+        self.selected_cpus_per_node = self.available_cpus_per_node[0]
+        self.selected_disk_size = self.available_disk_sizes[0]
+        self.selected_group = self.webuser.groups[0]
+
+        return rx.toast.info(f"Job {msg_id.id} requested.")
+
+    @rx.event
+    def delete_cluster(self, cluster_id: str):
+        msg_id: StrID = db.insert_into_mq(
+            "DELETE_CLUSTER",
+            {"cluster_id": cluster_id},
+            self.webuser.username,
+        )
+        db.insert_event_log(
+            self.webuser.username,
+            "DELETE_CLUSTER",
+            {"cluster_id": cluster_id, "job_id": msg_id.id},
+        )
+        return rx.toast.info(f"Job {msg_id.id} requested.")
+
+    @rx.event(background=True)
+    async def fetch_all_clusters(self):
+        if self.is_running:
+            return
+        async with self:
+            # fetch this data only once
+            self.available_versions = [x.id for x in db.get_versions()]
+            self.selected_version = self.available_versions[0]
+
+            self.available_node_counts = [x.id for x in db.get_node_counts()]
+            self.selected_node_count = self.available_node_counts[0]
+
+            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+            self.selected_cpus_per_node = self.available_cpus_per_node[0]
+
+            self.disk_fmt_2_size_map = {
+                get_human_size(x.id): x.id for x in db.get_disk_sizes()
+            }
+            self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
+            self.selected_disk_size = self.available_disk_sizes[0]
+
+            self.available_regions = db.get_regions()
+
+            self.selected_group = self.webuser.groups[0]
+            self.is_running = True
+
+        while True:
+            if (
+                self.router.page.path != "/clusters"
+                or self.router.session.client_token
+                not in app.event_namespace.token_to_sid
+            ):
+                print("clusters.py: Stopping background task.")
+                async with self:
+                    self.is_running = False
+                break
+
+            async with self:
+                # NOTE for some reason, `groups` has to be casted to a list
+                # even though it's already a list[str]
+                self.clusters = db.fetch_all_clusters(
+                    list(self.webuser.groups), self.is_admin
+                )
+
+            await asyncio.sleep(5)
 
 
 def multi_selected_item_chip(item: str) -> rx.Component:
@@ -103,257 +248,6 @@ def region_selector() -> rx.Component:
     )
 
 
-# SINGLE SELECT CPU
-
-
-def unselected_item(item: str) -> rx.Component:
-    return rx.badge(
-        item,
-        color_scheme="gray",
-        **chip_props,
-        on_click=State.setvar("selected_cpus_per_node", item),
-    )
-
-
-def selected_item(item: str) -> rx.Component:
-    return rx.badge(
-        rx.icon("check", size=18),
-        item,
-        color_scheme="mint",
-        **chip_props,
-        # on_click=State.setvar("selected_cpu", ""),
-    )
-
-
-def item_chip(item: str) -> rx.Component:
-    return rx.cond(
-        State.selected_cpus_per_node == item,
-        selected_item(item),
-        unselected_item(item),
-    )
-
-
-def cpu_item_selector() -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.icon("cpu", size=20),
-            rx.heading("CPU:", size="4"),
-            spacing="2",
-            align="center",
-            width="100%",
-        ),
-        rx.hstack(
-            rx.foreach(State.available_cpus_per_node, item_chip),
-            wrap="wrap",
-            spacing="2",
-        ),
-        align_items="start",
-        spacing="4",
-        width="100%",
-    )
-
-
-# SINGLE SELECT DISK
-
-
-def disk_unselected_item(item: DiskSize) -> rx.Component:
-    return rx.badge(
-        item.size_name,
-        color_scheme="gray",
-        **chip_props,
-        on_click=State.setvar("selected_disk_size", item.size_gb),
-    )
-
-
-def disk_selected_item(item: DiskSize) -> rx.Component:
-    return rx.badge(
-        rx.icon("check", size=18),
-        item.size_name,
-        color_scheme="mint",
-        **chip_props,
-        # on_click=State.setvar("selected_disk", ""),
-    )
-
-
-def disk_item_chip(item: DiskSize) -> rx.Component:
-    return rx.cond(
-        State.selected_disk_size == item.size_gb,
-        disk_selected_item(item),
-        disk_unselected_item(item),
-    )
-
-
-def disk_item_selector() -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.icon("hard-drive", size=20),
-            rx.heading("Disk:", size="4"),
-            spacing="2",
-            align="center",
-            width="100%",
-        ),
-        rx.hstack(
-            rx.foreach(State.available_disk_sizes, disk_item_chip),
-            wrap="wrap",
-            spacing="2",
-        ),
-        align_items="start",
-        spacing="4",
-        width="100%",
-    )
-
-
-class State(BaseState):
-    current_cluster: Cluster = None
-    clusters: list[ClusterOverview] = []
-
-    @rx.event
-    def multi_add_selected(self, item: str):
-        self.selected_regions.append(item)
-
-    @rx.event
-    def multi_remove_selected(self, item: str):
-        self.selected_regions.remove(item)
-
-    # CREATE NEW CLUSTER DIALOG PARAMETERS
-    available_versions: list[str] = []
-    available_regions: list[StrID] = []
-    available_node_counts: list[str] = []
-    available_cpus_per_node: list[int] = []
-    available_disk_sizes: list[DiskSize] = []
-
-    selected_name: str = ""
-    selected_cpus_per_node: int = None
-    selected_node_count: int = None
-    selected_disk_size: int = None
-    selected_regions: list[str] = []
-    selected_version: str = ""
-    selected_group: str = ""
-
-    @rx.event
-    def load_funny_name(self):
-        self.selected_name = get_funny_name()
-
-    sort_value = ""
-    search_value = ""
-    is_running: bool = False
-
-    @rx.event(background=True)
-    async def fetch_all_clusters(self):
-        if self.is_running:
-            return
-        async with self:
-            # fetch this data only once
-            self.available_versions = [x.id for x in db.get_versions()]
-            self.selected_version = self.available_versions[0]
-
-            self.available_node_counts = [x.id for x in db.get_node_counts()]
-            self.selected_node_count = int(self.available_node_counts[0])
-
-            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
-            self.selected_cpus_per_node = self.available_cpus_per_node[0]
-
-            self.available_disk_sizes = db.get_disk_sizes()
-            self.selected_disk_size = self.available_disk_sizes[0].size_gb
-
-            self.available_regions = db.get_regions()
-
-            self.selected_group = self.webuser.groups[0]
-            self.is_running = True
-
-        while True:
-            if (
-                self.router.page.path != "/clusters"
-                or self.router.session.client_token
-                not in app.event_namespace.token_to_sid
-            ):
-                print("clusters.py: Stopping background task.")
-                async with self:
-                    self.is_running = False
-                break
-
-            async with self:
-                # NOTE for some reason, `groups` has to be casted to a list
-                # even though it's already a list[str]
-                self.clusters = db.fetch_all_clusters(
-                    list(self.webuser.groups), self.is_admin
-                )
-
-            await asyncio.sleep(5)
-
-    @rx.var(cache=True)
-    def table_clusters(self) -> list[ClusterOverview]:
-        clusters = self.clusters
-
-        if self.sort_value != "":
-            clusters = sorted(
-                clusters,
-                key=lambda user: getattr(user, self.sort_value).lower(),
-            )
-
-        if self.search_value != "":
-            clusters = [
-                cluster
-                for cluster in clusters
-                if any(
-                    self.search_value.lower() in getattr(cluster, attr).lower()
-                    for attr in [
-                        "cluster_id",
-                        "email",
-                        "group",
-                    ]
-                )
-            ]
-        return clusters
-
-    @rx.event
-    def set_node_count(self, item: str):
-        self.selected_node_count = int(item)
-
-    @rx.event
-    def create_new_cluster(self, form_data: dict):
-        form_data["node_cpus"] = self.selected_cpus_per_node
-        form_data["disk_size"] = self.selected_disk_size
-        form_data["node_count"] = int(self.selected_node_count)
-        form_data["regions"] = list(self.selected_regions)
-        form_data["version"] = self.selected_version
-        form_data["group"] = self.selected_group
-
-        msg_id: StrID = db.insert_into_mq(
-            "CREATE_CLUSTER",
-            form_data,
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            "CREATE_CLUSTER",
-            form_data | {"job_id": msg_id.id},
-        )
-
-        self.selected_name = get_funny_name()
-        self.selected_regions = []
-        self.selected_version = self.available_versions[0]
-        self.selected_node_count = int(self.available_node_counts[0])
-        self.selected_cpus_per_node = self.available_cpus_per_node[0]
-        self.selected_disk_size = self.available_disk_sizes[0].size_gb
-        self.selected_group = self.webuser.groups[0]
-
-        return rx.toast.info(f"Job {msg_id.id} requested.")
-
-    @rx.event
-    def delete_cluster(self, cluster_id: str):
-        msg_id: StrID = db.insert_into_mq(
-            "DELETE_CLUSTER",
-            {"cluster_id": cluster_id},
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            "DELETE_CLUSTER",
-            {"cluster_id": cluster_id, "job_id": msg_id.id},
-        )
-        return rx.toast.info(f"Job {msg_id.id} requested.")
-
 
 def new_cluster_dialog():
     return rx.cond(
@@ -379,26 +273,34 @@ def new_cluster_dialog():
                         ),
                         rx.divider(),
                         rx.hstack(
-                            cpu_item_selector(),
+                            item_selector(
+                                State,
+                                State.available_cpus_per_node,
+                                State.selected_cpus_per_node,
+                                icon="cpu",
+                                title="CPU:",
+                                var="selected_cpus_per_node",
+                            ),
                             rx.vstack(
-                                rx.hstack(
-                                    rx.icon("database", size=20),
-                                    rx.heading("Nodes per Region", size="4"),
-                                    spacing="2",
-                                    align="center",
-                                    width="100%",
-                                ),
-                                rx.radio(
+                                item_selector(
+                                    State,
                                     State.available_node_counts,
-                                    on_change=State.set_node_count,
-                                    default_value=State.available_node_counts[0],
-                                    direction="row",
-                                    color_scheme="mint",
+                                    State.selected_node_count,
+                                    icon="database",
+                                    title="Nodes Per Region:",
+                                    var="selected_node_count",
                                 ),
                             ),
                         ),
                         rx.divider(),
-                        disk_item_selector(),
+                        item_selector(
+                            State,
+                            State.available_disk_sizes,
+                            State.selected_disk_size,
+                            "hard-drive",
+                            "Disk",
+                            "selected_disk_size",
+                        ),
                         rx.divider(),
                         region_selector(),
                         rx.divider(),

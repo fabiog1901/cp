@@ -2,6 +2,59 @@ import reflex as rx
 
 from ..state.base import BaseState
 
+chip_props = {
+    "radius": "full",
+    "variant": "surface",
+    "size": "3",
+    "cursor": "pointer",
+    "style": {"_hover": {"opacity": 0.75}},
+}
+
+
+def item_selector(
+    state: rx.State,
+    state_options_var,
+    state_selected_var,
+    icon: str,
+    title: str,
+    var: str,
+) -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.icon(icon, size=20),
+            rx.heading(title, size="4"),
+            spacing="2",
+            align="center",
+            width="100%",
+        ),
+        rx.hstack(
+            rx.foreach(
+                state_options_var,
+                lambda item: rx.cond(
+                    state_selected_var == item,
+                    rx.badge(
+                        rx.icon("check", size=18),
+                        item,
+                        color_scheme="mint",
+                        **chip_props,
+                        # on_click=State.setvar(var, ""),
+                    ),
+                    rx.badge(
+                        item,
+                        color_scheme="gray",
+                        **chip_props,
+                        on_click=state.setvar(var, item),
+                    ),
+                ),
+            ),
+            wrap="wrap",
+            spacing="2",
+        ),
+        align_items="start",
+        spacing="4",
+        width="100%",
+    )
+
 
 def status_badge(state):
     return rx.text(
@@ -27,9 +80,6 @@ def version_link(version, note=None):
 
 def action_menu():
     return rx.button("⋯", variant="ghost", size="4")
-
-
-import reflex as rx
 
 
 def user_profile_menu():

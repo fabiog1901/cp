@@ -1,4 +1,5 @@
 import random
+import math
 
 funny_words = [
     "abominable",
@@ -442,3 +443,37 @@ funny_words = [
 
 def get_funny_name():
     return "-".join(random.choices(funny_words, k=2))
+
+
+def get_human_size(
+    value_in_gb: float
+) -> str:
+    """
+    1500 --> 1.5 TB
+    500  --> 500 GB
+    2000 --> 2 TB
+    """
+    suffix = (
+        " kB",
+        " MB",
+        " GB",
+        " TB",
+        " PB",
+        " EB",
+        " ZB",
+        " YB",
+        " RB",
+        " QB",
+    )
+
+    base = 1000
+    bytes_ = float(value_in_gb * 1_000_000_000)
+
+    exp = int(min(math.log(abs(bytes_), base), len(suffix)))
+    human_size = "%.1f" % (bytes_ / (base**exp)) 
+
+    if human_size[-2:] == ".0":
+        return human_size[:-2] + suffix[exp - 1]
+    return human_size + suffix[exp - 1]
+
+

@@ -127,14 +127,13 @@ create table cpus_per_node (
 );
 
 create table nodes_per_region (
-    nodes string not null,
+    nodes int2 not null,
     constraint pk primary key (nodes)
 );
 
 create table disk_sizes (
-    size_name string not null,
     size_gb INT2,
-    constraint pk primary key (size_name)
+    constraint pk primary key (size_gb)
 );
 
 CREATE TABLE event_log (
