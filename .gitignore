@@ -5,5 +5,5 @@ assets/external/
 __pycache__/
 *.py[cod]
 .env
-
+!.env.example
 .*

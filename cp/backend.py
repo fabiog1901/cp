@@ -12,6 +12,9 @@ from pprint import pprint
 
 from . import db
 from .models import ClusterRequest, Msg, Region, ClusterScaleRequest
+import os
+
+PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -836,9 +839,7 @@ class MyRunner:
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
         # fetch all plays for a playbook
-        link = db.get_playbook_link(playbook_name)
-
-        r = requests.get(link.id)
+        r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
 
         # create a new working directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
@@ -904,9 +905,7 @@ class MyRunnerLite:
             not os.path.exists(f"/tmp/{playbook_name}.yaml")
             or os.path.getmtime(f"/tmp/{playbook_name}.yaml") + 86400 < time.time()
         ):
-            link = db.get_playbook_link(playbook_name)
-
-            r = requests.get(link.id)
+            r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
 
             with open(f"/tmp/{playbook_name}.yaml", "wb") as f:
                 f.write(r.content)

@@ -65,24 +65,6 @@ def insert_into_mq(
     )
 
 
-###############
-#  PLAYBOOKS  #
-###############
-
-
-def get_playbook_link(playbook_name: str) -> StrID:
-    return execute_stmt(
-        """
-        SELECT link 
-        FROM playbooks
-        WHERE name  = %s
-        """,
-        (playbook_name,),
-        StrID,
-        return_list=False,
-    )
-
-
 #############
 #  REGIONS  #
 #############

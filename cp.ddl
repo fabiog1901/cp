@@ -98,12 +98,6 @@ CREATE TABLE secrets (
 */
 
 
-CREATE TABLE playbooks (
-   name STRING NOT NULL,
-   link STRING NOT NULL,
-   CONSTRAINT pk PRIMARY KEY (name ASC)
-);
-
 CREATE TABLE regions (
     cloud STRING NOT NULL,
     region STRING NOT NULL,
