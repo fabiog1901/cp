@@ -1,0 +1,31 @@
+---
+- name: RECREATE INVENTORY
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Build ansible inventory dynamically
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        group: cockroachdb
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ ssh_key }}"
+      loop: "{{ cockroachdb_nodes }}"
+
+- name: HEALTHCHECK CLUSTERS
+  hosts: cockroachdb
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: CockroachDB - get node status
+      run_once: yes
+      ansible.builtin.shell: |
+        cockroach node status --format json \
+          --certs-dir=/var/lib/cockroach/certs \
+      register: out
+
+    - name: Data
+      ansible.builtin.debug:
+        msg:
+          data: "{{ out.stdout | from_json }}"

@@ -1,0 +1,13 @@
+---
+##############
+#   INFRA    #
+##############
+- name: DEPROVISION VMS
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Ensure absence of instances
+      ansible.builtin.shell: |
+        cloud_instance {{ deployment_id }} absent '[]' '{}'
