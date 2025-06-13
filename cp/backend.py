@@ -8,7 +8,6 @@ from threading import Thread
 
 import ansible_runner
 import requests
-from pprint import pprint
 
 from . import db
 from .models import ClusterRequest, Msg, Region, ClusterScaleRequest
@@ -302,10 +301,6 @@ def scale_cluster(
 ) -> None:
     cluster_scale_request = ClusterScaleRequest(**cluster)
 
-    print("cluster scale request")
-    pprint(cluster_scale_request)
-    print()
-
     c = db.get_cluster(cluster_scale_request.name, [], True)
 
     db.update_cluster_status(
@@ -330,6 +325,47 @@ def scale_cluster(
     ).start()
 
 
+def parse_raw_data(regions, raw_data, current_desc):
+    
+    current_desc['cluster'] = []
+    current_desc['lbs'] = []
+    
+    for cloud_region in regions:
+        cloud, region = cloud_region.split(":")
+
+        region_nodes = []
+
+        for i in raw_data["cockroachdb"]:
+            if (
+                raw_data["hv"][i]["cloud"] == cloud
+                and raw_data["hv"][i]["region"] == region
+            ):
+                region_nodes.append(raw_data["hv"][i]["public_ip"])
+
+        current_desc["cluster"].append(
+            {
+                "cloud": cloud,
+                "region": region,
+                "nodes": region_nodes,
+            }
+        )
+
+        for i in raw_data["haproxy"]:
+            if (
+                raw_data["hv"][i]["cloud"] == cloud
+                and raw_data["hv"][i]["region"] == region
+            ):
+                current_desc["lbs"].append(
+                    {
+                        "cloud": cloud,
+                        "region": region,
+                        "dns_address": raw_data["hv"][i]["public_ip"],
+                    }
+                )
+                
+    return current_desc
+
+    
 def scale_cluster_worker(
     job_id,
     cluster_scale_request: ClusterScaleRequest,
@@ -342,6 +378,7 @@ def scale_cluster_worker(
     # DISK SIZE
     #
     if cluster_scale_request.disk_size != current_desc["disk_size"]:
+        return
         extra_vars = {
             "deployment_id": cluster_scale_request.name,
             "disk_size": cluster_scale_request.disk_size,
@@ -361,6 +398,7 @@ def scale_cluster_worker(
     # NODE CPUS
     #
     if cluster_scale_request.node_cpus != current_desc["node_cpus"]:
+        return
         extra_vars = {
             "deployment_id": cluster_scale_request.name,
             "node_cpus": cluster_scale_request.node_cpus,
@@ -377,11 +415,10 @@ def scale_cluster_worker(
             return
 
     #
-    # NODE COUNT
+    # NODE COUNT - ADD
     #
-
-    # add nodes
     if cluster_scale_request.node_count > len(current_desc["cluster"][0]["nodes"]):
+        deployment = []
         # create new nodes
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
@@ -472,7 +509,6 @@ def scale_cluster_worker(
             "cockroachdb_version": current_desc["version"],
         }
         
-    
         job_status, raw_data = MyRunner(job_id).launch_runner(
             "SCALE_CLUSTER", extra_vars
         )
@@ -484,19 +520,146 @@ def scale_cluster_worker(
                 "root",
             )
             return
+        
+        # data = {
+        #     "version": current_desc["version"],
+        #     "node_cpus": cluster_scale_request.node_cpus,
+        #     "disk_size": cluster_scale_request.disk_size,
+        #     "cluster": [],
+        #     "lbs": [],
+        # }
 
-    # remove nodes
-    if cluster_scale_request.node_count < len(current_desc["cluster"][0]["nodes"]):
-        pass  # decomm nodes
-
+        current_desc = parse_raw_data(current_regions, raw_data, current_desc)
+        
+        db.update_cluster(
+            cluster_scale_request.name,
+            "SCALING",
+            current_desc,
+            "system",
+        )
+        
+        
     #
-    # NEW REGIONS
+    # NODE COUNT - REMOVE
+    #
+    if cluster_scale_request.node_count < len(current_desc["cluster"][0]["nodes"]):
+        deployment = []
+        # decomm nodes and remove VMs
+        for cloud_region in current_regions:
+            cloud, region = cloud_region.split(":")
+
+            region_details: list[Region] = db.get_region_details(cloud, region)
+
+            # add 1 HAProxy per region
+            deployment.append(
+                {
+                    "cluster_name": cluster_scale_request.name,
+                    "copies": 1,
+                    "inventory_groups": ["haproxy"],
+                    "exact_count": 1,
+                    "instance": {"cpu": 4},
+                    "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
+                    "tags": {"Name": f"{cluster_scale_request.name}-lb"}
+                    | region_details[0].tags,
+                    "groups": [
+                        {
+                            "user": "ubuntu",
+                            "public_ip": True,
+                            "public_key_id": "workshop",
+                            "cloud": cloud,
+                            "image": region_details[0].image,
+                            "region": region,
+                            "vpc_id": region_details[0].vpc_id,
+                            "security_groups": region_details[0].security_groups,
+                            "zone": region_details[0].zone,
+                            "subnet": region_details[0].subnet,
+                        }
+                    ],
+                }
+                | region_details[0].extras
+            )
+
+            # distribute the node_counts over all available zones
+            node_count_per_zone = get_node_count_per_zone(
+                len(region_details), cluster_scale_request.node_count
+            )
+
+            # add nodes to the deployment
+            for idx, zone_count in enumerate(node_count_per_zone):
+                deployment.append(
+                    {
+                        "cluster_name": cluster_scale_request.name,
+                        "copies": 1,
+                        "inventory_groups": ["cockroachdb"],
+                        "exact_count": zone_count,
+                        "instance": {"cpu": cluster_scale_request.node_cpus},
+                        "volumes": {
+                            "os": {"size": 20, "type": "standard_ssd"},
+                            "data": [
+                                {
+                                    "size": cluster_scale_request.disk_size,
+                                    "type": "standard_ssd",
+                                    "iops": 500 * cluster_scale_request.node_cpus,
+                                    "throughput": 30 * cluster_scale_request.node_cpus,
+                                    "delete_on_termination": True,
+                                }
+                            ],
+                        },
+                        "tags": {"Name": f"{cluster_scale_request.name}-crdb"},
+                        "groups": [
+                            {
+                                "user": "ubuntu",
+                                "public_ip": True,
+                                "public_key_id": "workshop",
+                                "tags": {"owner": "fabio"},
+                                "cloud": cloud,
+                                "image": region_details[idx].image,
+                                "region": region,
+                                "vpc_id": region_details[idx].vpc_id,
+                                "security_groups": region_details[idx].security_groups,
+                                "zone": region_details[idx].zone,
+                                "subnet": region_details[idx].subnet,
+                            }
+                        ],
+                    }
+                    | region_details[idx].extras
+                )
+
+        extra_vars = {
+            "deployment_id": cluster_scale_request.name,
+            "deployment": deployment,
+        }
+        
+    
+        job_status, raw_data = MyRunner(job_id).launch_runner(
+            "SCALE_CLUSTER_IN", extra_vars
+        )
+
+        if job_status != "successful":
+            db.update_cluster_status(
+                cluster_scale_request.name,
+                "SCALE_FAILED",
+                "root",
+            )
+            return
+
+        current_desc = parse_raw_data(current_regions, raw_data, current_desc)
+        
+        db.update_cluster(
+            cluster_scale_request.name,
+            "SCALING",
+            current_desc,
+            "system",
+        )
+    #
+    # REGIONS - ADD
     #
 
     # new regions: check if there are any region in the request that's not in the current regions
     new_regions = [x for x in cluster_scale_request.regions if x not in current_regions]
 
     if new_regions:
+        deployment = []
         for cloud_region in current_regions + new_regions:
             cloud, region = cloud_region.split(":")
 
@@ -578,51 +741,6 @@ def scale_cluster_worker(
                 )
 
         extra_vars = {
-            "state": "present",
-            "owner": "fabio",
-            "deployment_id": cluster_scale_request.name,
-            "deployment": deployment,
-            "certificates_organization_name": "{{ owner }}-org",
-            "certificates_dir": "certs",
-            "certificates_usernames": ["root"],
-            # "certificates_hosts": "{{ groups['cockroachdb'] }}",
-            "certificates_loadbalancer": "{{ groups['haproxy'] | default('') }}",
-            "cockroachdb_deployment": "standard",
-            "cockroachdb_secure": True,
-            "cockroachdb_certificates_dir": "certs",
-            "cockroachdb_certificates_clients": ["root"],
-            # "cockroachdb_version": cluster_request.version,
-            "cockroachdb_join": [
-                "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[0]].public_ip }}",
-                "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[1]].public_ip }}",
-                "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[2]].public_ip }}",
-            ],
-            "cockroachdb_sql_port": 26257,
-            "cockroachdb_rpc_port": 26357,
-            "cockroachdb_http_addr_ip": "0.0.0.0",
-            "cockroachdb_http_addr_port": "8080",
-            "cockroachdb_cache": ".35",
-            "cockroachdb_max_sql_memory": ".35",
-            "cockroachdb_max_offset": "250ms",
-            "cockroachdb_upgrade_delay": 60,
-            "cockroachdb_locality": "cloud={{ cloud | default('') }},region={{ region | default('') }},zone={{ zone | default('') }}",
-            "cockroachdb_advertise_addr": "{{ public_ip | default('') }}",
-            "cockroachdb_cluster_organization": "Workshop",
-            "cockroachdb_enterprise_license": "crl-0-EJPvvcEGGAIiCFdvcmtzaG9w",
-            "cockroachdb_encryption": False,
-            "cockroachdb_autofinalize": True,
-            "cockroachdb_env_vars": ["KRB5_KTNAME=/var/lib/cockroach/cockroach.keytab"],
-            "dbusers": [
-                {
-                    "name": "cockroach",
-                    "password": "cockroach",
-                    "is_cert": False,
-                    "is_admin": True,
-                }
-            ],
-        }
-        
-        extra_vars = {
             "deployment_id": cluster_scale_request.name,
             "deployment": deployment,
             "current_hosts": [
@@ -643,67 +761,139 @@ def scale_cluster_worker(
             )
             return
 
+        current_desc = parse_raw_data(cluster_scale_request.regions, raw_data, current_desc)
+        
+        db.update_cluster(
+            cluster_scale_request.name,
+            "SCALING",
+            current_desc,
+            "system",
+        )
+    
+    #
+    # REGION - REMOVE
+    #
+    
     # remove region: check for any region that's in the current list that's no longer in the request
     remove_regions = [
         x for x in current_regions if x not in cluster_scale_request.regions
     ]
+
     if remove_regions:
         # decomm region nodes
-        pass
+        deployment = []
+        # decomm nodes and remove VMs
+        for cloud_region in cluster_scale_request.regions:
+            cloud, region = cloud_region.split(":")
 
-    data = {
-        "version": current_desc["version"],
-        "node_cpus": cluster_scale_request.node_cpus,
-        "disk_size": cluster_scale_request.disk_size,
-        "cluster": [],
-        "lbs": [],
-    }
+            region_details: list[Region] = db.get_region_details(cloud, region)
 
-    if job_status != "successful":
-        db.update_cluster_status(
-            cluster_scale_request.name,
-            "FAILED",
-            "root",
-        )
-        return
+            # add 1 HAProxy per region
+            deployment.append(
+                {
+                    "cluster_name": cluster_scale_request.name,
+                    "copies": 1,
+                    "inventory_groups": ["haproxy"],
+                    "exact_count": 1,
+                    "instance": {"cpu": 4},
+                    "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
+                    "tags": {"Name": f"{cluster_scale_request.name}-lb"}
+                    | region_details[0].tags,
+                    "groups": [
+                        {
+                            "user": "ubuntu",
+                            "public_ip": True,
+                            "public_key_id": "workshop",
+                            "cloud": cloud,
+                            "image": region_details[0].image,
+                            "region": region,
+                            "vpc_id": region_details[0].vpc_id,
+                            "security_groups": region_details[0].security_groups,
+                            "zone": region_details[0].zone,
+                            "subnet": region_details[0].subnet,
+                        }
+                    ],
+                }
+                | region_details[0].extras
+            )
 
-    for cloud_region in cluster_scale_request.regions:
-        cloud, region = cloud_region.split(":")
+            # distribute the node_counts over all available zones
+            node_count_per_zone = get_node_count_per_zone(
+                len(region_details), cluster_scale_request.node_count
+            )
 
-        region_nodes = []
-
-        for i in raw_data["cockroachdb"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
-                region_nodes.append(raw_data["hv"][i]["public_ip"])
-
-        data["cluster"].append(
-            {
-                "cloud": cloud,
-                "region": region,
-                "nodes": region_nodes,
-            }
-        )
-
-        for i in raw_data["haproxy"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
-                data["lbs"].append(
+            # add nodes to the deployment
+            for idx, zone_count in enumerate(node_count_per_zone):
+                deployment.append(
                     {
-                        "cloud": cloud,
-                        "region": region,
-                        "dns_address": raw_data["hv"][i]["public_ip"],
+                        "cluster_name": cluster_scale_request.name,
+                        "copies": 1,
+                        "inventory_groups": ["cockroachdb"],
+                        "exact_count": zone_count,
+                        "instance": {"cpu": cluster_scale_request.node_cpus},
+                        "volumes": {
+                            "os": {"size": 20, "type": "standard_ssd"},
+                            "data": [
+                                {
+                                    "size": cluster_scale_request.disk_size,
+                                    "type": "standard_ssd",
+                                    "iops": 500 * cluster_scale_request.node_cpus,
+                                    "throughput": 30 * cluster_scale_request.node_cpus,
+                                    "delete_on_termination": True,
+                                }
+                            ],
+                        },
+                        "tags": {"Name": f"{cluster_scale_request.name}-crdb"},
+                        "groups": [
+                            {
+                                "user": "ubuntu",
+                                "public_ip": True,
+                                "public_key_id": "workshop",
+                                "tags": {"owner": "fabio"},
+                                "cloud": cloud,
+                                "image": region_details[idx].image,
+                                "region": region,
+                                "vpc_id": region_details[idx].vpc_id,
+                                "security_groups": region_details[idx].security_groups,
+                                "zone": region_details[idx].zone,
+                                "subnet": region_details[idx].subnet,
+                            }
+                        ],
                     }
+                    | region_details[idx].extras
                 )
+
+        extra_vars = {
+            "deployment_id": cluster_scale_request.name,
+            "deployment": deployment,
+        }
+        
+        job_status, raw_data = MyRunner(job_id).launch_runner(
+            "SCALE_CLUSTER_IN", extra_vars
+        )
+
+        if job_status != "successful":
+            db.update_cluster_status(
+                cluster_scale_request.name,
+                "SCALE_FAILED",
+                "root",
+            )
+            return
+
+        current_desc = parse_raw_data(cluster_scale_request.regions, raw_data, current_desc)
+        
+        db.update_cluster(
+            cluster_scale_request.name,
+            "SCALING",
+            current_desc,
+            "system",
+        )
+        
 
     db.update_cluster(
         cluster_scale_request.name,
         "RUNNING",
-        data,
+        current_desc,
         "system",
     )
 

@@ -19,12 +19,12 @@
           instances:
             aws:
               "2":
-                default: m6i.large
+                default: t3.large #m6i.large
                 "4": c5.large
                 "8": m6i.large
                 "16": r5.large
               "4":
-                default: m6i.xlarge
+                default: t3.xlarge #m6i.xlarge
                 "8": c5.xlarge
                 "16": m6i.xlarge
                 "32": r5.xlarge
@@ -70,13 +70,13 @@
                 default: Standard_D32s_v3
             gcp:
               "2":
-                default: n2-standard-2
+                default: e2-small #n2-standard-2
                 "2": n2-highcpu-2
                 "4": n2-standard-2
                 "8": n2-standard-2
                 "16": n2-highmem-2
               "4":
-                default: n2-standard-4
+                default: e2-medium #n2-standard-4
                 "4": n2-highcpu-4
                 "8": n2-standard-4
                 "16": n2-standard-4
@@ -447,25 +447,28 @@
     - name: Create the binary-type map
       ansible.builtin.set_fact:
         # map the machine CPU type to the matching filename component
-        cockroachdb_binary_arch:
+        bin_arch:
           aarch64: arm64
           x86_64: amd64
 
     - name: Check that the CockroachDB tarball exists locally
       stat:
-        path: cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
+        path: cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       register: _stat_result
 
-    - name: Download and install CockroachDB binary
+    - name: Download CockroachDB binary
       ansible.builtin.shell: |
-        wget {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
-        tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
-        mv cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
+        wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
+      when: not _stat_result.stat.exists
+    
+    - name: Install CockroachDB binary
+      ansible.builtin.shell: |
+        tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
+        mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
         chmod 755 /usr/local/bin/cockroach
         mkdir /usr/local/lib/cockroach/
-        mv cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }} /lib/libgeos*.so /usr/local/lib/cockroach/
-        rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}
-      when: not _stat_result.stat.exists
+        mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/lib/libgeos*.so /usr/local/lib/cockroach/
+        rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
 
     - name: Add the user cockroach
       ansible.builtin.user:
@@ -730,23 +733,26 @@
     - name: Create the binary-type map
       ansible.builtin.set_fact:
         # map the machine CPU type to the matching filename component
-        cockroachdb_binary_arch:
+        bin_arch:
           aarch64: arm64
           x86_64: amd64
 
     - name: Check that the CockroachDB tarball exists locally
       stat:
-        path: cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
+        path: cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       register: _stat_result
 
-    - name: Download and install CockroachDB binary
+    - name: Download CockroachDB binary
       ansible.builtin.shell: |
-        wget {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
-        tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}.tgz
-        mv cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
-        chmod 755 /usr/local/bin/cockroach
-        rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ cockroachdb_binary_arch[ansible_architecture] }}
+        wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       when: not _stat_result.stat.exists
+    
+    - name: Install CockroachDB binary
+      ansible.builtin.shell: |
+        tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
+        mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
+        chmod 755 /usr/local/bin/cockroach
+        rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
 
 - name: GET DATA FROM COCKROACHDB CLUSTER
   hosts: cockroachdb

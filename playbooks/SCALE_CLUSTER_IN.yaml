@@ -1,0 +1,279 @@
+---
+- name: GATHER VMS SLATED FOR DELETION
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tags:
+    - infra
+    - cloud_instance
+  tasks:
+    - name: Gather VM details of current deployment
+      ansible.builtin.shell: |
+        cloud_instance {{ deployment_id }} present '[]' '{}' \
+          --gather_current_deployment_only=yes
+      register: instances
+
+    - name: Build ansible inventory dynamically
+      ansible.builtin.add_host:
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
+
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+      loop: "{{ instances.stdout | from_json }}"
+
+    - name: Get list of instances slated to be removed
+      ansible.builtin.shell: |
+        cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}' \
+          --return_tobedeleted_vms=yes
+      register: instances
+
+    - name: create a variable to list all vms slated for deletion
+      debug:
+        msg: "{{ item.public_ip }}"
+      loop: "{{ (instances.stdout | from_json) }}"
+
+    - name: add group tobedeleted to slated VMs
+      ansible.builtin.add_host:
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
+
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups + ['tobedeleted'] }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+      loop: "{{ instances.stdout | from_json }}"
+
+- name: DECOMMISSION COCKROACHDB NODES
+  hosts: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
+  gather_facts: yes
+  run_once: yes
+  become: yes
+  vars:
+    node_ids: []
+  tags:
+    - platform
+  tasks:
+    - name: CockroachDB - get node status for all nodes, including already decommissioned
+      ansible.builtin.shell: |
+        cockroach node status --all --format json \
+          --certs-dir=/var/lib/cockroach/certs \
+      register: out
+
+    - name: Printing cockroach node status output
+      ansible.builtin.debug:
+        var: out.stdout | from_json
+
+    - name: get node_id for the VMs slated to be removed
+      ansible.builtin.set_fact:
+        node_ids: "{{ node_ids + [item.id]  }}"
+      loop: "{{ out.stdout | from_json }}"
+      when: "'tobedeleted' in groups and item.address.split(':')[0] in groups['tobedeleted']"
+
+    - name: printing node_ids to be decommissioned
+      debug:
+        var: node_ids
+
+    - name: drain the nodes
+      shell: |
+        for i in {{ node_ids | join(' ') }} ; do
+          cockroach node drain $i \
+            --certs-dir /var/lib/cockroach/certs \
+            --host={{ ansible_host }}:26357 &
+        done
+        wait
+      args:
+        executable: /bin/bash
+      register: out
+      when: node_ids | length > 0
+
+    - name: print drain node output
+      debug:
+        var: out.stdout
+
+    - name: decommission the nodes
+      shell: |
+        cockroach node decommission {{ node_ids | join(' ') }} \
+          --certs-dir /var/lib/cockroach/certs \
+          --host={{ ansible_host }}:26357
+      register: out
+      when: node_ids | length > 0
+    
+    - name: re-issue the cockroach node decommission command
+      shell: |
+        cockroach node decommission {{ node_ids | join(' ') }} \
+          --certs-dir /var/lib/cockroach/certs \
+          --host={{ ansible_host }}:26357
+      register: out
+      when: node_ids | length > 0
+
+    - name: print last few output lines of decommission command
+      debug:
+        var: out.stdout_lines[-4:]
+
+
+- name: REMOVE VMS OF DECOMMISSIONED NODES
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tags:
+    - infra
+    - cloud_instance
+  tasks:
+    - name: Remove instances
+      ansible.builtin.shell: |
+        cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}'
+      register: instances
+
+    - name: Build ansible inventory dynamically
+      ansible.builtin.add_host:
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
+
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+      loop: "{{ instances.stdout | from_json }}"
+
+
+- name: DEPLOY COCKROACHDB-HAPROXY
+  hosts: "{{ groups['haproxy'] | difference(groups['tobedeleted'] | default([]) ) }}"
+  gather_facts: yes
+  become: yes
+  vars:
+    haproxy_group: "{{ groups[cluster_name] | intersect(groups['cockroachdb']) | difference(groups['tobedeleted'] | default([]) ) }}"
+    haproxy_port: 26257
+    haproxy_checkport: 8080
+    haproxy_serverprefix: cockroach
+  tags:
+    - platform
+    - haproxy
+  tasks:
+    - name: Install haproxy on debian
+      when: ansible_facts.os_family | lower == 'debian'
+      shell: |
+        apt update
+        apt install -y haproxy
+        
+    - name: Install haproxy on redhat
+      when: ansible_facts.os_family | lower == 'redhat'
+      shell: |
+        dnf update -y
+        dnf install -y haproxy
+        
+    - name: Copy haproxy.cfg
+      ansible.builtin.copy:
+        content: |
+          global
+            maxconn 4096
+          defaults
+              mode                tcp
+              timeout connect     10s
+              timeout client      10m
+              timeout server      10m
+              # TCP keep-alive on client side. Server already enables them.
+              option              clitcpka
+          
+          listen psql
+              bind :{{ haproxy_port }}
+              mode tcp
+              balance roundrobin
+              option httpchk GET {{ haproxy_checkport }}
+          {% for host in haproxy_group %}
+          {% set outer_loop = loop %}
+          {% if hostvars[host].extra_vars.crdb_region | default(hostvars[host].region) == extra_vars.crdb_region | default(region) %}
+          {% for idx in range(hostvars[host].ansible_numa_nodes|int) %}
+              server {{ haproxy_serverprefix }}{{ outer_loop.index * 100 + idx }} {{ hostvars[host].private_hostname }}:{{ haproxy_port|int + idx }} check port {{ haproxy_checkport|int + idx }}
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+
+          listen http
+              bind :{{ haproxy_checkport }}
+              mode tcp
+              balance roundrobin
+              option httpchk GET /health?ready=1
+          {% for host in haproxy_group %}
+          {% set outer_loop = loop %}
+          {% if hostvars[host].extra_vars.crdb_region | default(hostvars[host].region) == extra_vars.crdb_region | default(region) %}
+          {% for idx in range(hostvars[host].ansible_numa_nodes|int) %}
+              server {{ haproxy_serverprefix }}{{ outer_loop.index * 100 + idx }} {{ hostvars[host].private_hostname }}:{{ haproxy_checkport|int + idx }} check port {{ haproxy_checkport|int + idx }}
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+
+        dest: /etc/haproxy/haproxy.cfg
+        mode: 0644
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        backup: yes
+        force: yes
+
+    # TODO: just reload config if already running
+    # https://www.haproxy.com/blog/hitless-reloads-with-haproxy-howto
+    - name: Start haproxy
+      shell: |
+        systemctl restart haproxy
+
+
+- name: GET DATA FROM COCKROACHDB CLUSTER
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Data
+      ansible.builtin.debug:
+        msg:
+          cockroachdb: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
+          haproxy: "{{ groups['haproxy'] }}"
+          hv: "{{ hostvars }}"
