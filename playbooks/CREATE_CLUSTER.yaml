@@ -510,7 +510,7 @@
     - name: Mount the disks
       when: _disks.stdout_lines | length > 0
       shell: |
-        mount {{ item }} /mnt/cockroach{{ idx }}
+        mountpoint /mnt/cockroach{{ idx }} || mount {{ item }} /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
