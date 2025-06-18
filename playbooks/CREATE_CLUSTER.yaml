@@ -499,36 +499,27 @@
 
     - name: Create CockroachDB store directories
       when: _disks.stdout_lines | length > 0
-      file:
-        path: "/mnt/cockroach{{ idx }}"
-        state: directory
-        mode: "0755"
-        recurse: yes
-        owner: cockroach
-        group: cockroach
+      shell: |
+        mkdir -p /mnt/cockroach{{ idx }}
+        chmod 755 /mnt/cockroach{{ idx }}
+        chown cockroach:cockroach /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
 
     - name: Mount the disks
       when: _disks.stdout_lines | length > 0
-      ansible.posix.mount:
-        path: "/mnt/cockroach{{ idx }}"
-        src: "{{ item }}"
-        fstype: ext4
-        state: mounted
+      shell: |
+        mount {{ item }} /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
 
     - name: Reset permissions on mounted directory /mnt/cockroach
       when: _disks.stdout_lines | length > 0
-      file:
-        path: "/mnt/cockroach{{ idx }}"
-        state: directory
-        mode: "0755"
-        owner: cockroach
-        group: cockroach
+      shell: |
+        chmod 755 /mnt/cockroach{{ idx }}
+        chown cockroach:cockroach /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
