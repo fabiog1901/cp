@@ -430,30 +430,24 @@
         rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
 
     - name: Add the user cockroach
-      user:
-        name: cockroach
-        shell: /bin/bash
+      shell: |
+        useradd -s /bin/bash cockroach
 
     - name: Create CockroachDB store directory
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0755"
-        recurse: yes
-        owner: cockroach
-        group: cockroach
+      shell: |
+        mkdir -p {{ item }}
+        chmod 755 {{ item }}
+        chown cockroach:cockroach {{ item }}
       loop:
         - /var/lib/cockroach
         - /mnt/cockroach
 
     - name: Create certs directory if it does not exist
       when: cockroachdb_secure
-      file:
-        path: /var/lib/cockroach/certs
-        state: directory
-        owner: cockroach
-        group: cockroach
-        mode: "0755"
+      shell: |
+        mkdir -p /var/lib/cockroach/certs
+        chmod 755 /var/lib/cockroach/certs 
+        chown cockroach:cockroach /var/lib/cockroach/certs
 
     - name: Copy CA certificate
       when: cockroachdb_secure
@@ -599,11 +593,10 @@
         force: yes
 
     - name: Ensure cockroachdb service is restarted
-      systemd:
-        name: cockroachdb
-        state: restarted
-        enabled: yes
-        daemon_reload: yes
+      shell: |
+        systemctl daemon-reload
+        systemctl enable cockroachdb
+        systemctl restart cockroachdb
 
     - name: Init Cluster
       run_once: yes
