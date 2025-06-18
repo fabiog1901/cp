@@ -9,13 +9,13 @@
     - cloud_instance
   tasks:
     - name: Gather VM details of current deployment
-      ansible.builtin.shell: |
+      shell: |
         cloud_instance {{ deployment_id }} present '[]' '{}' \
           --gather_current_deployment_only=yes
       register: instances
 
     - name: Build ansible inventory dynamically
-      ansible.builtin.add_host:
+      add_host:
         # id
         name: "{{ item.public_ip }}"
         id: "{{ item.id }}"
@@ -41,7 +41,7 @@
       loop: "{{ instances.stdout | from_json }}"
 
     - name: Get list of instances slated to be removed
-      ansible.builtin.shell: |
+      shell: |
         cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}' \
           --return_tobedeleted_vms=yes
       register: instances
@@ -52,7 +52,7 @@
       loop: "{{ (instances.stdout | from_json) }}"
 
     - name: add group tobedeleted to slated VMs
-      ansible.builtin.add_host:
+      add_host:
         # id
         name: "{{ item.public_ip }}"
         id: "{{ item.id }}"
@@ -88,17 +88,17 @@
     - platform
   tasks:
     - name: CockroachDB - get node status for all nodes, including already decommissioned
-      ansible.builtin.shell: |
+      shell: |
         cockroach node status --all --format json \
           --certs-dir=/var/lib/cockroach/certs \
       register: out
 
     - name: Printing cockroach node status output
-      ansible.builtin.debug:
+      debug:
         var: out.stdout | from_json
 
     - name: get node_id for the VMs slated to be removed
-      ansible.builtin.set_fact:
+      set_fact:
         node_ids: "{{ node_ids + [item.id]  }}"
       loop: "{{ out.stdout | from_json }}"
       when: "'tobedeleted' in groups and item.address.split(':')[0] in groups['tobedeleted']"
@@ -155,12 +155,12 @@
     - cloud_instance
   tasks:
     - name: Remove instances
-      ansible.builtin.shell: |
+      shell: |
         cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}'
       register: instances
 
     - name: Build ansible inventory dynamically
-      ansible.builtin.add_host:
+      add_host:
         # id
         name: "{{ item.public_ip }}"
         id: "{{ item.id }}"
@@ -212,7 +212,7 @@
         dnf install -y haproxy
         
     - name: Copy haproxy.cfg
-      ansible.builtin.copy:
+      copy:
         content: |
           global
             maxconn 4096
@@ -272,7 +272,7 @@
   become: yes
   tasks:
     - name: Data
-      ansible.builtin.debug:
+      debug:
         msg:
           cockroachdb: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
           haproxy: "{{ groups['haproxy'] }}"

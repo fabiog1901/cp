@@ -12,7 +12,7 @@
     - cloud_instance
   tasks:
     - name: Ensure presence of instances
-      ansible.builtin.shell: |
+      shell: |
         cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{{ defaults | to_json }}'
       vars:
         defaults:
@@ -102,7 +102,7 @@
       register: instances
 
     - name: Wait for SSH to come up
-      ansible.builtin.wait_for:
+      wait_for:
         host: "{{ item.public_ip }}"
         port: 22
         timeout: 180
@@ -111,7 +111,7 @@
       loop: "{{ instances.stdout | from_json }}"
 
     - name: Build ansible inventory dynamically
-      ansible.builtin.add_host:
+      add_host:
         # id
         name: "{{ item.public_ip }}"
         id: "{{ item.id }}"
@@ -156,14 +156,14 @@
     - certificates
   tasks:
     - name: Recreate certificate directory
-      ansible.builtin.shell: |
+      shell: |
         rm -rf "{{ certificates_dir }}"
         mkdir "{{ certificates_dir }}"
         chmod 0755 "{{ certificates_dir }}"
 
     # Step 2. Create the certificate and key pairs for nodes
     - name: Create node cnf file
-      ansible.builtin.copy:
+      copy:
         content: |
           # OpenSSL node configuration file
           [ req ]
@@ -194,7 +194,7 @@
       loop: "{{ certificates_hosts }}"
 
     - name: Create node key
-      ansible.builtin.shell: |
+      shell: |
         openssl genrsa \
           -out {{ certificates_dir }}/node.{{ item }}.key 2048
 
@@ -202,7 +202,7 @@
       loop: "{{ certificates_hosts }}"
 
     - name: Create node csr from cnf and key
-      ansible.builtin.shell: |
+      shell: |
         openssl req \
           -new \
           -config {{ certificates_dir }}/node.{{ item }}.cnf \
@@ -212,7 +212,7 @@
       loop: "{{ certificates_hosts }}"
       
     - name: Sign node csr with CA key and crt
-      ansible.builtin.shell: |
+      shell: |
         openssl ca \
           -config  /var/lib/ca/ca.cnf \
           -keyfile /var/lib/ca/ca.key \
@@ -227,7 +227,7 @@
 
     # Step 3. Create the certificate and key pair for the root user
     - name: Create client.cnf for each username
-      ansible.builtin.copy:
+      copy:
         content: |
           [ req ]
           prompt=no
@@ -242,14 +242,14 @@
       loop: "{{ certificates_usernames }}"
 
     - name: Create client key pair for each username
-      ansible.builtin.shell: |
+      shell: |
         openssl genrsa \
           -out {{ certificates_dir }}/client.{{ item }}.key 2048
         chmod 400 {{ certificates_dir }}/client.{{ item }}.key
       loop: "{{ certificates_usernames }}"
 
     - name: Create client csr
-      ansible.builtin.shell: |
+      shell: |
         openssl req \
           -new \
           -config {{ certificates_dir }}/client.{{ item }}.cnf \
@@ -259,7 +259,7 @@
       loop: "{{ certificates_usernames }}"
           
     - name: Sign client csr with CA crt and key
-      ansible.builtin.shell: |
+      shell: |
         openssl ca \
           -config  /var/lib/ca/ca.cnf \
           -keyfile /var/lib/ca/ca.key \
@@ -291,108 +291,71 @@
     - platform
     - config_os
   tasks:
-    - name: Set AWS facts
+    - name: Set debian facts
+      when: ansible_facts.os_family | lower == 'debian'
+      set_fact:
+        ntp_deamon: chrony
+        ntp_conf: "/etc/chrony/chrony.conf"
+
+    - name: Set redhat facts
+      when: ansible_facts.os_family | lower == 'redhat'
+      set_fact:
+        ntp_deamon: chronyd
+        ntp_conf: "/etc/chrony.conf"
+
+    - name: Set NTP servers for AWS
       when: cloud == 'aws'
       set_fact:
         ntp_server: "server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4"
 
-    - name: Set GCP facts
+    - name: Set NTP servers for GCP
       when: cloud == 'gcp'
       set_fact:
         ntp_server: server metadata.google.internal iburst
 
-    - name: Azure only - disable NTP
+    - name: Set NTP servers for Azure
+      when: cloud == 'azure'
+      set_fact:
+        ntp_server: |
+          server time1.google.com iburst
+          server time2.google.com iburst
+          server time3.google.com iburst
+          server time4.google.com iburst
+    
+    - name: Azure only - disable refclock
       when: cloud == 'azure'
       shell: |
         curl -O https://raw.githubusercontent.com/torvalds/linux/master/tools/hv/lsvmbus
         DEVICE_ID=`python3 lsvmbus -vv | grep -w "Time Synchronization" -A 1 | awk -F'[{}]' '{print $2}' | tail -n1`
         echo $DEVICE_ID | sudo tee /sys/bus/vmbus/drivers/hv_utils/unbind
-      register: out
 
-    - name: Azure only - install NTP on debian
-      when: cloud == 'azure' and ansible_facts.os_family | lower == 'debian'
+    - name: add only the NTP servers to the chrony.conf file
+      shell:
+        sed -i '/^pool.*/d' {{ ntp_conf }}
+        sed -i '/^server.*/d' {{ ntp_conf }}
+        sed -i '/^refclock.*/d' {{ ntp_conf }}
+
+        echo "{{ ntp_server }}" >> {{ ntp_conf }}
+
+    - name: restart chrony
       shell: |
-        apt update
-        apt remove -y chrony
-        apt install -y ntp
-        
-    - name: Azure only - install NTP on redhat
-      when: cloud == 'azure' and ansible_facts.os_family | lower == 'redhat'
-      shell: |
-        yum remove chrony
-        yum install -y ntp
-        
-    - name: Azure only - stop NTP
-      when: cloud == 'azure'
-      ansible.builtin.systemd:
-        name: ntp
-        state: stopped
-
-    - name: Azure only - update NTP config
-      when: cloud == 'azure'
-      shell: |
-        sed -i '/^pool.*/'d /etc/ntp.conf
-        sed -i '/^server.*/'d /etc/ntp.conf
-        cat - >> /etc/ntp.conf <<EOF
-        server time1.google.com iburst
-        server time2.google.com iburst
-        server time3.google.com iburst
-        server time4.google.com iburst
-        EOF
-      register: out
-      ignore_errors: yes
-
-    - name: Azure only - restart NTP
-      when: cloud == 'azure'
-      ansible.builtin.systemd:
-        name: ntp
-        state: restarted
-
-    - name: Set debian vars
-      when: ansible_facts.os_family | lower == 'debian'
-      set_fact:
-        ntp_deamon: chrony
-        ntp_conf: "/etc/chrony/chrony.conf"
-        ntp_package_name: chrony
-
-    - name: Set redhat vars
-      when: ansible_facts.os_family | lower == 'redhat'
-      set_fact:
-        ntp_deamon: chronyd
-        ntp_conf: "/etc/chrony.conf"
-        ntp_package_name: chrony
-
-    - name: AWS/GCP only - install chrony/ntp
-      when: cloud != 'azure'
-      package:
-        name: "{{ ntp_package_name }}"
-        state: latest
-
-    - name: AWS/GCP only - Add the preferred Chrony/NTP server
-      when: cloud != 'azure'
-      lineinfile:
-        path: "{{ ntp_conf }}"
-        line: "{{ ntp_server }}"
-
-    - name: AWS/GCP only - restart chrony/ntp
-      when: cloud != 'azure'
-      service:
-        name: "{{ ntp_deamon }}"
-        state: restarted
+        systemctl restart {{ ntp_deamon }} 
 
     - name: Update VM swappiness
-      sysctl:
-        name: vm.swappiness
-        value: "0"
-        state: present
-        reload: yes
+      shell: |
+        sed -i '/vm.swappiness*/d' /etc/sysctl.conf
+        echo 'vm.swappiness = 0' >> /etc/sysctl.conf
+        sysctl -p
+
+        swapoff -a
+        sed -ri '/\sswap\s/s/^#?/#/' /etc/fstab
 
     - name: Set timezone to UTC
-      ansible.builtin.shell: |
+      shell: |
         timedatectl set-timezone UTC
         
     - name: Find attached disks bigger than 100GB
-      ansible.builtin.shell: |
+      shell: |
         lsblk -o NAME,TYPE,SIZE -p -n -b -s | \
           awk '$NF ~ /[1-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/' | \
           grep -v '└─' | \
@@ -404,7 +367,7 @@
 
     - name: Create a ext4 filesystem
       when: _disks.stdout_lines | length > 0
-      ansible.builtin.shell: |
+      shell: |
         mkfs.ext4 {{ item }}
       failed_when: result.rc != 0 and 'will not make a filesystem here!' not in result.stderr
       loop: "{{ _disks.stdout_lines }}"
@@ -445,7 +408,7 @@
     - cockroachdb
   tasks:
     - name: Create the binary-type map
-      ansible.builtin.set_fact:
+      set_fact:
         # map the machine CPU type to the matching filename component
         bin_arch:
           aarch64: arm64
@@ -457,12 +420,12 @@
       register: _stat_result
 
     - name: Download CockroachDB binary
-      ansible.builtin.shell: |
+      shell: |
         wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       when: not _stat_result.stat.exists
     
     - name: Install CockroachDB binary
-      ansible.builtin.shell: |
+      shell: |
         tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
         mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
         chmod 755 /usr/local/bin/cockroach
@@ -471,7 +434,7 @@
         rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
 
     - name: Add the user cockroach
-      ansible.builtin.user:
+      user:
         name: cockroach
         shell: /bin/bash
 
@@ -594,7 +557,7 @@
         index_var: idx
 
     - name: Copy systemd template cockroachdb.service
-      ansible.builtin.copy:
+      copy:
         content: |
           [Unit]
           Description=Cockroach Database cluster node
@@ -640,7 +603,7 @@
         force: yes
 
     - name: Ensure cockroachdb service is restarted
-      ansible.builtin.systemd:
+      systemd:
         name: cockroachdb
         state: restarted
         enabled: yes
@@ -677,7 +640,7 @@
         dnf install -y haproxy
         
     - name: Copy haproxy.cfg
-      ansible.builtin.copy:
+      copy:
         content: |
           global
             maxconn 4096
@@ -731,7 +694,7 @@
         systemctl restart haproxy
 
     - name: Create the binary-type map
-      ansible.builtin.set_fact:
+      set_fact:
         # map the machine CPU type to the matching filename component
         bin_arch:
           aarch64: arm64
@@ -743,12 +706,12 @@
       register: _stat_result
 
     - name: Download CockroachDB binary
-      ansible.builtin.shell: |
+      shell: |
         wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       when: not _stat_result.stat.exists
     
     - name: Install CockroachDB binary
-      ansible.builtin.shell: |
+      shell: |
         tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
         mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
         chmod 755 /usr/local/bin/cockroach
@@ -760,7 +723,7 @@
   become: yes
   tasks:
     - name: Data
-      ansible.builtin.debug:
+      debug:
         msg:
           cockroachdb: "{{ groups['cockroachdb'] }}"
           haproxy: "{{ groups['haproxy'] }}"

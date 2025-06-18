@@ -6,7 +6,7 @@
   become: no
   tasks:
     - name: Build ansible inventory dynamically
-      ansible.builtin.add_host:
+      add_host:
         name: "{{ item }}"
         group: cockroachdb
         ansible_user: ubuntu
@@ -20,12 +20,12 @@
   tasks:
     - name: CockroachDB - get node status
       run_once: yes
-      ansible.builtin.shell: |
+      shell: |
         cockroach node status --format json \
           --certs-dir=/var/lib/cockroach/certs \
       register: out
 
     - name: Data
-      ansible.builtin.debug:
+      debug:
         msg:
           data: "{{ out.stdout | from_json }}"
