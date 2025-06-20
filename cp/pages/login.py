@@ -13,6 +13,10 @@ class State(rx.State):
             return AuthState.login
 
 
+@rx.page(route="/auth/callback", on_load=AuthState.callback)
+def callback() -> rx.Component:
+    return rx.container()
+
 @rx.page(route="/login", title="Login")
 def login():
     return rx.flex(
@@ -35,54 +39,54 @@ def login():
                     spacing="5",
                     width="100%",
                 ),
-                rx.vstack(
-                    rx.text(
-                        "Username",
-                        size="3",
-                        weight="medium",
-                        text_align="left",
-                        width="100%",
-                    ),
-                    rx.input(
-                        placeholder="",
-                        type="username",
-                        on_change=AuthState.set_username,
-                        size="3",
-                        width="100%",
-                    ),
-                    justify="start",
-                    spacing="2",
-                    width="100%",
-                ),
-                rx.vstack(
-                    rx.hstack(
-                        rx.text(
-                            "Password",
-                            size="3",
-                            weight="medium",
-                        ),
-                        rx.link(
-                            "Forgot password?",
-                            href="#",
-                            size="3",
-                        ),
-                        justify="between",
-                        width="100%",
-                    ),
-                    rx.input(
-                        placeholder="Enter your password",
-                        type="password",
-                        on_change=AuthState.set_password,
-                        on_key_down=State.on_enter,
-                        size="3",
-                        width="100%",
-                    ),
-                    spacing="2",
-                    width="100%",
-                ),
+                # rx.vstack(
+                #     rx.text(
+                #         "Username",
+                #         size="3",
+                #         weight="medium",
+                #         text_align="left",
+                #         width="100%",
+                #     ),
+                #     rx.input(
+                #         placeholder="",
+                #         type="username",
+                #         on_change=AuthState.set_username,
+                #         size="3",
+                #         width="100%",
+                #     ),
+                #     justify="start",
+                #     spacing="2",
+                #     width="100%",
+                # ),
+                # rx.vstack(
+                #     rx.hstack(
+                #         rx.text(
+                #             "Password",
+                #             size="3",
+                #             weight="medium",
+                #         ),
+                #         rx.link(
+                #             "Forgot password?",
+                #             href="#",
+                #             size="3",
+                #         ),
+                #         justify="between",
+                #         width="100%",
+                #     ),
+                #     rx.input(
+                #         placeholder="Enter your password",
+                #         type="password",
+                #         on_change=AuthState.set_password,
+                #         on_key_down=State.on_enter,
+                #         size="3",
+                #         width="100%",
+                #     ),
+                #     spacing="2",
+                #     width="100%",
+                # ),
                 rx.button(
-                    "Log in",
-                    on_click=AuthState.login,
+                    "Log in with SSO",
+                    on_click=AuthState.login_redirect,
                     size="3",
                     width="100%",
                 ),
