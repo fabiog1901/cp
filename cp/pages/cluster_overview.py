@@ -71,12 +71,12 @@ class State(BaseState):
         # self.selected_group = self.webuser.groups[0]
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
-    
+
     @rx.event
     def upgrade_cluster(self, form_data: dict):
         form_data["name"] = self.current_cluster.cluster_id
         form_data["version"] = self.selected_version
-        
+
         msg_id: StrID = db.insert_into_mq(
             "UPGRADE_CLUSTER",
             form_data,
@@ -106,7 +106,7 @@ class State(BaseState):
     @rx.event
     def load_cluster_data(self):
         if self.current_cluster:
-            self.selected_version = self.current_cluster.description.get("version", "")
+            #self.selected_version = self.current_cluster.description.get("version", "")
             self.selected_node_count = len(
                 self.current_cluster.description["cluster"][0]["nodes"]
             )
@@ -125,7 +125,7 @@ class State(BaseState):
             return
         async with self:
             # fetch this data only once
-            
+
             self.available_node_counts = [x.id for x in db.get_node_counts()]
             self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
             self.disk_fmt_2_size_map = {
@@ -145,7 +145,7 @@ class State(BaseState):
                 print("cluster_overview.py: Stopping background task.")
                 async with self:
                     self.is_running = False
-                    self.just_once = False
+                    self.just_once = True
                 break
 
             async with self:
@@ -166,9 +166,46 @@ class State(BaseState):
 
                 if self.just_once and self.current_cluster_description:
                     self.just_once = False
-                    self.available_versions = [x.id for x in db.get_upgrade_versions(self.current_cluster_description.get("version", ""))]
-                    self.selected_version = self.available_versions[0] if self.available_versions else ""
-                    
+                    self.available_versions = [
+                        x.id
+                        for x in db.get_upgrade_versions(
+                            self.current_cluster_description.get("version")
+                        )
+                    ]
+                    l = []
+                    major_yy, major_mm, _ = [
+                        int(x)
+                        for x in self.current_cluster_description.get("version")[
+                            1:
+                        ].split(".")
+                    ]
+
+                    for v in self.available_versions:
+                        f1, f2, _ = [int(x) for x in v[1:].split(".")]
+
+                        # only a patch upgrade
+                        if major_yy == f1 and major_mm == f2:
+                            l.append(v)
+                            continue
+
+                        # innovation to regular
+                        if major_yy == f1 and major_mm in [1, 3] and f2 == major_mm + 1:
+                            l.append(v)
+                            continue
+                        
+                        if major_yy == f1 and major_mm == 2 and f2 in [3, 4]:
+                            l.append(v)
+                            continue
+                        
+                        if major_yy +1 == f1 and major_mm == 4 and f2 in [1,2]:
+                            l.append(v)
+                            
+
+                    self.available_versions = l
+                    self.selected_version = (
+                        self.available_versions[0] if self.available_versions else ""
+                    )
+
                     self.selected_node_count = len(
                         self.current_cluster.description["cluster"][0]["nodes"]
                     )
