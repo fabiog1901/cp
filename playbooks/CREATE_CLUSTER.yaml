@@ -361,10 +361,8 @@
     - name: Create a ext4 filesystem
       when: _disks.stdout_lines | length > 0
       shell: |
-        mkfs.ext4 {{ item }}
-      failed_when: result.rc != 0 and 'will not make a filesystem here!' not in result.stderr
+        blkid {{ item }} -t TYPE="ext4" || mkfs.ext4 {{ item }}
       loop: "{{ _disks.stdout_lines }}"
-      register: result
 
 
 - name: DEPLOY COCKROACHDB
@@ -431,7 +429,7 @@
 
     - name: Add the user cockroach
       shell: |
-        useradd -s /bin/bash cockroach
+        id cockroach || useradd -s /bin/bash cockroach
 
     - name: Create CockroachDB store directory
       shell: |
@@ -645,7 +643,7 @@
               bind :{{ haproxy_port }}
               mode tcp
               balance roundrobin
-              option httpchk GET {{ haproxy_checkport }}
+              option httpchk GET /health?ready=1
 
           {% for host in haproxy_group %}
           {% set outer_loop = loop %}
@@ -832,9 +830,14 @@
       loop: "{{ dbusers }}"
       when: item.is_admin
     
+- name: GET DATA FROM COCKROACHDB CLUSTER
+  hosts: cockroachdb
+  gather_facts: no
+  become: yes
+  tasks:
     - name: Data
       debug:
-        msg: 
+        msg:
           cockroachdb: "{{ groups['cockroachdb'] }}"
           haproxy: "{{ groups['haproxy'] }}"
           hv: "{{ hostvars }}"

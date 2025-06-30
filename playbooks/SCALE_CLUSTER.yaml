@@ -368,10 +368,9 @@
     - name: Create a ext4 filesystem
       when: _disks.stdout_lines | length > 0
       shell: |
-        mkfs.ext4 {{ item }}
-      failed_when: result.rc != 0 and 'will not make a filesystem here!' not in result.stderr
+        blkid {{ item }} -t TYPE="ext4" || mkfs.ext4 {{ item }}
       loop: "{{ _disks.stdout_lines }}"
-      register: result
+
 
 - name: DEPLOY COCKROACHDB ON NEW NODES
   hosts: "{{ groups['cockroachdb'] | difference(current_hosts) }}"
@@ -434,30 +433,24 @@
         rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
 
     - name: Add the user cockroach
-      user:
-        name: cockroach
-        shell: /bin/bash
+      shell: |
+        id cockroach || useradd -s /bin/bash cockroach
 
     - name: Create CockroachDB store directory
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0755"
-        recurse: yes
-        owner: cockroach
-        group: cockroach
+      shell: |
+        mkdir -p {{ item }}
+        chmod 755 {{ item }}
+        chown cockroach:cockroach {{ item }}
       loop:
         - /var/lib/cockroach
         - /mnt/cockroach
 
     - name: Create certs directory if it does not exist
       when: cockroachdb_secure
-      file:
-        path: /var/lib/cockroach/certs
-        state: directory
-        owner: cockroach
-        group: cockroach
-        mode: "0755"
+      shell: |
+        mkdir -p /var/lib/cockroach/certs
+        chmod 755 /var/lib/cockroach/certs 
+        chown cockroach:cockroach /var/lib/cockroach/certs
 
     - name: Copy CA certificate
       when: cockroachdb_secure
@@ -509,36 +502,27 @@
 
     - name: Create CockroachDB store directories
       when: _disks.stdout_lines | length > 0
-      file:
-        path: "/mnt/cockroach{{ idx }}"
-        state: directory
-        mode: "0755"
-        recurse: yes
-        owner: cockroach
-        group: cockroach
+      shell: |
+        mkdir -p /mnt/cockroach{{ idx }}
+        chmod 755 /mnt/cockroach{{ idx }}
+        chown cockroach:cockroach /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
 
     - name: Mount the disks
       when: _disks.stdout_lines | length > 0
-      ansible.posix.mount:
-        path: "/mnt/cockroach{{ idx }}"
-        src: "{{ item }}"
-        fstype: ext4
-        state: mounted
+      shell: |
+        mountpoint /mnt/cockroach{{ idx }} || mount {{ item }} /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
 
     - name: Reset permissions on mounted directory /mnt/cockroach
       when: _disks.stdout_lines | length > 0
-      file:
-        path: "/mnt/cockroach{{ idx }}"
-        state: directory
-        mode: "0755"
-        owner: cockroach
-        group: cockroach
+      shell: |
+        chmod 755 /mnt/cockroach{{ idx }}
+        chown cockroach:cockroach /mnt/cockroach{{ idx }}
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx
@@ -656,7 +640,7 @@
               bind :{{ haproxy_port }}
               mode tcp
               balance roundrobin
-              option httpchk GET {{ haproxy_checkport }}
+              option httpchk GET /health?ready=1
           {% for host in haproxy_group %}
           {% set outer_loop = loop %}
           {% if hostvars[host].extra_vars.crdb_region | default(hostvars[host].region) == extra_vars.crdb_region | default(region) %}

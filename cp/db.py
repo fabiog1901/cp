@@ -92,7 +92,8 @@ def fetch_all_clusters(
     if is_admin:
         return execute_stmt(
             """
-            SELECT cluster_id, grp, created_by, status 
+            SELECT cluster_id, grp, created_by, status, 
+                description ->> 'version' AS version 
             FROM clusters
             ORDER BY created_at DESC
             """,
@@ -520,6 +521,18 @@ def get_versions() -> list[StrID]:
         StrID,
     )
 
+def get_upgrade_versions(current_version: str) -> list[StrID]:
+    return execute_stmt(
+        """
+        SELECT version
+        FROM versions 
+        WHERE version > %s
+        ORDER BY version ASC
+        """,
+        (current_version,),
+        StrID,
+    )
+
 
 def get_regions() -> list[StrID]:
     return execute_stmt(
@@ -638,7 +651,7 @@ def execute_stmt(
             try:
                 stmt = " ".join([s.strip() for s in stmt.split("\n")])
 
-                #print(f"SQL> {stmt}; {bind_args}")
+                print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
 
                 if model is None:

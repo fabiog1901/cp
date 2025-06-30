@@ -96,6 +96,11 @@ CREATE TABLE secrets (
 /* 
     SETTINGS
 */
+create table settings (
+    id string not null,
+    value string,
+    constraint pk primary key (id)
+);
 
 
 CREATE TABLE regions (

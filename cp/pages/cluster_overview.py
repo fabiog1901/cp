@@ -71,6 +71,24 @@ class State(BaseState):
         # self.selected_group = self.webuser.groups[0]
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
+    
+    @rx.event
+    def upgrade_cluster(self, form_data: dict):
+        form_data["name"] = self.current_cluster.cluster_id
+        form_data["version"] = self.selected_version
+        
+        msg_id: StrID = db.insert_into_mq(
+            "UPGRADE_CLUSTER",
+            form_data,
+            self.webuser.username,
+        )
+        db.insert_event_log(
+            self.webuser.username,
+            "UPGRADE_CLUSTER",
+            form_data | {"job_id": msg_id.id},
+        )
+
+        return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -93,12 +111,13 @@ class State(BaseState):
                 self.current_cluster.description["cluster"][0]["nodes"]
             )
             self.selected_cpus_per_node = self.current_cluster.description["node_cpus"]
-            self.selected_disk_size = get_human_size(self.current_cluster.description["disk_size"])
+            self.selected_disk_size = get_human_size(
+                self.current_cluster.description["disk_size"]
+            )
             self.selected_regions = [
                 x.get("cloud") + ":" + x.get("region")
                 for x in self.current_cluster.description["cluster"]
             ]
-
 
     @rx.event(background=True)
     async def fetch_cluster(self):
@@ -106,7 +125,7 @@ class State(BaseState):
             return
         async with self:
             # fetch this data only once
-            self.available_versions = [x.id for x in db.get_versions()]
+            
             self.available_node_counts = [x.id for x in db.get_node_counts()]
             self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
             self.disk_fmt_2_size_map = {
@@ -126,6 +145,7 @@ class State(BaseState):
                 print("cluster_overview.py: Stopping background task.")
                 async with self:
                     self.is_running = False
+                    self.just_once = False
                 break
 
             async with self:
@@ -146,18 +166,18 @@ class State(BaseState):
 
                 if self.just_once and self.current_cluster_description:
                     self.just_once = False
-                    self.selected_version = self.current_cluster.description.get(
-                        "version", ""
-                    )
+                    self.available_versions = [x.id for x in db.get_upgrade_versions(self.current_cluster_description.get("version", ""))]
+                    self.selected_version = self.available_versions[0] if self.available_versions else ""
+                    
                     self.selected_node_count = len(
                         self.current_cluster.description["cluster"][0]["nodes"]
                     )
                     self.selected_cpus_per_node = self.current_cluster.description[
                         "node_cpus"
                     ]
-                    self.selected_disk_size = get_human_size(self.current_cluster.description[
-                        "disk_size"
-                    ])
+                    self.selected_disk_size = get_human_size(
+                        self.current_cluster.description["disk_size"]
+                    )
                     self.selected_regions = [
                         x.get("cloud") + ":" + x.get("region")
                         for x in self.current_cluster.description["cluster"]
@@ -255,6 +275,65 @@ def region_selector() -> rx.Component:
         justify_content="start",
         align_items="start",
         width="100%",
+    )
+
+
+def upgrade_cluster_dialog() -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.box(
+                rx.tooltip(
+                    rx.icon(
+                        "circle-fading-arrow-up",
+                        color=None,
+                        size=30,
+                        class_name="cursor-pointer text-green-500 hover:text-green-300 mr-4",
+                    ),
+                    content="Upgrade the cluster",
+                ),
+            ),
+        ),
+        rx.dialog.content(
+            rx.dialog.title(f"Upgrade {State.cluster_id}", class_name="text-4xl pb-4"),
+            rx.form(
+                rx.flex(
+                    rx.vstack(
+                        rx.heading("Select version to upgrade to", size="4"),
+                        rx.select(
+                            State.available_versions,
+                            value=State.selected_version,
+                            on_change=State.set_selected_version,
+                            color_scheme="mint",
+                            required=True,
+                            class_name="min-w-64",
+                        ),
+                        class_name="min-w-64",
+                    ),
+                    rx.divider(),
+                    rx.flex(
+                        rx.dialog.close(
+                            rx.button(
+                                "Cancel",
+                                variant="soft",
+                                color_scheme="gray",
+                            ),
+                        ),
+                        rx.dialog.close(
+                            rx.button("Upgrade", type="submit"),
+                        ),
+                        spacing="3",
+                        justify="end",
+                    ),
+                    direction="column",
+                    spacing="4",
+                ),
+                on_submit=lambda form_data: State.upgrade_cluster(
+                    form_data, BaseState.webuser
+                ),
+                reset_on_submit=False,
+            ),
+            max_width="850px",
+        ),
     )
 
 
@@ -717,15 +796,7 @@ def cluster():
                                 rx.box(),
                                 rx.cond(
                                     BaseState.is_admin_or_rw,
-                                    rx.tooltip(
-                                        rx.icon(
-                                            "circle-fading-arrow-up",
-                                            color=None,
-                                            size=30,
-                                            class_name="cursor-pointer text-green-500 hover:text-green-300 mr-4",
-                                        ),
-                                        content="Upgrade the cluster",
-                                    ),
+                                    upgrade_cluster_dialog(),
                                     rx.tooltip(
                                         rx.icon(
                                             "circle-fading-arrow-up",

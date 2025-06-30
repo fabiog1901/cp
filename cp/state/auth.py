@@ -136,7 +136,7 @@ class AuthState(BaseState):
         query = urlencode(
             {
                 "client_id": os.getenv("SSO_CLIENT_ID"),
-                "redirect_uri": os.getenv("REDIRECT_URI"),
+                "redirect_uri": os.getenv("SSO_REDIRECT_URI"),
                 "response_type": "code",
                 "scope": "openid email profile",
             }

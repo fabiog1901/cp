@@ -369,7 +369,7 @@ def new_cluster_dialog():
     )
 
 
-def get_cluster_row(cluster: Cluster):
+def get_cluster_row(cluster: ClusterOverview):
     """Show a cluster in a table row."""
     return rx.table.row(
         # CLUSTER_ID
@@ -385,6 +385,8 @@ def get_cluster_row(cluster: Cluster):
         rx.table.cell(cluster.created_by),
         # STATUS
         rx.table.cell(get_cluster_status_badge(cluster.status)),
+        # VERSION
+        rx.table.cell(cluster.version),
         # ACTION
         rx.table.cell(
             rx.match(
@@ -503,6 +505,7 @@ def clusters_table():
                     rx.table.column_header_cell("Group"),
                     rx.table.column_header_cell("Created By"),
                     rx.table.column_header_cell("Status"),
+                    rx.table.column_header_cell("Version"),
                     rx.table.column_header_cell("Actions"),
                 ),
             ),

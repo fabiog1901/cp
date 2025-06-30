@@ -98,6 +98,7 @@ class ClusterOverview:
     grp: str
     created_by: str
     status: str
+    version: str
 
 
 @dataclass

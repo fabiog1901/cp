@@ -1159,6 +1159,11 @@ async def pull_from_mq():
                             case "SCALE_CLUSTER":
                                 print("Processing a SCALE_CLUSTER")
                                 scale_cluster(msg.msg_id, msg.msg_data, msg.created_by)
+                            
+                            case "UPGRADE_CLUSTER":
+                                print("Processing a UPGRADE_CLUSTER")
+                                print(msg)
+                                #upgrade_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
                             case "FAIL_ZOMBIE_JOBS":
                                 print("Processing a FAIL_ZOMBIE_JOBS")
