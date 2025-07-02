@@ -92,8 +92,10 @@ def fetch_all_clusters(
     if is_admin:
         return execute_stmt(
             """
-            SELECT cluster_id, grp, created_by, status, 
-                description ->> 'version' AS version 
+            SELECT cluster_id, grp, 
+                created_by, status, 
+                version, node_count, 
+                node_cpus, disk_size
             FROM clusters
             ORDER BY created_at DESC
             """,
@@ -103,7 +105,10 @@ def fetch_all_clusters(
 
     return execute_stmt(
         """
-        SELECT cluster_id, grp, created_by, status 
+        SELECT cluster_id, grp, 
+            created_by, status, 
+            version, node_count, 
+            node_cpus, disk_size
         FROM clusters
         WHERE grp = ANY (%s)
         ORDER BY created_at DESC
@@ -208,12 +213,33 @@ def update_cluster_status(
 ):
     execute_stmt(
         """
-        UPDATE clusters SET
+        UPDATE clusters 
+        SET
             status = %s,
             updated_by = %s
         WHERE cluster_id = %s
         """,
         (status, updated_by, cluster_id),
+    )
+
+
+def update_cluster_status_and_version(
+    version: str,
+    status: str,
+    cluster_id: str,
+    updated_by: str,
+) -> None:
+    execute_stmt(
+        """
+        UPDATE clusters
+        SET 
+            status = %s,,
+            version = %s, 
+            updated_by = %s
+        WHERE cluster_id = %s
+        """,
+        (status, version, updated_by, cluster_id),
+        StrID,
     )
 
 
@@ -520,6 +546,7 @@ def get_versions() -> list[StrID]:
         (),
         StrID,
     )
+
 
 def get_upgrade_versions(current_version: str) -> list[StrID]:
     return execute_stmt(

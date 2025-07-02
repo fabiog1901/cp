@@ -45,13 +45,18 @@ ALTER TABLE mq CONFIGURE ZONE USING
 
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
-    description JSONB NULL,
+    cluster_inventory JSONB NULL,
+    lbs_inventory JSONB NULL,
+    version STRING NULL,
+    node_count INT2 NULL,
+    node_cpus INT2 NULL,
+    disk_size INT2 NULL,
     status STRING NOT NULL,
+    grp STRING,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     updated_by STRING NOT NULL,
-    grp STRING,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC)
 );
 

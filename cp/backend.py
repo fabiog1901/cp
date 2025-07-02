@@ -10,7 +10,13 @@ import ansible_runner
 import requests
 
 from . import db
-from .models import ClusterRequest, Msg, Region, ClusterScaleRequest
+from .models import (
+    ClusterRequest,
+    Msg,
+    Region,
+    ClusterScaleRequest,
+    ClusterUpgradeRequest,
+)
 import os
 
 PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
@@ -236,6 +242,78 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
     )
 
 
+def upgrade_cluster(
+    job_id: int,
+    data: dict,
+    requested_by: str,
+) -> None:
+    cur = ClusterUpgradeRequest(**data)
+
+    # TODO check user permissions
+
+    # check if cluster with same cluster_id exists
+    c = db.get_cluster(cur.name, [], True)
+
+    if c.status.startswith("DELET"):
+        # TODO update message for failed job:
+        # cannot upgrade a deleting cluster
+        db.update_job(
+            job_id,
+            "FAILED",
+        )
+        return
+
+    db.update_cluster_status(
+        cur.name,
+        "UPGRADING",
+        requested_by,
+    )
+
+    db.insert_mapped_job(
+        cur.name,
+        job_id,
+        "SCHEDULED",
+    )
+
+    Thread(
+        target=upgrade_cluster_worker,
+        args=(
+            job_id,
+            cur,
+            requested_by,
+        ),
+    ).start()
+
+
+def upgrade_cluster_worker(
+    job_id: int,
+    cur: ClusterUpgradeRequest,
+    requested_by: str,
+):
+
+    extra_vars = {
+        "cockroachdb_version": cur.version,
+        "cockroachdb_autofinalize": cur.auto_finalize,
+    }
+
+    job_status, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
+
+    if job_status != "successful":
+        db.update_cluster_status(
+            cur.name,
+            "FAILED",
+            "system",
+        )
+        return
+
+    db.update_cluster_status_and_version(
+        cur.version,
+        'RUNNING',
+        cur.name,
+        requested_by,
+    )
+
+
 def delete_cluster(
     job_id: int,
     cluster: dict,
@@ -326,10 +404,10 @@ def scale_cluster(
 
 
 def parse_raw_data(regions, raw_data, current_desc):
-    
-    current_desc['cluster'] = []
-    current_desc['lbs'] = []
-    
+
+    current_desc["cluster"] = []
+    current_desc["lbs"] = []
+
     for cloud_region in regions:
         cloud, region = cloud_region.split(":")
 
@@ -362,10 +440,10 @@ def parse_raw_data(regions, raw_data, current_desc):
                         "dns_address": raw_data["hv"][i]["public_ip"],
                     }
                 )
-                
+
     return current_desc
 
-    
+
 def scale_cluster_worker(
     job_id,
     cluster_scale_request: ClusterScaleRequest,
@@ -508,7 +586,7 @@ def scale_cluster_worker(
             ],
             "cockroachdb_version": current_desc["version"],
         }
-        
+
         job_status, raw_data = MyRunner(job_id).launch_runner(
             "SCALE_CLUSTER", extra_vars
         )
@@ -520,7 +598,7 @@ def scale_cluster_worker(
                 "root",
             )
             return
-        
+
         # data = {
         #     "version": current_desc["version"],
         #     "node_cpus": cluster_scale_request.node_cpus,
@@ -530,15 +608,14 @@ def scale_cluster_worker(
         # }
 
         current_desc = parse_raw_data(current_regions, raw_data, current_desc)
-        
+
         db.update_cluster(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
             "system",
         )
-        
-        
+
     #
     # NODE COUNT - REMOVE
     #
@@ -629,8 +706,7 @@ def scale_cluster_worker(
             "deployment_id": cluster_scale_request.name,
             "deployment": deployment,
         }
-        
-    
+
         job_status, raw_data = MyRunner(job_id).launch_runner(
             "SCALE_CLUSTER_IN", extra_vars
         )
@@ -644,7 +720,7 @@ def scale_cluster_worker(
             return
 
         current_desc = parse_raw_data(current_regions, raw_data, current_desc)
-        
+
         db.update_cluster(
             cluster_scale_request.name,
             "SCALING",
@@ -761,19 +837,21 @@ def scale_cluster_worker(
             )
             return
 
-        current_desc = parse_raw_data(cluster_scale_request.regions, raw_data, current_desc)
-        
+        current_desc = parse_raw_data(
+            cluster_scale_request.regions, raw_data, current_desc
+        )
+
         db.update_cluster(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
             "system",
         )
-    
+
     #
     # REGION - REMOVE
     #
-    
+
     # remove region: check for any region that's in the current list that's no longer in the request
     remove_regions = [
         x for x in current_regions if x not in cluster_scale_request.regions
@@ -867,7 +945,7 @@ def scale_cluster_worker(
             "deployment_id": cluster_scale_request.name,
             "deployment": deployment,
         }
-        
+
         job_status, raw_data = MyRunner(job_id).launch_runner(
             "SCALE_CLUSTER_IN", extra_vars
         )
@@ -880,15 +958,16 @@ def scale_cluster_worker(
             )
             return
 
-        current_desc = parse_raw_data(cluster_scale_request.regions, raw_data, current_desc)
-        
+        current_desc = parse_raw_data(
+            cluster_scale_request.regions, raw_data, current_desc
+        )
+
         db.update_cluster(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
             "system",
         )
-        
 
     db.update_cluster(
         cluster_scale_request.name,
@@ -1034,7 +1113,7 @@ class MyRunner:
         # create a new working directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
         os.mkdir(path=f"/tmp/job-{self.job_id}")
-        
+
         with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
             f.write(r.content)
 
@@ -1045,7 +1124,7 @@ class MyRunner:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=f"/tmp/job-{self.job_id}/playbook.yaml", 
+                playbook=f"/tmp/job-{self.job_id}/playbook.yaml",
                 private_data_dir=f"/tmp/job-{self.job_id}",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
@@ -1159,11 +1238,12 @@ async def pull_from_mq():
                             case "SCALE_CLUSTER":
                                 print("Processing a SCALE_CLUSTER")
                                 scale_cluster(msg.msg_id, msg.msg_data, msg.created_by)
-                            
+
                             case "UPGRADE_CLUSTER":
                                 print("Processing a UPGRADE_CLUSTER")
-                                print(msg)
-                                #upgrade_cluster(msg.msg_id, msg.msg_data, msg.created_by)
+                                upgrade_cluster(
+                                    msg.msg_id, msg.msg_data, msg.created_by
+                                )
 
                             case "FAIL_ZOMBIE_JOBS":
                                 print("Processing a FAIL_ZOMBIE_JOBS")

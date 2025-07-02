@@ -7,7 +7,7 @@ from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..components.main import item_selector, chip_props
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job, StrID
+from ..models import TS_FORMAT, Cluster, Job, StrID, InventoryLB, InventoryRegion
 from ..state.base import BaseState
 from ..template import template
 from .clusters import State as ClusterState
@@ -16,7 +16,6 @@ from ..util import get_human_size
 
 class State(BaseState):
     current_cluster: Cluster = None
-    current_cluster_description: dict = {}
     current_cluster_regions: list[dict[str, str | list[str]]] = []
     current_cluster_lbs: list[dict[str, str]] = []
 
@@ -63,13 +62,6 @@ class State(BaseState):
             form_data | {"job_id": msg_id.id},
         )
 
-        # self.selected_regions = []
-        # self.selected_version = self.available_versions[0]
-        # self.selected_node_count = self.available_node_counts[0]
-        # self.selected_cpus_per_node = self.available_cpus_per_node[0]
-        # self.selected_disk_size = self.available_disk_sizes[0].size_gb
-        # self.selected_group = self.webuser.groups[0]
-
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event
@@ -97,26 +89,15 @@ class State(BaseState):
     is_running: bool = False
     just_once: bool = True
 
-    # self.selected_version = self.current_cluster.description.version
-    # self.selected_node_count = len(self.current_cluster.description['cluster'][0]['nodes'])
-    # self.selected_cpus_per_node = self.current_cluster.description['node_cpus']
-    # self.selected_disk_size = self.current_cluster.description['disk_size']
-    # self.available_regions = [StrID(x.get("cloud") + ":" + x.get("region")) for x in self.current_cluster.description['cluster']]
-
     @rx.event
-    def load_cluster_data(self):
+    def reload_cluster_data(self):
         if self.current_cluster:
-            #self.selected_version = self.current_cluster.description.get("version", "")
-            self.selected_node_count = len(
-                self.current_cluster.description["cluster"][0]["nodes"]
-            )
-            self.selected_cpus_per_node = self.current_cluster.description["node_cpus"]
-            self.selected_disk_size = get_human_size(
-                self.current_cluster.description["disk_size"]
-            )
+            self.selected_node_count = self.current_cluster.node_count
+            self.selected_cpus_per_node = self.current_cluster.node_cpus
+            self.selected_disk_size = get_human_size(self.current_cluster.disk_size)
             self.selected_regions = [
                 x.get("cloud") + ":" + x.get("region")
-                for x in self.current_cluster.description["cluster"]
+                for x in self.current_cluster.cluster_inventory
             ]
 
     @rx.event(background=True)
@@ -159,25 +140,17 @@ class State(BaseState):
                     # TODO redirect is buggy
                     return rx.redirect("/404", replace=True)
 
-                self.current_cluster_description = cluster.description
-                self.current_cluster_regions = cluster.description.get("cluster", [])
-                self.current_cluster_lbs = cluster.description.get("lbs", [])
                 self.current_cluster = cluster
 
-                if self.just_once and self.current_cluster_description:
+                if self.just_once and self.current_cluster:
                     self.just_once = False
                     self.available_versions = [
                         x.id
-                        for x in db.get_upgrade_versions(
-                            self.current_cluster_description.get("version")
-                        )
+                        for x in db.get_upgrade_versions(self.current_cluster.version)
                     ]
                     l = []
                     major_yy, major_mm, _ = [
-                        int(x)
-                        for x in self.current_cluster_description.get("version")[
-                            1:
-                        ].split(".")
+                        int(x) for x in self.current_cluster.version[1:].split(".")
                     ]
 
                     for v in self.available_versions:
@@ -192,32 +165,30 @@ class State(BaseState):
                         if major_yy == f1 and major_mm in [1, 3] and f2 == major_mm + 1:
                             l.append(v)
                             continue
-                        
+
                         if major_yy == f1 and major_mm == 2 and f2 in [3, 4]:
                             l.append(v)
                             continue
-                        
-                        if major_yy +1 == f1 and major_mm == 4 and f2 in [1,2]:
+
+                        if major_yy + 1 == f1 and major_mm == 4 and f2 in [1, 2]:
                             l.append(v)
-                            
 
                     self.available_versions = l
                     self.selected_version = (
                         self.available_versions[0] if self.available_versions else ""
                     )
 
-                    self.selected_node_count = len(
-                        self.current_cluster.description["cluster"][0]["nodes"]
-                    )
-                    self.selected_cpus_per_node = self.current_cluster.description[
-                        "node_cpus"
-                    ]
+                    self.selected_node_count = self.current_cluster.node_count
+
+                    self.selected_cpus_per_node = self.current_cluster.node_cpus
+
                     self.selected_disk_size = get_human_size(
-                        self.current_cluster.description["disk_size"]
+                        self.current_cluster.disk_size
                     )
+
                     self.selected_regions = [
                         x.get("cloud") + ":" + x.get("region")
-                        for x in self.current_cluster.description["cluster"]
+                        for x in self.current_cluster.cluster_inventory
                     ]
 
             await asyncio.sleep(5)
@@ -230,44 +201,6 @@ chip_props = {
     "cursor": "pointer",
     "style": {"_hover": {"opacity": 0.75}},
 }
-
-
-def multi_selected_item_chip(item: str) -> rx.Component:
-    return rx.badge(
-        rx.match(
-            item[:3],
-            ("aws", rx.image("/aws.png", width="35px", height="auto")),
-            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
-            ("azr", rx.image("/azr.png", width="35px", height="auto")),
-            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
-        ),
-        item[4:],
-        rx.icon("circle-x", size=18),
-        color_scheme="green",
-        **chip_props,
-        on_click=State.multi_remove_selected(item),
-    )
-
-
-def multi_unselected_item_chip(item: StrID) -> rx.Component:
-    return rx.cond(
-        State.selected_regions.contains(item.id),
-        rx.fragment(),
-        rx.badge(
-            rx.match(
-                item.id[:3],
-                ("aws", rx.image("/aws.png", width="30px", height="auto")),
-                ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
-                ("azr", rx.image("/azr.png", width="35px", height="auto")),
-                ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
-            ),
-            item.id[4:],
-            rx.icon("circle-plus", size=18),
-            color_scheme="gray",
-            **chip_props,
-            on_click=State.multi_add_selected(item.id),
-        ),
-    )
 
 
 def region_selector() -> rx.Component:
@@ -295,7 +228,20 @@ def region_selector() -> rx.Component:
         rx.flex(
             rx.foreach(
                 State.selected_regions,
-                multi_selected_item_chip,
+                lambda item: rx.badge(
+                    rx.match(
+                        item[:3],
+                        ("aws", rx.image("/aws.png", width="35px", height="auto")),
+                        ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+                        ("azr", rx.image("/azr.png", width="35px", height="auto")),
+                        ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+                    ),
+                    item[4:],
+                    rx.icon("circle-x", size=18),
+                    color_scheme="green",
+                    **chip_props,
+                    on_click=State.multi_remove_selected(item),
+                ),
             ),
             wrap="wrap",
             spacing="2",
@@ -304,7 +250,27 @@ def region_selector() -> rx.Component:
         rx.divider(),
         # Unselected Items
         rx.flex(
-            rx.foreach(State.available_regions, multi_unselected_item_chip),
+            rx.foreach(
+                State.available_regions,
+                lambda item: rx.cond(
+                    State.selected_regions.contains(item.id),
+                    rx.fragment(),
+                    rx.badge(
+                        rx.match(
+                            item.id[:3],
+                            ("aws", rx.image("/aws.png", width="30px", height="auto")),
+                            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+                            ("azr", rx.image("/azr.png", width="35px", height="auto")),
+                            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+                        ),
+                        item.id[4:],
+                        rx.icon("circle-plus", size=18),
+                        color_scheme="gray",
+                        **chip_props,
+                        on_click=State.multi_add_selected(item.id),
+                    ),
+                ),
+            ),
             wrap="wrap",
             spacing="2",
             justify_content="start",
@@ -446,7 +412,7 @@ def scale_cluster_dialog() -> rx.Component:
                 reset_on_submit=False,
             ),
             max_width="850px",
-            on_open_auto_focus=State.load_cluster_data,
+            on_open_auto_focus=State.reload_cluster_data,
         ),
     )
 
@@ -494,7 +460,7 @@ def cluster():
                 rx.vstack(
                     rx.text("Version"),
                     rx.text(
-                        State.current_cluster_description.version,
+                        State.current_cluster.version,
                         class_name="text-3xl font-semibold",
                     ),
                     class_name="mx-16",
@@ -509,11 +475,12 @@ def cluster():
             # cluster_sidebar(),
             rx.flex(
                 rx.hstack(
+                    # CLUSTER CARD
                     rx.card(
                         rx.text("Cluster", class_name="text-2xl font-semibold"),
                         rx.divider(class_name="my-2"),
                         rx.foreach(
-                            State.current_cluster_regions,
+                            State.current_cluster.cluster_inventory,
                             lambda x: rx.flex(
                                 rx.badge(
                                     rx.match(
@@ -565,11 +532,12 @@ def cluster():
                         ),
                         class_name="min-w-80 min-h-96",
                     ),
+                    # LB CARD
                     rx.card(
                         rx.text("Load Balancers", class_name="text-2xl font-semibold"),
                         rx.divider(class_name="my-2"),
                         rx.foreach(
-                            State.current_cluster_lbs,
+                            State.current_cluster.lbs_inventory,
                             lambda x: rx.flex(
                                 rx.badge(
                                     rx.match(
@@ -670,6 +638,7 @@ def cluster():
                         ),
                         class_name="min-w-80 min-h-96 ml-4",
                     ),
+                    # DETAIL CARD
                     rx.card(
                         rx.text("Details", class_name="text-2xl font-semibold"),
                         rx.divider(class_name="my-2"),
@@ -677,7 +646,7 @@ def cluster():
                             rx.hstack(
                                 rx.text("Node CPUs"),
                                 rx.text(
-                                    State.current_cluster_description.node_cpus,
+                                    State.current_cluster.node_cpus,
                                     class_name="text-lg font-semibold",
                                 ),
                                 class_name="py-2",
@@ -686,7 +655,7 @@ def cluster():
                             rx.hstack(
                                 rx.text("Disk Size GB"),
                                 rx.text(
-                                    State.current_cluster_description.disk_size,
+                                    State.current_cluster.disk_size,
                                     class_name="text-lg font-semibold",
                                 ),
                                 class_name="py-2",
@@ -742,6 +711,7 @@ def cluster():
                         ),
                         class_name="min-w-80 min-h-96 ml-4",
                     ),
+                    # ACTIONS CARD
                     rx.card(
                         rx.text("Actions", class_name="text-2xl font-semibold"),
                         rx.divider(class_name="my-2"),

@@ -99,18 +99,37 @@ class ClusterOverview:
     created_by: str
     status: str
     version: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
 
+@dataclass
+class InventoryRegion:
+    cloud: str
+    region: str
+    nodes: list[str]
+
+@dataclass
+class InventoryLB:
+    cloud: str
+    region: str
+    dns_address: str
 
 @dataclass
 class Cluster:
     cluster_id: str
-    description: Any | None
+    cluster_inventory: list[InventoryRegion]
+    lbs_inventory: list[InventoryLB]
+    version: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
     status: str
+    grp: str
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime
     updated_by: str
-    grp: str
 
 
 @dataclass
@@ -122,6 +141,12 @@ class ClusterRequest:
     regions: list[str]
     version: str
     group: str
+
+@dataclass
+class ClusterUpgradeRequest:
+    name: str
+    version: str
+    auto_finalize: bool
 
 @dataclass
 class ClusterScaleRequest:

@@ -1,12 +1,12 @@
 ---
-- name: UPGRADE COCKROACHDB
+- name: UPGRADE COCKROACHDB BINARY
   hosts: cockroachdb
   gather_facts: yes
   become: yes
   vars:
     # cockroachdb_version: v23.2.17
     # iknowwhatiamdoing: no
-    # cockroachdb_autofinalize: yes
+    cockroachdb_autofinalize: yes
     cockroachdb_advertise_addr: "{{ public_ip }}"
     cockroachdb_repo_url: https://binaries.cockroachdb.com
   tasks:
@@ -39,67 +39,35 @@
     - name: Download CockroachDB binary
       shell: |
         wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
-      when: cockroachdb_version != "master" and cockroachdb_version != "custom" and not out.stat.exists
+      when: not out.stat.exists
     
     - name: Install CockroachDB binary
       shell: |
         tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
         mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/cockroach /usr/local/bin/cockroach
         chmod 755 /usr/local/bin/cockroach
-        mkdir /usr/local/lib/cockroach/
+        mkdir -p /usr/local/lib/cockroach/
         mv cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}/lib/libgeos*.so /usr/local/lib/cockroach/
         rm -rf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}
-    
-    - name: install MASTER binary
-      when: cockroachdb_version == "master"
-      shell: |
-        wget https://edge-binaries.cockroachdb.com/cockroach/cockroach.linux-gnu-{{ bin_arch[ansible_architecture] }}.LATEST
-        chmod +x cockroach.linux-gnu-{{ bin_arch[ansible_architecture] }}.LATEST
-        mv cockroach.linux-gnu-{{ bin_arch[ansible_architecture] }}.LATEST /usr/local/bin/cockroach
-        rm -rf cockroach-*
-
-    - name: install custom binary
-      when: cockroachdb_version == "custom"
-      shell: |
-        wget {{ cockroachdb_custom_url }}
-        tar xvf *gz 
-        mv cockroach*/cockroach /usr/local/bin/cockroach
-        rm -rf cockroach-*
+  
 
 - name: RESTART COCKROACHDB
   hosts: cockroachdb
   gather_facts: no
   serial: 1
   become: yes
-  vars: {}
-    # cockroachdb_upgrade_delay: 30
+  vars:
+    cockroachdb_upgrade_delay: 30
   tasks:
-    - name: execute lscpu to find numa nodes count
-      shell: |
-          lscpu | grep "NUMA node(s):" | cut -d":" -f2 | tr -d '[:space:]'
-      register: out
-    
-    - name: Set fact ansible_numa_nodes
-      set_fact:
-        ansible_numa_nodes: "{{ out.stdout }}"
-
     - name: Ensure cockroachdb service is restarted
       shell: |
-        systemctl daemon-reload
-        systemctl enable cockroachdb
         systemctl restart cockroachdb
 
-        sleep {{ cockroachdb_upgrade_delay }}
-      when: ansible_numa_nodes|int <= 1
-
-    - name: Ensure cockroachdb services are restarted for NUMA nodes
-      when: ansible_numa_nodes|int > 1
+    - name: Wait until the node has rejoined the cluster
       shell: |
-        systemctl daemon-reload
-        systemctl enable cockroachdb-{{ numa_idx|string }}
-        systemctl restart cockroachdb-{{ numa_idx|string }}
-
-        sleep {{ cockroachdb_upgrade_delay }}
-      loop: "{{ range(ansible_numa_nodes|int) }}"
-      loop_control:
-        index_var: numa_idx
+        # TODO
+        sleep 5
+        
+    - name: Pause between upgrades
+      pause:
+        seconds: "{{ cockroachdb_upgrade_delay }}"

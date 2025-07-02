@@ -12,7 +12,6 @@ from ..template import template
 from ..util import get_funny_name, get_human_size
 
 
-
 class State(BaseState):
     current_cluster: Cluster = None
     clusters: list[ClusterOverview] = []
@@ -124,6 +123,7 @@ class State(BaseState):
             return
         async with self:
             # fetch this data only once
+            # this data powers the Create New Cluster dialog
             self.available_versions = [x.id for x in db.get_versions()]
             self.selected_version = self.available_versions[0]
 
@@ -165,44 +165,6 @@ class State(BaseState):
             await asyncio.sleep(5)
 
 
-def multi_selected_item_chip(item: str) -> rx.Component:
-    return rx.badge(
-        rx.match(
-            item[:3],
-            ("aws", rx.image("/aws.png", width="35px", height="auto")),
-            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
-            ("azr", rx.image("/azr.png", width="35px", height="auto")),
-            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
-        ),
-        item[4:],
-        rx.icon("circle-x", size=18),
-        color_scheme="green",
-        **chip_props,
-        on_click=State.multi_remove_selected(item),
-    )
-
-
-def multi_unselected_item_chip(item: StrID) -> rx.Component:
-    return rx.cond(
-        State.selected_regions.contains(item.id),
-        rx.fragment(),
-        rx.badge(
-            rx.match(
-                item.id[:3],
-                ("aws", rx.image("/aws.png", width="30px", height="auto")),
-                ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
-                ("azr", rx.image("/azr.png", width="35px", height="auto")),
-                ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
-            ),
-            item.id[4:],
-            rx.icon("circle-plus", size=18),
-            color_scheme="gray",
-            **chip_props,
-            on_click=State.multi_add_selected(item.id),
-        ),
-    )
-
-
 def region_selector() -> rx.Component:
     return rx.vstack(
         rx.flex(
@@ -228,7 +190,20 @@ def region_selector() -> rx.Component:
         rx.flex(
             rx.foreach(
                 State.selected_regions,
-                multi_selected_item_chip,
+                lambda item: rx.badge(
+                    rx.match(
+                        item[:3],
+                        ("aws", rx.image("/aws.png", width="35px", height="auto")),
+                        ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+                        ("azr", rx.image("/azr.png", width="35px", height="auto")),
+                        ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+                    ),
+                    item[4:],
+                    rx.icon("circle-x", size=18),
+                    color_scheme="green",
+                    **chip_props,
+                    on_click=State.multi_remove_selected(item),
+                ),
             ),
             wrap="wrap",
             spacing="2",
@@ -237,7 +212,27 @@ def region_selector() -> rx.Component:
         rx.divider(),
         # Unselected Items
         rx.flex(
-            rx.foreach(State.available_regions, multi_unselected_item_chip),
+            rx.foreach(
+                State.available_regions,
+                lambda item: rx.cond(
+                    State.selected_regions.contains(item.id),
+                    rx.fragment(),
+                    rx.badge(
+                        rx.match(
+                            item.id[:3],
+                            ("aws", rx.image("/aws.png", width="30px", height="auto")),
+                            ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
+                            ("azr", rx.image("/azr.png", width="35px", height="auto")),
+                            ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
+                        ),
+                        item.id[4:],
+                        rx.icon("circle-plus", size=18),
+                        color_scheme="gray",
+                        **chip_props,
+                        on_click=State.multi_add_selected(item.id),
+                    ),
+                ),
+            ),
             wrap="wrap",
             spacing="2",
             justify_content="start",
@@ -246,7 +241,6 @@ def region_selector() -> rx.Component:
         align_items="start",
         width="100%",
     )
-
 
 
 def new_cluster_dialog():
