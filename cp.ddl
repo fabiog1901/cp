@@ -45,8 +45,8 @@ ALTER TABLE mq CONFIGURE ZONE USING
 
 CREATE TABLE clusters (
     cluster_id STRING NOT NULL,
-    cluster_inventory JSONB NULL,
-    lbs_inventory JSONB NULL,
+    cluster_inventory JSONB NOT NULL default '[]',
+    lbs_inventory JSONB NOT NULL default '[]',
     version STRING NULL,
     node_count INT2 NULL,
     node_cpus INT2 NULL,

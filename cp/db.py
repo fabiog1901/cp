@@ -164,45 +164,54 @@ def get_running_clusters() -> list[Cluster]:
 def upsert_cluster(
     cluster_id: str,
     status: str,
-    description: dict,
     created_by: str,
-    updated_by: str,
     grp: str,
+    version: str,
+    node_cpus: int,
+    node_count: int,
+    disk_size: int,
 ) -> None:
     execute_stmt(
         """
         UPSERT INTO clusters
-            (cluster_id, status, description, 
-            created_by, updated_by, grp)
+            (cluster_id, status, 
+            created_by, updated_by, grp, 
+            version, node_cpus, node_count, disk_size)
         VALUES
-            (%s, %s, %s, %s, %s, %s)
+            (%s, %s, %s, %s, %s,
+             %s, %s, %s, %s)
         """,
         (
             cluster_id,
             status,
-            description,
             created_by,
-            updated_by,
+            created_by,
             grp,
+            version,
+            node_cpus,
+            node_count,
+            disk_size,
         ),
     )
 
 
-def update_cluster(
+def update_cluster_status_and_inventory(
     cluster_id: str,
     status: str,
-    description: dict,
+    cluster_inventory: dict,
+    lbs_inventory: dict,
     updated_by: str,
 ):
     execute_stmt(
         """
         UPDATE clusters SET
             status = %s,
-            description = %s,
+            cluster_inventory = %s,
+            lbs_inventory = %s,
             updated_by = %s
         WHERE cluster_id = %s
         """,
-        (status, description, updated_by, cluster_id),
+        (status, cluster_inventory, lbs_inventory, updated_by, cluster_id),
     )
 
 
@@ -673,6 +682,7 @@ def execute_stmt(
         # convert a set to a psycopg list
         conn.adapters.register_dumper(set, ListDumper)
         conn.adapters.register_dumper(dict, DictJsonbDumper)
+        conn.adapters.register_dumper(list, DictJsonbDumper)
 
         with conn.cursor() as cur:
             try:

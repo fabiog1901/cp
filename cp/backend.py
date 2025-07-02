@@ -12,6 +12,8 @@ import requests
 from . import db
 from .models import (
     ClusterRequest,
+    InventoryLB,
+    InventoryRegion,
     Msg,
     Region,
     ClusterScaleRequest,
@@ -41,16 +43,16 @@ def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
 
 def create_cluster(
     job_id: int,
-    cluster: dict,
+    data: dict,
     created_by: str,
     recreate: bool = False,
 ) -> None:
-    cluster_request = ClusterRequest(**cluster)
+    cluster_request = ClusterRequest(**data)
 
     # check if cluster with same cluster_id exists
     c = db.get_cluster(cluster_request.name, [], True)
 
-    if not recreate and c and c.status == "DELETED":
+    if not recreate and c and c.status.startswith("DELET"):
         # TODO raise an error message that a cluster
         # with the same name already exists
         db.update_job(
@@ -62,10 +64,12 @@ def create_cluster(
     db.upsert_cluster(
         cluster_request.name,
         "PROVISIONING",
-        {"cluster": [], "lbs": [], "disk_size": 0, "node_cpus": 0, "version": ""},
         created_by,
-        created_by,
-        cluster["group"],
+        cluster_request.group,
+        cluster_request.version,
+        cluster_request.node_cpus,
+        cluster_request.node_count,
+        cluster_request.disk_size,
     )
 
     db.insert_mapped_job(
@@ -79,11 +83,12 @@ def create_cluster(
         args=(
             job_id,
             cluster_request,
+            created_by,
         ),
     ).start()
 
 
-def create_cluster_worker(job_id, cluster_request: ClusterRequest):
+def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str):
     deployment = []
 
     for cloud_region in cluster_request.regions:
@@ -166,6 +171,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 | region_details[idx].extras
             )
 
+    # TODO get all these details from Settings instad of hardcoded values
     extra_vars = {
         "deployment_id": cluster_request.name,
         "deployment": deployment,
@@ -184,20 +190,14 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
 
     job_status, raw_data = MyRunner(job_id).launch_runner("CREATE_CLUSTER", extra_vars)
 
-    data = {
-        "version": cluster_request.version,
-        "node_cpus": cluster_request.node_cpus,
-        "disk_size": cluster_request.disk_size,
-        "cluster": [],
-        "lbs": [],
-    }
+    cluster_inventory: list[InventoryRegion] = []
+    lbs_inventory: list[InventoryLB] = []
 
     if job_status != "successful":
-        db.update_cluster(
+        db.update_cluster_status(
             cluster_request.name,
             "FAILED",
-            {},
-            "root",
+            created_by,
         )
         return
 
@@ -213,7 +213,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
             ):
                 region_nodes.append(raw_data["hv"][i]["public_ip"])
 
-        data["cluster"].append(
+        cluster_inventory.append(
             {
                 "cloud": cloud,
                 "region": region,
@@ -226,7 +226,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                 raw_data["hv"][i]["cloud"] == cloud
                 and raw_data["hv"][i]["region"] == region
             ):
-                data["lbs"].append(
+                lbs_inventory.append(
                     {
                         "cloud": cloud,
                         "region": region,
@@ -234,11 +234,12 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest):
                     }
                 )
 
-    db.update_cluster(
+    db.update_cluster_status_and_inventory(
         cluster_request.name,
         "RUNNING",
-        data,
-        "system",
+        cluster_inventory,
+        lbs_inventory,
+        created_by,
     )
 
 
@@ -308,7 +309,7 @@ def upgrade_cluster_worker(
 
     db.update_cluster_status_and_version(
         cur.version,
-        'RUNNING',
+        "RUNNING",
         cur.name,
         requested_by,
     )
@@ -609,7 +610,7 @@ def scale_cluster_worker(
 
         current_desc = parse_raw_data(current_regions, raw_data, current_desc)
 
-        db.update_cluster(
+        db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
@@ -721,7 +722,7 @@ def scale_cluster_worker(
 
         current_desc = parse_raw_data(current_regions, raw_data, current_desc)
 
-        db.update_cluster(
+        db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
@@ -841,7 +842,7 @@ def scale_cluster_worker(
             cluster_scale_request.regions, raw_data, current_desc
         )
 
-        db.update_cluster(
+        db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
@@ -962,14 +963,14 @@ def scale_cluster_worker(
             cluster_scale_request.regions, raw_data, current_desc
         )
 
-        db.update_cluster(
+        db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
             current_desc,
             "system",
         )
 
-    db.update_cluster(
+    db.update_cluster_status_and_inventory(
         cluster_scale_request.name,
         "RUNNING",
         current_desc,
@@ -1224,6 +1225,7 @@ async def pull_from_mq():
                         match msg.msg_type:
                             case "CREATE_CLUSTER":
                                 print("Processing a CREATE_CLUSTER")
+                                print(msg)
                                 create_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
                             case "RECREATE_CLUSTER":
