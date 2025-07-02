@@ -13,9 +13,6 @@ from ..template import template
 
 class State(BaseState):
     current_cluster: Cluster = None
-    current_cluster_description: dict = {}
-    current_cluster_regions: list[dict[str, str | list[str]]] = []
-    current_cluster_lbs: list[dict[str, str]] = []
     jobs: list[Job] = []
 
     @rx.var
@@ -53,7 +50,6 @@ class State(BaseState):
                     # TODO redirect is buggy
                     return rx.redirect("/404", replace=True)
 
-                self.current_cluster_description = cluster.description
                 self.current_cluster = cluster
                 self.jobs = db.get_all_linked_jobs(self.cluster_id)
             await asyncio.sleep(5)
@@ -118,7 +114,7 @@ def cluster():
                 rx.vstack(
                     rx.text("Version"),
                     rx.text(
-                        State.current_cluster_description.version,
+                        State.current_cluster.version,
                         class_name="text-3xl font-semibold",
                     ),
                     class_name="mx-16",
