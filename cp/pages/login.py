@@ -17,6 +17,7 @@ class State(rx.State):
 def callback() -> rx.Component:
     return rx.container()
 
+
 @rx.page(route="/login", title="Login")
 def login():
     return rx.flex(

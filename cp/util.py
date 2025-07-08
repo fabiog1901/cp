@@ -1,5 +1,5 @@
-import random
 import math
+import random
 
 funny_words = [
     "abominable",
@@ -364,7 +364,7 @@ funny_words = [
     "spiffy",
     "squooshy",
     "taradiddle",
-    "tater tot",
+    "tater-tot",
     "tchotchke",
     "thingamabob",
     "thingamajig",
@@ -445,9 +445,7 @@ def get_funny_name():
     return "-".join(random.choices(funny_words, k=2))
 
 
-def get_human_size(
-    value_in_gb: float
-) -> str:
+def get_human_size(value_in_gb: float) -> str:
     """
     1500 --> 1.5 TB
     500  --> 500 GB
@@ -470,10 +468,8 @@ def get_human_size(
     bytes_ = float(value_in_gb * 1_000_000_000)
 
     exp = int(min(math.log(abs(bytes_), base), len(suffix)))
-    human_size = "%.1f" % (bytes_ / (base**exp)) 
+    human_size = "%.1f" % (bytes_ / (base**exp))
 
     if human_size[-2:] == ".0":
         return human_size[:-2] + suffix[exp - 1]
     return human_size + suffix[exp - 1]
-
-

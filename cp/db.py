@@ -2,6 +2,7 @@ import datetime as dt
 import os
 from typing import Any
 
+from psycopg.rows import class_row
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
@@ -118,6 +119,7 @@ def fetch_all_clusters(
     )
 
 
+# TODO checkif the Cluster object has objects InventoryRegion and inventoryLB
 def get_cluster(
     cluster_id: str,
     groups: list[str],
@@ -270,7 +272,7 @@ def delete_cluster(cluster_id):
 def get_linked_clusters_from_job(job_id: int) -> list[StrID]:
     return execute_stmt(
         """
-        SELECT cluster_id 
+        SELECT cluster_id AS id
         FROM map_clusters_jobs
         WHERE job_id = %s
         ORDER BY cluster_id
@@ -548,7 +550,7 @@ def insert_event_log(
 def get_versions() -> list[StrID]:
     return execute_stmt(
         """
-        SELECT version
+        SELECT version AS id
         FROM versions 
         ORDER BY version DESC
         """,
@@ -560,7 +562,7 @@ def get_versions() -> list[StrID]:
 def get_upgrade_versions(current_version: str) -> list[StrID]:
     return execute_stmt(
         """
-        SELECT version
+        SELECT version AS id
         FROM versions 
         WHERE version > %s
         ORDER BY version ASC
@@ -573,9 +575,9 @@ def get_upgrade_versions(current_version: str) -> list[StrID]:
 def get_regions() -> list[StrID]:
     return execute_stmt(
         """
-        SELECT DISTINCT cloud || ':' || region AS cr
+        SELECT DISTINCT cloud || ':' || region AS id
         FROM regions
-        ORDER BY cr ASC
+        ORDER BY id ASC
         """,
         (),
         StrID,
@@ -585,7 +587,7 @@ def get_regions() -> list[StrID]:
 def get_node_counts() -> list[IntID]:
     return execute_stmt(
         """
-        SELECT nodes
+        SELECT nodes AS id
         FROM nodes_per_region
         ORDER BY nodes ASC
         """,
@@ -597,7 +599,7 @@ def get_node_counts() -> list[IntID]:
 def get_cpus_per_node() -> list[IntID]:
     return execute_stmt(
         """
-        SELECT cpus
+        SELECT cpus AS id
         FROM cpus_per_node
         ORDER BY cpus ASC
         """,
@@ -609,7 +611,7 @@ def get_cpus_per_node() -> list[IntID]:
 def get_disk_sizes() -> list[IntID]:
     return execute_stmt(
         """
-        SELECT size_gb
+        SELECT size_gb AS id
         FROM disk_sizes
         ORDER BY size_gb
         """,
@@ -662,7 +664,7 @@ def get_role_to_groups_mappings() -> list[GroupRoleMap]:
     return execute_stmt(
         """
         SELECT role, groups 
-        FROM role_to_groups_mappings;
+        FROM role_to_groups_mappings
         """,
         (),
         GroupRoleMap,
@@ -676,7 +678,10 @@ class DictJsonbDumper(JsonbDumper):
 
 
 def execute_stmt(
-    stmt: str, bind_args: tuple, model=None, return_list: bool = True
+    stmt: str,
+    bind_args: tuple,
+    model=None,
+    return_list: bool = True,
 ) -> Any | list[Any] | None:
     with pool.connection() as conn:
         # convert a set to a psycopg list
@@ -684,7 +689,7 @@ def execute_stmt(
         conn.adapters.register_dumper(dict, DictJsonbDumper)
         conn.adapters.register_dumper(list, DictJsonbDumper)
 
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=class_row(model)) as cur:
             try:
                 stmt = " ".join([s.strip() for s in stmt.split("\n")])
 
@@ -695,12 +700,12 @@ def execute_stmt(
                     return
 
                 if return_list:
-                    rs = cur.fetchall()
-                    return [model(*x) for x in rs]
+                    obj = cur.fetchall()
                 else:
-                    rs = cur.fetchone()
+                    obj = cur.fetchone()
 
-                    return model(*rs) if rs else None
+                if obj:
+                    return obj
 
             except Exception as e:
                 # TODO correctly handle error such as PK violations

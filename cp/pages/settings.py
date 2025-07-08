@@ -5,11 +5,6 @@ import reflex as rx
 from ..state.base import BaseState
 from ..template import template
 
-
-
-import reflex as rx
-
-
 # Define the keys and default values for each section
 SECTIONS = {
     "sso": {
@@ -29,9 +24,7 @@ SECTIONS = {
 
 class ConfigEditorState(rx.State):
     values: dict[str, str] = {
-        key: value
-        for section in SECTIONS.values()
-        for key, value in section.items()
+        key: value for section in SECTIONS.values() for key, value in section.items()
     }
 
     def update_value(self, key: str, value: str):

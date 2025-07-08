@@ -1,8 +1,8 @@
 import asyncio
 import json
 import os
-import shutil
 import random
+import shutil
 import time
 from threading import Thread
 
@@ -11,15 +11,15 @@ import requests
 
 from . import db
 from .models import (
+    Cluster,
     ClusterRequest,
+    ClusterScaleRequest,
+    ClusterUpgradeRequest,
     InventoryLB,
     InventoryRegion,
     Msg,
     Region,
-    ClusterScaleRequest,
-    ClusterUpgradeRequest,
 )
-import os
 
 PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
 
@@ -375,12 +375,12 @@ def delete_cluster_worker(job_id: int, cluster_id: str):
 
 def scale_cluster(
     job_id: int,
-    cluster: dict,
+    data: dict,
     created_by: str,
 ) -> None:
-    cluster_scale_request = ClusterScaleRequest(**cluster)
+    cluster_scale_request = ClusterScaleRequest(**data)
 
-    c = db.get_cluster(cluster_scale_request.name, [], True)
+    current_cluster = db.get_cluster(cluster_scale_request.name, [], True)
 
     db.update_cluster_status(
         cluster_scale_request.name,
@@ -393,21 +393,21 @@ def scale_cluster(
         job_id,
         "SCHEDULED",
     )
-
     Thread(
         target=scale_cluster_worker,
         args=(
             job_id,
             cluster_scale_request,
-            c.description,
+            current_cluster,
+            created_by,
         ),
     ).start()
 
 
-def parse_raw_data(regions, raw_data, current_desc):
+def parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster):
 
-    current_desc["cluster"] = []
-    current_desc["lbs"] = []
+    current_cluster.cluster_inventory = []
+    current_cluster.lbs_inventory = []
 
     for cloud_region in regions:
         cloud, region = cloud_region.split(":")
@@ -421,12 +421,8 @@ def parse_raw_data(regions, raw_data, current_desc):
             ):
                 region_nodes.append(raw_data["hv"][i]["public_ip"])
 
-        current_desc["cluster"].append(
-            {
-                "cloud": cloud,
-                "region": region,
-                "nodes": region_nodes,
-            }
+        current_cluster.cluster_inventory.append(
+            InventoryRegion(cloud, region, region_nodes)
         )
 
         for i in raw_data["haproxy"]:
@@ -434,29 +430,27 @@ def parse_raw_data(regions, raw_data, current_desc):
                 raw_data["hv"][i]["cloud"] == cloud
                 and raw_data["hv"][i]["region"] == region
             ):
-                current_desc["lbs"].append(
-                    {
-                        "cloud": cloud,
-                        "region": region,
-                        "dns_address": raw_data["hv"][i]["public_ip"],
-                    }
+                current_cluster.lbs_inventory.append(
+                    InventoryLB(cloud, region, raw_data["hv"][i]["public_ip"])
                 )
-
-    return current_desc
+    return current_cluster
 
 
 def scale_cluster_worker(
     job_id,
     cluster_scale_request: ClusterScaleRequest,
-    current_desc: dict,
+    current_cluster: Cluster,
+    created_by: str,
 ):
     deployment = []
-    current_regions = [x["cloud"] + ":" + x["region"] for x in current_desc["cluster"]]
+    current_regions = [
+        x.cloud + ":" + x.region for x in current_cluster.cluster_inventory
+    ]
 
     #
     # DISK SIZE
     #
-    if cluster_scale_request.disk_size != current_desc["disk_size"]:
+    if cluster_scale_request.disk_size != current_cluster.disk_size:
         return
         extra_vars = {
             "deployment_id": cluster_scale_request.name,
@@ -476,7 +470,7 @@ def scale_cluster_worker(
     #
     # NODE CPUS
     #
-    if cluster_scale_request.node_cpus != current_desc["node_cpus"]:
+    if cluster_scale_request.node_cpus != current_cluster.node_cpus:
         return
         extra_vars = {
             "deployment_id": cluster_scale_request.name,
@@ -496,7 +490,7 @@ def scale_cluster_worker(
     #
     # NODE COUNT - ADD
     #
-    if cluster_scale_request.node_count > len(current_desc["cluster"][0]["nodes"]):
+    if cluster_scale_request.node_count > current_cluster.node_count:
         deployment = []
         # create new nodes
         for cloud_region in current_regions:
@@ -583,9 +577,11 @@ def scale_cluster_worker(
             "deployment_id": cluster_scale_request.name,
             "deployment": deployment,
             "current_hosts": [
-                x for sublist in current_desc["cluster"] for x in sublist["nodes"]
+                x
+                for sublist in current_cluster.cluster_inventory
+                for x in sublist.nodes
             ],
-            "cockroachdb_version": current_desc["version"],
+            "cockroachdb_version": current_cluster.version,
         }
 
         job_status, raw_data = MyRunner(job_id).launch_runner(
@@ -596,31 +592,24 @@ def scale_cluster_worker(
             db.update_cluster_status(
                 cluster_scale_request.name,
                 "SCALE_FAILED",
-                "root",
+                created_by,
             )
             return
 
-        # data = {
-        #     "version": current_desc["version"],
-        #     "node_cpus": cluster_scale_request.node_cpus,
-        #     "disk_size": cluster_scale_request.disk_size,
-        #     "cluster": [],
-        #     "lbs": [],
-        # }
-
-        current_desc = parse_raw_data(current_regions, raw_data, current_desc)
+        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
         db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
-            current_desc,
-            "system",
+            current_cluster.cluster_inventory,
+            current_cluster.lbs_inventory,
+            created_by,
         )
 
     #
     # NODE COUNT - REMOVE
     #
-    if cluster_scale_request.node_count < len(current_desc["cluster"][0]["nodes"]):
+    if cluster_scale_request.node_count < current_cluster.node_count:
         deployment = []
         # decomm nodes and remove VMs
         for cloud_region in current_regions:
@@ -716,17 +705,18 @@ def scale_cluster_worker(
             db.update_cluster_status(
                 cluster_scale_request.name,
                 "SCALE_FAILED",
-                "root",
+                created_by,
             )
             return
 
-        current_desc = parse_raw_data(current_regions, raw_data, current_desc)
+        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
         db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
-            current_desc,
-            "system",
+            current_cluster.cluster_inventory,
+            current_cluster.lbs_inventory,
+            created_by,
         )
     #
     # REGIONS - ADD
@@ -821,9 +811,11 @@ def scale_cluster_worker(
             "deployment_id": cluster_scale_request.name,
             "deployment": deployment,
             "current_hosts": [
-                x for sublist in current_desc["cluster"] for x in sublist["nodes"]
+                x
+                for sublist in current_cluster.cluster_inventory
+                for x in sublist.nodes
             ],
-            "cockroachdb_version": current_desc["version"],
+            "cockroachdb_version": current_cluster.version,
         }
 
         job_status, raw_data = MyRunner(job_id).launch_runner(
@@ -838,14 +830,14 @@ def scale_cluster_worker(
             )
             return
 
-        current_desc = parse_raw_data(
-            cluster_scale_request.regions, raw_data, current_desc
+        current_cluster = parse_raw_data(
+            cluster_scale_request.regions, raw_data, current_cluster
         )
 
         db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
-            current_desc,
+            current_cluster,
             "system",
         )
 
@@ -959,21 +951,21 @@ def scale_cluster_worker(
             )
             return
 
-        current_desc = parse_raw_data(
-            cluster_scale_request.regions, raw_data, current_desc
+        current_cluster = parse_raw_data(
+            cluster_scale_request.regions, raw_data, current_cluster
         )
 
         db.update_cluster_status_and_inventory(
             cluster_scale_request.name,
             "SCALING",
-            current_desc,
+            current_cluster,
             "system",
         )
 
     db.update_cluster_status_and_inventory(
         cluster_scale_request.name,
         "RUNNING",
-        current_desc,
+        current_cluster,
         "system",
     )
 

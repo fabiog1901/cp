@@ -1,99 +1,63 @@
 import datetime as dt
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 
-"""
-Created
-Pending
-Running
-Paused (or Suspended)
-Retrying
-Succeeded (or Completed)
-Failed
-Canceled (or Aborted)
-Archived
 
-NotInstalled
-Installing
-Installed
-Configuring
-Starting
-Running
-Paused
-Stopping
-Stopped
-Upgrading
-Degraded
-Unresponsive
-Failed
-Terminated
-Archived
-Unknown
-
-"""
-
-
-@dataclass
-class WebUser:
+class WebUser(BaseModel):
     username: str
-    roles: list[str]
-    groups: list[str]
+    roles: List[str]
+    groups: List[str]
 
 
-@dataclass
-class User:
+class User(BaseModel):
     username: str
     password_hash: str
     salt: bytes
     hash_algo: str
     iterations: int
     attempts: int
-    groups: list[str]
+    groups: List[str]
 
 
-@dataclass
-class GroupRoleMap:
+class GroupRoleMap(BaseModel):
     role: str
-    groups: list[str]
+    groups: List[str]
 
 
-@dataclass
-class StrID:
+class StrID(BaseModel):
     id: str
 
 
-@dataclass
-class IntID:
+class IntID(BaseModel):
     id: int
 
-@dataclass
-class Region:
+
+class Region(BaseModel):
     cloud: str
     region: str
     zone: str
     vpc_id: str
-    security_groups: list[str]
+    security_groups: List[str]
     subnet: str
     image: str
-    extras: dict
-    tags: dict
+    extras: Dict[str, Any]
+    tags: Dict[str, Any]
 
 
-@dataclass
-class Msg:
+class Msg(BaseModel):
     msg_id: str
     start_after: dt.datetime
     msg_type: str
-    msg_data: dict
+    msg_data: Dict[str, Any]
     created_at: dt.datetime
     created_by: str
 
 
-@dataclass
-class ClusterOverview:
+class ClusterOverview(BaseModel):
     cluster_id: str
     grp: str
     created_by: str
@@ -103,23 +67,23 @@ class ClusterOverview:
     node_cpus: int
     disk_size: int
 
-@dataclass
-class InventoryRegion:
+
+class InventoryRegion(BaseModel):
     cloud: str
     region: str
-    nodes: list[str]
+    nodes: List[str]
 
-@dataclass
-class InventoryLB:
+
+class InventoryLB(BaseModel):
     cloud: str
     region: str
     dns_address: str
 
-@dataclass
-class Cluster:
+
+class Cluster(BaseModel):
     cluster_id: str
-    cluster_inventory: list[InventoryRegion]
-    lbs_inventory: list[InventoryLB]
+    cluster_inventory: List[InventoryRegion]
+    lbs_inventory: List[InventoryLB]
     version: str
     node_count: int
     node_cpus: int
@@ -132,53 +96,49 @@ class Cluster:
     updated_by: str
 
 
-@dataclass
-class ClusterRequest:
+class ClusterRequest(BaseModel):
     name: str
     node_count: int
     node_cpus: int
     disk_size: int
-    regions: list[str]
+    regions: List[str]
     version: str
     group: str
 
-@dataclass
-class ClusterUpgradeRequest:
+
+class ClusterUpgradeRequest(BaseModel):
     name: str
     version: str
     auto_finalize: bool
 
-@dataclass
-class ClusterScaleRequest:
+
+class ClusterScaleRequest(BaseModel):
     name: str
     node_count: int
     node_cpus: int
     disk_size: int
-    regions: list[str]
+    regions: List[str]
 
 
-@dataclass
-class Job:
+class Job(BaseModel):
     job_id: int
     job_type: str
     status: str
-    description: dict[str, int | str | list[str]]
+    description: Dict[str, Union[int, str, List[str]]]
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime
 
 
-@dataclass
-class Task:
-    job_id: UUID
-    task_id: UUID
+class Task(BaseModel):
+    job_id: int
+    task_id: int
     created_at: dt.datetime
-    task_name: str | None
-    task_desc: str | None
+    task_name: Optional[str]
+    task_desc: Optional[str]
 
 
-@dataclass
-class EventLog:
+class EventLog(BaseModel):
     created_at: dt.datetime
     created_by: str
     event_type: str

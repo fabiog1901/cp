@@ -6,10 +6,11 @@ import random
 import time
 from urllib.parse import urlencode
 
-import reflex as rx
 import jwt
-from jwt.algorithms import RSAAlgorithm
+import reflex as rx
 import requests
+from jwt.algorithms import RSAAlgorithm
+
 from .. import db
 from ..models import User, WebUser
 from .base import BaseState
@@ -74,7 +75,6 @@ class AuthState(BaseState):
     username: str
     password: str
 
-
     def callback(self):
         token_res = requests.post(
             os.getenv("SSO_TOKEN_URL"),
@@ -96,11 +96,11 @@ class AuthState(BaseState):
                 user_claims = validate_token(
                     access_token, audience=os.getenv("SSO_CLIENT_ID")
                 )
-                
+
                 grp_role_maps: dict[str, list[str]] = {
                     x.role: x.groups for x in db.get_role_to_groups_mappings()
                 }
-                
+
                 # create a WebUser out of the User
                 # assign all roles and groups
                 user_roles = set[str]()
@@ -110,21 +110,27 @@ class AuthState(BaseState):
                         if g in user_claims.get("groups"):
                             user_roles.add(r)
                             user_groups.add(g)
-            
-                if not user_roles:
-                    return rx.window_alert("User is not authorized. Contact your administrator.")
 
-                self.webuser = WebUser(user_claims.get("preferred_username"), list(user_roles), list(user_groups))
+                if not user_roles:
+                    return rx.window_alert(
+                        "User is not authorized. Contact your administrator."
+                    )
+
+                self.webuser = WebUser(
+                    username=user_claims.get("preferred_username"),
+                    roles=list(user_roles),
+                    groups=list(user_groups),
+                )
 
                 db.insert_event_log(
-                self.webuser.username,
+                    self.webuser.username,
                     "LOGIN",
                     {
                         "roles": list(self.webuser.roles),
                         "groups": list(self.webuser.groups),
                     },
                 )
-                    
+
                 return rx.redirect(self.original_url)
             except Exception as e:
                 print(f"Token validation failed: {e}")

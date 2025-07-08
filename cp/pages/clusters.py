@@ -4,7 +4,7 @@ import reflex as rx
 
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
-from ..components.main import item_selector, chip_props
+from ..components.main import chip_props, item_selector
 from ..cp import app
 from ..models import Cluster, ClusterOverview, StrID
 from ..state.base import BaseState
@@ -81,6 +81,13 @@ class State(BaseState):
         form_data["regions"] = list(self.selected_regions)
         form_data["version"] = self.selected_version
         form_data["group"] = self.selected_group
+        form_data["name"] = "".join(
+            [
+                x.lower()
+                for x in form_data["name"]
+                if x.lower() in "-abcdefghijklmnopqrstuvwxyz"
+            ]
+        )
 
         msg_id: StrID = db.insert_into_mq(
             "CREATE_CLUSTER",

@@ -4,20 +4,17 @@ import reflex as rx
 
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
-from ..components.BadgeJobStatus import get_job_status_badge
-from ..components.main import item_selector, chip_props
+from ..components.main import chip_props, item_selector
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, Job, StrID, InventoryLB, InventoryRegion
+from ..models import TS_FORMAT, Cluster, InventoryLB, InventoryRegion, Job, StrID
 from ..state.base import BaseState
 from ..template import template
-from .clusters import State as ClusterState
 from ..util import get_human_size
+from .clusters import State as ClusterState
 
 
 class State(BaseState):
     current_cluster: Cluster = None
-    current_cluster_regions: list[dict[str, str | list[str]]] = []
-    current_cluster_lbs: list[dict[str, str]] = []
 
     @rx.event
     def multi_add_selected(self, item: str):
@@ -86,19 +83,23 @@ class State(BaseState):
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
 
+    @rx.var
+    def human_disk_size(self) -> str | None:
+        if self.current_cluster:
+            return get_human_size(self.current_cluster.disk_size)
+        return None
+
     is_running: bool = False
     just_once: bool = True
 
     @rx.event
     def reload_cluster_data(self):
-        if self.current_cluster:
-            self.selected_node_count = self.current_cluster.node_count
-            self.selected_cpus_per_node = self.current_cluster.node_cpus
-            self.selected_disk_size = get_human_size(self.current_cluster.disk_size)
-            self.selected_regions = [
-                x.get("cloud") + ":" + x.get("region")
-                for x in self.current_cluster.cluster_inventory
-            ]
+        self.selected_node_count = self.current_cluster.node_count
+        self.selected_cpus_per_node = self.current_cluster.node_cpus
+        self.selected_disk_size = get_human_size(self.current_cluster.disk_size)
+        self.selected_regions = [
+            x.cloud + ":" + x.region for x in self.current_cluster.cluster_inventory
+        ]
 
     @rx.event(background=True)
     async def fetch_cluster(self):
@@ -187,7 +188,7 @@ class State(BaseState):
                     )
 
                     self.selected_regions = [
-                        x.get("cloud") + ":" + x.get("region")
+                        x.cloud + ":" + x.region
                         for x in self.current_cluster.cluster_inventory
                     ]
 
@@ -644,6 +645,15 @@ def cluster():
                         rx.divider(class_name="my-2"),
                         rx.flex(
                             rx.hstack(
+                                rx.text("Node Count per Region"),
+                                rx.text(
+                                    State.current_cluster.node_count,
+                                    class_name="text-lg font-semibold",
+                                ),
+                                class_name="py-2",
+                                align="center",
+                            ),
+                            rx.hstack(
                                 rx.text("Node CPUs"),
                                 rx.text(
                                     State.current_cluster.node_cpus,
@@ -653,9 +663,9 @@ def cluster():
                                 align="center",
                             ),
                             rx.hstack(
-                                rx.text("Disk Size GB"),
+                                rx.text("Disk Size"),
                                 rx.text(
-                                    State.current_cluster.disk_size,
+                                    State.human_disk_size,
                                     class_name="text-lg font-semibold",
                                 ),
                                 class_name="py-2",
@@ -684,6 +694,13 @@ def cluster():
                                 class_name="py-2",
                                 align="center",
                             ),
+                            rx.hstack(
+                                rx.text("( about"),
+                                rx.moment(
+                                    State.current_cluster.created_at, from_now=True
+                                ),
+                                rx.text(")"),
+                            ),
                             rx.box(class_name="py-2"),
                             rx.hstack(
                                 rx.text("Last Updated By"),
@@ -706,6 +723,13 @@ def cluster():
                                 ),
                                 class_name="py-2",
                                 align="center",
+                            ),
+                            rx.hstack(
+                                rx.text("( about"),
+                                rx.moment(
+                                    State.current_cluster.updated_at, from_now=True
+                                ),
+                                rx.text(")"),
                             ),
                             class_name="flex-col",
                         ),

@@ -189,16 +189,12 @@ def job():
                         class_name="py-2",
                         align="center",
                     ),
+                    rx.hstack(
+                        rx.text("( about"),
+                        rx.moment(State.current_job.created_at, from_now=True),
+                        rx.text(")"),
+                    ),
                     rx.box(class_name="py-2"),
-                    # rx.hstack(
-                    #     rx.text("Last Updated By"),
-                    #     rx.text(
-                    #         State.current_job.updated_by,
-                    #         class_name="text-lg font-semibold",
-                    #     ),
-                    #     class_name="py-2",
-                    #     align="center",
-                    # ),
                     rx.hstack(
                         rx.text("Last Updated At"),
                         rx.text(
@@ -211,6 +207,11 @@ def job():
                         ),
                         class_name="py-2",
                         align="center",
+                    ),
+                    rx.hstack(
+                        rx.text("( about"),
+                        rx.moment(State.current_job.updated_at, from_now=True),
+                        rx.text(")"),
                     ),
                     class_name="flex-col",
                 ),
