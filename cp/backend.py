@@ -188,7 +188,9 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         ],
     }
 
-    job_status, raw_data = MyRunner(job_id).launch_runner("CREATE_CLUSTER", extra_vars)
+    job_status, raw_data, _ = MyRunner(job_id).launch_runner(
+        "CREATE_CLUSTER", extra_vars
+    )
 
     cluster_inventory: list[InventoryRegion] = []
     lbs_inventory: list[InventoryLB] = []
@@ -443,6 +445,7 @@ def scale_cluster_worker(
     created_by: str,
 ):
     deployment = []
+    task_id_counter = 0
     current_regions = [
         x.cloud + ":" + x.region for x in current_cluster.cluster_inventory
     ]
@@ -584,9 +587,9 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        job_status, raw_data = MyRunner(job_id).launch_runner(
-            "SCALE_CLUSTER", extra_vars
-        )
+        job_status, raw_data, task_id_counter = MyRunner(
+            job_id, task_id_counter
+        ).launch_runner("SCALE_CLUSTER", extra_vars)
 
         if job_status != "successful":
             db.update_cluster_status(
@@ -697,9 +700,9 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        job_status, raw_data = MyRunner(job_id).launch_runner(
-            "SCALE_CLUSTER_IN", extra_vars
-        )
+        job_status, raw_data, task_id_counter = MyRunner(
+            job_id, task_id_counter
+        ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
             db.update_cluster_status(
@@ -818,9 +821,9 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        job_status, raw_data = MyRunner(job_id).launch_runner(
-            "SCALE_CLUSTER", extra_vars
-        )
+        job_status, raw_data, task_id_counter = MyRunner(
+            job_id, task_id_counter
+        ).launch_runner("SCALE_CLUSTER", extra_vars)
 
         if job_status != "successful":
             db.update_cluster_status(
@@ -939,9 +942,9 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        job_status, raw_data = MyRunner(job_id).launch_runner(
-            "SCALE_CLUSTER_IN", extra_vars
-        )
+        job_status, raw_data, task_id_counter = MyRunner(
+            job_id, task_id_counter
+        ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
             db.update_cluster_status(
@@ -1032,9 +1035,10 @@ def healthcheck_clusters_worker(
 
 
 class MyRunner:
-    def __init__(self, job_id: int):
+    def __init__(self, job_id: int, counter: int = 0):
         self.data = {}
         self.job_id = job_id
+        self.counter = counter
 
     def my_status_handler(self, status, runner_config):
         return
@@ -1093,13 +1097,17 @@ class MyRunner:
 
         db.insert_task(
             self.job_id,
-            e["counter"],
+            self.counter,
             e["created"],
             task_type,
             task_data,
         )
 
-    def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
+        self.counter += 1
+
+    def launch_runner(
+        self, playbook_name: str, extra_vars: dict
+    ) -> tuple[str, dict, int]:
         # fetch all plays for a playbook
         r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
 
@@ -1145,7 +1153,7 @@ class MyRunner:
         # rm -rf job-directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
 
-        return runner.status, self.data
+        return runner.status, self.data, self.counter
 
 
 class MyRunnerLite:
