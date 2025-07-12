@@ -587,11 +587,10 @@
         force: yes
 
     - name: Ensure cockroachdb service is restarted
-      systemd:
-        name: cockroachdb
-        state: restarted
-        enabled: yes
-        daemon_reload: yes
+      shell: |
+        systemctl daemon-reload
+        systemctl enable cockroachdb
+        systemctl restart cockroachdb
 
 - name: DEPLOY COCKROACHDB-HAPROXY
   hosts: haproxy

@@ -6,7 +6,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.main import chip_props, item_selector
 from ..cp import app
-from ..models import Cluster, ClusterOverview, StrID
+from ..models import Cluster, ClusterOverview, IntID, StrID
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_funny_name, get_human_size
@@ -112,7 +112,7 @@ class State(BaseState):
 
     @rx.event
     def delete_cluster(self, cluster_id: str):
-        msg_id: StrID = db.insert_into_mq(
+        msg_id: IntID = db.insert_into_mq(
             "DELETE_CLUSTER",
             {"cluster_id": cluster_id},
             self.webuser.username,

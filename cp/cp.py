@@ -1,6 +1,6 @@
 import reflex as rx
 
-from .backend import pull_from_mq
+from .backend.main import pull_from_mq
 
 app = rx.App(
     theme=rx.theme(

@@ -1,6 +1,5 @@
 import datetime as dt
 from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -49,7 +48,7 @@ class Region(BaseModel):
 
 
 class Msg(BaseModel):
-    msg_id: str
+    msg_id: int
     start_after: dt.datetime
     msg_type: str
     msg_data: Dict[str, Any]

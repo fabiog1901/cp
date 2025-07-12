@@ -13,6 +13,8 @@ from .models import (
     EventLog,
     GroupRoleMap,
     IntID,
+    InventoryLB,
+    InventoryRegion,
     Job,
     Region,
     StrID,
@@ -37,7 +39,7 @@ def insert_into_mq(
     msg_type: str,
     msg_data: dict,
     created_by: str,
-) -> StrID:
+) -> IntID:
     return execute_stmt(
         """
         WITH 
@@ -50,7 +52,7 @@ def insert_into_mq(
         ) 
         INSERT INTO jobs (job_id, job_type, status, description, created_by) 
         VALUES ((select msg_id from create_new_job), %s, %s, %s, %s) 
-        RETURNING job_id
+        RETURNING job_id AS id
         """,
         (
             msg_type,
@@ -61,7 +63,7 @@ def insert_into_mq(
             msg_data,
             created_by,
         ),
-        StrID,
+        IntID,
         return_list=False,
     )
 
@@ -197,60 +199,44 @@ def upsert_cluster(
     )
 
 
-def update_cluster_status_and_inventory(
+def update_cluster(
     cluster_id: str,
-    status: str,
-    cluster_inventory: dict,
-    lbs_inventory: dict,
     updated_by: str,
+    cluster_inventory: list[InventoryRegion] | None = None,
+    lbs_inventory: list[InventoryLB] | None = None,
+    version: str | None = None,
+    node_count: int | None = None,
+    node_cpus: int | None = None,
+    disk_size: int | None = None,
+    status: str | None = None,
+    grp: str | None = None,
 ):
     execute_stmt(
         """
         UPDATE clusters SET
-            status = %s,
-            cluster_inventory = %s,
-            lbs_inventory = %s,
-            updated_by = %s
+            cluster_inventory = coalesce(%s, cluster_inventory),
+            lbs_inventory = coalesce(%s, lbs_inventory),
+            version = coalesce(%s, version),
+            node_count = coalesce(%s, node_count),
+            node_cpus = coalesce(%s, node_cpus),
+            disk_size = coalesce(%s, disk_size),
+            status = coalesce(%s, status),
+            grp = coalesce(%s, grp),
+            updated_by = coalesce(%s, updated_by)
         WHERE cluster_id = %s
         """,
-        (status, cluster_inventory, lbs_inventory, updated_by, cluster_id),
-    )
-
-
-def update_cluster_status(
-    cluster_id: str,
-    status: str,
-    updated_by: str,
-):
-    execute_stmt(
-        """
-        UPDATE clusters 
-        SET
-            status = %s,
-            updated_by = %s
-        WHERE cluster_id = %s
-        """,
-        (status, updated_by, cluster_id),
-    )
-
-
-def update_cluster_status_and_version(
-    version: str,
-    status: str,
-    cluster_id: str,
-    updated_by: str,
-) -> None:
-    execute_stmt(
-        """
-        UPDATE clusters
-        SET 
-            status = %s,,
-            version = %s, 
-            updated_by = %s
-        WHERE cluster_id = %s
-        """,
-        (status, version, updated_by, cluster_id),
-        StrID,
+        (
+            cluster_inventory,
+            lbs_inventory,
+            version,
+            node_count,
+            node_cpus,
+            disk_size,
+            status,
+            grp,
+            updated_by,
+            cluster_id,
+        ),
     )
 
 
@@ -700,12 +686,9 @@ def execute_stmt(
                     return
 
                 if return_list:
-                    obj = cur.fetchall()
+                    return cur.fetchall()
                 else:
-                    obj = cur.fetchone()
-
-                if obj:
-                    return obj
+                    return cur.fetchone()
 
             except Exception as e:
                 # TODO correctly handle error such as PK violations

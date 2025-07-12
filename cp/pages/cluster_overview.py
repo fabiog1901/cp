@@ -6,7 +6,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.main import chip_props, item_selector
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, InventoryLB, InventoryRegion, Job, StrID
+from ..models import TS_FORMAT, Cluster, IntID, InventoryLB, InventoryRegion, Job, StrID
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_human_size
@@ -14,7 +14,7 @@ from .clusters import State as ClusterState
 
 
 class State(BaseState):
-    current_cluster: Cluster = None
+    current_cluster: Cluster | None = None
 
     @rx.event
     def multi_add_selected(self, item: str):
@@ -48,7 +48,8 @@ class State(BaseState):
         form_data["node_count"] = self.selected_node_count
         form_data["regions"] = list(self.selected_regions)
 
-        msg_id: StrID = db.insert_into_mq(
+        # TODO check if user is permissioned?
+        msg_id: IntID = db.insert_into_mq(
             "SCALE_CLUSTER",
             form_data,
             self.webuser.username,
@@ -580,7 +581,7 @@ def cluster():
                                     class_name="text-lg p-2",
                                 ),
                                 rx.cond(
-                                    State.current_cluster.status == "DELETED",
+                                    State.current_cluster.status.startswith("DELET"),
                                     rx.button(
                                         "DBConsole",
                                         disabled=True,
@@ -596,7 +597,7 @@ def cluster():
                                     ),
                                 ),
                                 rx.cond(
-                                    State.current_cluster.status == "DELETED",
+                                    State.current_cluster.status.startswith("DELET"),
                                     rx.button(
                                         "Connect",
                                         disabled=True,
@@ -742,7 +743,7 @@ def cluster():
                         rx.hstack(
                             # DELETE CLUSTER
                             rx.cond(
-                                State.current_cluster.status == "DELETED",
+                                State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
                                     BaseState.is_admin_or_rw,
@@ -805,7 +806,7 @@ def cluster():
                             ),
                             # SCALE CLUSTER
                             rx.cond(
-                                State.current_cluster.status == "DELETED",
+                                State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
                                     BaseState.is_admin_or_rw,
@@ -823,7 +824,7 @@ def cluster():
                             ),
                             # UPGRADE CLUSTER
                             rx.cond(
-                                State.current_cluster.status == "DELETED",
+                                State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
                                     BaseState.is_admin_or_rw,
@@ -841,7 +842,7 @@ def cluster():
                             ),
                             # DEBUG CLUSTER
                             rx.cond(
-                                State.current_cluster.status == "DELETED",
+                                State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
                                     BaseState.is_admin_or_rw,
