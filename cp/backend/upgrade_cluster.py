@@ -2,7 +2,7 @@ from threading import Thread
 
 from .. import db
 from ..models import ClusterUpgradeRequest
-
+from .util import MyRunner
 
 def upgrade_cluster(
     job_id: int,
@@ -60,16 +60,17 @@ def upgrade_cluster_worker(
 ):
 
     extra_vars = {
+        "deployment_id": cur.name,
         "cockroachdb_version": cur.version,
         "cockroachdb_autofinalize": cur.auto_finalize,
     }
 
-    job_status, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
+    job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
 
     if job_status != "successful":
         db.update_cluster(
             cur.name,
-            "system",
+            requested_by,
             status="FAILED",
         )
         return

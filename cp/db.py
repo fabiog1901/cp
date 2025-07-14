@@ -1,7 +1,7 @@
 import datetime as dt
 import os
 from typing import Any
-
+from pydantic import TypeAdapter
 from psycopg.rows import class_row
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
@@ -226,8 +226,8 @@ def update_cluster(
         WHERE cluster_id = %s
         """,
         (
-            cluster_inventory,
-            lbs_inventory,
+            TypeAdapter(list[InventoryRegion]).dump_python(cluster_inventory),
+            TypeAdapter(list[InventoryLB]).dump_python(lbs_inventory),
             version,
             node_count,
             node_cpus,
@@ -545,7 +545,7 @@ def get_versions() -> list[StrID]:
     )
 
 
-def get_upgrade_versions(current_version: str) -> list[StrID]:
+def get_upgrade_versions(major_version: str) -> list[StrID]:
     return execute_stmt(
         """
         SELECT version AS id
@@ -553,7 +553,7 @@ def get_upgrade_versions(current_version: str) -> list[StrID]:
         WHERE version > %s
         ORDER BY version ASC
         """,
-        (current_version,),
+        (major_version,),
         StrID,
     )
 

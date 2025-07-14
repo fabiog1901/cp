@@ -16,12 +16,10 @@ class MyRunner:
         self,
         job_id: int,
         counter: int = 0,
-        update_job_status: bool = True,
     ):
         self.data = {}
         self.job_id = job_id
         self.counter = counter
-        self.update_job_status = update_job_status
 
     def my_status_handler(self, status, runner_config):
         return
@@ -45,7 +43,6 @@ class MyRunner:
         elif e["event"] == "runner_on_ok":
             if e.get("event_data")["task"] == "Data":
                 self.data = e["event_data"]["res"]["msg"]
-            return
 
         elif e["event"] == "warning":
             task_type = "WARNING"
@@ -128,11 +125,10 @@ class MyRunner:
             time.sleep(1)
 
         # update the Job status
-        if self.update_job_status:
-            if runner.status == "successful":
-                db.update_job(self.job_id, "COMPLETED")
-            else:
-                db.update_job(self.job_id, "FAILED")
+        if runner.status == "successful":
+            db.update_job(self.job_id, "COMPLETED")
+        else:
+            db.update_job(self.job_id, "FAILED")
 
         # rm -rf job-directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)

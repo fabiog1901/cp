@@ -228,13 +228,10 @@
               bind :{{ haproxy_port }}
               mode tcp
               balance roundrobin
-              option httpchk GET {{ haproxy_checkport }}
+              option httpchk GET /health?ready=1
           {% for host in haproxy_group %}
-          {% set outer_loop = loop %}
           {% if hostvars[host].extra_vars.crdb_region | default(hostvars[host].region) == extra_vars.crdb_region | default(region) %}
-          {% for idx in range(hostvars[host].ansible_numa_nodes|int) %}
-              server {{ haproxy_serverprefix }}{{ outer_loop.index * 100 + idx }} {{ hostvars[host].private_hostname }}:{{ haproxy_port|int + idx }} check port {{ haproxy_checkport|int + idx }}
-          {% endfor %}
+              server {{ haproxy_serverprefix }}-{{ loop.index }} {{ hostvars[host].private_hostname }}:{{ haproxy_port }} check port {{ haproxy_checkport }}
           {% endif %}
           {% endfor %}
 
@@ -244,11 +241,8 @@
               balance roundrobin
               option httpchk GET /health?ready=1
           {% for host in haproxy_group %}
-          {% set outer_loop = loop %}
           {% if hostvars[host].extra_vars.crdb_region | default(hostvars[host].region) == extra_vars.crdb_region | default(region) %}
-          {% for idx in range(hostvars[host].ansible_numa_nodes|int) %}
-              server {{ haproxy_serverprefix }}{{ outer_loop.index * 100 + idx }} {{ hostvars[host].private_hostname }}:{{ haproxy_checkport|int + idx }} check port {{ haproxy_checkport|int + idx }}
-          {% endfor %}
+             server {{ haproxy_serverprefix }}-{{ loop.index }} {{ hostvars[host].private_hostname }}:{{ haproxy_checkport }} check port {{ haproxy_checkport }}
           {% endif %}
           {% endfor %}
 

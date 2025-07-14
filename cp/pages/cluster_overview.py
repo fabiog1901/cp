@@ -15,6 +15,8 @@ from .clusters import State as ClusterState
 
 class State(BaseState):
     current_cluster: Cluster | None = None
+    
+    auto_finalize: bool = True
 
     @rx.event
     def multi_add_selected(self, item: str):
@@ -66,6 +68,7 @@ class State(BaseState):
     def upgrade_cluster(self, form_data: dict):
         form_data["name"] = self.current_cluster.cluster_id
         form_data["version"] = self.selected_version
+        form_data["auto_finalize"] = self.auto_finalize
 
         msg_id: StrID = db.insert_into_mq(
             "UPGRADE_CLUSTER",
@@ -84,6 +87,12 @@ class State(BaseState):
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
 
+    @rx.var
+    def is_major_upgrade_version(self) -> bool | None:
+        if self.current_cluster:
+            return self.current_cluster.version[:5] != self.selected_version[:5]
+        return False
+    
     @rx.var
     def human_disk_size(self) -> str | None:
         if self.current_cluster:
@@ -146,36 +155,39 @@ class State(BaseState):
 
                 if self.just_once and self.current_cluster:
                     self.just_once = False
-                    self.available_versions = [
+
+                    all_new_versions = [
                         x.id
-                        for x in db.get_upgrade_versions(self.current_cluster.version)
+                        for x in db.get_upgrade_versions(
+                            self.current_cluster.version[:5]
+                        )
                     ]
-                    l = []
+
                     major_yy, major_mm, _ = [
                         int(x) for x in self.current_cluster.version[1:].split(".")
                     ]
 
-                    for v in self.available_versions:
+                    self.available_versions = []
+                    for v in all_new_versions:
                         f1, f2, _ = [int(x) for x in v[1:].split(".")]
 
                         # only a patch upgrade
                         if major_yy == f1 and major_mm == f2:
-                            l.append(v)
+                            self.available_versions.append(v)
                             continue
 
                         # innovation to regular
                         if major_yy == f1 and major_mm in [1, 3] and f2 == major_mm + 1:
-                            l.append(v)
+                            self.available_versions.append(v)
                             continue
 
                         if major_yy == f1 and major_mm == 2 and f2 in [3, 4]:
-                            l.append(v)
+                            self.available_versions.append(v)
                             continue
 
                         if major_yy + 1 == f1 and major_mm == 4 and f2 in [1, 2]:
-                            l.append(v)
+                            self.available_versions.append(v)
 
-                    self.available_versions = l
                     self.selected_version = (
                         self.available_versions[0] if self.available_versions else ""
                     )
@@ -315,6 +327,18 @@ def upgrade_cluster_dialog() -> rx.Component:
                         class_name="min-w-64",
                     ),
                     rx.divider(),
+                    rx.cond(
+                        State.is_major_upgrade_version,
+                        rx.vstack(
+                            rx.hstack(
+                                rx.heading("Auto finalize upgrade", size="4"),
+                                rx.checkbox(checked = State.auto_finalize, on_change=State.set_auto_finalize),
+                                class_name="min-w-64",
+                            ),
+                            rx.divider(),
+                        ),
+                        rx.box(),
+                    ),
                     rx.flex(
                         rx.dialog.close(
                             rx.button(
@@ -645,6 +669,15 @@ def cluster():
                         rx.text("Details", class_name="text-2xl font-semibold"),
                         rx.divider(class_name="my-2"),
                         rx.flex(
+                            rx.hstack(
+                                rx.text("Number of Regions"),
+                                rx.text(
+                                    State.current_cluster.lbs_inventory.length(),
+                                    class_name="text-lg font-semibold",
+                                ),
+                                class_name="py-2",
+                                align="center",
+                            ),
                             rx.hstack(
                                 rx.text("Node Count per Region"),
                                 rx.text(

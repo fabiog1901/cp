@@ -101,37 +101,33 @@ async def pull_from_mq():
                         if msg is None:
                             continue
 
+                        print(f"Processing a {msg.msg_type}")
+
                         match msg.msg_type:
                             case "CREATE_CLUSTER":
-                                print("Processing a CREATE_CLUSTER")
-                                print(msg)
                                 create_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
                             case "RECREATE_CLUSTER":
-                                print("Processing a RECREATE_CLUSTER")
                                 create_cluster(
                                     msg.msg_id, msg.msg_data, msg.created_by, True
                                 )
                             case "DELETE_CLUSTER":
-                                print("Processing a DELETE_CLUSTER")
-                                delete_cluster(msg.msg_id, msg.msg_data)
+                                delete_cluster(msg.msg_id, msg.msg_data, msg.created_by
+                                               
+                                               )
 
                             case "SCALE_CLUSTER":
-                                print("Processing a SCALE_CLUSTER")
                                 scale_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
                             case "UPGRADE_CLUSTER":
-                                print("Processing a UPGRADE_CLUSTER")
                                 upgrade_cluster(
                                     msg.msg_id, msg.msg_data, msg.created_by
                                 )
 
                             case "FAIL_ZOMBIE_JOBS":
-                                print("Processing a FAIL_ZOMBIE_JOBS")
                                 fail_zombie_jobs()
 
                             case "HEALTHCHECK_CLUSTERS":
-                                print("Processing a HEALTHCHECK_CLUSTERS")
                                 healthcheck_clusters(msg.msg_id)
                                 cur.execute(
                                     """

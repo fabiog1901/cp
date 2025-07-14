@@ -193,11 +193,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                 region_nodes.append(raw_data["hv"][i]["public_ip"])
 
         cluster_inventory.append(
-            {
-                "cloud": cloud,
-                "region": region,
-                "nodes": region_nodes,
-            }
+            InventoryRegion(cloud=cloud, region=region, nodes=region_nodes)
         )
 
         for i in raw_data["haproxy"]:
@@ -206,11 +202,11 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                 and raw_data["hv"][i]["region"] == region
             ):
                 lbs_inventory.append(
-                    {
-                        "cloud": cloud,
-                        "region": region,
-                        "dns_address": raw_data["hv"][i]["public_ip"],
-                    }
+                    InventoryLB(
+                        cloud=cloud,
+                        region=region,
+                        dns_address=raw_data["hv"][i]["public_ip"],
+                    )
                 )
 
     db.update_cluster(
