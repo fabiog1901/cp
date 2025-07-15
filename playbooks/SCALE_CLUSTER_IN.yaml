@@ -107,7 +107,7 @@
       debug:
         var: node_ids
 
-    - name: drain the nodes
+    - name: Wait until all nodes are drained
       shell: |
         for i in {{ node_ids | join(' ') }} ; do
           cockroach node drain $i \
@@ -120,19 +120,11 @@
       register: out
       when: node_ids | length > 0
 
-    - name: print drain node output
+    - name: Print drain node output
       debug:
         var: out.stdout
 
-    - name: decommission the nodes
-      shell: |
-        cockroach node decommission {{ node_ids | join(' ') }} \
-          --certs-dir /var/lib/cockroach/certs \
-          --host={{ ansible_host }}:26357
-      register: out
-      when: node_ids | length > 0
-    
-    - name: re-issue the cockroach node decommission command
+    - name: Decommission the nodes
       shell: |
         cockroach node decommission {{ node_ids | join(' ') }} \
           --certs-dir /var/lib/cockroach/certs \
@@ -140,10 +132,17 @@
       register: out
       when: node_ids | length > 0
 
-    - name: print last few output lines of decommission command
+    - name: Re-issue the cockroach node decommission command
+      shell: |
+        cockroach node decommission {{ node_ids | join(' ') }} \
+          --certs-dir /var/lib/cockroach/certs \
+          --host={{ ansible_host }}:26357
+      register: out
+      when: node_ids | length > 0
+
+    - name: Print last few output lines of decommission command
       debug:
         var: out.stdout_lines[-4:]
-
 
 - name: REMOVE VMS OF DECOMMISSIONED NODES
   hosts: localhost
@@ -185,7 +184,6 @@
         extra_vars: "{{ item.extra_vars }}"
       loop: "{{ instances.stdout | from_json }}"
 
-
 - name: DEPLOY COCKROACHDB-HAPROXY
   hosts: "{{ groups['haproxy'] | difference(groups['tobedeleted'] | default([]) ) }}"
   gather_facts: yes
@@ -204,13 +202,13 @@
       shell: |
         apt update
         apt install -y haproxy
-        
+
     - name: Install haproxy on redhat
       when: ansible_facts.os_family | lower == 'redhat'
       shell: |
         dnf update -y
         dnf install -y haproxy
-        
+
     - name: Copy haproxy.cfg
       copy:
         content: |
@@ -223,7 +221,7 @@
               timeout server      10m
               # TCP keep-alive on client side. Server already enables them.
               option              clitcpka
-          
+
           listen psql
               bind :{{ haproxy_port }}
               mode tcp
@@ -259,6 +257,124 @@
       shell: |
         systemctl restart haproxy
 
+- name: GATHER FACTS ON ALL COCKROACHDB NODES
+  hosts: cockroachdb
+  gather_facts: yes
+  become: yes
+  tags:
+    - platform
+  tasks:
+    - name: Group hosts dynamically based on region
+      group_by:
+        key: "crdbregion_{{ region }}"
+
+- name: REFRESH SYSTEMD SERVICE FILE ON REMAINING COCKROACHDB NODES
+  hosts: cockroachdb
+  gather_facts: yes
+  become: yes
+  vars:
+    # cockroachdb_version  - from extra_vars
+    cockroachdb_secure: yes
+    cockroachdb_certificates_dir: "certs"
+    cockroachdb_sql_port: 26257
+    cockroachdb_rpc_port: 26357
+    cockroachdb_http_addr_ip: "0.0.0.0"
+    cockroachdb_http_addr_port: 8080
+    cockroachdb_certificates_clients:
+      - root
+    cockroachdb_store: []
+    cockroachdb_secure_flag: --certs-dir=/var/lib/cockroach/certs
+    cockroachdb_insecure_flag: --insecure
+    cockroachdb_repo_url: https://binaries.cockroachdb.com
+    cockroachdb_locality: "cloud={{ cloud }},region={{ region }},zone={{ zone }}"
+    cockroachdb_advertise_addr: "{{ public_ip }}"
+    cockroachdb_listen_addr: "0.0.0.0"
+    cockroachdb_attrs: std
+    cockroachdb_cache: ".35"
+    cockroachdb_max_sql_memory: ".35"
+    cockroachdb_max_offset: 250ms
+    cockroachdb_env_vars: []
+  tags:
+    - platform
+    - cockroachdb
+  tasks:
+    - name: Find attached disks
+      shell: |
+        lsblk -o NAME,TYPE,SIZE -p -n -b -s | \
+          awk '$NF ~ /[1-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/' | \
+          grep -v '└─' | \
+          grep disk | \
+          awk '{print $1}'
+      args:
+        executable: /bin/bash
+      register: _disks
+
+    - name: Reset cockroachdb_store
+      when: _disks.stdout_lines | length > 0
+      set_fact:
+        cockroachdb_store: []
+
+    - name: Set cockroachdb_store
+      when: _disks.stdout_lines | length > 0
+      set_fact:
+        cockroachdb_store: "{{ cockroachdb_store + ['/mnt/cockroach' + idx|string] }}"
+      loop: "{{ _disks.stdout_lines }}"
+      loop_control:
+        index_var: idx
+
+    - name: Copy systemd template cockroachdb.service
+      copy:
+        content: |
+          [Unit]
+          Description=Cockroach Database cluster node
+          Requires=network.target
+          [Service]
+          Type=notify
+          WorkingDirectory=/var/lib/cockroach
+          {% for v in cockroachdb_env_vars %}
+          Environment="{{ v }}"
+          {% endfor %}
+          ExecStart=/usr/local/bin/cockroach start \
+              {{ (cockroachdb_secure) | ternary(cockroachdb_secure_flag, cockroachdb_insecure_flag) }} \
+              {% for store in cockroachdb_store %}
+              --store={{ store }} \
+              {% endfor %}
+              --listen-addr={{ cockroachdb_listen_addr }}:{{ cockroachdb_rpc_port }} \
+              --advertise-addr={{ cockroachdb_advertise_addr }}:{{ cockroachdb_rpc_port }} \
+              --sql-addr=:{{ cockroachdb_sql_port }} \
+              --cache={{ cockroachdb_cache }} \
+              --max-sql-memory={{ cockroachdb_max_sql_memory }} \
+              --http-addr={{ cockroachdb_http_addr_ip }}:{{ cockroachdb_http_addr_port }} \
+              {% for g in groups %}
+              {% if g.startswith("crdbregion_") %}
+              {% for joinhost in groups[g][:3] %}
+              --join={{ hostvars[joinhost].public_ip }}:{{ cockroachdb_rpc_port }} \
+              {% endfor%}
+              {% endif %}
+              {% endfor %}
+              --locality={{ cockroachdb_locality }} \
+              --attrs={{ cockroachdb_attrs }} \
+              --max-offset={{ cockroachdb_max_offset }}
+          TimeoutStopSec=300
+          LimitNOFILE=65000
+          Restart=always
+          RestartSec=10
+          StandardOutput=syslog
+          StandardError=syslog
+          SyslogIdentifier=cockroach
+          User=cockroach
+          [Install]
+          WantedBy=default.target
+        dest: /etc/systemd/system/cockroachdb.service
+        mode: 0644
+        owner: root
+        group: root
+        backup: yes
+        force: yes
+
+    - name: Ensure cockroachdb service file is reloaded
+      shell: |
+        systemctl daemon-reload
 
 - name: GET DATA FROM COCKROACHDB CLUSTER
   hosts: localhost
@@ -268,6 +384,6 @@
     - name: Data
       debug:
         msg:
-          cockroachdb: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
+          cockroachdb: "{{ groups['cockroachdb'] }}"
           haproxy: "{{ groups['haproxy'] }}"
           hv: "{{ hostvars }}"

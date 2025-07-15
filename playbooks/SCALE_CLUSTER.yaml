@@ -134,7 +134,7 @@
         cluster_name: "{{ item.cluster_name }}"
         group_name: "{{ item.group_name }}"
         extra_vars: "{{ item.extra_vars }}"
-        
+
       loop: "{{ instances.stdout | from_json }}"
 
 ##############
@@ -210,7 +210,7 @@
           -out {{ certificates_dir }}/node.{{ item }}.csr \
           -batch
       loop: "{{ certificates_hosts }}"
-      
+
     - name: Sign node csr with CA key and crt
       shell: |
         openssl ca \
@@ -257,7 +257,7 @@
           -out {{ certificates_dir }}/client.{{ item }}.csr \
           -batch
       loop: "{{ certificates_usernames }}"
-          
+
     - name: Sign client csr with CA crt and key
       shell: |
         openssl ca \
@@ -272,7 +272,6 @@
           -batch
       loop: "{{ certificates_usernames }}"
 
-
 - name: GATHER FACTS ON ALL COCKROACHDB NODES
   hosts: cockroachdb
   gather_facts: yes
@@ -280,9 +279,10 @@
   tags:
     - platform
   tasks:
-    - name: Just ping
-      ping:
-  
+    - name: Group hosts dynamically based on region
+      group_by:
+        key: "crdbregion_{{ region }}"
+
 - name: CONFIGURE OS ON NEW NODES
   hosts: "{{ groups['cockroachdb'] | difference(current_hosts) }}"
   gather_facts: yes
@@ -321,7 +321,7 @@
           server time2.google.com iburst
           server time3.google.com iburst
           server time4.google.com iburst
-    
+
     - name: Azure only - disable refclock
       when: cloud == 'azure'
       shell: |
@@ -330,7 +330,7 @@
         echo $DEVICE_ID | sudo tee /sys/bus/vmbus/drivers/hv_utils/unbind
 
     - name: add only the NTP servers to the chrony.conf file
-      shell:
+      shell: |
         sed -i '/^pool.*/d' {{ ntp_conf }}
         sed -i '/^server.*/d' {{ ntp_conf }}
         sed -i '/^refclock.*/d' {{ ntp_conf }}
@@ -339,7 +339,7 @@
 
     - name: restart chrony
       shell: |
-        systemctl restart {{ ntp_deamon }} 
+        systemctl restart {{ ntp_deamon }}
 
     - name: Update VM swappiness
       shell: |
@@ -353,7 +353,7 @@
     - name: Set timezone to UTC
       shell: |
         timedatectl set-timezone UTC
-        
+
     - name: Find attached disks bigger than 100GB
       shell: |
         lsblk -o NAME,TYPE,SIZE -p -n -b -s | \
@@ -370,7 +370,6 @@
       shell: |
         blkid {{ item }} -t TYPE="ext4" || mkfs.ext4 {{ item }}
       loop: "{{ _disks.stdout_lines }}"
-
 
 - name: DEPLOY COCKROACHDB ON NEW NODES
   hosts: "{{ groups['cockroachdb'] | difference(current_hosts) }}"
@@ -390,10 +389,6 @@
     cockroachdb_secure_flag: --certs-dir=/var/lib/cockroach/certs
     cockroachdb_insecure_flag: --insecure
     cockroachdb_repo_url: https://binaries.cockroachdb.com
-    cockroachdb_join:
-      - "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[0]].public_ip }}"
-      - "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[1]].public_ip }}"
-      - "{{ hostvars[( groups[cluster_name] | intersect(groups['cockroachdb']) )[2]].public_ip }}"
     cockroachdb_locality: "cloud={{ cloud }},region={{ region }},zone={{ zone }}"
     cockroachdb_advertise_addr: "{{ public_ip }}"
     cockroachdb_listen_addr: "0.0.0.0"
@@ -422,7 +417,7 @@
       shell: |
         wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       when: not _stat_result.stat.exists
-    
+
     - name: Install CockroachDB binary
       shell: |
         tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
@@ -563,8 +558,12 @@
               --cache={{ cockroachdb_cache }} \
               --max-sql-memory={{ cockroachdb_max_sql_memory }} \
               --http-addr={{ cockroachdb_http_addr_ip }}:{{ cockroachdb_http_addr_port }} \
-              {% for join in cockroachdb_join %}
-              --join={{ join }}:{{ cockroachdb_rpc_port }} \
+              {% for g in groups %}
+              {% if g.startswith("crdbregion_") %}
+              {% for joinhost in groups[g][:3] %}
+              --join={{ hostvars[joinhost].public_ip }}:{{ cockroachdb_rpc_port }} \
+              {% endfor%}
+              {% endif %}
               {% endfor %}
               --locality={{ cockroachdb_locality }} \
               --attrs={{ cockroachdb_attrs }} \
@@ -592,6 +591,114 @@
         systemctl enable cockroachdb
         systemctl restart cockroachdb
 
+- name: REFRESH SYSTEMD SERVICE FILE ON OLD NODES
+  hosts: "{{ current_hosts }}"
+  gather_facts: yes
+  become: yes
+  vars:
+    # cockroachdb_version  - from extra_vars
+    cockroachdb_secure: yes
+    cockroachdb_certificates_dir: "certs"
+    cockroachdb_sql_port: 26257
+    cockroachdb_rpc_port: 26357
+    cockroachdb_http_addr_ip: "0.0.0.0"
+    cockroachdb_http_addr_port: 8080
+    cockroachdb_certificates_clients:
+      - root
+    cockroachdb_store: []
+    cockroachdb_secure_flag: --certs-dir=/var/lib/cockroach/certs
+    cockroachdb_insecure_flag: --insecure
+    cockroachdb_repo_url: https://binaries.cockroachdb.com
+    cockroachdb_locality: "cloud={{ cloud }},region={{ region }},zone={{ zone }}"
+    cockroachdb_advertise_addr: "{{ public_ip }}"
+    cockroachdb_listen_addr: "0.0.0.0"
+    cockroachdb_attrs: std
+    cockroachdb_cache: ".35"
+    cockroachdb_max_sql_memory: ".35"
+    cockroachdb_max_offset: 250ms
+    cockroachdb_env_vars: []
+  tags:
+    - platform
+    - cockroachdb
+  tasks:
+    - name: Find attached disks
+      shell: |
+        lsblk -o NAME,TYPE,SIZE -p -n -b -s | \
+          awk '$NF ~ /[1-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/' | \
+          grep -v '└─' | \
+          grep disk | \
+          awk '{print $1}'
+      args:
+        executable: /bin/bash
+      register: _disks
+
+    - name: Reset cockroachdb_store
+      when: _disks.stdout_lines | length > 0
+      set_fact:
+        cockroachdb_store: []
+
+    - name: Set cockroachdb_store
+      when: _disks.stdout_lines | length > 0
+      set_fact:
+        cockroachdb_store: "{{ cockroachdb_store + ['/mnt/cockroach' + idx|string] }}"
+      loop: "{{ _disks.stdout_lines }}"
+      loop_control:
+        index_var: idx
+
+    - name: Copy systemd template cockroachdb.service
+      copy:
+        content: |
+          [Unit]
+          Description=Cockroach Database cluster node
+          Requires=network.target
+          [Service]
+          Type=notify
+          WorkingDirectory=/var/lib/cockroach
+          {% for v in cockroachdb_env_vars %}
+          Environment="{{ v }}"
+          {% endfor %}
+          ExecStart=/usr/local/bin/cockroach start \
+              {{ (cockroachdb_secure) | ternary(cockroachdb_secure_flag, cockroachdb_insecure_flag) }} \
+              {% for store in cockroachdb_store %}
+              --store={{ store }} \
+              {% endfor %}
+              --listen-addr={{ cockroachdb_listen_addr }}:{{ cockroachdb_rpc_port }} \
+              --advertise-addr={{ cockroachdb_advertise_addr }}:{{ cockroachdb_rpc_port }} \
+              --sql-addr=:{{ cockroachdb_sql_port }} \
+              --cache={{ cockroachdb_cache }} \
+              --max-sql-memory={{ cockroachdb_max_sql_memory }} \
+              --http-addr={{ cockroachdb_http_addr_ip }}:{{ cockroachdb_http_addr_port }} \
+              {% for g in groups %}
+              {% if g.startswith("crdbregion_") %}
+              {% for joinhost in groups[g][:3] %}
+              --join={{ hostvars[joinhost].public_ip }}:{{ cockroachdb_rpc_port }} \
+              {% endfor%}
+              {% endif %}
+              {% endfor %}
+              --locality={{ cockroachdb_locality }} \
+              --attrs={{ cockroachdb_attrs }} \
+              --max-offset={{ cockroachdb_max_offset }}
+          TimeoutStopSec=300
+          LimitNOFILE=65000
+          Restart=always
+          RestartSec=10
+          StandardOutput=syslog
+          StandardError=syslog
+          SyslogIdentifier=cockroach
+          User=cockroach
+          [Install]
+          WantedBy=default.target
+        dest: /etc/systemd/system/cockroachdb.service
+        mode: 0644
+        owner: root
+        group: root
+        backup: yes
+        force: yes
+
+    - name: Ensure cockroachdb service file is reloaded
+      shell: |
+        systemctl daemon-reload
+
 - name: DEPLOY COCKROACHDB-HAPROXY
   hosts: haproxy
   gather_facts: yes
@@ -615,13 +722,13 @@
       shell: |
         apt update
         apt install -y haproxy
-        
+
     - name: Install haproxy on redhat
       when: ansible_facts.os_family | lower == 'redhat'
       shell: |
         dnf update -y
         dnf install -y haproxy
-        
+
     - name: Copy haproxy.cfg
       copy:
         content: |
@@ -634,7 +741,7 @@
               timeout server      10m
               # TCP keep-alive on client side. Server already enables them.
               option              clitcpka
-          
+
           listen psql
               bind :{{ haproxy_port }}
               mode tcp
@@ -686,7 +793,7 @@
       shell: |
         wget -q {{ cockroachdb_repo_url }}/cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz
       when: not _stat_result.stat.exists
-    
+
     - name: Install CockroachDB binary
       shell: |
         tar xvf cockroach-{{ cockroachdb_version }}.linux-{{ bin_arch[ansible_architecture] }}.tgz

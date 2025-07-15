@@ -268,11 +268,7 @@ def scale_cluster_worker(
             db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
             return
 
-        print("===========old current_cluster\n")
-        print(current_cluster)
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
-        print("===========new currentcluster\n")
-        print(current_cluster)
 
         db.update_cluster(
             csr.name,
