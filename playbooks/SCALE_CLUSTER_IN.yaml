@@ -10,8 +10,7 @@
   tasks:
     - name: Gather VM details of current deployment
       shell: |
-        cloud_instance {{ deployment_id }} present '[]' '{}' \
-          --gather_current_deployment_only=yes
+        cloud_instance gather-current-deployment -d {{ deployment_id }}
       register: instances
 
     - name: Build ansible inventory dynamically
@@ -42,8 +41,9 @@
 
     - name: Get list of instances slated to be removed
       shell: |
-        cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}' \
-          --return_tobedeleted_vms=yes
+        cloud_instance return-to-be-deleted-vms \
+          -d {{ deployment_id }} \
+          --deployment '{{ deployment | to_json }}'
       register: instances
 
     - name: create a variable to list all vms slated for deletion
@@ -155,34 +155,36 @@
   tasks:
     - name: Remove instances
       shell: |
-        cloud_instance {{ deployment_id }} present '{{ deployment | to_json }}' '{}'
+        cloud_instance create -d {{ deployment_id }} \
+          --deployment '{{ deployment | to_json }}' \
+          --defaults '{}'
       register: instances
 
-    - name: Build ansible inventory dynamically
-      add_host:
-        # id
-        name: "{{ item.public_ip }}"
-        id: "{{ item.id }}"
+    # - name: Build ansible inventory dynamically
+    #   add_host:
+    #     # id
+    #     name: "{{ item.public_ip }}"
+    #     id: "{{ item.id }}"
 
-        # locality
-        cloud: "{{ item.cloud }}"
-        region: "{{ item.region }}"
-        zone: "{{ item.zone }}"
+    #     # locality
+    #     cloud: "{{ item.cloud }}"
+    #     region: "{{ item.region }}"
+    #     zone: "{{ item.zone }}"
 
-        # addresses
-        public_hostname: "{{ item.public_hostname }}"
-        public_ip: "{{ item.public_ip }}"
-        private_hostname: "{{ item.private_hostname }}"
-        private_ip: "{{ item.private_ip }}"
+    #     # addresses
+    #     public_hostname: "{{ item.public_hostname }}"
+    #     public_ip: "{{ item.public_ip }}"
+    #     private_hostname: "{{ item.private_hostname }}"
+    #     private_ip: "{{ item.private_ip }}"
 
-        # tags
-        ansible_user: "{{ item.ansible_user }}"
-        ansible_host: "{{ item.public_ip }}"
-        groups: "{{ item.inventory_groups }}"
-        cluster_name: "{{ item.cluster_name }}"
-        group_name: "{{ item.group_name }}"
-        extra_vars: "{{ item.extra_vars }}"
-      loop: "{{ instances.stdout | from_json }}"
+    #     # tags
+    #     ansible_user: "{{ item.ansible_user }}"
+    #     ansible_host: "{{ item.public_ip }}"
+    #     groups: "{{ item.inventory_groups }}"
+    #     cluster_name: "{{ item.cluster_name }}"
+    #     group_name: "{{ item.group_name }}"
+    #     extra_vars: "{{ item.extra_vars }}"
+    #   loop: "{{ instances.stdout | from_json }}"
 
 - name: DEPLOY COCKROACHDB-HAPROXY
   hosts: "{{ groups['haproxy'] | difference(groups['tobedeleted'] | default([]) ) }}"
@@ -258,7 +260,7 @@
         systemctl restart haproxy
 
 - name: GATHER FACTS ON ALL COCKROACHDB NODES
-  hosts: cockroachdb
+  hosts: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
   gather_facts: yes
   become: yes
   tags:
@@ -269,7 +271,7 @@
         key: "crdbregion_{{ region }}"
 
 - name: REFRESH SYSTEMD SERVICE FILE ON REMAINING COCKROACHDB NODES
-  hosts: cockroachdb
+  hosts: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
   gather_facts: yes
   become: yes
   vars:
@@ -384,6 +386,6 @@
     - name: Data
       debug:
         msg:
-          cockroachdb: "{{ groups['cockroachdb'] }}"
+          cockroachdb: "{{ groups['cockroachdb'] | difference(groups['tobedeleted'] | default([]) ) }}"
           haproxy: "{{ groups['haproxy'] }}"
           hv: "{{ hostvars }}"

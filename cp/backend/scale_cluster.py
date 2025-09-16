@@ -183,7 +183,7 @@ def scale_cluster_worker(
                     "exact_count": 1,
                     "instance": {"cpu": 4},
                     "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
-                    "tags": {"Name": f"{csr.name}-lb"} | region_details[0].tags,
+                    "tags": {"Name": f"{csr.name}-lb"},
                     "groups": [
                         {
                             "user": "ubuntu",
@@ -262,7 +262,7 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER", extra_vars)
+        ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
             db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
@@ -299,7 +299,7 @@ def scale_cluster_worker(
                     "exact_count": 1,
                     "instance": {"cpu": 4},
                     "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
-                    "tags": {"Name": f"{csr.name}-lb"} | region_details[0].tags,
+                    "tags": {"Name": f"{csr.name}-lb"},
                     "groups": [
                         {
                             "user": "ubuntu",
@@ -492,7 +492,7 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER", extra_vars)
+        ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
             db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
@@ -533,7 +533,7 @@ def scale_cluster_worker(
                     "exact_count": 1,
                     "instance": {"cpu": 4},
                     "volumes": {"os": {"size": 20, "type": "standard_ssd"}, "data": []},
-                    "tags": {"Name": f"{csr.name}-lb"} | region_details[0].tags,
+                    "tags": {"Name": f"{csr.name}-lb"},
                     "groups": [
                         {
                             "user": "ubuntu",
