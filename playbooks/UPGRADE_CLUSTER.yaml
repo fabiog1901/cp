@@ -13,8 +13,7 @@
   tasks:
     - name: Gather current deployment instances
       shell: |
-        cloud_instance {{ deployment_id }} present '[]' '{}' \
-          --gather_current_deployment_only=yes
+        cloud_instance gather-current-deployment -d {{ deployment_id }}
       register: instances
 
     - name: Build ansible inventory dynamically
@@ -116,3 +115,18 @@
     - name: Pause between upgrades
       pause:
         seconds: "{{ cockroachdb_upgrade_delay }}"
+
+
+- name: WAIT FOR UPGRADE FINALIZATION
+  hosts: cockroachdb
+  gather_facts: no
+  run_once: yes
+  become: yes
+  vars:
+    cockroachdb_autofinalize: yes
+  tasks:
+    - name: Wait until the upgrade finalizes
+      shell: |
+        # TODO
+        sleep 5
+      when: cockroachdb_autofinalize
