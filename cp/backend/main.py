@@ -112,9 +112,7 @@ async def pull_from_mq():
                                     msg.msg_id, msg.msg_data, msg.created_by, True
                                 )
                             case "DELETE_CLUSTER":
-                                delete_cluster(msg.msg_id, msg.msg_data, msg.created_by
-                                               
-                                               )
+                                delete_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
                             case "SCALE_CLUSTER":
                                 scale_cluster(msg.msg_id, msg.msg_data, msg.created_by)

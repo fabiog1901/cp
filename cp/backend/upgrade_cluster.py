@@ -4,6 +4,7 @@ from .. import db
 from ..models import ClusterUpgradeRequest
 from .util import MyRunner
 
+
 def upgrade_cluster(
     job_id: int,
     data: dict,

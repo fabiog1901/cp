@@ -44,7 +44,6 @@ class Region(BaseModel):
     subnet: str
     image: str
     extras: Dict[str, Any]
-    tags: Dict[str, Any]
 
 
 class Msg(BaseModel):

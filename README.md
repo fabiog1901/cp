@@ -3,3 +3,28 @@
 ## SSO integration with Keycloak
 
 Install and setup Keycloak as per [blog post](https://dev.to/cockroachlabs/cockroachdb-sso-integration-using-keycloak-4b17).
+
+## Develop
+
+1. Start CockroachDB cluster
+
+    The cluster should have database `cp` created.
+
+2. Start Keycloak
+
+    ```bash
+    /opt/keycloak-26.2.5/bin/kc.sh start-dev --http-port 8081 --db-url-host=localhost --db-password=postgres --db-username=fabio --db postgres
+    ```
+
+3. Start webserver
+
+    ```bash
+    python3.11 -m http.server 4000 -d playbooks/
+    ```
+
+4. Start Reflex
+
+    ```bash
+    poetry shell
+    REFLEX_HOT_RELOAD_EXCLUDE_PATHS="/Users/fabio/projects/cp/playbooks" reflex run
+    ```

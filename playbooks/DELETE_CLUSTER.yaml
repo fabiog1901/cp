@@ -10,4 +10,4 @@
   tasks:
     - name: Ensure absence of instances
       shell: |
-        cloud_instance {{ deployment_id }} absent '[]' '{}'
+        cloud_instance destroy -d {{ deployment_id }}

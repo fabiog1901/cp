@@ -27,7 +27,7 @@ CREATE TABLE mq (
     msg_id INT8 NOT NULL DEFAULT nextval('mq_seq'),
     start_after TIMESTAMPTZ NOT NULL default now(),
     msg_type STRING NOT NULL,
-    msg_data JSONB NULL,
+    msg_data JSONB NOT NULL default '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NOT NULL default 'system',
     CONSTRAINT pk PRIMARY KEY (msg_id ASC)
@@ -149,20 +149,41 @@ CREATE TABLE event_log (
 ) WITH (ttl_expiration_expression = $$(created_at::TIMESTAMPTZ + '90 days')$$, ttl_job_cron = '@daily')
 ;
 
--- USERS
-CREATE TABLE users (
-  username STRING,
-  password_hash BYTES, 
-  salt BYTES,
-  hash_algo STRING,
-  iterations INT,
-  attempts int2 not null default 0,
-  groups string[],
-  CONSTRAINT pk primary key (username)
-);
-
 create table role_to_groups_mappings (
-    role string,
-    groups string[],
+    role string NOT NULL,
+    groups string[] NULL,
     constraint pk primary key (role)
 );
+-- currently there are only 3 roles. The table shouldn't have therefore no more than 3 rows
+insert into role_to_groups_mappings (role) values ('ro'), ('rw'), ('admin'); 
+
+
+/*
+    FAKE DATA
+*/
+insert into versions values ('v25.1.0'), ('v25.2.0'), ('v25.2.5');
+insert into cpus_per_node values (2), (4), (8), (16);
+insert into nodes_per_region values (1), (2), (3), (4);
+insert into disk_sizes values (500), (1000), (2000);
+
+insert into regions values ('gcp', 'us-east4', 'a', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-east4', 'b', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-east4', 'c', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-central1', 'a', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-central1', 'b', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-central1', 'c', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-east1', 'd', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-east1', 'b', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+insert into regions values ('gcp', 'us-east1', 'c', 'default', array['cockroachdb'], 'default', 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64', '{}' );
+
+insert into regions values ('aws', 'us-east-1', 'a', 'vpc-039dd158f86366108', array['sg-067d280fe7a21bc60'], 'subnet-0d933a012de53be58', '/canonical/ubuntu/server/24.04', '{}' );
+insert into regions values ('aws', 'us-east-1', 'b', 'vpc-039dd158f86366108', array['sg-067d280fe7a21bc60'], 'subnet-0a10df84fd63e9e29', '/canonical/ubuntu/server/24.04', '{}' );
+insert into regions values ('aws', 'us-east-1', 'c', 'vpc-039dd158f86366108', array['sg-067d280fe7a21bc60'], 'subnet-0838bb993e9d878eb', '/canonical/ubuntu/server/24.04', '{}' );
+
+insert into regions values ('aws', 'ca-central-1', 'a', 'vpc-0289741dc46c80da8', array['sg-0e3631bbd91d95940'], 'subnet-02ed0abd3c499dca9', '/canonical/ubuntu/server/24.04', '{}' );
+insert into regions values ('aws', 'ca-central-1', 'b', 'vpc-0289741dc46c80da8', array['sg-0e3631bbd91d95940'], 'subnet-057e35614fa949783', '/canonical/ubuntu/server/24.04', '{}' );
+insert into regions values ('aws', 'ca-central-1', 'c', 'vpc-0289741dc46c80da8', array['sg-0e3631bbd91d95940'], 'subnet-05cd5b8d26347f3a3', '/canonical/ubuntu/server/24.04', '{}' );
+
+
+
+

@@ -15,7 +15,7 @@ from .clusters import State as ClusterState
 
 class State(BaseState):
     current_cluster: Cluster | None = None
-    
+
     auto_finalize: bool = True
 
     @rx.event
@@ -92,7 +92,7 @@ class State(BaseState):
         if self.current_cluster:
             return self.current_cluster.version[:5] != self.selected_version[:5]
         return False
-    
+
     @rx.var
     def human_disk_size(self) -> str | None:
         if self.current_cluster:
@@ -332,7 +332,10 @@ def upgrade_cluster_dialog() -> rx.Component:
                         rx.vstack(
                             rx.hstack(
                                 rx.heading("Auto finalize upgrade", size="4"),
-                                rx.checkbox(checked = State.auto_finalize, on_change=State.set_auto_finalize),
+                                rx.checkbox(
+                                    checked=State.auto_finalize,
+                                    on_change=State.set_auto_finalize,
+                                ),
                                 class_name="min-w-64",
                             ),
                             rx.divider(),

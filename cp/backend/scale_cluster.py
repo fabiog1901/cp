@@ -604,7 +604,8 @@ def scale_cluster_worker(
         }
 
         job_status, raw_data, task_id_counter = MyRunner(
-            job_id, task_id_counter,
+            job_id,
+            task_id_counter,
         ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
@@ -624,7 +625,7 @@ def scale_cluster_worker(
             cluster_inventory=current_cluster.cluster_inventory,
             lbs_inventory=current_cluster.lbs_inventory,
         )
-    
+
     db.update_cluster(
         csr.name,
         requested_by,
