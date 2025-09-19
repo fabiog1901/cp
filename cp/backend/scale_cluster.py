@@ -114,7 +114,7 @@ def scale_cluster_worker(
             "disk_size": csr.disk_size,
         }
 
-        job_status, data, task_id_counter = MyRunner(
+        job_status, _, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner("SCALE_DISK_SIZE", extra_vars)
@@ -127,15 +127,13 @@ def scale_cluster_worker(
             )
             return
 
-        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
-
         db.update_cluster(
             csr.name,
             requested_by,
             status="SCALING",
-            cluster_inventory=current_cluster.cluster_inventory,
-            lbs_inventory=current_cluster.lbs_inventory,
+            disk_size=csr.disk_size,
         )
+        
     #
     # NODE CPUS
     #
@@ -145,7 +143,7 @@ def scale_cluster_worker(
             "node_cpus": csr.node_cpus,
         }
 
-        job_status, data, task_id_counter = MyRunner(
+        job_status, _, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner("SCALE_NODE_CPUS", extra_vars)
@@ -154,14 +152,11 @@ def scale_cluster_worker(
             db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
             return
 
-        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
-
         db.update_cluster(
             csr.name,
             requested_by,
             status="SCALING",
-            cluster_inventory=current_cluster.cluster_inventory,
-            lbs_inventory=current_cluster.lbs_inventory,
+            node_cpus=csr.node_cpus
         )
     #
     # NODE COUNT - ADD

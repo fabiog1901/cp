@@ -509,7 +509,10 @@
     - name: Mount the disks
       when: _disks.stdout_lines | length > 0
       shell: |
-        mountpoint /mnt/cockroach{{ idx }} || mount {{ item }} /mnt/cockroach{{ idx }}
+        DISKUUID=`lsblk -no UUID {{ item }}`
+        grep -q $DISKUUID /etc/fstab || echo "UUID=$DISKUUID /mnt/cockroach{{ idx }} ext4 defaults 0 2" >> /etc/fstab
+        systemctl daemon-reload
+        mount -a
       loop: "{{ _disks.stdout_lines }}"
       loop_control:
         index_var: idx

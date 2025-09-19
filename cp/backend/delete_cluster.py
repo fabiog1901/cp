@@ -52,7 +52,7 @@ def delete_cluster_worker(
         "deployment_id": cluster_id,
     }
 
-    job_status, data, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
+    job_status, _, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
 
     if job_status == "successful":
         db.update_cluster(
