@@ -10,7 +10,7 @@
   tasks:
     - name: modify instance type
       shell: |
-        cloud_instance modify-instance-type \
+        cloud_instance modify \
           -d {{ deployment_id }} \
           --cpu-count {{ node_cpus }} \
           --pause-between 120 \

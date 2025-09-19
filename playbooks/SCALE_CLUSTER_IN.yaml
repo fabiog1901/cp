@@ -10,7 +10,7 @@
   tasks:
     - name: Gather VM details of current deployment
       shell: |
-        cloud_instance gather-current-deployment -d {{ deployment_id }}
+        cloud_instance gather -d {{ deployment_id }}
       register: instances
 
     - name: Build ansible inventory dynamically
@@ -41,7 +41,7 @@
 
     - name: Get list of instances slated to be removed
       shell: |
-        cloud_instance return-to-be-deleted-vms \
+        cloud_instance slated \
           -d {{ deployment_id }} \
           --deployment '{{ deployment | to_json }}'
       register: instances

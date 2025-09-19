@@ -13,7 +13,7 @@
   tasks:
     - name: Gather current deployment instances
       shell: |
-        cloud_instance gather-current-deployment -d {{ deployment_id }}
+        cloud_instance gather -d {{ deployment_id }}
       register: instances
 
     - name: Build ansible inventory dynamically

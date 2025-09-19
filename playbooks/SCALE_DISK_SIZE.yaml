@@ -10,7 +10,7 @@
   tasks:
     - name: resize disks
       shell: |
-        cloud_instance resize-disk \
+        cloud_instance resize \
           -d {{ deployment_id }} \
           --disk-size {{ disk_size }} \
           --pause-between 120 \
@@ -18,7 +18,7 @@
     
     - name: Gather VM details of current deployment
       shell: |
-        cloud_instance gather-current-deployment -d {{ deployment_id }}
+        cloud_instance gather -d {{ deployment_id }}
       register: instances
 
     - name: Build ansible inventory dynamically

@@ -8,6 +8,6 @@
   gather_facts: no
   become: no
   tasks:
-    - name: Ensure absence of instances
+    - name: Deprovision all VM instances
       shell: |
-        cloud_instance destroy -d {{ deployment_id }}
+        cloud_instance delete -d {{ deployment_id }}
