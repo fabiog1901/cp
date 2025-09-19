@@ -133,7 +133,7 @@ def scale_cluster_worker(
             status="SCALING",
             disk_size=csr.disk_size,
         )
-        
+
     #
     # NODE CPUS
     #
@@ -153,10 +153,7 @@ def scale_cluster_worker(
             return
 
         db.update_cluster(
-            csr.name,
-            requested_by,
-            status="SCALING",
-            node_cpus=csr.node_cpus
+            csr.name, requested_by, status="SCALING", node_cpus=csr.node_cpus
         )
     #
     # NODE COUNT - ADD
