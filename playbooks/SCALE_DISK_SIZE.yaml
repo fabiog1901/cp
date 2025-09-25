@@ -13,7 +13,7 @@
         cloud_instance resize \
           -d {{ deployment_id }} \
           --disk-size {{ disk_size }} \
-          --pause-between 120 \
+          --pause-between 30 \
           --filter-by-groups cockroachdb
     
     - name: Gather VM details of current deployment

@@ -67,27 +67,21 @@ def parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster)
 
         region_nodes = []
 
-        for i in raw_data["cockroachdb"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
-                region_nodes.append(raw_data["hv"][i]["public_ip"])
+        for x in raw_data["cockroachdb"]:
+            if x["cloud"] == cloud and x["region"] == region:
+                region_nodes.append(x["public_ip"])
 
         current_cluster.cluster_inventory.append(
             InventoryRegion(cloud=cloud, region=region, nodes=region_nodes)
         )
 
-        for i in raw_data["haproxy"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
+        for x in raw_data["haproxy"]:
+            if x["cloud"] == cloud and x["region"] == region:
                 current_cluster.lbs_inventory.append(
                     InventoryLB(
                         cloud=cloud,
                         region=region,
-                        dns_address=raw_data["hv"][i]["public_ip"],
+                        dns_address=x["public_ip"],
                     )
                 )
     return current_cluster

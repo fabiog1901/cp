@@ -607,6 +607,19 @@ def get_disk_sizes() -> list[IntID]:
     )
 
 
+def get_setting(setting: str) -> StrID:
+    return execute_stmt(
+        """
+        SELECT value AS id
+        FROM settings
+        WHERE id = %s
+        """,
+        (setting,),
+        StrID,
+        False,
+    )
+
+
 ###########
 #  USERS  #
 ###########
