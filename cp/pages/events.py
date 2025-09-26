@@ -1,0 +1,193 @@
+import asyncio
+
+import reflex as rx
+import yaml
+
+from .. import db
+from ..components.BadgeEventType import get_event_type_badge
+from ..cp import app
+from ..models import TS_FORMAT, EventLog, EventLogYaml
+from ..state.base import BaseState
+from ..template import template
+
+# class State(BaseState):
+#     events: list[EventLogYaml] = []
+
+#     is_running: bool = False
+
+#     @rx.event(background=True)
+#     async def fetch_all_events(self):
+#         if self.is_running:
+#             return
+#         async with self:
+#             self.is_running = True
+
+#         while True:
+#             if (
+#                 self.router.page.path != "/events"
+#                 or self.router.session.client_token
+#                 not in app.event_namespace.token_to_sid
+#             ):
+#                 print("events.py: Stopping background task.")
+#                 async with self:
+#                     self.is_running = False
+#                 break
+
+#             async with self:
+#                 self.events = [
+#                     EventLogYaml(
+#                         created_at=x.created_at,
+#                         created_by=x.created_by,
+#                         event_type=x.event_type,
+#                         event_details_yaml=yaml.dump(x.event_details),
+#                     )
+#                     for x in db.fetch_all_events(
+#                         list(self.webuser.groups), self.is_admin
+#                     )
+#                 ]
+
+#             await asyncio.sleep(5)
+
+
+class State(BaseState):
+
+    events: list[EventLogYaml] = []
+
+    total_items: int
+    offset: int = 0
+    limit: int = 20
+
+    @rx.var(cache=True)
+    def page_number(self) -> int:
+        return (self.offset // self.limit) + 1 + (1 if self.offset % self.limit else 0)
+
+    @rx.var(cache=True)
+    def total_pages(self) -> int:
+        return self.total_items // self.limit + (
+            1 if self.total_items % self.limit else 0
+        )
+
+    @rx.event
+    def prev_page(self):
+        self.offset = max(self.offset - self.limit, 0)
+        self.load_entries()
+
+    @rx.event
+    def next_page(self):
+        if self.offset + self.limit < self.total_items:
+            self.offset += self.limit
+        self.load_entries()
+
+    def _get_total_items(self):
+        """Return the total number of items in the Customer table."""
+        self.total_items = db.get_event_count()
+
+    @rx.event
+    def load_entries(self):
+        """Get all users from the database."""
+        self.events = [
+            EventLogYaml(
+                created_at=x.created_at,
+                created_by=x.created_by,
+                event_type=x.event_type,
+                event_details_yaml=yaml.dump(x.event_details),
+            )
+            for x in db.fetch_all_events(
+                self.limit,
+                self.offset,
+                list(self.webuser.groups),
+                self.is_admin,
+            )
+        ]
+        self._get_total_items()
+
+
+def get_event_row(event: EventLogYaml):
+    """Show a job in a table row."""
+    return rx.table.row(
+        rx.table.cell(
+            rx.moment(
+                event.created_at,
+                format=TS_FORMAT,
+                tz="UTC",
+            ),
+            class_name="min-w-6xl",
+        ),
+        rx.table.cell(event.created_by),
+        rx.table.cell(get_event_type_badge(event.event_type)),
+        rx.table.cell(
+            rx.code_block(
+                event.event_details_yaml,
+                language="yaml",
+                show_line_numbers=False,
+            ),
+        ),
+    )
+
+
+def events_table():
+    return rx.vstack(
+        rx.hstack(
+            rx.button(
+                "Prev",
+                on_click=State.prev_page,
+            ),
+            rx.text(f"Page {State.page_number} / {State.total_pages}"),
+            rx.button(
+                "Next",
+                on_click=State.next_page,
+            ),
+        ),
+        rx.table.root(
+            rx.table.header(
+                rx.table.row(
+                    rx.table.column_header_cell("Timestamp"),
+                    rx.table.column_header_cell("Username"),
+                    rx.table.column_header_cell("Event Type"),
+                    rx.table.column_header_cell("Event Details"),
+                ),
+            ),
+            rx.table.body(
+                rx.foreach(
+                    State.events,
+                    get_event_row,
+                )
+            ),
+            width="100%",
+            size="3",
+        ),
+        # rx.text(f"Showing {State.events.length()} jobs"),
+        width="100%",
+    )
+
+
+@rx.page(
+    route="/events",
+    title="Events",
+    on_load=BaseState.check_login,
+)
+@template
+def settings():
+    return rx.cond(
+        BaseState.is_admin,
+        rx.flex(
+            rx.text(
+                "Events",
+                class_name="p-2 text-8xl font-semibold",
+            ),
+            rx.vstack(
+                events_table(),
+                class_name="flex-1 flex-col overflow-y-scroll pt-8",
+            ),
+            class_name="flex-1 flex-col overflow-hidden",
+            on_mount=rx.cond(
+                BaseState.is_logged_in,
+                State.load_entries,
+                # State.fetch_all_events,
+                BaseState.just_return,
+            ),
+        ),
+        rx.text(
+            "Not Authorized",
+        ),
+    )

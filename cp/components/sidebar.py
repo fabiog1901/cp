@@ -32,6 +32,11 @@ def sidebar() -> rx.Component:
         rx.spacer(),
         rx.cond(
             BaseState.is_admin,
+            get_link("hourglass", "Events"),
+            rx.box(),
+        ),
+        rx.cond(
+            BaseState.is_admin,
             get_link("settings", "Settings"),
             rx.box(),
         ),

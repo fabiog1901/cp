@@ -140,4 +140,11 @@ class EventLog(BaseModel):
     created_at: dt.datetime
     created_by: str
     event_type: str
-    details: str
+    event_details: Dict[str, Union[int, str, List[str]]]
+
+
+class EventLogYaml(BaseModel):
+    created_at: dt.datetime
+    created_by: str
+    event_type: str
+    event_details_yaml: str

@@ -144,7 +144,7 @@ CREATE TABLE event_log (
   created_at TIMESTAMPTZ NOT NULL default now(),
   created_by STRING NOT NULL,
   event_type string not null,
-  event_details STRING,
+  event_details JSONB,
   CONSTRAINT pk PRIMARY KEY (created_at, created_by)
 ) WITH (ttl_expiration_expression = $$(created_at::TIMESTAMPTZ + '90 days')$$, ttl_job_cron = '@daily')
 ;
