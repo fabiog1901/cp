@@ -1,8 +1,5 @@
 """The authentication state."""
 
-import hashlib
-import os
-import random
 import time
 from urllib.parse import urlencode
 
@@ -12,13 +9,47 @@ import requests
 from jwt.algorithms import RSAAlgorithm
 
 from .. import db
-from ..models import User, WebUser
+from ..models import WebUser
 from .base import BaseState
+
+SSO_CACHE_VALID_UNTIL = 0
+
+SSO_CLIENT_ID = ""
+SSO_CLIENT_SECRET = ""
+SSO_AUTH_URL = ""
+SSO_TOKEN_URL = ""
+SSO_USERINFO_URL = ""
+SSO_REDIRECT_URI = ""
+SSO_JWKS_URL = ""
+SSO_ISSUER = ""
+
+
+def refresh_cache():
+    global SSO_CACHE_VALID_UNTIL
+
+    global SSO_CLIENT_ID
+    global SSO_CLIENT_SECRET
+    global SSO_AUTH_URL
+    global SSO_TOKEN_URL
+    global SSO_USERINFO_URL
+    global SSO_REDIRECT_URI
+    global SSO_JWKS_URL
+    global SSO_ISSUER
+
+    SSO_CLIENT_ID = db.get_setting("sso_client_id")
+    SSO_CLIENT_SECRET = db.get_setting("sso_client_secret")
+    SSO_AUTH_URL = db.get_setting("sso_auth_url")
+    SSO_TOKEN_URL = db.get_setting("sso_token_url")
+    SSO_USERINFO_URL = db.get_setting("sso_userinfo_url")
+    SSO_REDIRECT_URI = db.get_setting("sso_redirect_uri")
+    SSO_JWKS_URL = db.get_setting("sso_jwks_url")
+    SSO_ISSUER = db.get_setting("sso_issuer")
+
+    SSO_CACHE_VALID_UNTIL = time.time() + int(db.get_setting("sso_cache_expiry"))
 
 
 def get_jwks_keys():
-    jwks_url = os.getenv("SSO_JWKS_URL")
-    response = requests.get(jwks_url)
+    response = requests.get(SSO_JWKS_URL)
     response.raise_for_status()
     return response.json()["keys"]
 
@@ -47,7 +78,7 @@ def validate_token(token: str, audience: str = None) -> dict:
                 algorithms=[
                     unverified_header["alg"],
                 ],
-                issuer=os.getenv("SSO_ISSUER"),
+                issuer=SSO_ISSUER,
                 options=dict(
                     verify_aud=False,
                     verify_sub=False,
@@ -75,13 +106,13 @@ class AuthState(BaseState):
 
     def callback(self):
         token_res = requests.post(
-            os.getenv("SSO_TOKEN_URL"),
+            SSO_TOKEN_URL,
             data={
                 "grant_type": "authorization_code",
                 "code": self.router.page.params.get("code"),
-                "redirect_uri": os.getenv("SSO_REDIRECT_URI"),
-                "client_id": os.getenv("SSO_CLIENT_ID"),
-                "client_secret": os.getenv("SSO_CLIENT_SECRET"),
+                "redirect_uri": SSO_REDIRECT_URI,
+                "client_id": SSO_CLIENT_ID,
+                "client_secret": SSO_CLIENT_SECRET,
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
@@ -91,9 +122,7 @@ class AuthState(BaseState):
             access_token = tokens.get("access_token")
 
             try:
-                user_claims = validate_token(
-                    access_token, audience=os.getenv("SSO_CLIENT_ID")
-                )
+                user_claims = validate_token(access_token, audience=SSO_CLIENT_ID)
 
                 grp_role_maps: dict[str, list[str]] = {
                     x.role: x.groups for x in db.get_role_to_groups_mappings()
@@ -137,12 +166,15 @@ class AuthState(BaseState):
         return rx.redirect("/login")
 
     def login_redirect(self):
+        if time.time() > SSO_CACHE_VALID_UNTIL:
+            refresh_cache()
+
         query = urlencode(
             {
-                "client_id": os.getenv("SSO_CLIENT_ID"),
-                "redirect_uri": os.getenv("SSO_REDIRECT_URI"),
+                "client_id": SSO_CLIENT_ID,
+                "redirect_uri": SSO_REDIRECT_URI,
                 "response_type": "code",
                 "scope": "openid email profile",
             }
         )
-        return rx.redirect(f"{os.getenv('SSO_AUTH_URL')}?{query}")
+        return rx.redirect(f"{SSO_AUTH_URL}?{query}")

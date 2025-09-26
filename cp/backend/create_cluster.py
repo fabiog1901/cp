@@ -77,13 +77,10 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         region_details: list[Region] = db.get_region_details(cloud, region)
 
-        licence_org = db.get_setting("licence_org").id
-        licence_key = db.get_setting("licence_key").id
-        default_username = db.get_setting("default_username").id
-        default_password = db.get_setting("default_password").id
-
-        print(licence_org, licence_key)
-        print(default_username, default_password)
+        licence_org = db.get_setting("licence_org")
+        licence_key = db.get_setting("licence_key")
+        default_username = db.get_setting("default_username")
+        default_password = db.get_setting("default_password")
 
         # add 1 HAProxy per region
         deployment.append(

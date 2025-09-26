@@ -8,7 +8,20 @@ import requests
 
 from .. import db
 
-PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
+PLAYBOOKS_URL_CACHE_VALID_UNTIL = 0
+
+PLAYBOOKS_URL = ""
+
+
+def refresh_cache():
+    global PLAYBOOKS_URL
+    global PLAYBOOKS_URL_CACHE_VALID_UNTIL
+
+    PLAYBOOKS_URL = db.get_setting("playbooks_url")
+
+    PLAYBOOKS_URL_CACHE_VALID_UNTIL = time.time() + int(
+        db.get_setting("playbooks_url_cache_expiry")
+    )
 
 
 class MyRunner:
@@ -20,6 +33,9 @@ class MyRunner:
         self.data = {}
         self.job_id = job_id
         self.counter = counter
+
+        if time.time() > PLAYBOOKS_URL_CACHE_VALID_UNTIL:
+            refresh_cache()
 
     def my_status_handler(self, status, runner_config):
         return
@@ -88,7 +104,7 @@ class MyRunner:
     def launch_runner(
         self, playbook_name: str, extra_vars: dict
     ) -> tuple[str, dict, int]:
-        # fetch all plays for a playbook
+
         r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
 
         # create a new working directory
@@ -139,6 +155,9 @@ class MyRunner:
 class MyRunnerLite:
     def __init__(self):
         self.data = {}
+
+        if time.time() > PLAYBOOKS_URL_CACHE_VALID_UNTIL:
+            refresh_cache()
 
     def my_status_handler(self, status, runner_config):
         return
