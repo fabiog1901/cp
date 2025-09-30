@@ -6,7 +6,16 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.main import chip_props, item_selector
 from ..cp import app
-from ..models import TS_FORMAT, Cluster, IntID, InventoryLB, InventoryRegion, Job, StrID
+from ..models import (
+    TS_FORMAT,
+    Cluster,
+    IntID,
+    InventoryLB,
+    InventoryRegion,
+    Job,
+    JobType,
+    StrID,
+)
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_human_size
@@ -52,13 +61,13 @@ class State(BaseState):
 
         # TODO check if user is permissioned?
         msg_id: IntID = db.insert_into_mq(
-            "SCALE_CLUSTER",
+            JobType.SCALE_CLUSTER,
             form_data,
             self.webuser.username,
         )
         db.insert_event_log(
             self.webuser.username,
-            "SCALE_CLUSTER",
+            JobType.SCALE_CLUSTER,
             form_data | {"job_id": msg_id.id},
         )
 
@@ -71,13 +80,13 @@ class State(BaseState):
         form_data["auto_finalize"] = self.auto_finalize
 
         msg_id: StrID = db.insert_into_mq(
-            "UPGRADE_CLUSTER",
+            JobType.UPGRADE_CLUSTER,
             form_data,
             self.webuser.username,
         )
         db.insert_event_log(
             self.webuser.username,
-            "UPGRADE_CLUSTER",
+            JobType.UPGRADE_CLUSTER,
             form_data | {"job_id": msg_id.id},
         )
 

@@ -1,7 +1,7 @@
 from threading import Thread
 
 from .. import db
-from ..models import ClusterUpgradeRequest
+from ..models import ClusterState, ClusterUpgradeRequest, JobState
 from .util import MyRunner
 
 
@@ -18,30 +18,30 @@ def upgrade_cluster(
     c = db.get_cluster(cur.name, [], True)
 
     if c is None or c.status in [
-        "DELETED",
-        "DELETING",
-        "PROVISIONING",
-        "UPGRADING",
-        "SCALING",
+        ClusterState.DELETED,
+        ClusterState.DELETING,
+        ClusterState.PROVISIONING,
+        ClusterState.UPGRADING,
+        ClusterState.SCALING,
     ]:
         # TODO update message for failed job:
         # cannot upgrade a deleting cluster
         db.update_job(
             job_id,
-            "FAILED",
+            JobState.FAILED,
         )
         return
 
     db.update_cluster(
         cur.name,
         requested_by,
-        status="UPGRADING",
+        status=ClusterState.UPGRADING,
     )
 
     db.insert_mapped_job(
         cur.name,
         job_id,
-        "SCHEDULED",
+        JobState.SCHEDULED,
     )
 
     Thread(
@@ -72,13 +72,13 @@ def upgrade_cluster_worker(
         db.update_cluster(
             cur.name,
             requested_by,
-            status="FAILED",
+            status=ClusterState.UPGRADE_FAILED,
         )
         return
 
     db.update_cluster(
         cur.name,
         requested_by,
-        status="RUNNING",
+        status=ClusterState.RUNNING,
         version=cur.version,
     )

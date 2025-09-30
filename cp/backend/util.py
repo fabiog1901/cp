@@ -7,6 +7,7 @@ import ansible_runner
 import requests
 
 from .. import db
+from ..models import JobState
 
 PLAYBOOKS_URL_CACHE_VALID_UNTIL = 0
 
@@ -114,7 +115,7 @@ class MyRunner:
         with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
             f.write(r.content)
 
-        db.update_job(self.job_id, "RUNNING")
+        db.update_job(self.job_id, JobState.RUNNING)
 
         # Execute the playbook
         try:
@@ -128,23 +129,23 @@ class MyRunner:
                 status_handler=self.my_status_handler,
             )
         except Exception as e:
-            db.update_job(self.job_id, "FAILED")
+            db.update_job(self.job_id, JobState.FAILED)
             print(f"Error running playbook: {e}")
 
         heartbeat_ts = time.time() + 60
         while thread.is_alive():
             # send hb messsage periodically
             if time.time() > heartbeat_ts:
-                db.update_job(self.job_id, "RUNNING")
+                db.update_job(self.job_id, JobState.RUNNING)
                 heartbeat_ts = time.time() + 60
 
             time.sleep(1)
 
         # update the Job status
         if runner.status == "successful":
-            db.update_job(self.job_id, "COMPLETED")
+            db.update_job(self.job_id, JobState.COMPLETED)
         else:
-            db.update_job(self.job_id, "FAILED")
+            db.update_job(self.job_id, JobState.FAILED)
 
         # rm -rf job-directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)

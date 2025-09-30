@@ -6,7 +6,7 @@ import yaml
 from .. import db
 from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import TS_FORMAT, Job, StrID, Task
+from ..models import TS_FORMAT, Job, JobType, StrID, Task
 from ..state.base import BaseState
 from ..template import template
 
@@ -31,8 +31,8 @@ class State(BaseState):
         )
 
         job_type = (
-            "RECREATE_CLUSTER"
-            if self.current_job.job_type == "CREATE_CLUSTER"
+            JobType.RECREATE_CLUSTER
+            if self.current_job.job_type == JobType.CREATE_CLUSTER
             else self.current_job.job_type
         )
 

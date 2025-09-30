@@ -10,44 +10,6 @@ from ..models import TS_FORMAT, EventLog, EventLogYaml
 from ..state.base import BaseState
 from ..template import template
 
-# class State(BaseState):
-#     events: list[EventLogYaml] = []
-
-#     is_running: bool = False
-
-#     @rx.event(background=True)
-#     async def fetch_all_events(self):
-#         if self.is_running:
-#             return
-#         async with self:
-#             self.is_running = True
-
-#         while True:
-#             if (
-#                 self.router.page.path != "/events"
-#                 or self.router.session.client_token
-#                 not in app.event_namespace.token_to_sid
-#             ):
-#                 print("events.py: Stopping background task.")
-#                 async with self:
-#                     self.is_running = False
-#                 break
-
-#             async with self:
-#                 self.events = [
-#                     EventLogYaml(
-#                         created_at=x.created_at,
-#                         created_by=x.created_by,
-#                         event_type=x.event_type,
-#                         event_details_yaml=yaml.dump(x.event_details),
-#                     )
-#                     for x in db.fetch_all_events(
-#                         list(self.webuser.groups), self.is_admin
-#                     )
-#                 ]
-
-#             await asyncio.sleep(5)
-
 
 class State(BaseState):
 
@@ -103,7 +65,6 @@ class State(BaseState):
 
 
 def get_event_row(event: EventLogYaml):
-    """Show a job in a table row."""
     return rx.table.row(
         rx.table.cell(
             rx.moment(
@@ -137,6 +98,7 @@ def events_table():
                 "Next",
                 on_click=State.next_page,
             ),
+            class_name="p-2",
         ),
         rx.table.root(
             rx.table.header(
@@ -156,7 +118,6 @@ def events_table():
             width="100%",
             size="3",
         ),
-        # rx.text(f"Showing {State.events.length()} jobs"),
         width="100%",
     )
 

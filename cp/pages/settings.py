@@ -4,7 +4,7 @@ import reflex as rx
 
 from .. import db
 from ..cp import app
-from ..models import TS_FORMAT, Setting
+from ..models import TS_FORMAT, EventType, Setting
 from ..state.base import BaseState
 from ..template import template
 
@@ -16,15 +16,20 @@ class State(BaseState):
 
     draft: dict[str, str] = {}
 
-    def set_field(self, key: str, value: str):
-        self.draft[key] = value
+    def set_field(self, id: str, value: str):
+        self.draft[id] = value
 
-    def save(self, key):
-        db.set_setting(key, self.draft[key], self.webuser.username)
-        self.original[key] = self.draft[key]
+    def save(self, id):
+        db.set_setting(id, self.draft[id], self.webuser.username)
+        db.insert_event_log(
+            self.webuser.username,
+            EventType.UPDATE_SETTING,
+            {"ID": id, "value": self.draft[id]},
+        )
+        self.original[id] = self.draft[id]
 
-    def discard(self, key):
-        self.draft[key] = self.original[key]
+    def discard(self, id):
+        self.draft[id] = self.original[id]
 
     @rx.var
     def is_dirty(self) -> bool:
@@ -91,13 +96,17 @@ def config_editor_page() -> rx.Component:
                     rx.hstack(
                         rx.icon(
                             "check",
+                            size=30,
+                            stroke_width=2.5,
                             on_click=State.save(item.id),
-                            class_name="text-green-700",
+                            class_name="border-2 rounded-full p-1 border-green-500 hover:border-green-300 cursor-pointer text-green-500 hover:text-green-300",
                         ),
                         rx.icon(
                             "x",
+                            size=30,
+                            stroke_width=2.5,
                             on_click=State.discard(item.id),
-                            class_name="text-red-700",
+                            class_name="border-2  rounded-full p-1 border-red-500 hover:border-red-300 cursor-pointer text-red-500 hover:text-red-300",
                         ),
                     ),
                     rx.box(),

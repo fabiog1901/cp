@@ -9,7 +9,7 @@ import requests
 from jwt.algorithms import RSAAlgorithm
 
 from .. import db
-from ..models import WebUser
+from ..models import EventType, WebUser
 from .base import BaseState
 
 SSO_CACHE_VALID_UNTIL = 0
@@ -35,6 +35,7 @@ def refresh_cache():
     global SSO_REDIRECT_URI
     global SSO_JWKS_URL
     global SSO_ISSUER
+    global SSO_CLAIM_NAME
 
     SSO_CLIENT_ID = db.get_setting("sso_client_id")
     SSO_CLIENT_SECRET = db.get_setting("sso_client_secret")
@@ -44,6 +45,7 @@ def refresh_cache():
     SSO_REDIRECT_URI = db.get_setting("sso_redirect_uri")
     SSO_JWKS_URL = db.get_setting("sso_jwks_url")
     SSO_ISSUER = db.get_setting("sso_issuer")
+    SSO_CLAIM_NAME = db.get_setting("sso_claim_name")
 
     SSO_CACHE_VALID_UNTIL = time.time() + int(db.get_setting("sso_cache_expiry"))
 
@@ -144,14 +146,14 @@ class AuthState(BaseState):
                     )
 
                 self.webuser = WebUser(
-                    username=user_claims.get("preferred_username"),
+                    username=user_claims.get(SSO_CLAIM_NAME),
                     roles=list(user_roles),
                     groups=list(user_groups),
                 )
 
                 db.insert_event_log(
                     self.webuser.username,
-                    "LOGIN",
+                    EventType.LOGIN,
                     {
                         "roles": list(self.webuser.roles),
                         "groups": list(self.webuser.groups),

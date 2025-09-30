@@ -1,7 +1,14 @@
 from threading import Thread
 
 from .. import db
-from ..models import ClusterRequest, InventoryLB, InventoryRegion, Region
+from ..models import (
+    ClusterRequest,
+    ClusterState,
+    InventoryLB,
+    InventoryRegion,
+    JobState,
+    Region,
+)
 from .util import MyRunner
 
 
@@ -38,13 +45,13 @@ def create_cluster(
         # with the same name already exists
         db.update_job(
             job_id,
-            "FAILED",
+            JobState.FAILED,
         )
         return
 
     db.upsert_cluster(
         cluster_request.name,
-        "PROVISIONING",
+        ClusterState.PROVISIONING,
         created_by,
         cluster_request.group,
         cluster_request.version,
@@ -56,7 +63,7 @@ def create_cluster(
     db.insert_mapped_job(
         cluster_request.name,
         job_id,
-        "SCHEDULED",
+        JobState.SCHEDULED,
     )
 
     Thread(
@@ -182,7 +189,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
     lbs_inventory: list[InventoryLB] = []
 
     if job_status != "successful":
-        db.update_cluster(cluster_request.name, created_by, status="FAILED")
+        db.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
         return
 
     for cloud_region in cluster_request.regions:
@@ -217,7 +224,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
     db.update_cluster(
         cluster_request.name,
         created_by,
-        status="RUNNING",
+        status=ClusterState.RUNNING,
         cluster_inventory=cluster_inventory,
         lbs_inventory=lbs_inventory,
     )

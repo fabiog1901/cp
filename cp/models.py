@@ -1,9 +1,54 @@
 import datetime as dt
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
+
+from enum import StrEnum, auto
+
+
+class AutoNameStrEnum(StrEnum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+
+
+class EventType(AutoNameStrEnum):
+    LOGIN = auto()
+    LOGOUT = auto()
+    UPDATE_SETTING = auto()
+
+
+class JobType(AutoNameStrEnum):
+    CREATE_CLUSTER = auto()
+    RECREATE_CLUSTER = auto()
+    DELETE_CLUSTER = auto()
+    SCALE_CLUSTER = auto()
+    UPGRADE_CLUSTER = auto()
+    DEBUG_CLUSTER = auto()
+    HEALTHCHECK_CLUSTERS = auto()
+    FAIL_ZOMBIE_JOBS = auto()
+
+
+class ClusterState(AutoNameStrEnum):
+    FAILED = auto()
+    PROVISIONING = auto()
+    SCALING = auto()
+    SCALE_FAILED = auto()
+    RUNNING = auto()
+    DELETING = auto()
+    DELETED = auto()
+    DELETE_FAILED = auto()
+    UNHEALTHY = auto()
+    UPGRADING = auto()
+    UPGRADE_FAILED = auto()
+
+
+class JobState(AutoNameStrEnum):
+    RUNNING = auto()
+    FAILED = auto()
+    SCHEDULED = auto()
+    COMPLETED = auto()
 
 
 class WebUser(BaseModel):

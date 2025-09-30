@@ -6,7 +6,7 @@ from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
 from ..components.main import chip_props, item_selector
 from ..cp import app
-from ..models import Cluster, ClusterOverview, IntID, StrID
+from ..models import Cluster, ClusterOverview, IntID, JobType, StrID
 from ..state.base import BaseState
 from ..template import template
 from ..util import get_funny_name, get_human_size
@@ -90,13 +90,13 @@ class State(BaseState):
         )
 
         msg_id: StrID = db.insert_into_mq(
-            "CREATE_CLUSTER",
+            JobType.CREATE_CLUSTER,
             form_data,
             self.webuser.username,
         )
         db.insert_event_log(
             self.webuser.username,
-            "CREATE_CLUSTER",
+            JobType.CREATE_CLUSTER,
             form_data | {"job_id": msg_id.id},
         )
 
@@ -113,13 +113,13 @@ class State(BaseState):
     @rx.event
     def delete_cluster(self, cluster_id: str):
         msg_id: IntID = db.insert_into_mq(
-            "DELETE_CLUSTER",
+            JobType.DELETE_CLUSTER,
             {"cluster_id": cluster_id},
             self.webuser.username,
         )
         db.insert_event_log(
             self.webuser.username,
-            "DELETE_CLUSTER",
+            JobType.DELETE_CLUSTER,
             {"cluster_id": cluster_id, "job_id": msg_id.id},
         )
         return rx.toast.info(f"Job {msg_id.id} requested.")

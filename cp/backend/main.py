@@ -6,14 +6,12 @@ from threading import Thread
 from psycopg.rows import class_row
 
 from .. import db
-from ..models import Msg
+from ..models import ClusterState, JobType, Msg
 from .create_cluster import create_cluster
 from .delete_cluster import delete_cluster
 from .scale_cluster import scale_cluster
 from .upgrade_cluster import upgrade_cluster
 from .util import MyRunnerLite
-
-PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
 
 
 def fail_zombie_jobs():
@@ -60,14 +58,14 @@ def healthcheck_clusters_worker(
     }
 
     job_status, data, _ = MyRunnerLite().launch_runner(
-        "HEALTHCHECK_CLUSTERS", extra_vars
+        JobType.HEALTHCHECK_CLUSTERS, extra_vars
     )
 
     if not data or job_status != "successful":
         db.update_cluster(
             cluster_id,
             "system",
-            status="UNHEALTHY",
+            status=ClusterState.UNHEALTHY,
         )
 
     for node in data.get("data", []):
@@ -75,7 +73,7 @@ def healthcheck_clusters_worker(
             db.update_cluster(
                 cluster_id,
                 "system",
-                status="UNHEALTHY",
+                status=ClusterState.UNHEALTHY,
             )
 
 
@@ -104,28 +102,28 @@ async def pull_from_mq():
                         print(f"Processing a {msg.msg_type}")
 
                         match msg.msg_type:
-                            case "CREATE_CLUSTER":
+                            case JobType.CREATE_CLUSTER:
                                 create_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
-                            case "RECREATE_CLUSTER":
+                            case JobType.RECREATE_CLUSTER:
                                 create_cluster(
                                     msg.msg_id, msg.msg_data, msg.created_by, True
                                 )
-                            case "DELETE_CLUSTER":
+                            case JobType.DELETE_CLUSTER:
                                 delete_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
-                            case "SCALE_CLUSTER":
+                            case JobType.SCALE_CLUSTER:
                                 scale_cluster(msg.msg_id, msg.msg_data, msg.created_by)
 
-                            case "UPGRADE_CLUSTER":
+                            case JobType.UPGRADE_CLUSTER:
                                 upgrade_cluster(
                                     msg.msg_id, msg.msg_data, msg.created_by
                                 )
 
-                            case "FAIL_ZOMBIE_JOBS":
+                            case JobType.FAIL_ZOMBIE_JOBS:
                                 fail_zombie_jobs()
 
-                            case "HEALTHCHECK_CLUSTERS":
+                            case JobType.HEALTHCHECK_CLUSTERS:
                                 healthcheck_clusters(msg.msg_id)
                                 cur.execute(
                                     """
@@ -142,4 +140,4 @@ async def pull_from_mq():
                         )
 
     except asyncio.CancelledError:
-        print("Task was stopped")
+        print("Task pull_from_mq was stopped")

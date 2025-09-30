@@ -1,11 +1,16 @@
-import os
 from threading import Thread
 
 from .. import db
-from ..models import Cluster, ClusterScaleRequest, InventoryLB, InventoryRegion, Region
+from ..models import (
+    Cluster,
+    ClusterScaleRequest,
+    ClusterState,
+    InventoryLB,
+    InventoryRegion,
+    JobState,
+    Region,
+)
 from .util import MyRunner
-
-PLAYBOOKS_URL = os.getenv("PLAYBOOKS_URL")
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -37,13 +42,13 @@ def scale_cluster(
     db.update_cluster(
         cluster_scale_request.name,
         requested_by,
-        status="SCALING",
+        status=ClusterState.SCALING,
     )
 
     db.insert_mapped_job(
         cluster_scale_request.name,
         job_id,
-        "SCHEDULED",
+        JobState.SCHEDULED,
     )
 
     Thread(
@@ -117,14 +122,14 @@ def scale_cluster_worker(
             db.update_cluster(
                 csr.name,
                 requested_by,
-                status="SCALE_FAILED",
+                status=ClusterState.SCALE_FAILED,
             )
             return
 
         db.update_cluster(
             csr.name,
             requested_by,
-            status="SCALING",
+            status=ClusterState.SCALING,
             disk_size=csr.disk_size,
         )
 
@@ -143,11 +148,11 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_NODE_CPUS", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
         db.update_cluster(
-            csr.name, requested_by, status="SCALING", node_cpus=csr.node_cpus
+            csr.name, requested_by, status=ClusterState.SCALING, node_cpus=csr.node_cpus
         )
     #
     # NODE COUNT - ADD
@@ -251,7 +256,7 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
@@ -259,7 +264,7 @@ def scale_cluster_worker(
         db.update_cluster(
             csr.name,
             requested_by,
-            status="SCALING",
+            status=ClusterState.SCALING,
             node_count=csr.node_count,
             cluster_inventory=current_cluster.cluster_inventory,
             lbs_inventory=current_cluster.lbs_inventory,
@@ -481,7 +486,7 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
@@ -489,7 +494,7 @@ def scale_cluster_worker(
         db.update_cluster(
             csr.name,
             requested_by,
-            status="SCALING",
+            status=ClusterState.SCALING,
             cluster_inventory=current_cluster.cluster_inventory,
             lbs_inventory=current_cluster.lbs_inventory,
         )
@@ -598,7 +603,7 @@ def scale_cluster_worker(
             db.update_cluster(
                 csr.name,
                 requested_by,
-                status="SCALE_FAILED",
+                status=ClusterState.SCALE_FAILED,
             )
             return
 
@@ -607,7 +612,7 @@ def scale_cluster_worker(
         db.update_cluster(
             csr.name,
             requested_by,
-            status="SCALING",
+            status=ClusterState.SCALING,
             cluster_inventory=current_cluster.cluster_inventory,
             lbs_inventory=current_cluster.lbs_inventory,
         )
@@ -615,5 +620,5 @@ def scale_cluster_worker(
     db.update_cluster(
         csr.name,
         requested_by,
-        status="RUNNING",
+        status=ClusterState.RUNNING,
     )

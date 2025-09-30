@@ -1,6 +1,7 @@
 from threading import Thread
 
 from .. import db
+from ..models import ClusterState, JobState
 from .util import MyRunner
 
 
@@ -12,25 +13,25 @@ def delete_cluster(
     cluster_id = cluster.get("cluster_id")
 
     c = db.get_cluster(cluster_id, [], True)
-    if not c or c.status == "DELETED":
+    if not c or c.status == ClusterState.DELETED:
         # TODO if cluster doesn't exists or it's already marked as deleted,
         # fail the job
         db.update_job(
             job_id,
-            "FAILED",
+            JobState.FAILED,
         )
         return
 
     db.update_cluster(
         cluster_id,
         requested_by,
-        status="DELETING...",
+        status=ClusterState.DELETING,
     )
 
     db.insert_mapped_job(
         cluster_id,
         job_id,
-        "SCHEDULED",
+        JobState.SCHEDULED,
     )
 
     Thread(
@@ -58,11 +59,11 @@ def delete_cluster_worker(
         db.update_cluster(
             cluster_id,
             requested_by,
-            status="DELETED",
+            status=ClusterState.DELETED,
         )
     else:
         db.update_cluster(
             cluster_id,
             requested_by,
-            status="DELETE_FAILED",
+            status=ClusterState.DELETE_FAILED,
         )
