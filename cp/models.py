@@ -148,3 +148,19 @@ class EventLogYaml(BaseModel):
     created_by: str
     event_type: str
     event_details_yaml: str
+
+
+class EventLogYaml(BaseModel):
+    created_at: dt.datetime
+    created_by: str
+    event_type: str
+    event_details_yaml: str
+
+
+class Setting(BaseModel):
+    id: str
+    value: str
+    updated_at: dt.datetime
+    updated_by: str
+    default_value: str
+    description: str

@@ -104,6 +104,10 @@ CREATE TABLE secrets (
 create table settings (
     id string not null,
     value string,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now() ON UPDATE now(),
+    updated_by string,
+    default_value string,
+    description string,
     constraint pk primary key (id)
 );
 

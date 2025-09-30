@@ -18,9 +18,9 @@ from .models import (
     InventoryRegion,
     Job,
     Region,
+    Setting,
     StrID,
     Task,
-    User,
 )
 
 DB_URL = os.getenv("DB_URL")
@@ -629,6 +629,17 @@ def get_disk_sizes() -> list[IntID]:
     )
 
 
+def fetch_all_settings() -> list[Setting]:
+    return execute_stmt(
+        """
+        SELECT *
+        FROM settings
+        """,
+        (),
+        Setting,
+    )
+
+
 def get_setting(setting: str) -> str:
     str_id: StrID = execute_stmt(
         """
@@ -641,6 +652,18 @@ def get_setting(setting: str) -> str:
         False,
     )
     return str_id.id
+
+
+def set_setting(setting: str, value: str, updated_by) -> str:
+    execute_stmt(
+        """
+        UPDATE settings
+        SET value = %s,
+        updated_by = %s
+        WHERE id = %s
+        """,
+        (value, updated_by, setting),
+    )
 
 
 ###########

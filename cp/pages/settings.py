@@ -2,70 +2,110 @@ import asyncio
 
 import reflex as rx
 
+from .. import db
+from ..cp import app
+from ..models import TS_FORMAT, Setting
 from ..state.base import BaseState
 from ..template import template
 
-# Define the keys and default values for each section
-SECTIONS = {
-    "sso": {
-        "SSO_REDIRECT_URL": "http://localhost:8080/auth/callback",
-        "SSO_CLIENT_ID": "example-client-id",
-    },
-    "playbook": {
-        "DEFAULT_REGION": "us-west-2",
-        "RETRY_COUNT": "3",
-    },
-    "various": {
-        "DEBUG_MODE": "true",
-        "MAX_CONNECTIONS": "100",
-    },
-}
 
+class State(BaseState):
+    settings: list[Setting] = []
 
-class ConfigEditorState(rx.State):
-    values: dict[str, str] = {
-        key: value for section in SECTIONS.values() for key, value in section.items()
-    }
+    original: dict[str, str] = {}
 
-    def update_value(self, key: str, value: str):
-        self.values[key] = value
+    draft: dict[str, str] = {}
 
+    def set_field(self, key: str, value: str):
+        self.draft[key] = value
 
-def section_ui(title: str, items: dict[str, str]) -> rx.Component:
-    return rx.vstack(
-        rx.heading(title.capitalize(), size="4", margin_bottom="1rem"),
-        *[
-            rx.hstack(
-                rx.text(key, width="200px"),
-                rx.input(
-                    value=ConfigEditorState.values.get(key, ""),
-                    on_change=ConfigEditorState.update_value(key),
-                    width="400px",
-                ),
-                spacing="4",
-            )
-            for key in items
-        ],
-        spacing="3",
-        padding="1rem",
-        border="1px solid #ccc",
-        border_radius="8px",
-        margin_bottom="1rem",
-        width="100%",
-    )
+    def save(self, key):
+        db.set_setting(key, self.draft[key], self.webuser.username)
+        self.original[key] = self.draft[key]
+
+    def discard(self, key):
+        self.draft[key] = self.original[key]
+
+    @rx.var
+    def is_dirty(self) -> bool:
+        return self.draft != self.original
+
+    is_running: bool = False
+    has_copied: bool = False
+
+    @rx.event(background=True)
+    async def fetch_all_settings(self):
+        if self.is_running:
+            return
+        async with self:
+            self.is_running = True
+
+        while True:
+            if (
+                self.router.page.path != "/settings"
+                or self.router.session.client_token
+                not in app.event_namespace.token_to_sid
+            ):
+                print("settings.py: Stopping background task.")
+                async with self:
+                    self.is_running = False
+                    self.has_copied = False
+                    self.draft = {}
+                break
+
+            async with self:
+                self.settings = db.fetch_all_settings()
+
+                self.original = {item.id: item.value for item in self.settings}
+                if not self.has_copied:
+                    self.draft: dict = self.original.copy()
+                    self.has_copied = True
+            await asyncio.sleep(5)
 
 
 def config_editor_page() -> rx.Component:
-    return rx.container(
-        rx.vstack(
-            *[
-                section_ui(section_name, section_data)
-                for section_name, section_data in SECTIONS.items()
-            ],
-            width="800px",
-            spacing="4",
+    return rx.flex(
+        rx.foreach(
+            State.settings,
+            lambda item: rx.hstack(
+                rx.text(item.id, class_name="w-80 font-semibold"),
+                rx.cond(
+                    State.original[item.id] != State.draft[item.id],
+                    rx.input(
+                        value=State.draft[item.id],
+                        on_change=lambda v: State.set_field(item.id, v),
+                        class_name="w-80 text-red-300",
+                    ),
+                    rx.input(
+                        value=State.draft[item.id],
+                        on_change=lambda v: State.set_field(item.id, v),
+                        class_name="w-80",
+                    ),
+                ),
+                rx.moment(item.updated_at, format=TS_FORMAT, class_name="w-48"),
+                rx.text(item.updated_by, class_name="w-24"),
+                rx.text(item.default_value, class_name="w-32"),
+                rx.text(item.description, class_name="w-80"),
+                rx.cond(
+                    State.original[item.id] != State.draft[item.id],
+                    rx.hstack(
+                        rx.icon(
+                            "check",
+                            on_click=State.save(item.id),
+                            class_name="text-green-700",
+                        ),
+                        rx.icon(
+                            "x",
+                            on_click=State.discard(item.id),
+                            class_name="text-red-700",
+                        ),
+                    ),
+                    rx.box(),
+                ),
+                class_name="p-2",
+            ),
         ),
-        padding="2rem",
+        class_name="flex-1 flex-col overflow-y-scroll pt-8",
     )
 
 
@@ -79,9 +119,22 @@ def settings():
     return rx.cond(
         BaseState.is_admin,
         rx.flex(
-            rx.text("Settings", class_name="font-bold border-b text-3xl"),
+            rx.hstack(
+                rx.text("ID", class_name="w-80 font-semibold"),
+                rx.text("Value", class_name="font-semibold w-80"),
+                rx.text("Updated_at", class_name="font-semibold w-48"),
+                rx.text("Updated by", class_name="font-semibold w-24"),
+                rx.text("Default", class_name="font-semibold w-32"),
+                rx.text("Description", class_name="font-semibold w-80"),
+                class_name="p-2",
+            ),
             config_editor_page(),
-            class_name="flex-1 flex-col overflow-y-scroll p-2",
+            class_name="flex-1 flex-col overflow-hidden",
+            on_mount=rx.cond(
+                BaseState.is_logged_in,
+                State.fetch_all_settings,
+                BaseState.just_return,
+            ),
         ),
         rx.text(
             "Not Authorized",
