@@ -480,10 +480,10 @@ def insert_task(
 
 def get_secret(
     id: str,
-) -> StrID:
-    return execute_stmt(
+) -> str:
+    str_id: StrID = execute_stmt(
         """
-        SELECT data
+        SELECT data AS id
         FROM secrets
         WHERE id = %s
         """,
@@ -491,6 +491,8 @@ def get_secret(
         StrID,
         return_list=False,
     )
+    
+    return str_id.id
 
 
 ###############

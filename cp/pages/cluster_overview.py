@@ -923,6 +923,34 @@ def cluster():
                                 ),
                                 content="List Jobs",
                             ),
+                            rx.cond(
+                                State.current_cluster.status.startswith("DELET"),
+                                rx.box(),
+                                rx.cond(
+                                    BaseState.is_admin_or_rw,
+                                    rx.tooltip(
+                                        rx.link(
+                                            rx.icon(
+                                                "database-backup",
+                                                size=30,
+                                                color=None,
+                                                class_name="cursor-pointer text-green-500 hover:text-green-300 mr-4",
+                                            ),
+                                            href=f"/clusters/{State.cluster_id}/backups",
+                                        ),
+                                        content="List Backups",
+                                    ),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "database-backup",
+                                            color="gray",
+                                            size=30,
+                                            class_name="mr-4",
+                                        ),
+                                        content="You need to have admin or rw role",
+                                    ),
+                                ),
+                            ),
                             spacing="0",
                             class_name="",
                         ),

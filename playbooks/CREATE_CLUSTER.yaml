@@ -756,6 +756,30 @@
       loop: "{{ dbusers }}"
       when: item.is_admin
     
+    - name: CockroachDB - Create External Connection for backups
+      run_once: yes
+      shell: |
+        cockroach sql \
+          --host={{ cockroachdb_advertise_addr }} \
+          --certs-dir=/var/lib/cockroach/certs \
+          -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ cloud_storage_url | replace('DEPLOYMENT_ID', deployment_id) }}';"
+
+    - name: CockroachDB - Setup Full Cluster Backup Schedule
+      run_once: yes
+      shell: |
+        cockroach sql \
+          --host={{ cockroachdb_advertise_addr }} \
+          --certs-dir=/var/lib/cockroach/certs \
+          -e "CREATE SCHEDULE IF NOT EXISTS main_backup 
+              FOR BACKUP INTO 'external://backup' 
+              WITH revision_history, incremental_location = 'external://backup' 
+              RECURRING '@hourly' 
+              FULL BACKUP '@daily' 
+              WITH SCHEDULE OPTIONS 
+                  on_previous_running = 'skip', 
+                  on_execution_failure = 'reschedule', 
+                  first_run = 'now';"
+    
 - name: GET DATA FROM COCKROACHDB CLUSTER
   hosts: localhost
   gather_facts: no

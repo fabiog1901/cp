@@ -60,6 +60,8 @@ class MyRunner:
         elif e["event"] == "runner_on_ok":
             if e.get("event_data")["task"] == "Data":
                 self.data = e["event_data"]["res"]["msg"]
+            else:
+                return
 
         elif e["event"] == "warning":
             task_type = "WARNING"
@@ -154,8 +156,12 @@ class MyRunner:
 
 
 class MyRunnerLite:
-    def __init__(self):
+    def __init__(
+        self,
+        job_id: int,
+    ):
         self.data = {}
+        self.job_id = job_id
 
         if time.time() > PLAYBOOKS_URL_CACHE_VALID_UNTIL:
             refresh_cache()
@@ -169,23 +175,23 @@ class MyRunnerLite:
                 self.data = e["event_data"]["res"]["msg"]
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
-        # fetch the playbook if it doesn't exists locally or
-        # it's older than 24h
-        if (
-            not os.path.exists(f"/tmp/{playbook_name}.yaml")
-            or os.path.getmtime(f"/tmp/{playbook_name}.yaml") + 86400 < time.time()
-        ):
-            r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
+        r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
 
-            with open(f"/tmp/{playbook_name}.yaml", "wb") as f:
-                f.write(r.content)
+        # create a new working directory
+        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
+        os.mkdir(path=f"/tmp/job-{self.job_id}")
 
+        with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
+            f.write(r.content)
+            
+        print("-------------------------------------------------------")
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
-                quiet=True,
-                playbook=f"/tmp/{playbook_name}.yaml",
-                private_data_dir="/tmp",
+                quiet=False,
+                verbosity=1,
+                playbook=f"/tmp/job-{self.job_id}/playbook.yaml",
+                private_data_dir=f"/tmp/job-{self.job_id}",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
                 status_handler=self.my_status_handler,
@@ -194,5 +200,8 @@ class MyRunnerLite:
             print(f"Error running playbook: {e}")
 
         thread.join()
+        
+        # rm -rf job-directory
+        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
 
         return runner.status, self.data

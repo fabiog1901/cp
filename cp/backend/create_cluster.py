@@ -84,11 +84,6 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         region_details: list[Region] = db.get_region_details(cloud, region)
 
-        licence_org = db.get_setting("licence_org")
-        licence_key = db.get_setting("licence_key")
-        default_username = db.get_setting("default_username")
-        default_password = db.get_setting("default_password")
-
         # add 1 HAProxy per region
         deployment.append(
             {
@@ -169,16 +164,17 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         "deployment_id": cluster_request.name,
         "deployment": deployment,
         "cockroachdb_version": cluster_request.version,
-        "cockroachdb_cluster_organization": licence_org,
-        "cockroachdb_enterprise_license": licence_key,
+        "cockroachdb_cluster_organization": db.get_setting("licence_org"),
+        "cockroachdb_enterprise_license": db.get_setting("licence_key"),
         "dbusers": [
             {
-                "name": default_username,
-                "password": default_password,
+                "name": db.get_setting("default_username"),
+                "password": db.get_setting("default_password"),
                 "is_cert": False,
                 "is_admin": True,
             }
         ],
+        "cloud_storage_url" : db.get_setting("cloud_storage_url"),
     }
 
     job_status, raw_data, _ = MyRunner(job_id).launch_runner(
@@ -197,27 +193,21 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         region_nodes = []
 
-        for i in raw_data["cockroachdb"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
-                region_nodes.append(raw_data["hv"][i]["public_ip"])
+        for x in raw_data["cockroachdb"]:
+            if x["cloud"] == cloud and x["region"] == region:
+                region_nodes.append(x["public_ip"])
 
         cluster_inventory.append(
             InventoryRegion(cloud=cloud, region=region, nodes=region_nodes)
         )
 
-        for i in raw_data["haproxy"]:
-            if (
-                raw_data["hv"][i]["cloud"] == cloud
-                and raw_data["hv"][i]["region"] == region
-            ):
+        for x in raw_data["haproxy"]:
+            if x["cloud"] == cloud and x["region"] == region:
                 lbs_inventory.append(
                     InventoryLB(
                         cloud=cloud,
                         region=region,
-                        dns_address=raw_data["hv"][i]["public_ip"],
+                        dns_address=x["public_ip"],
                     )
                 )
 

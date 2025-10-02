@@ -209,3 +209,11 @@ class Setting(BaseModel):
     updated_by: str
     default_value: str
     description: str
+
+class BackupDetails(BaseModel):
+    database_name: str | None
+    parent_schema_name: str | None
+    object_name: str
+    object_type: str
+    end_time: dt.datetime
+    
