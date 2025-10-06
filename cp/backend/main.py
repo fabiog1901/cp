@@ -7,14 +7,14 @@ from .. import db
 from ..models import JobType, Msg
 from .create_cluster import create_cluster
 from .delete_cluster import delete_cluster
+from .healthcheck_cluster import healthcheck_clusters
+from .restore_cluster import restore_cluster
 from .scale_cluster import scale_cluster
 from .upgrade_cluster import upgrade_cluster
-from .healthcheck_cluster import healthcheck_clusters
 
 
 def fail_zombie_jobs():
     db.fail_zombie_jobs()
-
 
 
 async def pull_from_mq():
@@ -59,6 +59,10 @@ async def pull_from_mq():
                                 upgrade_cluster(
                                     msg.msg_id, msg.msg_data, msg.created_by
                                 )
+                            case JobType.RESTORE_CLUSTER:
+                                restore_cluster(
+                                    msg.msg_id, msg.msg_data, msg.created_by
+                                )
 
                             case JobType.FAIL_ZOMBIE_JOBS:
                                 fail_zombie_jobs()
@@ -71,14 +75,7 @@ async def pull_from_mq():
                                     VALUES ('HEALTHCHECK_CLUSTERS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
                                     """
                                 )
-                            # case JobType.GATHER_BACKUPS:
-                            #     gather_backups(msg.msg_id)
-                            #     cur.execute(
-                            #         """
-                            #         INSERT INTO mq (msg_type, start_after) 
-                            #         VALUES ('GATHER_BACKUPS', now() + INTERVAL '10m' + (random()*10)::INTERVAL)
-                            #         """
-                            #     )
+
                             case _:
                                 print(f"Unknown task type requested: {msg.msg_type}")
 

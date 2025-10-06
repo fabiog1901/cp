@@ -174,7 +174,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                 "is_admin": True,
             }
         ],
-        "cloud_storage_url" : db.get_setting("cloud_storage_url"),
+        "cloud_storage_url": db.get_setting("cloud_storage_url"),
     }
 
     job_status, raw_data, _ = MyRunner(job_id).launch_runner(

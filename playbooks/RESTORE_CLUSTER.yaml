@@ -1,0 +1,144 @@
+---
+##############
+#   INFRA    #
+##############
+- name: GATHER DEPLOYMENT INSTANCES
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tags:
+    - infra
+    - cloud_instance
+  tasks:
+    - name: Gather current deployment instances
+      shell: |
+        cloud_instance gather -d {{ deployment_id }}
+      register: instances
+
+    - name: Build ansible inventory dynamically
+      add_host:
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
+
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+
+      loop: "{{ instances.stdout | from_json }}"
+
+- name: WIPE COCKROACHDB CLUSTER
+  hosts: cockroachdb
+  gather_facts: no
+  become: yes
+  vars:
+    cockroachdb_advertise_addr: "{{ public_ip }}"
+  tasks:
+    - when: restore_full_cluster
+      block:
+        - name: Kill cockroachdb service
+          shell: |
+            systemctl kill -s SIGKILL cockroachdb
+          register: result
+          failed_when: result.rc != 0 and 'Failed to send signal SIGKILL to auxiliary processes' not in result.stderr
+
+        - name: Wipe the store
+          shell: |
+            rm -rf /mnt/cockroach0/*
+
+        - name: Restart cockroachdb service
+          shell: |
+            systemctl start cockroachdb
+
+        - name: Init Cluster
+          run_once: yes
+          shell: |
+            cockroach init \
+              --certs-dir /var/lib/cockroach/certs \
+              --host=localhost:26357
+          register: result
+          failed_when: result.rc != 0 and 'cluster has already been initialized' not in result.stderr and 'unable to bootstrap due to internal error' not in result.stderr
+
+        - name: CockroachDB - Create External Connection for backups
+          run_once: yes
+          shell: |
+            cockroach sql \
+              --host={{ cockroachdb_advertise_addr }} \
+              --certs-dir=/var/lib/cockroach/certs \
+              -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ cloud_storage_url | replace('DEPLOYMENT_ID', deployment_id) }}';"
+
+- name: RESTORE BACKUP DATA
+  hosts: cockroachdb
+  gather_facts: no
+  become: yes
+  run_once: yes
+  vars:
+    deployment_id: ""
+    backup_path: ""
+    restore_aost: ""
+    object_type: ""
+    object_name: ""
+    backup_into: ""
+    cockroachdb_advertise_addr: "{{ public_ip }}"
+  tasks:
+    - name: issue restore command
+      run_once: yes
+      shell: |
+        cockroach sql \
+          --certs-dir=/var/lib/cockroach/certs \
+          --host={{ cockroachdb_advertise_addr }} \
+          --format json \
+          -e "RESTORE {{ (object_type ~ ' ' ~ object_name) if object_type else '' }} FROM '{{ backup_path }}' IN 'external://backup' {{ (" AS OF SYSTEM TIME '" ~ restore_aost ~ "'") if restore_aost else '' }} WITH {{ (" new_db_name='" ~ backup_into ~ "', ") if backup_into else '' }} 
+          DETACHED;"
+      register: out
+
+    - name: extract cockroachdb restore job_id
+      set_fact:
+        job_id: "{{ (out.stdout | from_json)[0].job_id }}"
+
+    - name: wait for restore job status to be populated
+      shell: |
+        cockroach sql \
+          --certs-dir=/var/lib/cockroach/certs \
+          --host={{ cockroachdb_advertise_addr }} \
+          --format json \
+          -e "SHOW JOB {{ job_id}};"
+      register: result
+      failed_when: result.rc != 0 and '3D000' not in result.stderr
+      until: result.stdout != ""
+      retries: "{{ (86400 * 7 // 10) | int }}"
+      delay: 10
+
+    - name: wait for restore job to complete
+      vars:
+        success_states: ["succeeded"]
+        failure_states: ["failed"]
+      shell: |
+        cockroach sql \
+          --certs-dir=/var/lib/cockroach/certs \
+          --host={{ cockroachdb_advertise_addr }} \
+          --format json \
+          -e "SHOW JOB {{ job_id}};"
+      register: pollvar
+      until: (pollvar.stdout | from_json)[0].status in (success_states + failure_states)
+      retries: "{{ (86400 * 7 // 10) | int }}"
+      delay: 10
+      failed_when: >
+        (pollvar.stdout | from_json)[0].status in failure_states
+        or (pollvar is failed)

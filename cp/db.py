@@ -491,7 +491,7 @@ def get_secret(
         StrID,
         return_list=False,
     )
-    
+
     return str_id.id
 
 

@@ -359,7 +359,7 @@
               --max-offset={{ cockroachdb_max_offset }}
           TimeoutStopSec=300
           LimitNOFILE=65000
-          Restart=always
+          Restart=on-abnormal
           RestartSec=10
           StandardOutput=syslog
           StandardError=syslog

@@ -183,7 +183,7 @@ class MyRunnerLite:
 
         with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
             f.write(r.content)
-            
+
         print("-------------------------------------------------------")
         # Execute the playbook
         try:
@@ -200,7 +200,7 @@ class MyRunnerLite:
             print(f"Error running playbook: {e}")
 
         thread.join()
-        
+
         # rm -rf job-directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
 

@@ -26,6 +26,7 @@ class JobType(AutoNameStrEnum):
     SCALE_CLUSTER = auto()
     UPGRADE_CLUSTER = auto()
     DEBUG_CLUSTER = auto()
+    RESTORE_CLUSTER = auto()
     HEALTHCHECK_CLUSTERS = auto()
     FAIL_ZOMBIE_JOBS = auto()
 
@@ -37,6 +38,8 @@ class ClusterState(AutoNameStrEnum):
     SCALE_FAILED = auto()
     RUNNING = auto()
     DELETING = auto()
+    RESTORING = auto()
+    RESTORE_FAILED = auto()
     DELETED = auto()
     DELETE_FAILED = auto()
     UNHEALTHY = auto()
@@ -155,6 +158,16 @@ class ClusterUpgradeRequest(BaseModel):
     auto_finalize: bool
 
 
+class RestoreRequest(BaseModel):
+    name: str
+    backup_path: str
+    restore_aost: str | None
+    restore_full_cluster: bool
+    object_type: str | None
+    object_name: str | None
+    backup_into: str | None
+
+
 class ClusterScaleRequest(BaseModel):
     name: str
     node_count: int
@@ -167,7 +180,7 @@ class Job(BaseModel):
     job_id: int
     job_type: str
     status: str
-    description: Dict[str, Union[int, str, List[str]]]
+    description: Dict[str, Union[int, str, List[str], None]]
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime
@@ -210,10 +223,10 @@ class Setting(BaseModel):
     default_value: str
     description: str
 
+
 class BackupDetails(BaseModel):
     database_name: str | None
     parent_schema_name: str | None
     object_name: str
     object_type: str
     end_time: dt.datetime
-    

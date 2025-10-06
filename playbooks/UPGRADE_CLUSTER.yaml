@@ -2,7 +2,7 @@
 ##############
 #   INFRA    #
 ##############
-- name: PROVISION NEW VMS
+- name: GATHER DEPLOYMENT INSTANCES
   hosts: localhost
   connection: local
   gather_facts: no

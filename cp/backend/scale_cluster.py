@@ -61,6 +61,7 @@ def scale_cluster(
         ),
     ).start()
 
+
 # TODO refactor this method and use it in create_cluster.py
 def parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster):
 

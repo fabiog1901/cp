@@ -1,33 +1,41 @@
 import asyncio
 
+import psycopg
 import reflex as rx
-
 from psycopg.rows import class_row
 
 from .. import db
 from ..components.BadgeClusterStatus import get_cluster_status_badge
-from ..components.BadgeJobStatus import get_job_status_badge
 from ..cp import app
-from ..models import Cluster, Job, BackupDetails
+from ..models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
 from ..state.base import BaseState
 from ..template import template
-
-import psycopg
 
 
 class State(BaseState):
     current_cluster: Cluster = None
 
     paths: list[str] = []
-    backup_details: list[BackupDetails] = []
-    jobs: list[Job] = []
+    selected_path: str = ""
+    object_type: str = "DATABASE"
 
-    value: str = "LATEST"
+    full_cluster: bool = False
+
+    @rx.event
+    def set_full_cluster(self, value: bool):
+        self.full_cluster = value
+
+    backup_details: list[BackupDetails] = []
+
+    select_value: str = "LATEST"
 
     @rx.event
     def change_value(self, value: str):
-        """Change the select value var."""
-        self.value = value
+        self.select_value = value
+
+    @rx.event
+    def change_object_type(self, value: str):
+        self.object_type = value
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -37,41 +45,67 @@ class State(BaseState):
 
     @rx.event
     def get_backups(self):
-        with psycopg.connect(
-            # f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-            f"postgres://cockroach:cockroach@localhost:26257/defaultdb?sslmode=require",
-            autocommit=True,
-            connect_timeout=2,
-        ) as conn:
-            with conn.cursor() as cur:
-                rs = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
+        try:
+            with psycopg.connect(
+                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
+                autocommit=True,
+                connect_timeout=2,
+            ) as conn:
+                with conn.cursor() as cur:
+                    rs = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
 
-            self.paths = [r[0] for r in rs] + ["LATEST"]
+                self.paths = [r[0] for r in rs] + ["LATEST"]
+        except Exception as e:
+            print(e)
 
     @rx.event
     def get_backup(self, backup_path: str):
-        with psycopg.connect(
-            # f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-            f"postgres://cockroach:cockroach@localhost:26257/defaultdb?sslmode=require",
-            autocommit=True,
-            connect_timeout=2,
-        ) as conn:
-            with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
-                rs = cur.execute(
-                    f"""
-                    select database_name, parent_schema_name, object_name, object_type,end_time 
-                    from [SHOW BACKUP '{backup_path}' IN 'external://backup']
-                    WHERE database_name NOT IN ('system', 'postgres')
-                        or object_name NOT IN ('system', 'postgres') AND object_type = 'database'
-                         ;
-                    """
-                ).fetchall()
+        self.selected_path = backup_path
+        try:
+            with psycopg.connect(
+                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
+                autocommit=True,
+                connect_timeout=2,
+            ) as conn:
+                with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
+                    rs = cur.execute(
+                        f"""
+                        select database_name, parent_schema_name, object_name, object_type,end_time 
+                        from [SHOW BACKUP '{backup_path}' IN 'external://backup']
+                        WHERE database_name NOT IN ('system', 'postgres')
+                            or object_name NOT IN ('system', 'postgres') AND object_type = 'database'
+                            ;
+                        """
+                    ).fetchall()
 
             self.backup_details = rs
 
-    def initiate_restore(self, form_data):
+        except Exception as e:
+            print(e)
 
-        print(form_data)
+    @rx.event
+    def initiate_restore(self, form_data: dict):
+        rr = RestoreRequest(
+            name=self.current_cluster.cluster_id,
+            backup_path=form_data.get("path"),
+            restore_aost=form_data.get("aost"),
+            restore_full_cluster=self.full_cluster,
+            object_type=self.object_type if not self.full_cluster else None,
+            object_name=form_data.get("object_name") if not self.full_cluster else None,
+            backup_into=form_data.get("backup_into") if not self.full_cluster else None,
+        )
+        msg_id: StrID = db.insert_into_mq(
+            JobType.RESTORE_CLUSTER,
+            rr.model_dump(),
+            self.webuser.username,
+        )
+        db.insert_event_log(
+            self.webuser.username,
+            JobType.RESTORE_CLUSTER,
+            rr.model_dump() | {"job_id": msg_id.id},
+        )
+
+        return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
     async def fetch_cluster(self):
@@ -103,6 +137,7 @@ class State(BaseState):
                     return rx.redirect("/404", replace=True)
 
                 self.current_cluster = cluster
+                self.get_backups()
 
             await asyncio.sleep(5)
 
@@ -138,7 +173,7 @@ def backup_details_table():
             width="100%",
             size="3",
         ),
-        rx.text(f"Showing {State.jobs.length()} backups"),
+        rx.text(f"Showing {State.paths.length()} backups"),
         width="100%",
     )
 
@@ -156,31 +191,65 @@ def restore_dialog():
                 rx.dialog.title("Restore", class_name="text-4xl pb-4"),
                 rx.form(
                     rx.flex(
-                        rx.heading("Cluster Name", size="4"),
+                        rx.text(
+                            "Restore Path",
+                            class_name="p-2",
+                        ),
                         rx.select(
                             State.paths,
-                            value=State.value,
+                            value=State.select_value,
                             on_change=State.change_value,
-                            name="folderz"
+                            name="path",
+                            required=True,
+                            class_name="p-2",
+                        ),
+                        rx.text(
+                            "As of system time",
+                            class_name="p-2",
                         ),
                         rx.input(
-                            type="date",
-                            name="datez",
+                            type="datetime-local",
+                            name="aost",
                             # default_value=State.selected_name,
                             # on_mount=State.load_funny_name,
                             color_scheme="mint",
+                            class_name="p-2",
+                        ),
+                        rx.box(class_name="p-2"),
+                        rx.checkbox(
+                            "Restore Full Cluster",
+                            on_change=State.set_full_cluster,
                             class_name="",
                         ),
-                        rx.input(
-                            type="time",
-                            name="timez",
-                            # default_value=State.selected_name,
-                            # on_mount=State.load_funny_name,
-                            color_scheme="mint",
-                            class_name="",
+                        rx.box(class_name="p-2"),
+                        rx.cond(
+                            State.full_cluster,
+                            rx.box(),
+                            rx.flex(
+                                rx.select(
+                                    ["DATABASE", "TABLE"],
+                                    value=State.object_type,
+                                    on_change=State.change_object_type,
+                                    name="object_type",
+                                    required=True,
+                                    class_name="p-2",
+                                ),
+                                rx.text("Database/Table name", class_name="p-2"),
+                                rx.input(
+                                    name="object_name",
+                                    color_scheme="mint",
+                                    class_name="p-2",
+                                ),
+                                rx.text("Into DB", class_name="p-2"),
+                                rx.input(
+                                    name="backup_into",
+                                    color_scheme="mint",
+                                    class_name="p-2",
+                                ),
+                                class_name="flex flex-1 flex-col",
+                            ),
                         ),
-                        direction="column",
-                        spacing="4",
+                        class_name="flex-col py-2",
                     ),
                     rx.flex(
                         rx.dialog.close(
@@ -205,7 +274,7 @@ def restore_dialog():
         rx.tooltip(
             rx.button(
                 rx.icon("plus"),
-                rx.text("New Cluster"),
+                rx.text("Restore"),
                 disabled=True,
                 class_name="cursor-pointer",
             ),
@@ -245,10 +314,6 @@ def cluster():
             align="center",
         ),
         rx.hstack(
-            rx.button(
-                "Fetch",
-                on_click=State.get_backups,
-            ),
             restore_dialog(),
             direction="row-reverse",
             class_name="p-4",
@@ -283,6 +348,7 @@ def cluster():
                 class_name="flex w-80  flex-col overflow-y-scroll",
             ),
             rx.flex(
+                rx.heading(State.selected_path, class_name="p-2"),
                 backup_details_table(),
                 class_name="flex-1 flex-col overflow-y-scroll",
             ),
