@@ -53,6 +53,7 @@ class MyRunner:
             "runner_item_on_skipped",
             "runner_item_on_ok",
             "runner_on_start",
+            "runner_retry",
             "playbook_on_include",
         ]:
             return
@@ -184,7 +185,6 @@ class MyRunnerLite:
         with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
             f.write(r.content)
 
-        print("-------------------------------------------------------")
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
