@@ -951,6 +951,34 @@ def cluster():
                                     ),
                                 ),
                             ),
+                            rx.cond(
+                                State.current_cluster.status.startswith("DELET"),
+                                rx.box(),
+                                rx.cond(
+                                    BaseState.is_admin_or_rw,
+                                    rx.tooltip(
+                                        rx.link(
+                                            rx.icon(
+                                                "users",
+                                                size=30,
+                                                color=None,
+                                                class_name="cursor-pointer text-gray-500 hover:text-gray-300 mr-4",
+                                            ),
+                                            href=f"/clusters/{State.cluster_id}/users",
+                                        ),
+                                        content="List Users",
+                                    ),
+                                    rx.tooltip(
+                                        rx.icon(
+                                            "users",
+                                            color="gray",
+                                            size=30,
+                                            class_name="mr-4",
+                                        ),
+                                        content="You need to have admin or rw role",
+                                    ),
+                                ),
+                            ),
                             spacing="0",
                             class_name="",
                         ),

@@ -6,6 +6,7 @@ from .pages import (
     cluster_backups,
     cluster_jobs,
     cluster_overview,
+    cluster_users,
     clusters,
     events,
     index,

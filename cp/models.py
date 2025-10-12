@@ -168,6 +168,11 @@ class RestoreRequest(BaseModel):
     backup_into: str | None
 
 
+class NewUserRequest(BaseModel):
+    username: str
+    password: str
+
+
 class ClusterScaleRequest(BaseModel):
     name: str
     node_count: int
@@ -230,3 +235,9 @@ class BackupDetails(BaseModel):
     object_name: str
     object_type: str
     end_time: dt.datetime
+
+
+class DatabaseUser(BaseModel):
+    username: str
+    options: str | None
+    member_of: list[str | None]

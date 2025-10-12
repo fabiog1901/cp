@@ -6,7 +6,7 @@ DROP DATABASE IF EXISTS cp CASCADE;
 CREATE DATABASE cp;
 USE cp;
 
-CREATE user if not exists cp WITH PASSWORD 'cp';
+CREATE user if not exists cp WITH PASSWORD 'cp' WITH ADMIN OPTION;
 
 -- revoke silly default grants from public role
 REVOKE connect ON DATABASE cp FROM public;
