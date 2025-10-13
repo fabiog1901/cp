@@ -125,7 +125,7 @@ class State(AuthState):
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
-    async def fetch_all_clusters(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -530,7 +530,7 @@ def clusters_table():
     on_load=AuthState.check_login,
 )
 @template
-def clusters():
+def webpage():
     return rx.flex(
         rx.text(
             "Clusters",
@@ -539,9 +539,5 @@ def clusters():
         rx.hstack(new_cluster_dialog(), direction="row-reverse", class_name="p-4"),
         rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
         class_name="flex-1 flex-col overflow-hidden",
-        on_mount=rx.cond(
-            AuthState.is_logged_in,
-            State.fetch_all_clusters(AuthState.webuser),
-            AuthState.just_return,
-        ),
+        on_mount=State.start_bg_event,
     )

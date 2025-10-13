@@ -168,11 +168,6 @@ class RestoreRequest(BaseModel):
     backup_into: str | None
 
 
-class NewUserRequest(BaseModel):
-    username: str
-    password: str
-
-
 class ClusterScaleRequest(BaseModel):
     name: str
     node_count: int
@@ -213,13 +208,6 @@ class EventLogYaml(BaseModel):
     event_details_yaml: str
 
 
-class EventLogYaml(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details_yaml: str
-
-
 class Setting(BaseModel):
     id: str
     value: str
@@ -241,3 +229,8 @@ class DatabaseUser(BaseModel):
     username: str
     options: str | None
     member_of: list[str | None]
+
+
+class NewDatabaseUserRequest(BaseModel):
+    username: str
+    password: str

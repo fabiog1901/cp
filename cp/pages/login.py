@@ -19,7 +19,7 @@ def callback() -> rx.Component:
 
 
 @rx.page(route="/login", title="Login")
-def login():
+def webpage():
     return rx.flex(
         rx.card(
             rx.vstack(

@@ -47,7 +47,7 @@ class State(AuthState):
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
-    async def fetch_tasks(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -115,7 +115,7 @@ def tasks_table():
 
 @rx.page(route="/jobs/[j_id]", on_load=AuthState.check_login)
 @template
-def job():
+def webpage():
     return rx.flex(
         rx.flex(
             rx.hstack(
@@ -242,9 +242,5 @@ def job():
             class_name="pt-8 overflow-y-scroll",
         ),
         class_name="flex-1 flex-col overflow-hidden p-2",
-        on_mount=rx.cond(
-            AuthState.is_logged_in,
-            State.fetch_tasks,
-            AuthState.just_return,
-        ),
+        on_mount=State.start_bg_event,
     )

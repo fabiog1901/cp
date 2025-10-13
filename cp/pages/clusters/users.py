@@ -7,7 +7,7 @@ from psycopg.rows import class_row
 from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...cp import app
-from ...models import Cluster, DatabaseUser, JobType, NewUserRequest, StrID
+from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
 from ...state import AuthState
 from ...template import template
 
@@ -124,7 +124,7 @@ class State(AuthState):
             print(e)
 
     @rx.event(background=True)
-    async def fetch_data(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -422,7 +422,7 @@ def remove_user_role_dialog(user: str, membership: str):
     on_load=AuthState.check_login,
 )
 @template
-def cluster():
+def webpage():
     return rx.flex(
         rx.dialog.root(
             rx.dialog.content(
@@ -491,9 +491,5 @@ def cluster():
             class_name="flex overflow-hidden pt-8",
         ),
         class_name="flex-col flex-1 overflow-hidden",
-        on_mount=rx.cond(
-            AuthState.is_logged_in,
-            State.fetch_data,
-            AuthState.just_return,
-        ),
+        on_mount=State.start_bg_event,
     )

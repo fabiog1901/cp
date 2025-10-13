@@ -39,7 +39,7 @@ class State(AuthState):
     has_copied: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_settings(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -124,7 +124,7 @@ def config_editor_page() -> rx.Component:
     on_load=AuthState.check_login,
 )
 @template
-def settings():
+def webpage():
     return rx.cond(
         AuthState.is_admin,
         rx.flex(
@@ -139,11 +139,7 @@ def settings():
             ),
             config_editor_page(),
             class_name="flex-1 flex-col overflow-hidden",
-            on_mount=rx.cond(
-                AuthState.is_logged_in,
-                State.fetch_all_settings,
-                AuthState.just_return,
-            ),
+            on_mount=State.start_bg_event,
         ),
         rx.text(
             "Not Authorized",

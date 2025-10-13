@@ -64,7 +64,7 @@ def admin_index() -> rx.Component:
     on_load=AuthState.check_login,
 )
 @template
-def admin():
+def webpage():
     return rx.cond(
         AuthState.is_admin,
         rx.flex(

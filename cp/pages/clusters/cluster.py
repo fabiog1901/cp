@@ -121,7 +121,7 @@ class State(AuthState):
         ]
 
     @rx.event(background=True)
-    async def fetch_cluster(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -481,10 +481,11 @@ def cluster_sidebar() -> rx.Component:
 
 @rx.page(
     route="/clusters/[c_id]",
+    title=f"Cluster {State.current_cluster.cluster_id}",
     on_load=AuthState.check_login,
 )
 @template
-def cluster():
+def webpage():
     return rx.flex(
         rx.hstack(
             rx.icon("boxes", size=100, class_name="p-2"),
@@ -990,9 +991,5 @@ def cluster():
             class_name="flex-1 pt-8 overflow-hidden",
         ),
         class_name="flex-col flex-1 overflow-hidden",
-        on_mount=rx.cond(
-            AuthState.is_logged_in,
-            State.fetch_cluster,
-            AuthState.just_return,
-        ),
+        on_mount=State.start_bg_event,
     )

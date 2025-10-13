@@ -16,7 +16,7 @@ class State(AuthState):
     is_running: bool = False
 
     @rx.event(background=True)
-    async def fetch_all_jobs(self):
+    async def start_bg_event(self):
         if self.is_running:
             return
         async with self:
@@ -80,7 +80,7 @@ def jobs_table():
 
 @rx.page(route="/jobs", title="Jobs", on_load=AuthState.check_login)
 @template
-def jobs():
+def webpage():
     return rx.flex(
         rx.text(
             "Jobs",
@@ -91,9 +91,5 @@ def jobs():
             class_name="flex-1 flex-col overflow-y-scroll pt-8",
         ),
         class_name="flex-1 flex-col overflow-hidden",
-        on_mount=rx.cond(
-            AuthState.is_logged_in,
-            State.fetch_all_jobs,
-            AuthState.just_return,
-        ),
+        on_mount=State.start_bg_event,
     )

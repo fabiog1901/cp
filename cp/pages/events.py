@@ -32,20 +32,20 @@ class State(AuthState):
     @rx.event
     def prev_page(self):
         self.offset = max(self.offset - self.limit, 0)
-        self.load_entries()
+        self.load_data()
 
     @rx.event
     def next_page(self):
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-        self.load_entries()
+        self.load_data()
 
     def _get_total_items(self):
         """Return the total number of items in the Customer table."""
         self.total_items = db.get_event_count()
 
     @rx.event
-    def load_entries(self):
+    def load_data(self):
         """Get all users from the database."""
         self.events = [
             EventLogYaml(
@@ -128,7 +128,7 @@ def events_table():
     on_load=AuthState.check_login,
 )
 @template
-def settings():
+def webpage():
     return rx.cond(
         AuthState.is_admin,
         rx.flex(
@@ -141,12 +141,7 @@ def settings():
                 class_name="flex-1 flex-col overflow-y-scroll pt-8",
             ),
             class_name="flex-1 flex-col overflow-hidden",
-            on_mount=rx.cond(
-                AuthState.is_logged_in,
-                State.load_entries,
-                # State.fetch_all_events,
-                AuthState.just_return,
-            ),
+            on_mount=State.load_data,
         ),
         rx.text(
             "Not Authorized",
