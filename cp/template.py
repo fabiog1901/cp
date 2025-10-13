@@ -10,8 +10,7 @@ from .state import AuthState
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:
     return rx.cond(
-        ~AuthState.is_logged_in,
-        rx.spinner(),
+        AuthState.is_logged_in,
         rx.flex(
             navbar(),
             rx.flex(
@@ -22,4 +21,5 @@ def template(page: Callable[[], rx.Component]) -> rx.Component:
             footer(),
             class_name="flex-col h-screen",
         ),
+        rx.spinner(),
     )
