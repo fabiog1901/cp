@@ -8,11 +8,11 @@ from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...cp import app
 from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     current_cluster: Cluster = None
 
     paths: list[str] = []
@@ -180,7 +180,7 @@ def backup_details_table():
 
 def restore_dialog():
     return rx.cond(
-        BaseState.is_admin_or_rw,
+        AuthState.is_admin_or_rw,
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -285,7 +285,7 @@ def restore_dialog():
 
 @rx.page(
     route="/clusters/[c_id]/backups",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def cluster():
@@ -356,8 +356,8 @@ def cluster():
         ),
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_cluster,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

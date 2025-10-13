@@ -6,11 +6,11 @@ from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...cp import app
 from ...models import Job
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     jobs: list[Job] = []
 
     is_running: bool = False
@@ -78,7 +78,7 @@ def jobs_table():
     )
 
 
-@rx.page(route="/jobs", title="Jobs", on_load=BaseState.check_login)
+@rx.page(route="/jobs", title="Jobs", on_load=AuthState.check_login)
 @template
 def jobs():
     return rx.flex(
@@ -92,8 +92,8 @@ def jobs():
         ),
         class_name="flex-1 flex-col overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_all_jobs,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

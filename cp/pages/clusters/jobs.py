@@ -7,11 +7,11 @@ from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...cp import app
 from ...models import Cluster, Job
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     current_cluster: Cluster = None
     jobs: list[Job] = []
 
@@ -97,7 +97,7 @@ def jobs_table():
 
 @rx.page(
     route="/clusters/[c_id]/jobs",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def cluster():
@@ -150,8 +150,8 @@ def cluster():
         ),
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_cluster,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

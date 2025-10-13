@@ -3,8 +3,8 @@ import random
 
 from psycopg.rows import class_row
 
-from . import db
 from ..models import JobType, Msg
+from . import db
 from .create_cluster import create_cluster
 from .delete_cluster import delete_cluster
 from .healthcheck_cluster import healthcheck_clusters

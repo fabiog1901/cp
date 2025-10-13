@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state import BaseState
+from ..state import AuthState
 
 
 def get_link(icon: str, name: str, href: str = None):
@@ -29,7 +29,7 @@ def sidebar() -> rx.Component:
         # rx.link("Authentication", class_name="py-1"),
         rx.spacer(),
         rx.cond(
-            BaseState.is_admin,
+            AuthState.is_admin,
             rx.vstack(
                 rx.heading("Admin", class_name="pt-12 pb-2"),
                 get_link("hourglass", "Events"),

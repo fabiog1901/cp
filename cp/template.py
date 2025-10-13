@@ -5,12 +5,12 @@ import reflex as rx
 from .components.footer import footer
 from .components.navbar import navbar
 from .components.sidebar import sidebar
-from .state import BaseState
+from .state import AuthState
 
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:
     return rx.cond(
-        ~BaseState.is_logged_in,
+        ~AuthState.is_logged_in,
         rx.spinner(),
         rx.flex(
             navbar(),

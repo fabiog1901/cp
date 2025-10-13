@@ -16,13 +16,13 @@ from ...models import (
     JobType,
     StrID,
 )
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 from ..util import get_human_size
 from .clusters import State as ClusterState
 
 
-class State(BaseState):
+class State(AuthState):
     current_cluster: Cluster | None = None
 
     auto_finalize: bool = True
@@ -369,7 +369,7 @@ def upgrade_cluster_dialog() -> rx.Component:
                     spacing="4",
                 ),
                 on_submit=lambda form_data: State.upgrade_cluster(
-                    form_data, BaseState.webuser
+                    form_data, AuthState.webuser
                 ),
                 reset_on_submit=False,
             ),
@@ -445,7 +445,7 @@ def scale_cluster_dialog() -> rx.Component:
                     spacing="4",
                 ),
                 on_submit=lambda form_data: State.scale_cluster(
-                    form_data, BaseState.webuser
+                    form_data, AuthState.webuser
                 ),
                 reset_on_submit=False,
             ),
@@ -481,7 +481,7 @@ def cluster_sidebar() -> rx.Component:
 
 @rx.page(
     route="/clusters/[c_id]",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def cluster():
@@ -791,7 +791,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     rx.alert_dialog.root(
                                         rx.alert_dialog.trigger(
                                             rx.box(
@@ -854,7 +854,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     scale_cluster_dialog(),
                                     rx.tooltip(
                                         rx.icon(
@@ -872,7 +872,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     upgrade_cluster_dialog(),
                                     rx.tooltip(
                                         rx.icon(
@@ -890,7 +890,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     rx.tooltip(
                                         rx.icon(
                                             "bug-play",
@@ -927,7 +927,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     rx.tooltip(
                                         rx.link(
                                             rx.icon(
@@ -955,7 +955,7 @@ def cluster():
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),
                                 rx.cond(
-                                    BaseState.is_admin_or_rw,
+                                    AuthState.is_admin_or_rw,
                                     rx.tooltip(
                                         rx.link(
                                             rx.icon(
@@ -991,8 +991,8 @@ def cluster():
         ),
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_cluster,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state import BaseState
+from ..state import AuthState
 
 chip_props = {
     "radius": "full",
@@ -109,7 +109,7 @@ def user_profile_menu():
             # rx.menu.item("Add to favorites"),
             # rx.menu.separator(),
             rx.menu.item(
-                "Logout", shortcut="⌘ ⌫", color="red", on_click=BaseState.logout
+                "Logout", shortcut="⌘ ⌫", color="red", on_click=AuthState.logout
             ),
         ),
     )

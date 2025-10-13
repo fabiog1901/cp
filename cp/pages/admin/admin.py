@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
@@ -61,12 +61,12 @@ def admin_index() -> rx.Component:
 @rx.page(
     route="/admin",
     title="Admin",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def admin():
     return rx.cond(
-        BaseState.is_admin,
+        AuthState.is_admin,
         rx.flex(
             admin_index(),
             class_name="flex-1 flex-col overflow-hidden",

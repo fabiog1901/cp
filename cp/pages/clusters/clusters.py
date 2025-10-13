@@ -7,12 +7,12 @@ from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
 from ...cp import app
 from ...models import Cluster, ClusterOverview, IntID, JobType, StrID
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 from ..util import get_funny_name, get_human_size
 
 
-class State(BaseState):
+class State(AuthState):
     current_cluster: Cluster = None
     clusters: list[ClusterOverview] = []
 
@@ -252,7 +252,7 @@ def region_selector() -> rx.Component:
 
 def new_cluster_dialog():
     return rx.cond(
-        BaseState.is_admin_or_rw,
+        AuthState.is_admin_or_rw,
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -351,7 +351,7 @@ def new_cluster_dialog():
                         spacing="4",
                     ),
                     on_submit=lambda form_data: State.create_new_cluster(
-                        form_data, BaseState.webuser
+                        form_data, AuthState.webuser
                     ),
                     reset_on_submit=False,
                 ),
@@ -396,7 +396,7 @@ def get_cluster_row(cluster: ClusterOverview):
                 ("DELETING...", rx.box()),
                 rx.hstack(
                     rx.cond(
-                        BaseState.is_admin_or_rw,
+                        AuthState.is_admin_or_rw,
                         rx.alert_dialog.root(
                             rx.alert_dialog.trigger(
                                 rx.box(
@@ -451,7 +451,7 @@ def get_cluster_row(cluster: ClusterOverview):
                         ),
                     ),
                     rx.cond(
-                        BaseState.is_admin_or_rw,
+                        AuthState.is_admin_or_rw,
                         rx.tooltip(
                             rx.icon(
                                 "circle-fading-arrow-up",
@@ -471,7 +471,7 @@ def get_cluster_row(cluster: ClusterOverview):
                         ),
                     ),
                     rx.cond(
-                        BaseState.is_admin_or_rw,
+                        AuthState.is_admin_or_rw,
                         rx.tooltip(
                             rx.icon(
                                 "bug-play",
@@ -527,7 +527,7 @@ def clusters_table():
 @rx.page(
     route="/clusters",
     title="Clusters",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def clusters():
@@ -540,8 +540,8 @@ def clusters():
         rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
         class_name="flex-1 flex-col overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
-            State.fetch_all_clusters(BaseState.webuser),
-            BaseState.just_return,
+            AuthState.is_logged_in,
+            State.fetch_all_clusters(AuthState.webuser),
+            AuthState.just_return,
         ),
     )

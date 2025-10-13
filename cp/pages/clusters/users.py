@@ -8,11 +8,11 @@ from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...cp import app
 from ...models import Cluster, DatabaseUser, JobType, NewUserRequest, StrID
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     current_cluster: Cluster = None
 
     database_users: list[DatabaseUser] = []
@@ -210,7 +210,7 @@ def database_users_table():
 
 def new_user_dialog():
     return rx.cond(
-        BaseState.is_admin_or_rw,
+        AuthState.is_admin_or_rw,
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
@@ -419,7 +419,7 @@ def remove_user_role_dialog(user: str, membership: str):
 
 @rx.page(
     route="/clusters/[c_id]/users",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def cluster():
@@ -492,8 +492,8 @@ def cluster():
         ),
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_data,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

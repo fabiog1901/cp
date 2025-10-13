@@ -7,11 +7,11 @@ from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...cp import app
 from ...models import TS_FORMAT, Job, JobType, StrID, Task
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     current_job: Job = None
     current_job_description: str = ""
     linked_clusters: list[StrID] = []
@@ -113,7 +113,7 @@ def tasks_table():
     )
 
 
-@rx.page(route="/jobs/[j_id]", on_load=BaseState.check_login)
+@rx.page(route="/jobs/[j_id]", on_load=AuthState.check_login)
 @template
 def job():
     return rx.flex(
@@ -135,7 +135,7 @@ def job():
                     align="center",
                 ),
                 rx.cond(
-                    BaseState.is_admin_or_rw,
+                    AuthState.is_admin_or_rw,
                     rx.button(
                         "Restart Job",
                         on_click=lambda: State.reschedule_job,
@@ -243,8 +243,8 @@ def job():
         ),
         class_name="flex-1 flex-col overflow-hidden p-2",
         on_mount=rx.cond(
-            BaseState.is_logged_in,
+            AuthState.is_logged_in,
             State.fetch_tasks,
-            BaseState.just_return,
+            AuthState.just_return,
         ),
     )

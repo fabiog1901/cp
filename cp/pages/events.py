@@ -7,11 +7,11 @@ from ..backend import db
 from ..components.BadgeEventType import get_event_type_badge
 from ..cp import app
 from ..models import TS_FORMAT, EventLog, EventLogYaml
-from ..state import BaseState
+from ..state import AuthState
 from ..template import template
 
 
-class State(BaseState):
+class State(AuthState):
 
     events: list[EventLogYaml] = []
 
@@ -125,12 +125,12 @@ def events_table():
 @rx.page(
     route="/events",
     title="Events",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def settings():
     return rx.cond(
-        BaseState.is_admin,
+        AuthState.is_admin,
         rx.flex(
             rx.text(
                 "Events",
@@ -142,10 +142,10 @@ def settings():
             ),
             class_name="flex-1 flex-col overflow-hidden",
             on_mount=rx.cond(
-                BaseState.is_logged_in,
+                AuthState.is_logged_in,
                 State.load_entries,
                 # State.fetch_all_events,
-                BaseState.just_return,
+                AuthState.just_return,
             ),
         ),
         rx.text(

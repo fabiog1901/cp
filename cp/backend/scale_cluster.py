@@ -1,6 +1,5 @@
 from threading import Thread
 
-from . import db
 from ..models import (
     Cluster,
     ClusterScaleRequest,
@@ -10,6 +9,7 @@ from ..models import (
     JobState,
     Region,
 )
+from . import db
 from .util import MyRunner
 
 

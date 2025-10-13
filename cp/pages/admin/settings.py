@@ -5,11 +5,11 @@ import reflex as rx
 from ...backend import db
 from ...cp import app
 from ...models import TS_FORMAT, EventType, Setting
-from ...state import BaseState
+from ...state import AuthState
 from ...template import template
 
 
-class State(BaseState):
+class State(AuthState):
     settings: list[Setting] = []
 
     original: dict[str, str] = {}
@@ -121,12 +121,12 @@ def config_editor_page() -> rx.Component:
 @rx.page(
     route="/admin/settings",
     title="Settings",
-    on_load=BaseState.check_login,
+    on_load=AuthState.check_login,
 )
 @template
 def settings():
     return rx.cond(
-        BaseState.is_admin,
+        AuthState.is_admin,
         rx.flex(
             rx.hstack(
                 rx.text("ID", class_name="w-80 font-semibold"),
@@ -140,9 +140,9 @@ def settings():
             config_editor_page(),
             class_name="flex-1 flex-col overflow-hidden",
             on_mount=rx.cond(
-                BaseState.is_logged_in,
+                AuthState.is_logged_in,
                 State.fetch_all_settings,
-                BaseState.just_return,
+                AuthState.just_return,
             ),
         ),
         rx.text(
