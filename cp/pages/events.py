@@ -3,11 +3,11 @@ import asyncio
 import reflex as rx
 import yaml
 
-from .. import db
+from ..backend import db
 from ..components.BadgeEventType import get_event_type_badge
 from ..cp import app
 from ..models import TS_FORMAT, EventLog, EventLogYaml
-from ..state.base import BaseState
+from ..state import BaseState
 from ..template import template
 
 

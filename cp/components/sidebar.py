@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state.base import BaseState
+from ..state import BaseState
 
 
 def get_link(icon: str, name: str, href: str = None):

@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state.auth import AuthState
+from ..state import AuthState
 
 
 class State(rx.State):

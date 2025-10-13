@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state.base import BaseState
+from ..state import BaseState
 
 chip_props = {
     "radius": "full",

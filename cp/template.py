@@ -5,7 +5,7 @@ import reflex as rx
 from .components.footer import footer
 from .components.navbar import navbar
 from .components.sidebar import sidebar
-from .state.base import BaseState
+from .state import BaseState
 
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:

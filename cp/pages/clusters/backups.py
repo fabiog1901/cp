@@ -4,11 +4,11 @@ import psycopg
 import reflex as rx
 from psycopg.rows import class_row
 
-from ... import db
+from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...cp import app
 from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
-from ...state.base import BaseState
+from ...state import BaseState
 from ...template import template
 
 

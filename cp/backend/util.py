@@ -6,7 +6,7 @@ import time
 import ansible_runner
 import requests
 
-from .. import db
+from . import db
 from ..models import JobState
 
 PLAYBOOKS_URL_CACHE_VALID_UNTIL = 0

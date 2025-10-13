@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..state.base import BaseState
+from ..state import BaseState
 from .main import user_profile_menu
 
 

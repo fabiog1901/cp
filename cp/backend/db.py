@@ -8,7 +8,7 @@ from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 from pydantic import TypeAdapter
 
-from .models import (
+from ..models import (
     Cluster,
     ClusterOverview,
     EventLog,

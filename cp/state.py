@@ -1,6 +1,7 @@
 """The authentication state."""
 
 import time
+from typing import Optional
 from urllib.parse import urlencode
 
 import jwt
@@ -8,9 +9,8 @@ import reflex as rx
 import requests
 from jwt.algorithms import RSAAlgorithm
 
-from .. import db
-from ..models import EventType, WebUser
-from .base import BaseState
+from .backend import db
+from .models import EventType, WebUser
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -98,6 +98,45 @@ def validate_token(token: str, audience: str = None) -> dict:
         raise "Invalid authorization token"
 
     return payload
+
+
+class BaseState(rx.State):
+    """The base state for the app."""
+
+    webuser: Optional[WebUser] = None
+
+    original_url: str = "/"
+
+    @rx.event()
+    async def just_return(self):
+        return
+
+    @rx.var
+    def is_admin_or_rw(self) -> bool:
+        if self.webuser is not None:
+            return ("admin" in self.webuser.roles) or ("rw" in self.webuser.roles)
+        return False
+
+    @rx.var
+    def is_admin(self) -> bool:
+        if self.webuser is not None:
+            return "admin" in self.webuser.roles
+        return False
+
+    def logout(self):
+        """Log out a user."""
+        self.reset()
+        return rx.redirect("/")
+
+    def check_login(self):
+        self.original_url = self.router.page.raw_path
+        if not self.is_logged_in:
+            return rx.redirect("/login")
+
+    @rx.var
+    def is_logged_in(self) -> bool:
+        """Check if a user is logged in."""
+        return self.webuser is not None
 
 
 class AuthState(BaseState):
