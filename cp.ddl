@@ -102,16 +102,15 @@ CREATE TABLE secrets (
 /* 
     SETTINGS
 */
-create table settings (
-    id string not null,
-    value string,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now() ON UPDATE now(),
-    updated_by string,
-    default_value string,
-    description string,
-    constraint pk primary key (id)
+CREATE TABLE settings (
+    id STRING NOT NULL,
+    value STRING NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    updated_by STRING NOT NULL,
+    default_value STRING NOT NULL,
+    description STRING NOT NULL,
+    CONSTRAINT pk PRIMARY KEY (id ASC)
 );
-
 
 CREATE TABLE regions (
     cloud STRING NOT NULL,

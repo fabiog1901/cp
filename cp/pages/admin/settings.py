@@ -2,11 +2,11 @@ import asyncio
 
 import reflex as rx
 
-from .. import db
-from ..cp import app
-from ..models import TS_FORMAT, EventType, Setting
-from ..state.base import BaseState
-from ..template import template
+from ... import db
+from ...cp import app
+from ...models import TS_FORMAT, EventType, Setting
+from ...state.base import BaseState
+from ...template import template
 
 
 class State(BaseState):
@@ -47,7 +47,7 @@ class State(BaseState):
 
         while True:
             if (
-                self.router.page.path != "/settings"
+                self.router.page.path != "/admin/settings"
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
@@ -119,7 +119,7 @@ def config_editor_page() -> rx.Component:
 
 
 @rx.page(
-    route="/settings",
+    route="/admin/settings",
     title="Settings",
     on_load=BaseState.check_login,
 )
