@@ -1,5 +1,3 @@
-"""The authentication state."""
-
 import time
 from typing import Optional
 from urllib.parse import urlencode
@@ -27,10 +25,15 @@ SSO_ISSUER = ""
 class AuthState(rx.State):
     """The authentication state for login page."""
 
-    username: str
-    password: str
+    # protecting the webuser using Backend-Only var
+    # backend-only vars start with underscore
+    # https://reflex.dev/docs/vars/base-vars/#backend-only-vars
 
-    webuser: Optional[WebUser] = None
+    _webuser: Optional[WebUser] = None
+
+    @rx.var
+    def webuser(self) -> WebUser | None:
+        return self._webuser
 
     original_url: str = "/"
 
@@ -104,7 +107,7 @@ class AuthState(rx.State):
                         "User is not authorized. Contact your administrator."
                     )
 
-                self.webuser = WebUser(
+                self._webuser = WebUser(
                     username=user_claims.get(SSO_CLAIM_NAME),
                     roles=list(user_roles),
                     groups=list(user_groups),
