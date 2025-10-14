@@ -419,6 +419,7 @@ def remove_user_role_dialog(user: str, membership: str):
 
 @rx.page(
     route="/clusters/[c_id]/users",
+    title=f"Cluster {State.current_cluster.cluster_id}: Users",
     on_load=AuthState.check_login,
 )
 @template

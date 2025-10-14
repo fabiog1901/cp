@@ -78,7 +78,11 @@ def jobs_table():
     )
 
 
-@rx.page(route="/jobs", title="Jobs", on_load=AuthState.check_login)
+@rx.page(
+    route="/jobs",
+    title="Jobs",
+    on_load=AuthState.check_login,
+)
 @template
 def webpage():
     return rx.flex(

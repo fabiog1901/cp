@@ -13,6 +13,9 @@ class AutoNameStrEnum(StrEnum):
         return name
 
 
+# ENUMS FOR TYPES AND STATES
+
+
 class EventType(AutoNameStrEnum):
     LOGIN = auto()
     LOGOUT = auto()
@@ -32,17 +35,17 @@ class JobType(AutoNameStrEnum):
 
 
 class ClusterState(AutoNameStrEnum):
-    FAILED = auto()
     PROVISIONING = auto()
+    RUNNING = auto()
+    UNHEALTHY = auto()
+    FAILED = auto()
     SCALING = auto()
     SCALE_FAILED = auto()
-    RUNNING = auto()
-    DELETING = auto()
     RESTORING = auto()
     RESTORE_FAILED = auto()
+    DELETING = auto()
     DELETED = auto()
     DELETE_FAILED = auto()
-    UNHEALTHY = auto()
     UPGRADING = auto()
     UPGRADE_FAILED = auto()
 
@@ -54,53 +57,35 @@ class JobState(AutoNameStrEnum):
     COMPLETED = auto()
 
 
+# AUTH AND LOGGING
+
+
 class WebUser(BaseModel):
     username: str
     roles: List[str]
     groups: List[str]
 
 
-class User(BaseModel):
-    username: str
-    password_hash: str
-    salt: bytes
-    hash_algo: str
-    iterations: int
-    attempts: int
-    groups: List[str]
-
-
-class GroupRoleMap(BaseModel):
+class RoleGroupMap(BaseModel):
     role: str
     groups: List[str]
 
 
-class StrID(BaseModel):
-    id: str
-
-
-class IntID(BaseModel):
-    id: int
-
-
-class Region(BaseModel):
-    cloud: str
-    region: str
-    zone: str
-    vpc_id: str
-    security_groups: List[str]
-    subnet: str
-    image: str
-    extras: Dict[str, Any]
-
-
-class Msg(BaseModel):
-    msg_id: int
-    start_after: dt.datetime
-    msg_type: str
-    msg_data: Dict[str, Any]
+class EventLog(BaseModel):
     created_at: dt.datetime
     created_by: str
+    event_type: str
+    event_details: Dict[str, Union[int, str, List[str]]]
+
+
+class EventLogYaml(BaseModel):
+    created_at: dt.datetime
+    created_by: str
+    event_type: str
+    event_details_yaml: str
+
+
+# CLUSTER
 
 
 class ClusterOverview(BaseModel):
@@ -176,6 +161,37 @@ class ClusterScaleRequest(BaseModel):
     regions: List[str]
 
 
+class BackupDetails(BaseModel):
+    database_name: str | None
+    parent_schema_name: str | None
+    object_name: str
+    object_type: str
+    end_time: dt.datetime
+
+
+class DatabaseUser(BaseModel):
+    username: str
+    options: str | None
+    member_of: list[str | None]
+
+
+class NewDatabaseUserRequest(BaseModel):
+    username: str
+    password: str
+
+
+# JOBS
+
+
+class Msg(BaseModel):
+    msg_id: int
+    start_after: dt.datetime
+    msg_type: str
+    msg_data: Dict[str, Any]
+    created_at: dt.datetime
+    created_by: str
+
+
 class Job(BaseModel):
     job_id: int
     job_type: str
@@ -194,18 +210,18 @@ class Task(BaseModel):
     task_desc: Optional[str]
 
 
-class EventLog(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details: Dict[str, Union[int, str, List[str]]]
+# ADMIN
 
 
-class EventLogYaml(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details_yaml: str
+class Region(BaseModel):
+    cloud: str
+    region: str
+    zone: str
+    vpc_id: str
+    security_groups: List[str]
+    subnet: str
+    image: str
+    extras: Dict[str, Any]
 
 
 class Setting(BaseModel):
@@ -217,20 +233,12 @@ class Setting(BaseModel):
     description: str
 
 
-class BackupDetails(BaseModel):
-    database_name: str | None
-    parent_schema_name: str | None
-    object_name: str
-    object_type: str
-    end_time: dt.datetime
+# GENERIC
 
 
-class DatabaseUser(BaseModel):
-    username: str
-    options: str | None
-    member_of: list[str | None]
+class StrID(BaseModel):
+    id: str
 
 
-class NewDatabaseUserRequest(BaseModel):
-    username: str
-    password: str
+class IntID(BaseModel):
+    id: int

@@ -12,7 +12,7 @@ from ..models import (
     Cluster,
     ClusterOverview,
     EventLog,
-    GroupRoleMap,
+    RoleGroupMap,
     IntID,
     InventoryLB,
     InventoryRegion,
@@ -673,14 +673,14 @@ def set_setting(setting: str, value: str, updated_by) -> str:
 ###########
 
 
-def get_role_to_groups_mappings() -> list[GroupRoleMap]:
+def get_role_to_groups_mappings() -> list[RoleGroupMap]:
     return execute_stmt(
         """
         SELECT role, groups 
         FROM role_to_groups_mappings
         """,
         (),
-        GroupRoleMap,
+        RoleGroupMap,
     )
 
 

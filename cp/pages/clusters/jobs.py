@@ -97,6 +97,7 @@ def jobs_table():
 
 @rx.page(
     route="/clusters/[c_id]/jobs",
+    title=f"Cluster {State.current_cluster.cluster_id}: Jobs",
     on_load=AuthState.check_login,
 )
 @template

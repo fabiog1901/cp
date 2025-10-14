@@ -113,7 +113,11 @@ def tasks_table():
     )
 
 
-@rx.page(route="/jobs/[j_id]", on_load=AuthState.check_login)
+@rx.page(
+    route="/jobs/[j_id]",
+    title=f"Job {State.current_job.job_id}",
+    on_load=AuthState.check_login,
+)
 @template
 def webpage():
     return rx.flex(

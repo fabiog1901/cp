@@ -285,6 +285,7 @@ def restore_dialog():
 
 @rx.page(
     route="/clusters/[c_id]/backups",
+    title=f"Cluster {State.current_cluster.cluster_id}: Backups",
     on_load=AuthState.check_login,
 )
 @template
