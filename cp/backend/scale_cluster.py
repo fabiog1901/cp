@@ -164,7 +164,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region_details(cloud, region)
+            region_details: list[Region] = db.get_region(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -280,7 +280,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region_details(cloud, region)
+            region_details: list[Region] = db.get_region(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -393,7 +393,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions + new_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region_details(cloud, region)
+            region_details: list[Region] = db.get_region(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -514,7 +514,7 @@ def scale_cluster_worker(
         for cloud_region in csr.regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region_details(cloud, region)
+            region_details: list[Region] = db.get_region(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(

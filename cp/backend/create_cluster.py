@@ -82,7 +82,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
     for cloud_region in cluster_request.regions:
         cloud, region = cloud_region.split(":")
 
-        region_details: list[Region] = db.get_region_details(cloud, region)
+        region_details: list[Region] = db.get_region(cloud, region)
 
         # add 1 HAProxy per region
         deployment.append(

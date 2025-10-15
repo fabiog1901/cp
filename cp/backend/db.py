@@ -1,23 +1,23 @@
 import datetime as dt
 import os
-from typing import Any
+from typing import Any, List
 
 from psycopg.rows import class_row
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from ..models import (
     Cluster,
     ClusterOverview,
     EventLog,
-    RoleGroupMap,
     IntID,
     InventoryLB,
     InventoryRegion,
     Job,
     Region,
+    RoleGroupMap,
     Setting,
     StrID,
     Task,
@@ -72,7 +72,18 @@ def insert_into_mq(
 #############
 #  REGIONS  #
 #############
-def get_region_details(cloud: str, region: str) -> list[Region]:
+def get_all_regions() -> list[Region]:
+    return execute_stmt(
+        """
+        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
+        FROM regions
+        """,
+        (),
+        Region,
+    )
+
+
+def get_region(cloud: str, region: str) -> list[Region]:
     return execute_stmt(
         """
         SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
@@ -81,6 +92,30 @@ def get_region_details(cloud: str, region: str) -> list[Region]:
         """,
         (cloud, region),
         Region,
+    )
+
+
+def add_region(r: Region) -> None:
+
+    stmt, vals = convert_model_to_sql("regions", r)
+
+    execute_stmt(
+        stmt,
+        vals,
+    )
+
+
+def remove_region(
+    cloud: str,
+    region: str,
+    zone: str,
+) -> None:
+    return execute_stmt(
+        """
+        DELETE FROM regions 
+        WHERE (cloud, region, zone) = (%s, %s, %s)
+        """,
+        (cloud, region, zone),
     )
 
 
@@ -690,6 +725,15 @@ class DictJsonbDumper(JsonbDumper):
         return super().dump(Jsonb(obj))
 
 
+def convert_model_to_sql(table: str, model: BaseModel):
+    data = model.model_dump()
+    cols = data.keys()
+    vals = [data[c] for c in cols]
+    placeholders = ", ".join(["%s"] * len(cols))
+    stmt = f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({placeholders})'
+    return stmt, vals
+
+
 def execute_stmt(
     stmt: str,
     bind_args: tuple,
@@ -699,8 +743,9 @@ def execute_stmt(
     with pool.connection() as conn:
         # convert a set to a psycopg list
         conn.adapters.register_dumper(set, ListDumper)
+        conn.adapters.register_dumper(list, ListDumper)
         conn.adapters.register_dumper(dict, DictJsonbDumper)
-        conn.adapters.register_dumper(list, DictJsonbDumper)
+        # conn.adapters.register_dumper(list, DictJsonbDumper)
 
         with conn.cursor(row_factory=class_row(model)) as cur:
             try:

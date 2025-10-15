@@ -128,6 +128,10 @@ def webpage():
     return rx.cond(
         AuthState.is_admin,
         rx.flex(
+            rx.text(
+                "Settings",
+                class_name="p-2 pb-8 text-8xl font-semibold",
+            ),
             rx.hstack(
                 rx.text("ID", class_name="w-80 font-semibold"),
                 rx.text("Value", class_name="font-semibold w-80"),
