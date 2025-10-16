@@ -224,6 +224,10 @@ class Region(BaseModel):
     extras: Dict[str, Any]
 
 
+class Version(BaseModel):
+    version: str
+
+
 class Setting(BaseModel):
     id: str
     value: str

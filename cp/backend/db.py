@@ -21,6 +21,7 @@ from ..models import (
     Setting,
     StrID,
     Task,
+    Version,
 )
 
 DB_URL = os.getenv("DB_URL")
@@ -66,56 +67,6 @@ def insert_into_mq(
         ),
         IntID,
         return_list=False,
-    )
-
-
-#############
-#  REGIONS  #
-#############
-def get_all_regions() -> list[Region]:
-    return execute_stmt(
-        """
-        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
-        FROM regions
-        """,
-        (),
-        Region,
-    )
-
-
-def get_region(cloud: str, region: str) -> list[Region]:
-    return execute_stmt(
-        """
-        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
-        FROM regions
-        WHERE (cloud, region) = (%s, %s)
-        """,
-        (cloud, region),
-        Region,
-    )
-
-
-def add_region(r: Region) -> None:
-
-    stmt, vals = convert_model_to_sql("regions", r)
-
-    execute_stmt(
-        stmt,
-        vals,
-    )
-
-
-def remove_region(
-    cloud: str,
-    region: str,
-    zone: str,
-) -> None:
-    return execute_stmt(
-        """
-        DELETE FROM regions 
-        WHERE (cloud, region, zone) = (%s, %s, %s)
-        """,
-        (cloud, region, zone),
     )
 
 
@@ -513,23 +464,6 @@ def insert_task(
     )
 
 
-def get_secret(
-    id: str,
-) -> str:
-    str_id: StrID = execute_stmt(
-        """
-        SELECT data AS id
-        FROM secrets
-        WHERE id = %s
-        """,
-        (id,),
-        StrID,
-        return_list=False,
-    )
-
-    return str_id.id
-
-
 ###############
 #  EVENT_LOG  #
 ###############
@@ -588,34 +522,11 @@ def insert_event_log(
     )
 
 
-##############
-#  SETTINGS  #
-##############
+#############
+#   ADMIN   #
+#############
 
-
-def get_versions() -> list[StrID]:
-    return execute_stmt(
-        """
-        SELECT version AS id
-        FROM versions 
-        ORDER BY version DESC
-        """,
-        (),
-        StrID,
-    )
-
-
-def get_upgrade_versions(major_version: str) -> list[StrID]:
-    return execute_stmt(
-        """
-        SELECT version AS id
-        FROM versions 
-        WHERE version > %s
-        ORDER BY version ASC
-        """,
-        (major_version,),
-        StrID,
-    )
+# REGIONS
 
 
 def get_regions() -> list[StrID]:
@@ -627,6 +538,98 @@ def get_regions() -> list[StrID]:
         """,
         (),
         StrID,
+    )
+
+
+def get_all_regions() -> list[Region]:
+    return execute_stmt(
+        """
+        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
+        FROM regions
+        """,
+        (),
+        Region,
+    )
+
+
+def get_region(cloud: str, region: str) -> list[Region]:
+    return execute_stmt(
+        """
+        SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
+        FROM regions
+        WHERE (cloud, region) = (%s, %s)
+        """,
+        (cloud, region),
+        Region,
+    )
+
+
+def add_region(r: Region) -> None:
+    stmt, vals = convert_model_to_sql("regions", r)
+    execute_stmt(
+        stmt,
+        vals,
+    )
+
+
+def remove_version(
+    cloud: str,
+    region: str,
+    zone: str,
+) -> None:
+    return execute_stmt(
+        """
+        DELETE FROM regions 
+        WHERE (cloud, region, zone) = (%s, %s, %s)
+        """,
+        (cloud, region, zone),
+    )
+
+
+# VERSIONS
+
+
+def get_versions() -> list[Version]:
+    return execute_stmt(
+        """
+        SELECT version
+        FROM versions 
+        ORDER BY version DESC
+        """,
+        (),
+        Version,
+    )
+
+
+def add_version(v: BaseModel) -> None:
+    stmt, vals = convert_model_to_sql("versions", v)
+    execute_stmt(
+        stmt,
+        vals,
+    )
+
+
+def remove_version(version) -> None:
+    execute_stmt(
+        """
+        DELETE
+        FROM versions 
+        WHERE version = %s
+        """,
+        (version,),
+    )
+
+
+def get_upgrade_versions(major_version: str) -> list[Version]:
+    return execute_stmt(
+        """
+        SELECT version
+        FROM versions 
+        WHERE version > %s
+        ORDER BY version ASC
+        """,
+        (major_version,),
+        Version,
     )
 
 
@@ -703,6 +706,23 @@ def set_setting(setting: str, value: str, updated_by) -> str:
     )
 
 
+def get_secret(
+    id: str,
+) -> str:
+    str_id: StrID = execute_stmt(
+        """
+        SELECT data AS id
+        FROM secrets
+        WHERE id = %s
+        """,
+        (id,),
+        StrID,
+        return_list=False,
+    )
+
+    return str_id.id
+
+
 ###########
 #  USERS  #
 ###########
@@ -765,4 +785,4 @@ def execute_stmt(
             except Exception as e:
                 # TODO correctly handle error such as PK violations
                 print(f"SQL ERROR: {e}")
-                return None
+                raise e

@@ -31,30 +31,38 @@ def admin_tile(title: str, desc: str, href: str) -> rx.Component:
 
 # ---- /admin (index) ----
 def admin_index() -> rx.Component:
-    return rx.vstack(
-        rx.heading("Admin", size="7"),
-        rx.text("Choose a section to manage.", color="gray"),
+    return rx.flex(
+        rx.text(
+            "Admin",
+            class_name="p-2 text-8xl font-semibold",
+        ),
+        rx.vstack(
+            rx.text("Choose a section to manage.", color="gray"),
+            class_name="p-4",
+        ),
         rx.grid(
             admin_tile(
-                "Settings",
-                "Global configuration, authentication, defaults.",
-                "/admin/settings",
-            ),
-            admin_tile(
-                "Billing", "Plans, invoices, payment methods.", "/admin/billing"
+                "Versions",
+                "Manage supported software versions.",
+                "/admin/versions",
             ),
             admin_tile("Regions", "Add / remove regions and quotas.", "/admin/regions"),
-            admin_tile("Users", "Invite, roles, permissions.", "/admin/users"),
+            admin_tile(
+                "Group Role Mapping",
+                "Manage IdP groups and how they map to CP Roles",
+                "/admin/roles",
+            ),
             admin_tile("Activity", "Audit logs and recent actions.", "/admin/activity"),
+            admin_tile(
+                "Settings",
+                "Global configurations.",
+                "/admin/settings",
+            ),
             columns="3",  # responsive: 1col (mobile), 2col (tablet), 3col (desktop)
             gap="16px",
             width="100%",
         ),
-        spacing="4",
-        padding="24px",
-        max_width="1000px",
-        align="start",
-        margin_x="auto",
+        class_name="flex-1 flex-col overflow-hidden",
     )
 
 
