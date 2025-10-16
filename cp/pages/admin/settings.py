@@ -21,7 +21,7 @@ class State(AuthState):
         self.draft[id] = value
 
     def save(self, id):
-        db.set_setting(id, self.draft[id], self.webuser.username)
+        db.update_setting(id, self.draft[id], self.webuser.username)
         db.insert_event_log(
             self.webuser.username,
             EventType.UPDATE_SETTING,

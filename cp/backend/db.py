@@ -632,6 +632,8 @@ def get_upgrade_versions(major_version: str) -> list[Version]:
         Version,
     )
 
+# NODE COUNT
+
 
 def get_node_counts() -> list[IntID]:
     return execute_stmt(
@@ -694,7 +696,7 @@ def get_setting(setting: str) -> str:
     return str_id.id
 
 
-def set_setting(setting: str, value: str, updated_by) -> str:
+def update_setting(setting: str, value: str, updated_by) -> str:
     execute_stmt(
         """
         UPDATE settings
@@ -723,9 +725,7 @@ def get_secret(
     return str_id.id
 
 
-###########
-#  USERS  #
-###########
+#  ROLES
 
 
 def get_role_to_groups_mappings() -> list[RoleGroupMap]:

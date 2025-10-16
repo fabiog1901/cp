@@ -248,16 +248,20 @@ def add_version_dialog() -> rx.Component:
 )
 @template
 def webpage() -> rx.Component:
-    return rx.flex(
-        breadcrumb("Admin", "/admin/", "Versions"),
-        rx.hstack(
-            rx.button("Add new version", on_click=State.open_modal),
-            direction="row-reverse",
-            class_name="p-4",
+    return rx.cond(
+        AuthState.is_admin,
+        rx.flex(
+            breadcrumb("Admin", "/admin/", "Versions"),
+            rx.hstack(
+                rx.button("Add new version", on_click=State.open_modal),
+                direction="row-reverse",
+                class_name="p-4",
+            ),
+            rx.flex(main_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
+            add_version_dialog(),
+            notification_dialog(),
+            class_name="flex-1 flex-col overflow-hidden",
+            on_mount=State.start_bg_event,
         ),
-        rx.flex(main_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
-        add_version_dialog(),
-        notification_dialog(),
-        class_name="flex-1 flex-col overflow-hidden",
-        on_mount=State.start_bg_event,
+        rx.text("Not Authorized"),
     )
