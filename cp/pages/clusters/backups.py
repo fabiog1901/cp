@@ -5,8 +5,7 @@ import reflex as rx
 from psycopg.rows import class_row
 
 from ...backend import db
-from ...components.BadgeClusterStatus import get_cluster_status_badge
-from ...components.main import mini_breadcrumb
+from ...components.main import cluster_banner, mini_breadcrumb
 from ...cp import app
 from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
 from ...state import AuthState
@@ -297,28 +296,11 @@ def restore_dialog():
 @template
 def webpage():
     return rx.flex(
-        rx.hstack(
-            rx.icon("boxes", size=100, class_name="p-2"),
-            rx.text(
-                State.current_cluster.cluster_id,
-                class_name="p-2 text-8xl font-semibold",
-            ),
-            rx.divider(orientation="vertical", size="4", class_name="mx-8"),
-            get_cluster_status_badge(State.current_cluster.status),
-            rx.hstack(
-                rx.vstack(
-                    rx.text("Version"),
-                    rx.text(
-                        State.current_cluster.version,
-                        class_name="text-3xl font-semibold",
-                    ),
-                    class_name="mx-16",
-                    align="center",
-                ),
-                direction="row-reverse",
-                class_name="p-4 flex-1",
-            ),
-            align="center",
+        cluster_banner(
+            "boxes",
+            State.current_cluster.cluster_id,
+            State.current_cluster.status,
+            State.current_cluster.version,
         ),
         rx.hstack(
             restore_dialog(),

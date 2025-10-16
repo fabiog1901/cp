@@ -2,6 +2,8 @@ import reflex as rx
 
 from ..state import AuthState
 
+from .BadgeClusterStatus import get_cluster_status_badge
+
 chip_props = {
     "radius": "full",
     "variant": "surface",
@@ -10,6 +12,34 @@ chip_props = {
     "style": {"_hover": {"opacity": 0.75}},
 }
 
+
+def cluster_banner(
+    icon: str, cluster_id: str, status: str, version: str
+) -> rx.Component:
+    return rx.hstack(
+        rx.icon(icon, size=100, class_name="p-2"),
+        rx.text(
+            cluster_id,
+            class_name="p-2 text-8xl font-semibold",
+        ),
+        rx.divider(orientation="vertical", size="4", class_name="mx-8"),
+        get_cluster_status_badge(status),
+        rx.hstack(
+            rx.vstack(
+                rx.text("Version"),
+                rx.text(
+                    version,
+                    class_name="text-3xl font-semibold",
+                ),
+                class_name="mx-16",
+                align="center",
+            ),
+            direction="row-reverse",
+            class_name="p-4 flex-1",
+        ),
+        align="center",
+    )
+    
 
 def breadcrumb(parent_title: str, parent_href: str, child_title: str) -> rx.Component:
     return (
