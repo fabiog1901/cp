@@ -1,7 +1,6 @@
 import reflex as rx
 
 from ..state import AuthState
-
 from .BadgeClusterStatus import get_cluster_status_badge
 
 chip_props = {
@@ -39,7 +38,7 @@ def cluster_banner(
         ),
         align="center",
     )
-    
+
 
 def breadcrumb(parent_title: str, parent_href: str, child_title: str) -> rx.Component:
     return (

@@ -5,7 +5,7 @@ import reflex as rx
 from psycopg.rows import class_row
 
 from ...backend import db
-from ...components.main import mini_breadcrumb, cluster_banner
+from ...components.main import cluster_banner, mini_breadcrumb
 from ...cp import app
 from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
 from ...state import AuthState

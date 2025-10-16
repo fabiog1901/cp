@@ -4,7 +4,7 @@ import reflex as rx
 
 from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
-from ...components.main import mini_breadcrumb, cluster_banner
+from ...components.main import cluster_banner, mini_breadcrumb
 from ...cp import app
 from ...models import Cluster, Job
 from ...state import AuthState
