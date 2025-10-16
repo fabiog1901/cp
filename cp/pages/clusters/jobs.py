@@ -5,6 +5,7 @@ import reflex as rx
 from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.main import mini_breadcrumb
 from ...cp import app
 from ...models import Cluster, Job
 from ...state import AuthState
@@ -127,19 +128,9 @@ def webpage():
             align="center",
         ),
         rx.flex(
-            # cluster_sidebar(),
             rx.flex(
-                rx.hstack(
-                    rx.link(
-                        rx.text(
-                            State.cluster_id,
-                            class_name="p-2 pt-2 font-semibold text-2xl",
-                        ),
-                        href=f"/clusters/{State.cluster_id}",
-                    ),
-                    rx.text(" > ", class_name="p-2 pt-2 font-semibold text-2xl"),
-                    rx.text("Jobs", class_name="p-2 pt-2 font-semibold text-2xl"),
-                    class_name="p-2",
+                mini_breadcrumb(
+                    State.cluster_id, f"/clusters/{State.cluster_id}", "Jobs"
                 ),
                 rx.flex(
                     jobs_table(),

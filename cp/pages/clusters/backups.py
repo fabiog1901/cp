@@ -6,6 +6,7 @@ from psycopg.rows import class_row
 
 from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
+from ...components.main import mini_breadcrumb
 from ...cp import app
 from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
 from ...state import AuthState
@@ -54,9 +55,13 @@ class State(AuthState):
                 with conn.cursor() as cur:
                     rs = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
 
-                self.paths = [r[0] for r in rs] + ["LATEST"]
+                p = [r[0] for r in rs]
+                p.sort(reverse=True)
+                self.paths = ["LATEST"] + p
+
         except Exception as e:
             print(e)
+            self.paths = []
 
     @rx.event
     def get_backup(self, backup_path: str):
@@ -123,6 +128,7 @@ class State(AuthState):
                 print("cluster_backups.py: Stopping background task.")
                 async with self:
                     self.is_running = False
+                    self.paths = []
                 break
 
             async with self:
@@ -319,18 +325,7 @@ def webpage():
             direction="row-reverse",
             class_name="p-4",
         ),
-        rx.hstack(
-            rx.link(
-                rx.text(
-                    State.cluster_id,
-                    class_name="p-2 pt-2 font-semibold text-2xl",
-                ),
-                href=f"/clusters/{State.cluster_id}",
-            ),
-            rx.text(" > ", class_name="p-2 pt-2 font-semibold text-2xl"),
-            rx.text("Backups", class_name="p-2 pt-2 font-semibold text-2xl"),
-            class_name="p-2",
-        ),
+        mini_breadcrumb(State.cluster_id, f"/clusters/{State.cluster_id}", "Backups"),
         rx.flex(
             rx.flex(
                 rx.vstack(

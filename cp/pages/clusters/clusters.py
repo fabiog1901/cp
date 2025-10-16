@@ -131,7 +131,7 @@ class State(AuthState):
         async with self:
             # fetch this data only once
             # this data powers the Create New Cluster dialog
-            self.available_versions = [x.id for x in db.get_versions()]
+            self.available_versions = [x.version for x in db.get_versions()]
             self.selected_version = self.available_versions[0]
 
             self.available_node_counts = [x.id for x in db.get_node_counts()]

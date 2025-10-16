@@ -7,6 +7,7 @@ import reflex as rx
 from pydantic import ValidationError
 
 from ...backend import db
+from ...components.main import breadcrumb
 from ...cp import app
 from ...models import Region
 from ...state import AuthState
@@ -57,7 +58,7 @@ class State(rx.State):
 
     def remove_region(self, r: Region):
         try:
-            db.remove_region(r.cloud, r.region, r.zone)
+            db.remove_version(r.cloud, r.region, r.zone)
 
             self.notification_dialog_title = "Removed"
             self.notification_dialog_msg = (
@@ -343,16 +344,13 @@ def add_region_dialog() -> rx.Component:
 
 @rx.page(
     route="/admin/regions",
-    title="Settings",
+    title="Regions",
     on_load=AuthState.check_login,
 )
 @template
 def webpage() -> rx.Component:
     return rx.flex(
-        rx.text(
-            "Regions",
-            class_name="p-2 text-8xl font-semibold",
-        ),
+        breadcrumb("Admin", "/admin/", "Regions"),
         rx.hstack(
             rx.button("Add new region", on_click=State.open_modal),
             direction="row-reverse",

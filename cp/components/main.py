@@ -11,6 +11,58 @@ chip_props = {
 }
 
 
+def breadcrumb(parent_title: str, parent_href: str, child_title: str) -> rx.Component:
+    return (
+        rx.hstack(
+            rx.link(
+                rx.text(
+                    parent_title,
+                    class_name="text-8xl font-semibold",
+                ),
+                href=parent_href,
+            ),
+            rx.icon(
+                "chevron-right",
+                size=60,
+                class_name="pb-2",
+            ),
+            rx.text(
+                child_title,
+                class_name="text-8xl font-semibold",
+            ),
+            align="end",
+            class_name="p-2",
+        ),
+    )
+
+
+def mini_breadcrumb(
+    parent_title: str, parent_href: str, child_title: str
+) -> rx.Component:
+    return (
+        rx.hstack(
+            rx.link(
+                rx.text(
+                    parent_title,
+                    class_name="text-2xl font-semibold",
+                ),
+                href=parent_href,
+            ),
+            rx.icon(
+                "chevron-right",
+                size=30,
+                class_name="",
+            ),
+            rx.text(
+                child_title,
+                class_name="text-2xl font-semibold",
+            ),
+            align="end",
+            class_name="p-2",
+        ),
+    )
+
+
 def item_selector(
     state: rx.State,
     state_options_var,

@@ -143,7 +143,7 @@ class State(AuthState):
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("cluster_overview.py: Stopping background task.")
+                print("clusters/[c_id]: Stopping background task.")
                 async with self:
                     self.is_running = False
                     self.just_once = True
@@ -166,7 +166,7 @@ class State(AuthState):
                     self.just_once = False
 
                     all_new_versions = [
-                        x.id
+                        x.version
                         for x in db.get_upgrade_versions(
                             self.current_cluster.version[:5]
                         )

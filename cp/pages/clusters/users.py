@@ -6,6 +6,7 @@ from psycopg.rows import class_row
 
 from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
+from ...components.main import mini_breadcrumb
 from ...cp import app
 from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
 from ...state import AuthState
@@ -471,21 +472,9 @@ def webpage():
             direction="row-reverse",
             class_name="p-4",
         ),
-        rx.hstack(
-            rx.link(
-                rx.text(
-                    State.cluster_id,
-                    class_name="p-2 pt-2 font-semibold text-2xl",
-                ),
-                href=f"/clusters/{State.cluster_id}",
-            ),
-            rx.text(" > ", class_name="p-2 pt-2 font-semibold text-2xl"),
-            rx.text("Users", class_name="p-2 pt-2 font-semibold text-2xl"),
-            class_name="p-2",
-        ),
+        mini_breadcrumb(State.cluster_id, f"/clusters/{State.cluster_id}", "Users"),
         rx.flex(
             rx.flex(
-                rx.heading("Users", class_name="p-2"),
                 database_users_table(),
                 class_name="flex-1 flex-col overflow-y-scroll",
             ),
