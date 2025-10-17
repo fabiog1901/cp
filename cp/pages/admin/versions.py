@@ -1,13 +1,13 @@
 # app.py
 import asyncio
-import json
-from typing import Any, Dict, List
+from typing import List
 
 import reflex as rx
 from pydantic import ValidationError
 
 from ...backend import db
 from ...components.main import breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Version
 from ...state import AuthState
@@ -19,68 +19,40 @@ class State(rx.State):
 
     versions: List[Version] = []
 
-    # modal visibility
-    modal_open: bool = False
-
-    # controls the modal visibility
-    notification_dialog_open: bool = False
-    notification_dialog_title: str = "Success"
-    notification_dialog_msg: str = "All done!"
-
-    def close_success(self):
-        self.notification_dialog_open = False
-
-    # draft fields for new region
     version: str = ""
 
-    def open_modal(self):
+    # modal visibility
+    dialog_open: bool = False
+
+    def open_dialog(self):
         # reset draft and open
         self.version = ""
 
-        self.modal_open = True
+        self.dialog_open = True
 
-    def close_modal(self):
-        self.modal_open = False
+    def close_dialog(self):
+        self.dialog_open = False
 
     def remove_version(self, v: Version):
         try:
             db.remove_version(v.version)
-
-            self.notification_dialog_title = "Removed"
-            self.notification_dialog_msg = (
-                f"Version '{v.version}' was successfully removed"
-            )
-            self.notification_dialog_open = True
-
         except Exception as e:
-            self.notification_dialog_title = "Error"
-            self.notification_dialog_msg = str(e)
-            self.notification_dialog_open = True
+            return NotifyState.show("Error", str(e))
 
     def submit_new_version(self):
         """Validate draft with Pydantic, print to stdout, and add to the list."""
+
+        self.dialog_open = False
+
         try:
             v = Version(
                 version=self.version,
             )
-        except ValidationError as ve:
-            print("[AddRegion] Validation error:", ve)
-            return
-
-        try:
             db.add_version(v)
-            self.notification_dialog_title = "Added"
-            self.notification_dialog_msg = (
-                f"Version '{v.version}' was successfully added"
-            )
-            self.notification_dialog_open = True
-
+        except ValidationError as ve:
+            return NotifyState.show("ValidationError", str(ve))
         except Exception as e:
-            self.notification_dialog_title = "Error"
-            self.notification_dialog_msg = str(e)
-            self.notification_dialog_open = True
-
-        self.modal_open = False
+            return NotifyState.show("Error", str(e))
 
     is_running: bool = False
 
@@ -108,29 +80,6 @@ class State(rx.State):
 
 
 # ---- UI bits ----
-
-
-def notification_dialog() -> rx.Component:
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.title(
-                State.notification_dialog_title, class_name="text-3xl pb-2"
-            ),
-            rx.dialog.description(
-                rx.text(State.notification_dialog_msg, class_name="text-xl pb-8")
-            ),
-            rx.hstack(
-                rx.button("OK", on_click=State.close_success),
-                justify="end",
-                spacing="3",
-            ),
-            # a bit of styling
-            max_width="420px",
-            padding="20px",
-        ),
-        open=State.notification_dialog_open,
-        on_open_change=State.set_notification_dialog_open,  # keeps state in sync if user closes via overlay/esc
-    )
 
 
 def table_row(v: Version) -> rx.Component:
@@ -228,7 +177,7 @@ def add_version_dialog() -> rx.Component:
                 width="100%",
             ),
             rx.hstack(
-                rx.button("Cancel", variant="surface", on_click=State.close_modal),
+                rx.button("Cancel", variant="surface", on_click=State.close_dialog),
                 rx.button("OK", color_scheme="blue", on_click=State.submit_new_version),
                 justify="end",
                 spacing="3",
@@ -236,8 +185,8 @@ def add_version_dialog() -> rx.Component:
             max_width="720px",
             padding="20px",
         ),
-        open=State.modal_open,
-        on_open_change=State.set_modal_open,
+        open=State.dialog_open,
+        on_open_change=State.set_dialog_open,
     )
 
 
@@ -253,13 +202,12 @@ def webpage() -> rx.Component:
         rx.flex(
             breadcrumb("Admin", "/admin/", "Versions"),
             rx.hstack(
-                rx.button("Add new version", on_click=State.open_modal),
+                rx.button("Add new version", on_click=State.open_dialog),
                 direction="row-reverse",
                 class_name="p-4",
             ),
             rx.flex(main_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
             add_version_dialog(),
-            notification_dialog(),
             class_name="flex-1 flex-col overflow-hidden",
             on_mount=State.start_bg_event,
         ),

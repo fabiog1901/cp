@@ -4,6 +4,7 @@ import reflex as rx
 
 from .components.footer import footer
 from .components.navbar import navbar
+from .components.notify import notify_dialog
 from .components.sidebar import sidebar
 from .state import AuthState
 
@@ -19,6 +20,7 @@ def template(page: Callable[[], rx.Component]) -> rx.Component:
                 class_name="p-2 flex-1 overflow-y-hidden",
             ),
             footer(),
+            notify_dialog(),
             class_name="flex-col h-screen",
         ),
         rx.spinner(),

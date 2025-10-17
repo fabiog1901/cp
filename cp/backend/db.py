@@ -632,6 +632,7 @@ def get_upgrade_versions(major_version: str) -> list[Version]:
         Version,
     )
 
+
 # NODE COUNT
 
 
