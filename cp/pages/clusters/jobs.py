@@ -10,6 +10,8 @@ from ...models import Cluster, Job
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/clusters/[c_id]/jobs"
+
 
 class State(AuthState):
     current_cluster: Cluster = None
@@ -30,11 +32,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/clusters/[c_id]/jobs"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("cluster_jobs.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -96,7 +98,7 @@ def jobs_table():
 
 
 @rx.page(
-    route="/clusters/[c_id]/jobs",
+    route=ROUTE,
     title=f"Cluster {State.current_cluster.cluster_id}: Jobs",
     on_load=AuthState.check_login,
 )

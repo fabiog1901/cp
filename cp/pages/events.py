@@ -10,6 +10,8 @@ from ..models import TS_FORMAT, EventLog, EventLogYaml
 from ..state import AuthState
 from ..template import template
 
+ROUTE = "/events"
+
 
 class State(AuthState):
 
@@ -64,7 +66,7 @@ class State(AuthState):
         self._get_total_items()
 
 
-def get_event_row(event: EventLogYaml):
+def table_row(event: EventLogYaml):
     return rx.table.row(
         rx.table.cell(
             rx.moment(
@@ -86,7 +88,7 @@ def get_event_row(event: EventLogYaml):
     )
 
 
-def events_table():
+def data_table():
     return rx.vstack(
         rx.hstack(
             rx.button(
@@ -112,7 +114,7 @@ def events_table():
             rx.table.body(
                 rx.foreach(
                     State.events,
-                    get_event_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -123,7 +125,7 @@ def events_table():
 
 
 @rx.page(
-    route="/events",
+    route=ROUTE,
     title="Events",
     on_load=AuthState.check_login,
 )
@@ -137,7 +139,7 @@ def webpage():
                 class_name="p-2 text-8xl font-semibold",
             ),
             rx.vstack(
-                events_table(),
+                data_table(),
                 class_name="flex-1 flex-col overflow-y-scroll pt-8",
             ),
             class_name="flex-1 flex-col overflow-hidden",

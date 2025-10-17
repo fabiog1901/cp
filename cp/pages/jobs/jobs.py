@@ -9,6 +9,8 @@ from ...models import Job
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/jobs"
+
 
 class State(AuthState):
     jobs: list[Job] = []
@@ -24,11 +26,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/jobs"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("jobs.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -79,7 +81,7 @@ def jobs_table():
 
 
 @rx.page(
-    route="/jobs",
+    route=ROUTE,
     title="Jobs",
     on_load=AuthState.check_login,
 )

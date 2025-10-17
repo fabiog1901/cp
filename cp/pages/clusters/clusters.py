@@ -11,6 +11,8 @@ from ...state import AuthState
 from ...template import template
 from ..util import get_funny_name, get_human_size
 
+ROUTE = "/clusters"
+
 
 class State(AuthState):
     current_cluster: Cluster = None
@@ -153,11 +155,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/clusters"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("clusters.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -525,7 +527,7 @@ def clusters_table():
 
 
 @rx.page(
-    route="/clusters",
+    route=ROUTE,
     title="Clusters",
     on_load=AuthState.check_login,
 )

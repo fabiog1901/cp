@@ -9,6 +9,8 @@ from ...models import TS_FORMAT, EventType, Setting
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/admin/settings"
+
 
 class State(AuthState):
     settings: list[Setting] = []
@@ -48,11 +50,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/admin/settings"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("settings.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                     self.has_copied = False
@@ -120,7 +122,7 @@ def config_editor_page() -> rx.Component:
 
 
 @rx.page(
-    route="/admin/settings",
+    route=ROUTE,
     title="Settings",
     on_load=AuthState.check_login,
 )

@@ -11,6 +11,8 @@ from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, St
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/clusters/[c_id]/users"
+
 
 class State(AuthState):
     current_cluster: Cluster = None
@@ -132,11 +134,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/clusters/[c_id]/users"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("cluster_users.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -418,7 +420,7 @@ def remove_user_role_dialog(user: str, membership: str):
 
 
 @rx.page(
-    route="/clusters/[c_id]/users",
+    route=ROUTE,
     title=f"Cluster {State.current_cluster.cluster_id}: Users",
     on_load=AuthState.check_login,
 )

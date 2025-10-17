@@ -10,6 +10,8 @@ from ...models import TS_FORMAT, Job, JobType, StrID, Task
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/jobs/[j_id]"
+
 
 class State(AuthState):
     current_job: Job = None
@@ -55,11 +57,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/jobs/[j_id]"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("job_overview.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -114,7 +116,7 @@ def tasks_table():
 
 
 @rx.page(
-    route="/jobs/[j_id]",
+    route=ROUTE,
     title=f"Job {State.current_job.job_id}",
     on_load=AuthState.check_login,
 )

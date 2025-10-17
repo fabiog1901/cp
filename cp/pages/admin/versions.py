@@ -9,13 +9,14 @@ from ...backend import db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Version
+from ...models import EventType, Version
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/admin/versions"
 
-# ---- State ----
-class State(rx.State):
+
+class State(AuthState):
 
     versions: List[Version] = []
 
@@ -36,6 +37,12 @@ class State(rx.State):
     def remove_version(self, v: Version):
         try:
             db.remove_version(v.version)
+
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.VERSION_REMOVE,
+                v.version,
+            )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -48,7 +55,14 @@ class State(rx.State):
             v = Version(
                 version=self.version,
             )
+
             db.add_version(v)
+
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.VERSION_ADD,
+                v.version,
+            )
         except ValidationError as ve:
             return NotifyState.show("ValidationError", str(ve))
         except Exception as e:
@@ -65,11 +79,11 @@ class State(rx.State):
 
         while True:
             if (
-                self.router.page.path != "/admin/versions"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("/admin/versions: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -77,9 +91,6 @@ class State(rx.State):
             async with self:
                 self.versions = db.get_versions()
             await asyncio.sleep(5)
-
-
-# ---- UI bits ----
 
 
 def table_row(v: Version) -> rx.Component:
@@ -191,7 +202,7 @@ def add_version_dialog() -> rx.Component:
 
 
 @rx.page(
-    route="/admin/versions",
+    route=ROUTE,
     title="Versions",
     on_load=AuthState.check_login,
 )

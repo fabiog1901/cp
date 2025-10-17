@@ -18,7 +18,10 @@ def callback() -> rx.Component:
     return rx.container()
 
 
-@rx.page(route="/login", title="Login")
+@rx.page(
+    route="/login",
+    title="Login",
+)
 def webpage():
     return rx.flex(
         rx.card(

@@ -8,27 +8,21 @@ from pydantic import ValidationError
 
 from ...backend import db
 from ...components.main import breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Region
+from ...models import EventType, Region
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/admin/regions"
 
-# ---- State ----
-class State(rx.State):
+
+class State(AuthState):
 
     regions: List[Region] = []
 
     # modal visibility
-    modal_open: bool = False
-
-    # controls the modal visibility
-    notification_dialog_open: bool = False
-    notification_dialog_title: str = "Success"
-    notification_dialog_msg: str = "All done!"
-
-    def close_success(self):
-        self.notification_dialog_open = False
+    dialog_open: bool = False
 
     # draft fields for new region
     cloud: str = ""
@@ -40,7 +34,7 @@ class State(rx.State):
     image: str = ""
     extras_text: str = ""  # JSON (optional)
 
-    def open_modal(self):
+    def open_dialog(self):
         # reset draft and open
         self.cloud = ""
         self.region = ""
@@ -51,27 +45,27 @@ class State(rx.State):
         self.image = ""
         self.extras_text = ""
 
-        self.modal_open = True
+        self.dialog_open = True
 
-    def close_modal(self):
-        self.modal_open = False
+    def close_dialog(self):
+        self.dialog_open = False
 
     def remove_region(self, r: Region):
         try:
             db.remove_version(r.cloud, r.region, r.zone)
 
-            self.notification_dialog_title = "Removed"
-            self.notification_dialog_msg = (
-                f"Region '{r.cloud.upper()} {r.region}' was successfully removed"
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.REGION_REMOVE,
+                {"cloud": r.cloud, "region": r.region, "zone": r.zone},
             )
-            self.notification_dialog_open = True
-
         except Exception as e:
-            self.notification_dialog_title = "Error"
-            self.notification_dialog_msg = str(e)
-            self.notification_dialog_open = True
+            return NotifyState.show("Error", str(e))
 
     def submit_new_region(self):
+
+        self.dialog_open = False
+
         """Validate draft with Pydantic, print to stdout, and add to the list."""
         # parse security groups
         sgs = [s.strip() for s in self.security_groups_text.split(",")]
@@ -98,24 +92,19 @@ class State(rx.State):
                 image=self.image,
                 extras=extras,
             )
+
+            db.add_region(r)
+
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.REGION_ADD,
+                r.model_dump_json(),
+            )
+
         except ValidationError as ve:
             print("[AddRegion] Validation error:", ve)
-            return
-
-        try:
-            db.add_region(r)
-            self.notification_dialog_title = "Added"
-            self.notification_dialog_msg = (
-                f"Region '{r.cloud.upper()} {r.region}' was successfully added"
-            )
-            self.notification_dialog_open = True
-
         except Exception as e:
-            self.notification_dialog_title = "Error"
-            self.notification_dialog_msg = str(e)
-            self.notification_dialog_open = True
-
-        self.modal_open = False
+            return NotifyState.show("Error", str(e))
 
     is_running: bool = False
 
@@ -128,11 +117,11 @@ class State(rx.State):
 
         while True:
             if (
-                self.router.page.path != "/admin/regions"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("/admin/regions: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                 break
@@ -145,30 +134,7 @@ class State(rx.State):
 # ---- UI bits ----
 
 
-def notification_dialog() -> rx.Component:
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.title(
-                State.notification_dialog_title, class_name="text-3xl pb-2"
-            ),
-            rx.dialog.description(
-                rx.text(State.notification_dialog_msg, class_name="text-xl pb-8")
-            ),
-            rx.hstack(
-                rx.button("OK", on_click=State.close_success),
-                justify="end",
-                spacing="3",
-            ),
-            # a bit of styling
-            max_width="420px",
-            padding="20px",
-        ),
-        open=State.notification_dialog_open,
-        on_open_change=State.set_notification_dialog_open,  # keeps state in sync if user closes via overlay/esc
-    )
-
-
-def region_row(r: Region) -> rx.Component:
+def table_row(r: Region) -> rx.Component:
     return rx.table.row(
         rx.table.cell(r.cloud.upper()),
         rx.table.cell(r.region),
@@ -182,7 +148,7 @@ def region_row(r: Region) -> rx.Component:
     )
 
 
-def regions_table() -> rx.Component:
+def data_table() -> rx.Component:
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -201,7 +167,7 @@ def regions_table() -> rx.Component:
             rx.table.body(
                 rx.foreach(
                     State.regions,
-                    region_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -329,7 +295,7 @@ def add_region_dialog() -> rx.Component:
                 width="100%",
             ),
             rx.hstack(
-                rx.button("Cancel", variant="surface", on_click=State.close_modal),
+                rx.button("Cancel", variant="surface", on_click=State.close_dialog),
                 rx.button("OK", color_scheme="blue", on_click=State.submit_new_region),
                 justify="end",
                 spacing="3",
@@ -337,13 +303,13 @@ def add_region_dialog() -> rx.Component:
             max_width="720px",
             padding="20px",
         ),
-        open=State.modal_open,
-        on_open_change=State.set_modal_open,
+        open=State.dialog_open,
+        on_open_change=State.set_dialog_open,
     )
 
 
 @rx.page(
-    route="/admin/regions",
+    route=ROUTE,
     title="Regions",
     on_load=AuthState.check_login,
 )
@@ -354,15 +320,12 @@ def webpage() -> rx.Component:
         rx.flex(
             breadcrumb("Admin", "/admin/", "Regions"),
             rx.hstack(
-                rx.button("Add new region", on_click=State.open_modal),
+                rx.button("Add new region", on_click=State.open_dialog),
                 direction="row-reverse",
                 class_name="p-4",
             ),
-            rx.flex(
-                regions_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"
-            ),
+            rx.flex(data_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
             add_region_dialog(),
-            notification_dialog(),
             class_name="flex-1 flex-col overflow-hidden",
             on_mount=State.start_bg_event,
         ),

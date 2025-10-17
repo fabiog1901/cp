@@ -11,6 +11,8 @@ from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
 from ...state import AuthState
 from ...template import template
 
+ROUTE = "/clusters/[c_id]/backups"
+
 
 class State(AuthState):
     current_cluster: Cluster = None
@@ -120,11 +122,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/clusters/[c_id]/backups"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("cluster_backups.py: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                     self.paths = []
@@ -289,7 +291,7 @@ def restore_dialog():
 
 
 @rx.page(
-    route="/clusters/[c_id]/backups",
+    route=ROUTE,
     title=f"Cluster {State.current_cluster.cluster_id}: Backups",
     on_load=AuthState.check_login,
 )

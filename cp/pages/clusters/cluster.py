@@ -21,6 +21,8 @@ from ...template import template
 from ..util import get_human_size
 from .clusters import State as ClusterState
 
+ROUTE = "/clusters/[c_id]"
+
 
 class State(AuthState):
     current_cluster: Cluster | None = None
@@ -139,11 +141,11 @@ class State(AuthState):
 
         while True:
             if (
-                self.router.page.path != "/clusters/[c_id]"
+                self.router.page.path != ROUTE
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print("clusters/[c_id]: Stopping background task.")
+                print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
                     self.just_once = True
@@ -480,7 +482,7 @@ def cluster_sidebar() -> rx.Component:
 
 
 @rx.page(
-    route="/clusters/[c_id]",
+    route=ROUTE,
     title=f"Cluster {State.current_cluster.cluster_id}",
     on_load=AuthState.check_login,
 )
@@ -886,7 +888,7 @@ def webpage():
                                     ),
                                 ),
                             ),
-                            # DEBUG CLUSTER
+                            # DEBUGZIP CLUSTER
                             rx.cond(
                                 State.current_cluster.status.startswith("DELET"),
                                 rx.box(),

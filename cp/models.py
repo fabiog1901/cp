@@ -20,6 +20,10 @@ class EventType(AutoNameStrEnum):
     LOGIN = auto()
     LOGOUT = auto()
     UPDATE_SETTING = auto()
+    VERSION_ADD = auto()
+    VERSION_REMOVE = auto()
+    REGION_ADD = auto()
+    REGION_REMOVE = auto()
 
 
 class JobType(AutoNameStrEnum):
