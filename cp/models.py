@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
+STRFTIME = "%Y-%m-%d %H:%M:%S"
 
 from enum import StrEnum, auto
 
