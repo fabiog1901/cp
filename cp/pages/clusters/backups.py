@@ -1,8 +1,11 @@
 import asyncio
 
 import psycopg
+from pydantic import ValidationError
 import reflex as rx
 from psycopg.rows import class_row
+
+from ...components.notify import NotifyState
 
 from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
@@ -91,25 +94,34 @@ class State(AuthState):
 
     @rx.event
     def initiate_restore(self, form_data: dict):
-        rr = RestoreRequest(
-            name=self.current_cluster.cluster_id,
-            backup_path=form_data.get("path"),
-            restore_aost=form_data.get("aost"),
-            restore_full_cluster=self.full_cluster,
-            object_type=self.object_type if not self.full_cluster else None,
-            object_name=form_data.get("object_name") if not self.full_cluster else None,
-            backup_into=form_data.get("backup_into") if not self.full_cluster else None,
-        )
-        msg_id: StrID = db.insert_into_mq(
-            JobType.RESTORE_CLUSTER,
-            rr.model_dump(),
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            JobType.RESTORE_CLUSTER,
-            rr.model_dump() | {"job_id": msg_id.id},
-        )
+        try:
+            rr = RestoreRequest(
+                name=self.current_cluster.cluster_id,
+                backup_path=form_data.get("path"),
+                restore_aost=form_data.get("aost"),
+                restore_full_cluster=self.full_cluster,
+                object_type=self.object_type if not self.full_cluster else None,
+                object_name=(
+                    form_data.get("object_name") if not self.full_cluster else None
+                ),
+                backup_into=(
+                    form_data.get("backup_into") if not self.full_cluster else None
+                ),
+            )
+            msg_id: StrID = db.insert_into_mq(
+                JobType.RESTORE_CLUSTER,
+                rr.model_dump(),
+                self.webuser.username,
+            )
+            db.insert_event_log(
+                self.webuser.username,
+                JobType.RESTORE_CLUSTER,
+                rr.model_dump() | {"job_id": msg_id.id},
+            )
+        except ValidationError as ve:
+            return NotifyState.show("ValidationError", str(ve))
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
@@ -140,8 +152,7 @@ class State(AuthState):
                 )
                 if cluster is None:
                     self.is_running = False
-                    # TODO redirect is buggy
-                    return rx.redirect("/404", replace=True)
+                    return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
                 self.get_backups()

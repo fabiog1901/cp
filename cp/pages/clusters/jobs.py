@@ -49,8 +49,7 @@ class State(AuthState):
                 )
                 if cluster is None:
                     self.is_running = False
-                    # TODO redirect is buggy
-                    return rx.redirect("/404", replace=True)
+                    return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
                 self.jobs = db.get_all_linked_jobs(self.cluster_id)

@@ -62,6 +62,8 @@ class State(AuthState):
         form_data["regions"] = list(self.selected_regions)
 
         # TODO check if user is permissioned?
+        # TODO use try catch and NotifyState and ValidationError
+        # TODO use pydantic model to validate data, see /admin/regions.py
         msg_id: IntID = db.insert_into_mq(
             JobType.SCALE_CLUSTER,
             form_data,
@@ -159,8 +161,7 @@ class State(AuthState):
                 )
                 if cluster is None:
                     self.is_running = False
-                    # TODO redirect is buggy
-                    return rx.redirect("/404", replace=True)
+                    return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
 
@@ -981,6 +982,18 @@ def webpage():
                                         content="You need to have admin or rw role",
                                     ),
                                 ),
+                            ),
+                            rx.tooltip(
+                                rx.link(
+                                    rx.icon(
+                                        "gauge",
+                                        size=30,
+                                        color=None,
+                                        class_name="cursor-pointer text-green-500 hover:text-green-300 mr-4",
+                                    ),
+                                    href=f"/clusters/{State.cluster_id}/dashboard",
+                                ),
+                                content="Dashboard",
                             ),
                             spacing="0",
                             class_name="",
