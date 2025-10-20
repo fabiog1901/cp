@@ -1,15 +1,14 @@
 import asyncio
+import time
+from typing import Any
 
 import reflex as rx
-import time
-import requests, time
-from typing import Any
-import datetime as dt
+import requests
 
 from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...cp import app
-from ...models import Cluster, Job, STRFTIME
+from ...models import STRFTIME, Cluster
 from ...state import AuthState
 from ...template import template
 
@@ -19,19 +18,28 @@ ROUTE = "/clusters/[c_id]/dashboard"
 def merge_by_ts(named_series: dict[str, dict[int, float]]):
     """Merge multiple {name -> {ts->val}} dicts into a list of rows."""
     # Collect all timestamps
-    all_ts = sorted({ts for series in named_series.values() for ts in series.keys()})
+    all_ts = sorted(
+        set({ts for series in named_series.values() for ts in series.keys()})
+    )
+
     rows = []
     for ts in all_ts:
-        row = {"ts": ts}
+        row = {
+            "ts": time.strftime(STRFTIME, time.gmtime(ts)),
+            "t": 0,
+        }
         for name, series in named_series.items():
             if ts in series:
                 row[name] = series[ts]
+                row["t"] += series[ts]
+
         rows.append(row)
     return rows
 
 
 class State(AuthState):
     current_cluster: Cluster = None
+    current_nodes: list[list[int, str]] = []
 
     # charts
     prom_url: str = ""
@@ -42,10 +50,36 @@ class State(AuthState):
 
     cpu_util_data: list[dict[str, Any]] = []
     stmt_data: list[dict[str, Any]] = []
+    service_latency_data: list[dict[str, Any]] = []
 
     @rx.var
     def cluster_id(self) -> str | None:
         return self.router.page.params.get("c_id") or None
+
+    colors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+        "#393b79",
+        "#637939",
+        "#8c6d31",
+        "#843c39",
+        "#7b4173",
+        "#3182bd",
+        "#31a354",
+        "#756bb1",
+        "#636363",
+        "#969696",
+    ]
+
+    strokes = [None, "2 2 ", "5 5", "10 5"]
 
     is_running: bool = False
 
@@ -68,6 +102,9 @@ class State(AuthState):
                 print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
+                    self.cpu_util_data = []
+                    self.stmt_data = []
+                    self.service_latency_data = []
                 break
 
             async with self:
@@ -81,9 +118,47 @@ class State(AuthState):
                     return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
+                self.current_nodes = []
 
                 self.end = int(time.time())
 
+                # SERVICE LATENCY P99
+                r = requests.get(
+                    self.prom_url,
+                    params={
+                        "query": f'histogram_quantile(0.99, rate(sql_service_latency_bucket{{cluster="{self.cluster_id}"}}[1m])) / 1000 / 1000',
+                        "start": self.start if self.start > 0 else self.end,
+                        "end": self.end,
+                        "step": f"{self.interval_secs}s",
+                    },
+                )
+                r.raise_for_status()
+
+                new_data = [
+                    {
+                        "ts": ts,
+                        "v": round(float(v), 2),
+                    }
+                    for ts, v in r.json()["data"]["result"][0]["values"]
+                ]
+
+                p99 = {}
+                for idx, item in enumerate(r.json()["data"]["result"]):
+
+                    self.current_nodes.append([idx, f"n{item['metric']['node_id']}"])
+
+                    p99[f"n{item['metric']['node_id']}"] = {
+                        ts: round(float(v), 2) for ts, v in item["values"]
+                    }
+
+                new_data = merge_by_ts(p99)
+
+                # roll in newer datapoints
+                self.service_latency_data = (
+                    self.service_latency_data[len(new_data) :] + new_data
+                )
+
+                # CPU UTIL
                 r = requests.get(
                     self.prom_url,
                     params={
@@ -94,19 +169,19 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                new_data = [
-                    {
-                        "ts": dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime(
-                            STRFTIME,
-                        ),
-                        "cpu_util": round(float(val), 2) * 100,
+
+                cpu_utils = {}
+                for idx, item in enumerate(r.json()["data"]["result"]):
+                    cpu_utils[f"n{item['metric']['node_id']}"] = {
+                        ts: round(float(v) * 100, 2) for ts, v in item["values"]
                     }
-                    for ts, val in r.json()["data"]["result"][0]["values"]
-                ]
+
+                new_data = merge_by_ts(cpu_utils)
 
                 # roll in newer datapoints
                 self.cpu_util_data = self.cpu_util_data[len(new_data) :] + new_data
 
+                # SQL STATEMENTS
                 r = requests.get(
                     self.prom_url,
                     params={
@@ -117,18 +192,25 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                select_series = {}
+                select_series = {
+                    ts: round(float(v), 2)
+                    for ts, v in r.json()["data"]["result"][0]["values"]
+                }
 
-                for ts, val in r.json()["data"]["result"][0]["values"]:
-
-                    select_series[
-                        dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime(
-                            STRFTIME,
-                        )
-                    ] = round(float(val), 2)
-
-                # roll in newer datapoints
-                # self.selects_data = self.selects_data[len(new_data) :] + new_data
+                r = requests.get(
+                    self.prom_url,
+                    params={
+                        "query": f'sum(rate(sql_insert_count{{cluster="{self.cluster_id}"}}[1m]))',
+                        "start": self.start if self.start > 0 else self.end,
+                        "end": self.end,
+                        "step": f"{self.interval_secs}s",
+                    },
+                )
+                r.raise_for_status()
+                insert_series = {
+                    ts: round(float(v), 2)
+                    for ts, v in r.json()["data"]["result"][0]["values"]
+                }
 
                 r = requests.get(
                     self.prom_url,
@@ -140,25 +222,34 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
+                update_series = {
+                    ts: round(float(v), 2)
+                    for ts, v in r.json()["data"]["result"][0]["values"]
+                }
 
-                update_series = {}
-
-                for ts, val in r.json()["data"]["result"][0]["values"]:
-                    update_series[
-                        dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime(
-                            STRFTIME,
-                        )
-                    ] = round(float(val), 2)
-
+                r = requests.get(
+                    self.prom_url,
+                    params={
+                        "query": f'sum(rate(sql_delete_count{{cluster="{self.cluster_id}"}}[1m]))',
+                        "start": self.start if self.start > 0 else self.end,
+                        "end": self.end,
+                        "step": f"{self.interval_secs}s",
+                    },
+                )
+                r.raise_for_status()
+                delete_series = {
+                    ts: round(float(v), 2)
+                    for ts, v in r.json()["data"]["result"][0]["values"]
+                }
 
                 new_data = merge_by_ts(
                     {
                         "s": select_series,
+                        "i": insert_series,
                         "u": update_series,
+                        "d": delete_series,
                     }
                 )
-                
-                print(new_data)
 
                 # roll in newer datapoints
                 self.stmt_data = self.stmt_data[len(new_data) :] + new_data
@@ -168,17 +259,22 @@ class State(AuthState):
             await asyncio.sleep(10)
 
 
-def cpu_util():
+def chart_cpu_util():
     return (
         rx.vstack(
             rx.heading("CPU Util"),
             rx.recharts.line_chart(
-                rx.recharts.line(
-                    data_key="cpu_util",
-                    # type_="monotone",
-                    stroke="#8884d8",
-                    dot=False,
-                    is_animation_active=False,
+                rx.foreach(
+                    State.current_nodes,
+                    lambda x: rx.recharts.line(
+                        data_key=x[1],
+                        # type_="monotone",
+                        stroke=State.colors[x[0] % 20],
+                        dot=False,
+                        stroke_dasharray=State.strokes[x[0] // 20 % 4],
+                        stroke_width=x[0] // 80 + 1,
+                        is_animation_active=False,
+                    ),
                 ),
                 rx.recharts.x_axis(data_key="ts"),
                 rx.recharts.y_axis(
@@ -200,7 +296,7 @@ def cpu_util():
     )
 
 
-def sql_queries_per_second():
+def chart_sql_queries_per_second():
     return rx.vstack(
         rx.heading("SQL Queries per Second"),
         rx.recharts.line_chart(
@@ -208,7 +304,7 @@ def sql_queries_per_second():
                 name="selects",
                 data_key="s",
                 # type_="monotone",
-                stroke="#8884d8",
+                stroke="#495eff",
                 dot=False,
                 is_animation_active=False,
             ),
@@ -216,7 +312,31 @@ def sql_queries_per_second():
                 name="updates",
                 data_key="u",
                 # type_="monotone",
-                stroke="#82ca9d",
+                stroke="#CE8943",
+                dot=False,
+                is_animation_active=False,
+            ),
+            rx.recharts.line(
+                name="deletes",
+                data_key="d",
+                # type_="monotone",
+                stroke="#d20f0f",
+                dot=False,
+                is_animation_active=False,
+            ),
+            rx.recharts.line(
+                name="inserts",
+                data_key="i",
+                # type_="monotone",
+                stroke="#F68EFF",
+                dot=False,
+                is_animation_active=False,
+            ),
+            rx.recharts.line(
+                name="total",
+                data_key="t",
+                # type_="monotone",
+                stroke="#FFFFFF",
                 dot=False,
                 is_animation_active=False,
             ),
@@ -240,9 +360,46 @@ def sql_queries_per_second():
     )
 
 
+def chart_service_latency():
+    return (
+        rx.vstack(
+            rx.heading("Service Latency p99"),
+            rx.recharts.line_chart(
+                rx.foreach(
+                    State.current_nodes,
+                    lambda x: rx.recharts.line(
+                        data_key=x[1],
+                        # type_="monotone",
+                        stroke=State.colors[x[0] % 20],
+                        dot=False,
+                        stroke_dasharray=State.strokes[x[0] // 20 % 4],
+                        stroke_width=x[0] // 80 + 1,
+                        is_animation_active=False,
+                    ),
+                ),
+                rx.recharts.x_axis(data_key="ts"),
+                rx.recharts.y_axis(
+                    label={
+                        "value": "latency (ms)",
+                        "angle": -90,  # rotate vertically
+                        "position": "insideLeft",  # or "insideRight", "outsideLeft", etc.
+                    }
+                ),
+                rx.recharts.cartesian_grid(stroke_dasharray="3 3"),
+                rx.recharts.graphing_tooltip(),
+                rx.recharts.legend(),
+                data=State.service_latency_data,
+                width="100%",
+                height=300,
+            ),
+            align="center",
+        ),
+    )
+
+
 @rx.page(
     route=ROUTE,
-    title=f"Cluster {State.current_cluster.cluster_id}: Jobs",
+    title=f"{State.current_cluster.cluster_id} Dashboard",
     on_load=AuthState.check_login,
 )
 @template
@@ -255,15 +412,16 @@ def webpage():
             State.current_cluster.version,
         ),
         rx.flex(
-            rx.flex(
-                mini_breadcrumb(
-                    State.cluster_id, f"/clusters/{State.cluster_id}", "Jobs"
-                ),
-                cpu_util(),
-                sql_queries_per_second(),
-                class_name="flex-1 flex-col overflow-hidden",
+            mini_breadcrumb(
+                State.cluster_id, f"/clusters/{State.cluster_id}", "Dashboard"
             ),
-            class_name="flex-1 pt-8 overflow-hidden",
+            rx.flex(
+                chart_cpu_util(),
+                chart_sql_queries_per_second(),
+                chart_service_latency(),
+                class_name="flex-1 flex-col overflow-y-scroll",
+            ),
+            class_name="flex-1 flex-col pt-8 overflow-hidden",
         ),
         class_name="flex-col flex-1 overflow-hidden",
         on_mount=State.start_bg_event,
