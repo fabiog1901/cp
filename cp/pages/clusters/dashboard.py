@@ -24,22 +24,22 @@ def merge_by_ts(named_series: dict[str, dict[int, float]]):
 
     rows = []
     for ts in all_ts:
-        row = {
+        r = {
             "ts": time.strftime(STRFTIME, time.gmtime(ts)),
-            "t": 0,
         }
         for name, series in named_series.items():
             if ts in series:
-                row[name] = series[ts]
-                row["t"] += series[ts]
+                r[name] = series[ts]
 
-        rows.append(row)
+        r["t"] = r["s"] + r["i"] + r["u"] + r["d"]
+        rows.append(r)
+
     return rows
 
 
 class State(AuthState):
     current_cluster: Cluster = None
-    current_nodes: list[list[int, str]] = []
+    current_nodes: set[int] = set()
 
     # charts
     prom_url: str = ""
@@ -48,9 +48,7 @@ class State(AuthState):
     end: int = 0
     interval_secs = 10
 
-    cpu_util_data: list[dict[str, Any]] = []
-    stmt_data: list[dict[str, Any]] = []
-    service_latency_data: list[dict[str, Any]] = []
+    chart_data: list[dict[str, Any]] = []
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -79,7 +77,7 @@ class State(AuthState):
         "#969696",
     ]
 
-    strokes = [None, "2 2 ", "5 5", "10 5"]
+    strokes: list[str] = ["", "2 2 ", "5 5", "10 5"]
 
     is_running: bool = False
 
@@ -102,9 +100,7 @@ class State(AuthState):
                 print(f"{ROUTE}: Stopping background task.")
                 async with self:
                     self.is_running = False
-                    self.cpu_util_data = []
-                    self.stmt_data = []
-                    self.service_latency_data = []
+                    self.chart_data = []
                 break
 
             async with self:
@@ -118,7 +114,7 @@ class State(AuthState):
                     return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
-                self.current_nodes = []
+                self.current_nodes = set()
 
                 self.end = int(time.time())
 
@@ -134,29 +130,14 @@ class State(AuthState):
                 )
                 r.raise_for_status()
 
-                new_data = [
-                    {
-                        "ts": ts,
-                        "v": round(float(v), 2),
-                    }
-                    for ts, v in r.json()["data"]["result"][0]["values"]
-                ]
+                series = {}
+                for item in r.json()["data"]["result"]:
 
-                p99 = {}
-                for idx, item in enumerate(r.json()["data"]["result"]):
+                    self.current_nodes.add(int(item["metric"]["node_id"]))
 
-                    self.current_nodes.append([idx, f"n{item['metric']['node_id']}"])
-
-                    p99[f"n{item['metric']['node_id']}"] = {
+                    series[f"p99_n{item['metric']['node_id']}"] = {
                         ts: round(float(v), 2) for ts, v in item["values"]
                     }
-
-                new_data = merge_by_ts(p99)
-
-                # roll in newer datapoints
-                self.service_latency_data = (
-                    self.service_latency_data[len(new_data) :] + new_data
-                )
 
                 # CPU UTIL
                 r = requests.get(
@@ -170,16 +151,13 @@ class State(AuthState):
                 )
                 r.raise_for_status()
 
-                cpu_utils = {}
-                for idx, item in enumerate(r.json()["data"]["result"]):
-                    cpu_utils[f"n{item['metric']['node_id']}"] = {
+                for item in r.json()["data"]["result"]:
+
+                    self.current_nodes.add(int(item["metric"]["node_id"]))
+
+                    series[f"cpu_n{item['metric']['node_id']}"] = {
                         ts: round(float(v) * 100, 2) for ts, v in item["values"]
                     }
-
-                new_data = merge_by_ts(cpu_utils)
-
-                # roll in newer datapoints
-                self.cpu_util_data = self.cpu_util_data[len(new_data) :] + new_data
 
                 # SQL STATEMENTS
                 r = requests.get(
@@ -192,7 +170,7 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                select_series = {
+                series["s"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
@@ -207,7 +185,7 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                insert_series = {
+                series["i"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
@@ -222,7 +200,7 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                update_series = {
+                series["u"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
@@ -237,22 +215,15 @@ class State(AuthState):
                     },
                 )
                 r.raise_for_status()
-                delete_series = {
+                series["d"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
 
-                new_data = merge_by_ts(
-                    {
-                        "s": select_series,
-                        "i": insert_series,
-                        "u": update_series,
-                        "d": delete_series,
-                    }
-                )
+                new_data = merge_by_ts(series)
 
                 # roll in newer datapoints
-                self.stmt_data = self.stmt_data[len(new_data) :] + new_data
+                self.chart_data = self.chart_data[len(new_data) :] + new_data
 
                 self.start = 0
 
@@ -267,12 +238,16 @@ def chart_cpu_util():
                 rx.foreach(
                     State.current_nodes,
                     lambda x: rx.recharts.line(
-                        data_key=x[1],
+                        name=f"n{x}",
+                        data_key=f"cpu_n{x}",
                         # type_="monotone",
-                        stroke=State.colors[x[0] % 20],
+                        stroke=State.colors[x % 20],
                         dot=False,
-                        stroke_dasharray=State.strokes[x[0] // 20 % 4],
-                        stroke_width=x[0] // 80 + 1,
+                        stroke_dasharray=rx.cond(
+                            State.current_nodes.length() > 20,
+                            State.strokes[x % 4],
+                            "",
+                        ),
                         is_animation_active=False,
                     ),
                 ),
@@ -287,7 +262,7 @@ def chart_cpu_util():
                 rx.recharts.cartesian_grid(stroke_dasharray="3 3"),
                 rx.recharts.graphing_tooltip(),
                 rx.recharts.legend(),
-                data=State.cpu_util_data,
+                data=State.chart_data,
                 width="100%",
                 height=300,
             ),
@@ -351,7 +326,7 @@ def chart_sql_queries_per_second():
             rx.recharts.cartesian_grid(stroke_dasharray="3 3"),
             rx.recharts.graphing_tooltip(),
             rx.recharts.legend(),
-            data=State.stmt_data,
+            data=State.chart_data,
             width="100%",
             height=300,
         ),
@@ -368,12 +343,16 @@ def chart_service_latency():
                 rx.foreach(
                     State.current_nodes,
                     lambda x: rx.recharts.line(
-                        data_key=x[1],
+                        name=f"n{x}",
+                        data_key=f"p99_n{x}",
                         # type_="monotone",
-                        stroke=State.colors[x[0] % 20],
+                        stroke=State.colors[x % 20],
                         dot=False,
-                        stroke_dasharray=State.strokes[x[0] // 20 % 4],
-                        stroke_width=x[0] // 80 + 1,
+                        stroke_dasharray=rx.cond(
+                            State.current_nodes.length() > 20,
+                            State.strokes[x % 4],
+                            "",
+                        ),
                         is_animation_active=False,
                     ),
                 ),
@@ -388,7 +367,7 @@ def chart_service_latency():
                 rx.recharts.cartesian_grid(stroke_dasharray="3 3"),
                 rx.recharts.graphing_tooltip(),
                 rx.recharts.legend(),
-                data=State.service_latency_data,
+                data=State.chart_data,
                 width="100%",
                 height=300,
             ),
