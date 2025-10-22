@@ -2,6 +2,8 @@ import datetime as dt
 import os
 from typing import Any, List
 
+from psycopg.abc import Dumper
+from psycopg.pq import Format
 from psycopg.rows import class_row
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
@@ -741,9 +743,30 @@ def get_role_to_groups_mappings() -> list[RoleGroupMap]:
 
 
 # ======================================================
-class DictJsonbDumper(JsonbDumper):
+class Dict2JsonbDumper(JsonbDumper):
     def dump(self, obj):
         return super().dump(Jsonb(obj))
+
+
+class SelectorDumper(Dumper):
+    """
+    Returns the correct Dumper based on the object topology:
+
+    list[str] or empty list -> ListDumper
+    list[dict] -> DictJsonbDumper
+    """
+
+    format = Format.BINARY
+    oid = None
+
+    _dict_dumper = Dict2JsonbDumper(list)
+    _list_dumper = ListDumper(list)
+
+    def upgrade(self, obj, format: Format) -> Dumper:
+        if obj and isinstance(obj[0], dict):
+            return self._dict_dumper
+        else:
+            return self._list_dumper
 
 
 def convert_model_to_sql(table: str, model: BaseModel):
@@ -762,11 +785,9 @@ def execute_stmt(
     return_list: bool = True,
 ) -> Any | list[Any] | None:
     with pool.connection() as conn:
-        # convert a set to a psycopg list
         conn.adapters.register_dumper(set, ListDumper)
-        conn.adapters.register_dumper(list, ListDumper)
-        conn.adapters.register_dumper(dict, DictJsonbDumper)
-        # conn.adapters.register_dumper(list, DictJsonbDumper)
+        conn.adapters.register_dumper(dict, Dict2JsonbDumper)
+        conn.adapters.register_dumper(list, SelectorDumper)
 
         with conn.cursor(row_factory=class_row(model)) as cur:
             try:
