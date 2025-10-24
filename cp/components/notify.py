@@ -26,7 +26,7 @@ def notify_dialog() -> rx.Component:
                 justify="end",
                 spacing="3",
             ),
-            max_width="420px",
+            max_width="820px",
             padding="20px",
             border_radius="12px",
         ),
