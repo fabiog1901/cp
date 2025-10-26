@@ -242,6 +242,11 @@ class Setting(BaseModel):
     description: str
 
 
+class Nodes(BaseModel):
+    cluster_id: str
+    nodes: list[str]
+
+
 # GENERIC
 
 

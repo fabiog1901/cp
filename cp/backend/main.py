@@ -3,7 +3,7 @@ import random
 
 from psycopg.rows import class_row
 
-from ..models import JobType, Msg
+from ..models import JobType, Msg, Nodes
 from . import db
 from .create_cluster import create_cluster
 from .delete_cluster import delete_cluster
@@ -15,6 +15,21 @@ from .upgrade_cluster import upgrade_cluster
 
 def fail_zombie_jobs():
     db.fail_zombie_jobs()
+
+
+def get_nodes():
+
+    rs: list[Nodes] = []
+
+    try:
+        rs = db.get_nodes()
+    except Exception as e:
+        print("Error", str(e))
+
+    return [
+        {"targets": [f"{n}:8080" for n in x.nodes], "labels": {"cluster": x.cluster_id}}
+        for x in rs
+    ]
 
 
 async def pull_from_mq():

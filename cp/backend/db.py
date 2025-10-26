@@ -18,6 +18,7 @@ from ..models import (
     InventoryLB,
     InventoryRegion,
     Job,
+    Nodes,
     Region,
     RoleGroupMap,
     Setting,
@@ -739,6 +740,29 @@ def get_role_to_groups_mappings() -> list[RoleGroupMap]:
         """,
         (),
         RoleGroupMap,
+    )
+
+
+def get_nodes() -> list[Nodes]:
+    return execute_stmt(
+        """
+        WITH
+        c AS (
+        SELECT cluster_id, jsonb_array_elements(cluster_inventory) AS j 
+        FROM clusters
+        ),
+        x AS 
+        (                                                                                         
+        SELECT cluster_id, jsonb_array_elements_text(j->'nodes') AS node                                      
+        FROM (SELECT cluster_id, j FROM c)
+        )
+        SELECT cluster_id, jsonb_agg(node) AS nodes
+        FROM (SELECT * FROM x) AS OF SYSTEM TIME follower_read_timestamp()
+        GROUP BY cluster_id;
+        """,
+        (),
+        model=Nodes,
+        return_list=True,
     )
 
 

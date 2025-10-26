@@ -1,6 +1,17 @@
 import reflex as rx
+from fastapi import FastAPI
 
-from .backend.main import pull_from_mq
+from .backend.main import get_nodes, pull_from_mq
+
+# Create a FastAPI app
+api_app = FastAPI(title="My API")
+
+
+# Add routes to the FastAPI app
+@api_app.get("/api/prom-targets")
+async def get_targets():
+    return get_nodes()
+
 
 app = rx.App(
     theme=rx.theme(
@@ -9,6 +20,7 @@ app = rx.App(
         radius="large",
         accent_color="orange",
     ),
+    api_transformer=api_app,
 )
 
 
