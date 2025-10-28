@@ -4,11 +4,11 @@ import reflex as rx
 
 from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Job
 from ...state import AuthState
 from ...template import template
-from ...components.notify import NotifyState
 
 ROUTE = "/jobs"
 
@@ -38,11 +38,15 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.jobs = db.fetch_all_jobs(list(self.webuser.groups), self.is_admin)
+                    self.jobs = db.fetch_all_jobs(
+                        list(self.webuser.groups), self.is_admin
+                    )
                 except Exception as e:
                     self.is_running = False
-                    return NotifyState.show("Error communicating with the database", str(e))
-        
+                    return NotifyState.show(
+                        "Error communicating with the database", str(e)
+                    )
+
             await asyncio.sleep(5)
 
 

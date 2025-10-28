@@ -5,11 +5,11 @@ import yaml
 
 from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import TS_FORMAT, Job, JobType, StrID, Task
 from ...state import AuthState
 from ...template import template
-from ...components.notify import NotifyState
 
 ROUTE = "/jobs/[j_id]"
 
@@ -29,14 +29,14 @@ class State(AuthState):
     @rx.event
     def reschedule_job(self):
         # TODO fix so we can use self.current_job.descripton
-        
+
         try:
             j: Job = db.fetch_job(
                 self.current_job.job_id, list(self.webuser.groups), self.is_admin
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
-        
+
         job_type = (
             JobType.RECREATE_CLUSTER
             if self.current_job.job_type == JobType.CREATE_CLUSTER
@@ -82,21 +82,21 @@ class State(AuthState):
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
-                
+
                 if job is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
                 self.current_job_description = yaml.dump(job.description)
                 self.current_job = job
-                
+
                 try:
                     self.tasks = db.get_all_tasks(self.job_id)
                     self.linked_clusters = db.get_linked_clusters_from_job(self.job_id)
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
-                
+
             await asyncio.sleep(5)
 
 

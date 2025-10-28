@@ -6,11 +6,11 @@ from psycopg.rows import class_row
 
 from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
 from ...state import AuthState
 from ...template import template
-from ...components.notify import NotifyState
 
 ROUTE = "/clusters/[c_id]/users"
 

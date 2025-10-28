@@ -5,11 +5,11 @@ import yaml
 
 from ..backend import db
 from ..components.BadgeEventType import get_event_type_badge
+from ..components.notify import NotifyState
 from ..cp import app
 from ..models import TS_FORMAT, EventLog, EventLogYaml
 from ..state import AuthState
 from ..template import template
-from ..components.notify import NotifyState
 
 ROUTE = "/events"
 

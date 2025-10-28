@@ -191,7 +191,7 @@ class State(AuthState):
                             self.current_cluster.version[:5]
                         )
                     except Exception as e:
-                        self.is_running=False
+                        self.is_running = False
                         return NotifyState.show("Error", str(e))
 
                     all_new_versions = [x.version for x in upgrade_versions]

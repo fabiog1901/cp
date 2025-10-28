@@ -5,11 +5,11 @@ import reflex as rx
 from ...backend import db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.main import cluster_banner, mini_breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Cluster, Job
 from ...state import AuthState
 from ...template import template
-from ...components.notify import NotifyState
 
 ROUTE = "/clusters/[c_id]/jobs"
 
