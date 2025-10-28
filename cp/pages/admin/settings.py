@@ -4,6 +4,7 @@ import reflex as rx
 
 from ...backend import db
 from ...components.main import breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import TS_FORMAT, EventType, Setting
 from ...state import AuthState
@@ -23,12 +24,16 @@ class State(AuthState):
         self.draft[id] = value
 
     def save(self, id):
-        db.update_setting(id, self.draft[id], self.webuser.username)
-        db.insert_event_log(
-            self.webuser.username,
-            EventType.UPDATE_SETTING,
-            {"ID": id, "value": self.draft[id]},
-        )
+        try:
+            db.update_setting(id, self.draft[id], self.webuser.username)
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.UPDATE_SETTING,
+                {"ID": id, "value": self.draft[id]},
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
+
         self.original[id] = self.draft[id]
 
     def discard(self, id):
@@ -62,12 +67,17 @@ class State(AuthState):
                 break
 
             async with self:
-                self.settings = db.fetch_all_settings()
+                try:
+                    self.settings = db.fetch_all_settings()
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
 
                 self.original = {item.id: item.value for item in self.settings}
                 if not self.has_copied:
                     self.draft: dict = self.original.copy()
                     self.has_copied = True
+
             await asyncio.sleep(5)
 
 

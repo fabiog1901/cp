@@ -9,6 +9,7 @@ from ..cp import app
 from ..models import TS_FORMAT, EventLog, EventLogYaml
 from ..state import AuthState
 from ..template import template
+from ..components.notify import NotifyState
 
 ROUTE = "/events"
 
@@ -42,13 +43,20 @@ class State(AuthState):
             self.offset += self.limit
         self.load_data()
 
-    def _get_total_items(self):
-        """Return the total number of items in the Customer table."""
-        self.total_items = db.get_event_count()
-
     @rx.event
     def load_data(self):
         """Get all users from the database."""
+
+        try:
+            all_events = db.fetch_all_events(
+                self.limit,
+                self.offset,
+                list(self.webuser.groups),
+                self.is_admin,
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
+
         self.events = [
             EventLogYaml(
                 created_at=x.created_at,
@@ -56,14 +64,13 @@ class State(AuthState):
                 event_type=x.event_type,
                 event_details_yaml=yaml.dump(x.event_details),
             )
-            for x in db.fetch_all_events(
-                self.limit,
-                self.offset,
-                list(self.webuser.groups),
-                self.is_admin,
-            )
+            for x in all_events
         ]
-        self._get_total_items()
+
+        try:
+            self.total_items = db.get_event_count()
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
 
 def table_row(event: EventLogYaml):

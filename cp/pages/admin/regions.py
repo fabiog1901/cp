@@ -69,7 +69,9 @@ class State(AuthState):
         """Validate draft with Pydantic, print to stdout, and add to the list."""
         # parse security groups
         sgs = [s.strip() for s in self.security_groups_text.split(",")]
+
         # parse extras JSON (optional)
+        # TODO not sure we need extra_text at all
         extras: Dict[str, Any] = {}
         if self.extras_text.strip():
             try:
@@ -102,7 +104,7 @@ class State(AuthState):
             )
 
         except ValidationError as ve:
-            print("[AddRegion] Validation error:", ve)
+            print("Validation Error:", ve)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -127,7 +129,12 @@ class State(AuthState):
                 break
 
             async with self:
-                self.regions = db.get_all_regions()
+                try:
+                    self.regions = db.get_all_regions()
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+
             await asyncio.sleep(5)
 
 

@@ -64,7 +64,7 @@ class State(AuthState):
                 v.version,
             )
         except ValidationError as ve:
-            return NotifyState.show("ValidationError", str(ve))
+            return NotifyState.show("Validation Error", str(ve))
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -89,7 +89,12 @@ class State(AuthState):
                 break
 
             async with self:
-                self.versions = db.get_versions()
+                try:
+                    self.versions = db.get_versions()
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+
             await asyncio.sleep(5)
 
 

@@ -7,6 +7,7 @@ import requests
 
 from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import STRFTIME, Cluster
 from ...state import AuthState
@@ -16,7 +17,7 @@ ROUTE = "/clusters/[c_id]/dashboard"
 
 
 def merge_by_ts(named_series: dict[str, dict[int, float]]):
-    """Merge multiple {name -> {ts->val}} dicts into a list of rows."""
+    """Merge multiple {name : {ts: val} } dicts into a list of rows."""
     # Collect all timestamps
     all_ts = sorted(
         set({ts for series in named_series.values() for ts in series.keys()})
@@ -31,6 +32,7 @@ def merge_by_ts(named_series: dict[str, dict[int, float]]):
             if ts in series:
                 r[name] = series[ts]
 
+        # summing up all 3 SQL statement types
         r["t"] = r["s"] + r["i"] + r["u"] + r["d"]
         rows.append(r)
 
@@ -77,8 +79,6 @@ class State(AuthState):
         "#969696",
     ]
 
-    strokes: list[str] = ["", "2 2 ", "5 5", "10 5"]
-
     is_running: bool = False
 
     @rx.event(background=True)
@@ -88,7 +88,12 @@ class State(AuthState):
         async with self:
             self.is_running = True
 
-            self.prom_url = db.get_setting("prom_url")
+            try:
+                self.prom_url = db.get_setting("prom_url")
+            except Exception as e:
+                self.is_running = False
+                return NotifyState.show("Error", str(e))
+
             self.start = int(time.time()) - 60 * self.period_mins
 
         while True:
@@ -104,11 +109,16 @@ class State(AuthState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(
-                    self.cluster_id,
-                    list(self.webuser.groups),
-                    self.is_admin,
-                )
+                try:
+                    cluster: Cluster = db.get_cluster(
+                        self.cluster_id,
+                        list(self.webuser.groups),
+                        self.is_admin,
+                    )
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+
                 if cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
@@ -119,16 +129,20 @@ class State(AuthState):
                 self.end = int(time.time())
 
                 # SERVICE LATENCY P99
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'histogram_quantile(0.99, rate(sql_service_latency_bucket{{cluster="{self.cluster_id}"}}[1m])) / 1000 / 1000',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                # TODO use asyncio to run all HTTP requests concurrently?
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'histogram_quantile(0.99, rate(sql_service_latency_bucket{{cluster="{self.cluster_id}"}}[1m])) / 1000 / 1000',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(e))
 
                 series = {}
                 for item in r.json()["data"]["result"]:
@@ -140,16 +154,19 @@ class State(AuthState):
                     }
 
                 # CPU UTIL
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'sys_cpu_user_percent{{cluster="{self.cluster_id}"}}',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'sys_cpu_user_percent{{cluster="{self.cluster_id}"}}',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as ce:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(ce))
 
                 for item in r.json()["data"]["result"]:
 
@@ -160,61 +177,76 @@ class State(AuthState):
                     }
 
                 # SQL STATEMENTS
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'sum(rate(sql_select_count{{cluster="{self.cluster_id}"}}[1m]))',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'sum(rate(sql_select_count{{cluster="{self.cluster_id}"}}[1m]))',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as ce:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(ce))
+
                 series["s"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
 
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'sum(rate(sql_insert_count{{cluster="{self.cluster_id}"}}[1m]))',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'sum(rate(sql_insert_count{{cluster="{self.cluster_id}"}}[1m]))',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as ce:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(ce))
+
                 series["i"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
 
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'sum(rate(sql_update_count{{cluster="{self.cluster_id}"}}[1m]))',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'sum(rate(sql_update_count{{cluster="{self.cluster_id}"}}[1m]))',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as ce:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(ce))
                 series["u"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
                 }
 
-                r = requests.get(
-                    self.prom_url,
-                    params={
-                        "query": f'sum(rate(sql_delete_count{{cluster="{self.cluster_id}"}}[1m]))',
-                        "start": self.start if self.start > 0 else self.end,
-                        "end": self.end,
-                        "step": f"{self.interval_secs}s",
-                    },
-                )
-                r.raise_for_status()
+                try:
+                    r = requests.get(
+                        self.prom_url,
+                        params={
+                            "query": f'sum(rate(sql_delete_count{{cluster="{self.cluster_id}"}}[1m]))',
+                            "start": self.start if self.start > 0 else self.end,
+                            "end": self.end,
+                            "step": f"{self.interval_secs}s",
+                        },
+                    )
+                except Exception as ce:
+                    self.is_running = False
+                    return NotifyState.show("Error fetching chart data", str(ce))
+
                 series["d"] = {
                     ts: round(float(v), 2)
                     for ts, v in r.json()["data"]["result"][0]["values"]
@@ -225,6 +257,8 @@ class State(AuthState):
                 # roll in newer datapoints
                 self.chart_data = self.chart_data[len(new_data) :] + new_data
 
+                # by setting start=0, on the next iteration we only collect
+                # the last data point
                 self.start = 0
 
             await asyncio.sleep(10)
@@ -243,11 +277,6 @@ def chart_cpu_util():
                         # type_="monotone",
                         stroke=State.colors[x % 20],
                         dot=False,
-                        stroke_dasharray=rx.cond(
-                            State.current_nodes.length() > 20,
-                            State.strokes[x % 4],
-                            "",
-                        ),
                         is_animation_active=False,
                     ),
                 ),
@@ -348,11 +377,6 @@ def chart_service_latency():
                         # type_="monotone",
                         stroke=State.colors[x % 20],
                         dot=False,
-                        stroke_dasharray=rx.cond(
-                            State.current_nodes.length() > 20,
-                            State.strokes[x % 4],
-                            "",
-                        ),
                         is_animation_active=False,
                     ),
                 ),

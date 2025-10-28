@@ -9,6 +9,7 @@ from ...cp import app
 from ...models import Cluster, Job
 from ...state import AuthState
 from ...template import template
+from ...components.notify import NotifyState
 
 ROUTE = "/clusters/[c_id]/jobs"
 
@@ -42,21 +43,32 @@ class State(AuthState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(
-                    self.cluster_id,
-                    list(self.webuser.groups),
-                    self.is_admin,
-                )
+                try:
+                    cluster: Cluster = db.get_cluster(
+                        self.cluster_id,
+                        list(self.webuser.groups),
+                        self.is_admin,
+                    )
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+
                 if cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
                 self.current_cluster = cluster
-                self.jobs = db.get_all_linked_jobs(self.cluster_id)
+
+                try:
+                    self.jobs = db.get_all_linked_jobs(self.cluster_id)
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+
             await asyncio.sleep(5)
 
 
-def get_job_row(job: Job):
+def table_row(job: Job):
     """Show a job in a table row."""
     return rx.table.row(
         rx.table.cell(
@@ -71,7 +83,7 @@ def get_job_row(job: Job):
     )
 
 
-def jobs_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -85,7 +97,7 @@ def jobs_table():
             rx.table.body(
                 rx.foreach(
                     State.jobs,
-                    get_job_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -116,7 +128,7 @@ def webpage():
                     State.cluster_id, f"/clusters/{State.cluster_id}", "Jobs"
                 ),
                 rx.flex(
-                    jobs_table(),
+                    data_table(),
                     class_name="flex-1 flex-col overflow-y-scroll p-2 pt-8",
                 ),
                 class_name="flex-1 flex-col overflow-hidden",

@@ -9,6 +9,7 @@ from ...cp import app
 from ...models import TS_FORMAT, Job, JobType, StrID, Task
 from ...state import AuthState
 from ...template import template
+from ...components.notify import NotifyState
 
 ROUTE = "/jobs/[j_id]"
 
@@ -28,23 +29,30 @@ class State(AuthState):
     @rx.event
     def reschedule_job(self):
         # TODO fix so we can use self.current_job.descripton
-        j: Job = db.fetch_job(
-            self.current_job.job_id, list(self.webuser.groups), self.is_admin
-        )
-
+        
+        try:
+            j: Job = db.fetch_job(
+                self.current_job.job_id, list(self.webuser.groups), self.is_admin
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
+        
         job_type = (
             JobType.RECREATE_CLUSTER
             if self.current_job.job_type == JobType.CREATE_CLUSTER
             else self.current_job.job_type
         )
 
-        msg_id: StrID = db.insert_into_mq(
-            job_type, j.description, self.webuser.username
-        )
+        try:
+            msg_id: StrID = db.insert_into_mq(
+                job_type, j.description, self.webuser.username
+            )
 
-        db.insert_event_log(
-            self.webuser.username, job_type, j.description | {"job_id": msg_id.id}
-        )
+            db.insert_event_log(
+                self.webuser.username, job_type, j.description | {"job_id": msg_id.id}
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
@@ -67,21 +75,32 @@ class State(AuthState):
                 break
 
             async with self:
-                job: Job = db.fetch_job(
-                    int(self.job_id), list(self.webuser.groups), self.is_admin
-                )
+                try:
+                    job: Job = db.fetch_job(
+                        int(self.job_id), list(self.webuser.groups), self.is_admin
+                    )
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+                
                 if job is None:
                     self.is_running = False
-                    return rx.redirect("/404", replace=True)
+                    return rx.redirect("/_notfound", replace=True)
 
                 self.current_job_description = yaml.dump(job.description)
                 self.current_job = job
-                self.tasks = db.get_all_tasks(self.job_id)
-                self.linked_clusters = db.get_linked_clusters_from_job(self.job_id)
+                
+                try:
+                    self.tasks = db.get_all_tasks(self.job_id)
+                    self.linked_clusters = db.get_linked_clusters_from_job(self.job_id)
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
+                
             await asyncio.sleep(5)
 
 
-def get_task_row(task: Task):
+def table_row(task: Task):
     """Show a job in a table row."""
     return rx.table.row(
         rx.table.cell(task.task_id),
@@ -91,7 +110,7 @@ def get_task_row(task: Task):
     )
 
 
-def tasks_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -105,7 +124,7 @@ def tasks_table():
             rx.table.body(
                 rx.foreach(
                     State.tasks,
-                    get_task_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -244,7 +263,7 @@ def webpage():
             class_name="flex-1 p-2 pt-8",
         ),
         rx.vstack(
-            tasks_table(),
+            data_table(),
             class_name="pt-8 overflow-y-scroll",
         ),
         class_name="flex-1 flex-col overflow-hidden p-2",

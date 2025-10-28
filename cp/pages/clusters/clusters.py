@@ -10,6 +10,7 @@ from ...models import Cluster, ClusterOverview, IntID, JobType, StrID
 from ...state import AuthState
 from ...template import template
 from ..util import get_funny_name, get_human_size
+from ...components.notify import NotifyState
 
 ROUTE = "/clusters"
 
@@ -91,16 +92,19 @@ class State(AuthState):
             ]
         )
 
-        msg_id: StrID = db.insert_into_mq(
-            JobType.CREATE_CLUSTER,
-            form_data,
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            JobType.CREATE_CLUSTER,
-            form_data | {"job_id": msg_id.id},
-        )
+        try:
+            msg_id: StrID = db.insert_into_mq(
+                JobType.CREATE_CLUSTER,
+                form_data,
+                self.webuser.username,
+            )
+            db.insert_event_log(
+                self.webuser.username,
+                JobType.CREATE_CLUSTER,
+                form_data | {"job_id": msg_id.id},
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
         self.selected_name = get_funny_name()
         self.selected_regions = []
@@ -114,16 +118,21 @@ class State(AuthState):
 
     @rx.event
     def delete_cluster(self, cluster_id: str):
-        msg_id: IntID = db.insert_into_mq(
-            JobType.DELETE_CLUSTER,
-            {"cluster_id": cluster_id},
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            JobType.DELETE_CLUSTER,
-            {"cluster_id": cluster_id, "job_id": msg_id.id},
-        )
+
+        try:
+            msg_id: IntID = db.insert_into_mq(
+                JobType.DELETE_CLUSTER,
+                {"cluster_id": cluster_id},
+                self.webuser.username,
+            )
+            db.insert_event_log(
+                self.webuser.username,
+                JobType.DELETE_CLUSTER,
+                {"cluster_id": cluster_id, "job_id": msg_id.id},
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
+
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
     @rx.event(background=True)
@@ -131,24 +140,29 @@ class State(AuthState):
         if self.is_running:
             return
         async with self:
-            # fetch this data only once
-            # this data powers the Create New Cluster dialog
-            self.available_versions = [x.version for x in db.get_versions()]
-            self.selected_version = self.available_versions[0]
+            try:
+                # fetch this data only once
+                # this data powers the Create New Cluster dialog
+                self.available_versions = [x.version for x in db.get_versions()]
+                self.selected_version = self.available_versions[0]
 
-            self.available_node_counts = [x.id for x in db.get_node_counts()]
-            self.selected_node_count = self.available_node_counts[0]
+                self.available_node_counts = [x.id for x in db.get_node_counts()]
+                self.selected_node_count = self.available_node_counts[0]
 
-            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
-            self.selected_cpus_per_node = self.available_cpus_per_node[0]
+                self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+                self.selected_cpus_per_node = self.available_cpus_per_node[0]
 
-            self.disk_fmt_2_size_map = {
-                get_human_size(x.id): x.id for x in db.get_disk_sizes()
-            }
-            self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
-            self.selected_disk_size = self.available_disk_sizes[0]
+                self.disk_fmt_2_size_map = {
+                    get_human_size(x.id): x.id for x in db.get_disk_sizes()
+                }
+                self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
+                self.selected_disk_size = self.available_disk_sizes[0]
 
-            self.available_regions = db.get_regions()
+                self.available_regions = db.get_regions()
+
+            except Exception as e:
+                self.is_running = False
+                return NotifyState.show("Error", str(e))
 
             self.selected_group = self.webuser.groups[0]
             self.is_running = True
@@ -167,9 +181,13 @@ class State(AuthState):
             async with self:
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
-                self.clusters = db.fetch_all_clusters(
-                    list(self.webuser.groups), self.is_admin
-                )
+                try:
+                    self.clusters = db.fetch_all_clusters(
+                        list(self.webuser.groups), self.is_admin
+                    )
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error", str(e))
 
             await asyncio.sleep(5)
 
@@ -372,7 +390,7 @@ def new_cluster_dialog():
     )
 
 
-def get_cluster_row(cluster: ClusterOverview):
+def table_row(cluster: ClusterOverview):
     """Show a cluster in a table row."""
     return rx.table.row(
         # CLUSTER_ID
@@ -499,7 +517,7 @@ def get_cluster_row(cluster: ClusterOverview):
     )
 
 
-def clusters_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -515,7 +533,7 @@ def clusters_table():
             rx.table.body(
                 rx.foreach(
                     State.table_clusters,
-                    get_cluster_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -539,7 +557,7 @@ def webpage():
             class_name="p-2 text-8xl font-semibold",
         ),
         rx.hstack(new_cluster_dialog(), direction="row-reverse", class_name="p-4"),
-        rx.flex(clusters_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
+        rx.flex(data_table(), class_name="flex-1 flex-col overflow-y-scroll p-2"),
         class_name="flex-1 flex-col overflow-hidden",
         on_mount=State.start_bg_event,
     )

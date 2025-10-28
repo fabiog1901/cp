@@ -51,6 +51,7 @@ class State(AuthState):
     def get_backups(self):
         try:
             with psycopg.connect(
+                # TODO fetch the right username and password
                 f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
                 autocommit=True,
                 connect_timeout=2,
@@ -63,8 +64,8 @@ class State(AuthState):
                 self.paths = ["LATEST"] + p
 
         except Exception as e:
-            print(e)
             self.paths = []
+            return NotifyState.show("Error", str(e))
 
     @rx.event
     def get_backup(self, backup_path: str):
@@ -89,7 +90,7 @@ class State(AuthState):
             self.backup_details = rs
 
         except Exception as e:
-            print(e)
+            return NotifyState.show("Error", str(e))
 
     @rx.event
     def initiate_restore(self, form_data: dict):
@@ -118,7 +119,7 @@ class State(AuthState):
                 rr.model_dump() | {"job_id": msg_id.id},
             )
         except ValidationError as ve:
-            return NotifyState.show("ValidationError", str(ve))
+            return NotifyState.show("Validation Error", str(ve))
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -144,11 +145,15 @@ class State(AuthState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(
-                    self.cluster_id,
-                    list(self.webuser.groups),
-                    self.is_admin,
-                )
+                try:
+                    cluster: Cluster = db.get_cluster(
+                        self.cluster_id,
+                        list(self.webuser.groups),
+                        self.is_admin,
+                    )
+                except Exception as e:
+                    return NotifyState.show("Error", str(e))
+
                 if cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
@@ -159,7 +164,7 @@ class State(AuthState):
             await asyncio.sleep(5)
 
 
-def get_details_row(bd: BackupDetails):
+def table_row(bd: BackupDetails):
     return rx.table.row(
         rx.table.cell(bd.object_type),
         rx.table.cell(bd.database_name),
@@ -169,7 +174,7 @@ def get_details_row(bd: BackupDetails):
     )
 
 
-def backup_details_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -184,7 +189,7 @@ def backup_details_table():
             rx.table.body(
                 rx.foreach(
                     State.backup_details,
-                    get_details_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -339,7 +344,7 @@ def webpage():
             ),
             rx.flex(
                 rx.heading(State.selected_path, class_name="p-2"),
-                backup_details_table(),
+                data_table(),
                 class_name="flex-1 flex-col overflow-y-scroll",
             ),
             class_name="flex overflow-hidden pt-8",

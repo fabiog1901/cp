@@ -5,6 +5,7 @@ import reflex as rx
 from ...backend import db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
+from ...components.notify import NotifyState
 from ...cp import app
 from ...models import (
     TS_FORMAT,
@@ -64,16 +65,20 @@ class State(AuthState):
         # TODO check if user is permissioned?
         # TODO use try catch and NotifyState and ValidationError
         # TODO use pydantic model to validate data, see /admin/regions.py
-        msg_id: IntID = db.insert_into_mq(
-            JobType.SCALE_CLUSTER,
-            form_data,
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            JobType.SCALE_CLUSTER,
-            form_data | {"job_id": msg_id.id},
-        )
+        try:
+            msg_id: IntID = db.insert_into_mq(
+                JobType.SCALE_CLUSTER,
+                form_data,
+                self.webuser.username,
+            )
+
+            db.insert_event_log(
+                self.webuser.username,
+                JobType.SCALE_CLUSTER,
+                form_data | {"job_id": msg_id.id},
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
@@ -83,16 +88,20 @@ class State(AuthState):
         form_data["version"] = self.selected_version
         form_data["auto_finalize"] = self.auto_finalize
 
-        msg_id: StrID = db.insert_into_mq(
-            JobType.UPGRADE_CLUSTER,
-            form_data,
-            self.webuser.username,
-        )
-        db.insert_event_log(
-            self.webuser.username,
-            JobType.UPGRADE_CLUSTER,
-            form_data | {"job_id": msg_id.id},
-        )
+        try:
+            msg_id: StrID = db.insert_into_mq(
+                JobType.UPGRADE_CLUSTER,
+                form_data,
+                self.webuser.username,
+            )
+
+            db.insert_event_log(
+                self.webuser.username,
+                JobType.UPGRADE_CLUSTER,
+                form_data | {"job_id": msg_id.id},
+            )
+        except Exception as e:
+            return NotifyState.show("Error", str(e))
 
         return rx.toast.info(f"Job {msg_id.id} requested.")
 
@@ -131,14 +140,19 @@ class State(AuthState):
         async with self:
             # fetch this data only once
 
-            self.available_node_counts = [x.id for x in db.get_node_counts()]
-            self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
-            self.disk_fmt_2_size_map = {
-                get_human_size(x.id): x.id for x in db.get_disk_sizes()
-            }
-            self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
-            # self.selected_disk_size = self.available_disk_sizes[0]
-            self.available_regions = db.get_regions()
+            try:
+                self.available_node_counts = [x.id for x in db.get_node_counts()]
+                self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+                self.disk_fmt_2_size_map = {
+                    get_human_size(x.id): x.id for x in db.get_disk_sizes()
+                }
+                self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
+                # self.selected_disk_size = self.available_disk_sizes[0]
+                self.available_regions = db.get_regions()
+            except Exception as e:
+                self.is_running = False
+                return NotifyState.show("Error", str(e))
+
             self.is_running = True
 
         while True:
@@ -154,11 +168,15 @@ class State(AuthState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(
-                    self.cluster_id,
-                    list(self.webuser.groups),
-                    self.is_admin,
-                )
+                try:
+                    cluster: Cluster = db.get_cluster(
+                        self.cluster_id,
+                        list(self.webuser.groups),
+                        self.is_admin,
+                    )
+                except Exception as e:
+                    return NotifyState.show("Error", str(e))
+
                 if cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
@@ -168,12 +186,15 @@ class State(AuthState):
                 if self.just_once and self.current_cluster:
                     self.just_once = False
 
-                    all_new_versions = [
-                        x.version
-                        for x in db.get_upgrade_versions(
+                    try:
+                        upgrade_versions = db.get_upgrade_versions(
                             self.current_cluster.version[:5]
                         )
-                    ]
+                    except Exception as e:
+                        self.is_running=False
+                        return NotifyState.show("Error", str(e))
+
+                    all_new_versions = [x.version for x in upgrade_versions]
 
                     major_yy, major_mm, _ = [
                         int(x) for x in self.current_cluster.version[1:].split(".")

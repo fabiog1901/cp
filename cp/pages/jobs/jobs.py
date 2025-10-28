@@ -8,6 +8,7 @@ from ...cp import app
 from ...models import Job
 from ...state import AuthState
 from ...template import template
+from ...components.notify import NotifyState
 
 ROUTE = "/jobs"
 
@@ -36,11 +37,16 @@ class State(AuthState):
                 break
 
             async with self:
-                self.jobs = db.fetch_all_jobs(list(self.webuser.groups), self.is_admin)
+                try:
+                    self.jobs = db.fetch_all_jobs(list(self.webuser.groups), self.is_admin)
+                except Exception as e:
+                    self.is_running = False
+                    return NotifyState.show("Error communicating with the database", str(e))
+        
             await asyncio.sleep(5)
 
 
-def get_job_row(job: Job):
+def table_row(job: Job):
     """Show a job in a table row."""
     return rx.table.row(
         rx.table.cell(
@@ -55,7 +61,7 @@ def get_job_row(job: Job):
     )
 
 
-def jobs_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -69,7 +75,7 @@ def jobs_table():
             rx.table.body(
                 rx.foreach(
                     State.jobs,
-                    get_job_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -93,7 +99,7 @@ def webpage():
             class_name="p-2 text-8xl font-semibold",
         ),
         rx.vstack(
-            jobs_table(),
+            data_table(),
             class_name="flex-1 flex-col overflow-y-scroll pt-8",
         ),
         class_name="flex-1 flex-col overflow-hidden",

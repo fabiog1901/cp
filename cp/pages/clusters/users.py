@@ -10,6 +10,7 @@ from ...cp import app
 from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
 from ...state import AuthState
 from ...template import template
+from ...components.notify import NotifyState
 
 ROUTE = "/clusters/[c_id]/users"
 
@@ -18,15 +19,6 @@ class State(AuthState):
     current_cluster: Cluster = None
 
     database_users: list[DatabaseUser] = []
-
-    # controls the modal visibility
-    dialog_open: bool = False
-    # optional message
-    dialog_title: str = "Success"
-    dialog_msg: str = "All done!"
-
-    def close_success(self):
-        self.dialog_open = False
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -44,11 +36,15 @@ class State(AuthState):
             ) as conn:
                 with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
                     self.database_users = cur.execute(
-                        "select username, options, member_of from [show users] where username not in ('admin', 'root', 'cockroach');"
+                        """
+                        select username, options, member_of 
+                        from [show users] 
+                        where username not in ('admin', 'root', 'cockroach');
+                        """
                     ).fetchall()
 
         except Exception as e:
-            print(e)
+            return NotifyState.show("Error", str(e))
 
     @rx.event
     def add_new_user(self, form_data):
@@ -63,14 +59,10 @@ class State(AuthState):
                         f"CREATE USER {form_data.get('username')} WITH password '{form_data.get('password')}'"
                     )
 
-            self.dialog_title = "Success"
-            self.dialog_msg = f"User '{form_data.get('username')}' created"
-            self.dialog_open = True
+            return rx.toast.success(f"User '{form_data.get('username')}' created")
 
         except Exception as e:
-            self.dialog_title = "Error"
-            self.dialog_msg = str(e)
-            self.dialog_open = True
+            return NotifyState.show("Error", str(e))
 
     @rx.event
     def remove_user(self, x: DatabaseUser):
@@ -83,14 +75,10 @@ class State(AuthState):
                 with conn.cursor() as cur:
                     cur.execute(f"DROP USER {x.username}")
 
-            self.dialog_title = "Success"
-            self.dialog_msg = f"User '{x.username}' removed successfully"
-            self.dialog_open = True
+            return rx.toast.success(f"User '{x.username}' removed successfully")
 
         except Exception as e:
-            self.dialog_title = "Error"
-            self.dialog_msg = str(e)
-            self.dialog_open = True
+            return NotifyState.show("Error", str(e))
 
     # TODO protect from sql injections
     @rx.event
@@ -102,11 +90,14 @@ class State(AuthState):
                 connect_timeout=2,
             ) as conn:
                 with conn.cursor() as cur:
-                    cur.execute(f"REVOKE {role} FROM  {username}")
+                    cur.execute(f"REVOKE {role} FROM {username}")
+
+            return rx.toast.success(
+                f"Role '{role}' successfully revoked from {username}."
+            )
 
         except Exception as e:
-
-            print(e)
+            return NotifyState.show("Error", str(e))
 
     @rx.event
     def edit_user(self, form_data: dict):
@@ -122,8 +113,11 @@ class State(AuthState):
                 with conn.cursor() as cur:
                     cur.execute(f"ALTER USER {username} WITH password '{password}'")
 
+            return rx.toast.success(
+                f"Password updated successfully for user '{username}'."
+            )
         except Exception as e:
-            print(e)
+            return NotifyState.show("Error", str(e))
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -144,11 +138,15 @@ class State(AuthState):
                 break
 
             async with self:
-                cluster: Cluster = db.get_cluster(
-                    self.cluster_id,
-                    list(self.webuser.groups),
-                    self.is_admin,
-                )
+                try:
+                    cluster: Cluster = db.get_cluster(
+                        self.cluster_id,
+                        list(self.webuser.groups),
+                        self.is_admin,
+                    )
+                except Exception as e:
+                    return NotifyState.show("Error", str(e))
+
                 if cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
@@ -426,24 +424,6 @@ def remove_user_role_dialog(user: str, membership: str):
 @template
 def webpage():
     return rx.flex(
-        rx.dialog.root(
-            rx.dialog.content(
-                rx.dialog.title(State.dialog_title, class_name="text-3xl pb-2"),
-                rx.dialog.description(
-                    rx.text(State.dialog_msg, class_name="text-xl pb-8")
-                ),
-                rx.hstack(
-                    rx.button("OK", on_click=State.close_success),
-                    justify="end",
-                    spacing="3",
-                ),
-                # a bit of styling
-                max_width="420px",
-                padding="20px",
-            ),
-            open=State.dialog_open,
-            on_open_change=State.set_dialog_open,  # keeps state in sync if user closes via overlay/esc
-        ),
         cluster_banner(
             "boxes",
             State.current_cluster.cluster_id,
