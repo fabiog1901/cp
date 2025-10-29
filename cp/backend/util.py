@@ -1,28 +1,13 @@
+import gzip
 import json
 import os
 import shutil
 import time
 
 import ansible_runner
-import requests
 
-from ..models import JobState
+from ..models import JobState, Playbook
 from . import db
-
-PLAYBOOKS_URL_CACHE_VALID_UNTIL = 0
-
-PLAYBOOKS_URL = ""
-
-
-def refresh_cache():
-    global PLAYBOOKS_URL
-    global PLAYBOOKS_URL_CACHE_VALID_UNTIL
-
-    PLAYBOOKS_URL = db.get_setting("playbooks_url")
-
-    PLAYBOOKS_URL_CACHE_VALID_UNTIL = time.time() + int(
-        db.get_setting("playbooks_url_cache_expiry")
-    )
 
 
 class MyRunner:
@@ -34,9 +19,6 @@ class MyRunner:
         self.data = {}
         self.job_id = job_id
         self.counter = counter
-
-        if time.time() > PLAYBOOKS_URL_CACHE_VALID_UNTIL:
-            refresh_cache()
 
     def my_status_handler(self, status, runner_config):
         return
@@ -109,14 +91,11 @@ class MyRunner:
         self, playbook_name: str, extra_vars: dict
     ) -> tuple[str, dict, int]:
 
-        r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
+        p: Playbook = db.get_default_playbook(playbook_name)
 
         # create a new working directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
         os.mkdir(path=f"/tmp/job-{self.job_id}")
-
-        with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
-            f.write(r.content)
 
         db.update_job(self.job_id, JobState.RUNNING)
 
@@ -125,7 +104,7 @@ class MyRunner:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=f"/tmp/job-{self.job_id}/playbook.yaml",
+                playbook=gzip.decompress(p.playbook).decode(),
                 private_data_dir=f"/tmp/job-{self.job_id}",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
@@ -164,9 +143,6 @@ class MyRunnerLite:
         self.data = {}
         self.job_id = job_id
 
-        if time.time() > PLAYBOOKS_URL_CACHE_VALID_UNTIL:
-            refresh_cache()
-
     def my_status_handler(self, status, runner_config):
         return
 
@@ -176,21 +152,18 @@ class MyRunnerLite:
                 self.data = e["event_data"]["res"]["msg"]
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
-        r = requests.get(PLAYBOOKS_URL + playbook_name + ".yaml")
+        p: Playbook = db.get_default_playbook(playbook_name)
 
         # create a new working directory
         shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
         os.mkdir(path=f"/tmp/job-{self.job_id}")
-
-        with open(f"/tmp/job-{self.job_id}/playbook.yaml", "wb") as f:
-            f.write(r.content)
 
         # Execute the playbook
         try:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=f"/tmp/job-{self.job_id}/playbook.yaml",
+                playbook=gzip.decompress(p.playbook).decode(),
                 private_data_dir=f"/tmp/job-{self.job_id}",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,

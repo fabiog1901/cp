@@ -18,13 +18,7 @@ Install and setup Keycloak as per [blog post](https://dev.to/cockroachlabs/cockr
       --db-username=fabio --db postgres
     ```
 
-3. Start webserver
-
-    ```bash
-    python3.11 -m http.server 4000 -d playbooks/
-    ```
-
-4. Start Prometheus server
+3. Start Prometheus server
 
     ```bash
     ./prometheus --config.file=prometheus.yaml \
@@ -32,7 +26,7 @@ Install and setup Keycloak as per [blog post](https://dev.to/cockroachlabs/cockr
       --config.auto-reload-interval=30s
     ```
 
-5. Start Reflex
+4. Start Reflex
 
     ```bash
     poetry shell

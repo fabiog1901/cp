@@ -63,7 +63,6 @@ class State(AuthState):
         form_data["regions"] = list(self.selected_regions)
 
         # TODO check if user is permissioned?
-        # TODO use try catch and NotifyState and ValidationError
         # TODO use pydantic model to validate data, see /admin/regions.py
         try:
             msg_id: IntID = db.insert_into_mq(

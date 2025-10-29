@@ -46,17 +46,30 @@ def admin_index() -> rx.Component:
                 "Manage supported software versions.",
                 "/admin/versions",
             ),
-            admin_tile("Regions", "Add / remove regions and quotas.", "/admin/regions"),
+            admin_tile(
+                "Regions",
+                "Add / remove regions and quotas.",
+                "/admin/regions",
+            ),
             admin_tile(
                 "Group Role Mapping",
                 "Manage IdP groups and how they map to CP Roles",
                 "/admin/roles",
             ),
-            admin_tile("Activity", "Audit logs and recent actions.", "/admin/activity"),
+            admin_tile(
+                "Activity",
+                "Audit logs and recent actions.",
+                "/admin/activity",
+            ),
             admin_tile(
                 "Settings",
                 "Global configurations.",
                 "/admin/settings",
+            ),
+            admin_tile(
+                "Playbooks",
+                "Configure Ansible Playbooks.",
+                "/admin/playbooks",
             ),
             columns="3",  # responsive: 1col (mobile), 2col (tablet), 3col (desktop)
             gap="16px",

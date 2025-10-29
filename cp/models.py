@@ -25,6 +25,9 @@ class EventType(AutoNameStrEnum):
     VERSION_REMOVE = auto()
     REGION_ADD = auto()
     REGION_REMOVE = auto()
+    PLAYBOOK_ADD = auto()
+    PLAYBOOK_REMOVE = auto()
+    PLAYBOOK_SET_DEFAULT = auto()
 
 
 class JobType(AutoNameStrEnum):
@@ -245,6 +248,19 @@ class Setting(BaseModel):
 class Nodes(BaseModel):
     cluster_id: str
     nodes: list[str]
+
+
+class PlaybookOverview(BaseModel):
+    name: str
+    version: dt.datetime
+    default_version: dt.datetime | None = None
+    created_at: dt.datetime
+    created_by: str
+    updated_by: str | None = None
+
+
+class Playbook(PlaybookOverview):
+    playbook: bytes | None = None
 
 
 # GENERIC

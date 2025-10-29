@@ -143,6 +143,30 @@ create table disk_sizes (
     constraint pk primary key (size_gb)
 );
 
+CREATE TABLE playbooks (
+    name STRING NOT NULL,
+    version TIMESTAMPTZ(0) NOT NULL DEFAULT now(),
+    default_version TIMESTAMPTZ NOT NULL,
+    playbook BYTES NULL,
+    created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NULL,
+    updated_by STRING NULL,
+    CONSTRAINT pk PRIMARY KEY (name, version ASC)
+);
+INSERT INTO playbooks 
+    (name, version, default_version, created_at, created_by, updated_by, playbook) 
+VALUES 
+    ('CREATE_CLUSTER', now(), now(), now(), 'system', 'system', b''),   
+    ('DELETE_CLUSTER', now(), now(), now(), 'system', 'system', b''),   
+    ('HEALTHCHECK_CLUSTER', now(), now(), now(), 'system', 'system', b''),   
+    ('RESTORE_CLUSTER', now(), now(), now(), 'system', 'system', b''),   
+    ('SCALE_CLUSTER_IN', now(), now(), now(), 'system', 'system', b''),   
+    ('SCALE_CLUSTER_OUT', now(), now(), now(), 'system', 'system', b''),   
+    ('SCALE_DISK_SIZE', now(), now(), now(), 'system', 'system', b''),   
+    ('SCALE_NODE_CPUS', now(), now(), now(), 'system', 'system', b''),   
+    ('UPGRADE_CLUSTER', now(), now(), now(), 'system', 'system', b'')
+;
+
 CREATE TABLE event_log (
   created_at TIMESTAMPTZ NOT NULL default now(),
   created_by STRING NOT NULL,

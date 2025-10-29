@@ -1953,6 +1953,24 @@ rich = ">=13,<15"
 tabulate = ">=0.9.0"
 
 [[package]]
+name = "reflex-monaco"
+version = "0.0.3"
+description = "A package wrapping Monaco Editor for Reflex"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "reflex_monaco-0.0.3-py3-none-any.whl", hash = "sha256:8fcc562f41271e9195cc1980ac5ca7ecbf319791fbd59209aecbc14b542dbb5f"},
+    {file = "reflex_monaco-0.0.3.tar.gz", hash = "sha256:aa278396778ee55277fe7a42a44f31e3119c9d22bc44988c9e1ec2dbbf6100c1"},
+]
+
+[package.dependencies]
+reflex = ">=0.5.0"
+
+[package.extras]
+dev = ["build", "twine"]
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -2479,4 +2497,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "c73a1188bfbf7591d6adacc15efc3fc5d6126305bfc28970cc9447eb5d060a7e"
+content-hash = "206c38495c042309918006bd0e929acd01fd4624407d120b471f9146c548958b"
