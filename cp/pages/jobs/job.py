@@ -49,7 +49,9 @@ class State(AuthState):
             )
 
             db.insert_event_log(
-                self.webuser.username, job_type, j.description | {"job_id": msg_id.id}
+                self.webuser.username,
+                job_type,
+                j.description | {"job_id": msg_id.id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))

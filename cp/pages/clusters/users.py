@@ -8,7 +8,11 @@ from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Cluster, DatabaseUser, JobType, NewDatabaseUserRequest, StrID
+from ...models import (
+    Cluster,
+    DatabaseUser,
+    EventType,
+)
 from ...state import AuthState
 from ...template import template
 
@@ -59,6 +63,15 @@ class State(AuthState):
                         f"CREATE USER {form_data.get('username')} WITH password '{form_data.get('password')}'"
                     )
 
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.DB_USER_ADD,
+                {
+                    "cluster_id": self.current_cluster.cluster_id,
+                    "db_user": form_data.get("username"),
+                },
+            )
+
             return rx.toast.success(f"User '{form_data.get('username')}' created")
 
         except Exception as e:
@@ -74,6 +87,15 @@ class State(AuthState):
             ) as conn:
                 with conn.cursor() as cur:
                     cur.execute(f"DROP USER {x.username}")
+
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.DB_USER_REMOVE,
+                {
+                    "cluster_id": self.current_cluster.cluster_id,
+                    "db_user": x.username,
+                },
+            )
 
             return rx.toast.success(f"User '{x.username}' removed successfully")
 
@@ -91,6 +113,16 @@ class State(AuthState):
             ) as conn:
                 with conn.cursor() as cur:
                     cur.execute(f"REVOKE {role} FROM {username}")
+
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.DB_USER_REMOVE_ROLE,
+                {
+                    "cluster_id": self.current_cluster.cluster_id,
+                    "db_user": username,
+                    "role": role
+                },
+            )
 
             return rx.toast.success(
                 f"Role '{role}' successfully revoked from {username}."
@@ -113,6 +145,15 @@ class State(AuthState):
                 with conn.cursor() as cur:
                     cur.execute(f"ALTER USER {username} WITH password '{password}'")
 
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.DB_USER_UPDATE,
+                {
+                    "cluster_id": self.current_cluster.cluster_id,
+                    "db_user": username,
+                },
+            )
+            
             return rx.toast.success(
                 f"Password updated successfully for user '{username}'."
             )
@@ -157,7 +198,7 @@ class State(AuthState):
             await asyncio.sleep(5)
 
 
-def get_table_row(x: DatabaseUser):
+def table_row(x: DatabaseUser):
     return rx.table.row(
         rx.table.cell(x.username),
         rx.table.cell(x.options),
@@ -182,7 +223,7 @@ def get_table_row(x: DatabaseUser):
     )
 
 
-def database_users_table():
+def data_table():
     return rx.vstack(
         rx.table.root(
             rx.table.header(
@@ -196,7 +237,7 @@ def database_users_table():
             rx.table.body(
                 rx.foreach(
                     State.database_users,
-                    get_table_row,
+                    table_row,
                 )
             ),
             width="100%",
@@ -438,7 +479,7 @@ def webpage():
         mini_breadcrumb(State.cluster_id, f"/clusters/{State.cluster_id}", "Users"),
         rx.flex(
             rx.flex(
-                database_users_table(),
+                data_table(),
                 class_name="flex-1 flex-col overflow-y-scroll",
             ),
             class_name="flex overflow-hidden pt-8",
