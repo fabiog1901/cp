@@ -1,10 +1,11 @@
 import asyncio
+from typing import get_args
 
 import reflex as rx
 import yaml
+from reflex.components.radix.themes.base import LiteralAccentColor
 
 from ..backend import db
-from ..components.BadgeEventType import get_event_type_badge
 from ..components.notify import NotifyState
 from ..cp import app
 from ..models import TS_FORMAT, EventLog, EventLogYaml
@@ -17,6 +18,8 @@ ROUTE = "/events"
 class State(AuthState):
 
     events: list[EventLogYaml] = []
+
+    colors: list[str] = list(get_args(LiteralAccentColor))
 
     total_items: int
     offset: int = 0
@@ -84,7 +87,16 @@ def table_row(event: EventLogYaml):
             class_name="min-w-6xl",
         ),
         rx.table.cell(event.created_by),
-        rx.table.cell(get_event_type_badge(event.event_type)),
+        rx.table.cell(
+            rx.badge(
+                event.event_type,
+                color_scheme=State.colors[
+                    event.event_type.length() % State.colors.length()
+                ],
+                variant="solid",
+                size="3",
+            )
+        ),
         rx.table.cell(
             rx.code_block(
                 event.event_details_yaml,

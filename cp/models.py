@@ -28,7 +28,6 @@ class EventType(AutoNameStrEnum):
     DB_USER_REMOVE_ROLE = auto()
     DB_USER_ADD = auto()
     DB_USER_REMOVE = auto()
-    PLAYBOOK_ADD = auto()
     REGION_ADD = auto()
     REGION_REMOVE = auto()
     PLAYBOOK_ADD = auto()

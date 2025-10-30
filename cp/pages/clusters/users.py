@@ -8,11 +8,7 @@ from ...backend import db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import (
-    Cluster,
-    DatabaseUser,
-    EventType,
-)
+from ...models import Cluster, DatabaseUser, EventType
 from ...state import AuthState
 from ...template import template
 
@@ -120,7 +116,7 @@ class State(AuthState):
                 {
                     "cluster_id": self.current_cluster.cluster_id,
                     "db_user": username,
-                    "role": role
+                    "role": role,
                 },
             )
 
@@ -153,7 +149,7 @@ class State(AuthState):
                     "db_user": username,
                 },
             )
-            
+
             return rx.toast.success(
                 f"Password updated successfully for user '{username}'."
             )
