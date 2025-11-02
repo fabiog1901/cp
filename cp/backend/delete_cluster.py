@@ -1,5 +1,5 @@
 from threading import Thread
-
+import datetime as dt
 from ..models import ClusterState, JobState
 from . import db
 from .util import MyRunner
@@ -14,11 +14,16 @@ def delete_cluster(
 
     c = db.get_cluster(cluster_id, [], True)
     if not c or c.status == ClusterState.DELETED:
-        # TODO if cluster doesn't exists or it's already marked as deleted,
-        # fail the job
         db.update_job(
             job_id,
             JobState.FAILED,
+        )
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The cluster does not exists or has already been deleted.",
         )
         return
 

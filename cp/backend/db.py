@@ -924,6 +924,5 @@ def execute_stmt(
                     return cur.fetchone()
 
             except Exception as e:
-                # TODO correctly handle error such as PK violations
                 print(f"SQL ERROR: {e}")
                 raise e

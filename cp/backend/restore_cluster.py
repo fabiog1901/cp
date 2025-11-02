@@ -3,6 +3,7 @@ from threading import Thread
 from ..models import ClusterState, JobState, RestoreRequest
 from . import db
 from .util import MyRunner
+import datetime as dt
 
 
 def restore_cluster(
@@ -18,18 +19,17 @@ def restore_cluster(
     c = db.get_cluster(rr.name, [], True)
 
     # TODO verify what states are appropriate for running a restore job
-    if c is None or c.status in [
-        ClusterState.DELETED,
-        ClusterState.DELETING,
-        ClusterState.PROVISIONING,
-        ClusterState.UPGRADING,
-        ClusterState.SCALING,
-    ]:
-        # TODO update message for failed job:
-        # cannot upgrade a deleting cluster
+    if c is None or c.status != ClusterState.RUNNING:
         db.update_job(
             job_id,
             JobState.FAILED,
+        )
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The cluster must exist and be in a RUNNING state for a Full Cluster Restore",
         )
         return
 

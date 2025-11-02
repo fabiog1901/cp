@@ -1,4 +1,5 @@
 from threading import Thread
+import datetime as dt
 
 from ..models import (
     ClusterRequest,
@@ -40,12 +41,17 @@ def create_cluster(
     # check if cluster with same cluster_id exists
     c = db.get_cluster(cluster_request.name, [], True)
 
-    if not recreate and c and c.status.startswith("DELET"):
-        # TODO raise an error message that a cluster
-        # with the same name already exists
+    if not recreate and c and not c.status.startswith("DELET"):
         db.update_job(
             job_id,
             JobState.FAILED,
+        )
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "A cluster with the same name already exists.",
         )
         return
 
@@ -159,7 +165,6 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                 | region_details[idx].extras
             )
 
-    # TODO get all these details from Settings instad of hardcoded values
     extra_vars = {
         "deployment_id": cluster_request.name,
         "deployment": deployment,
