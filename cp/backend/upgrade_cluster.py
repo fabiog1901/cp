@@ -3,6 +3,7 @@ import logging
 from threading import Thread
 
 from ..models import ClusterState, ClusterUpgradeRequest, JobState
+from ..repos.postgres import cluster_repo
 from ..services import app_service as db
 from .util import MyRunner
 
@@ -19,7 +20,7 @@ def upgrade_cluster(
     # TODO check user permissions
 
     # check if cluster with same cluster_id exists
-    c = db.get_cluster(cur.name, [], True)
+    c = cluster_repo.get_cluster(cur.name, [], True)
 
     if c is None or c.status in [
         ClusterState.DELETED,
@@ -36,7 +37,7 @@ def upgrade_cluster(
         )
         return
 
-    db.update_cluster(
+    cluster_repo.update_cluster(
         cur.name,
         requested_by,
         status=ClusterState.UPGRADING,
@@ -73,14 +74,14 @@ def upgrade_cluster_worker(
         job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 cur.name,
                 requested_by,
                 status=ClusterState.UPGRADE_FAILED,
             )
             return
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             cur.name,
             requested_by,
             status=ClusterState.RUNNING,
@@ -96,7 +97,7 @@ def upgrade_cluster_worker(
             "FAILURE",
             str(err),
         )
-        db.update_cluster(
+        cluster_repo.update_cluster(
             cur.name,
             requested_by,
             status=ClusterState.UPGRADE_FAILED,

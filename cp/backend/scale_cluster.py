@@ -11,6 +11,7 @@ from ..models import (
     JobState,
     Region,
 )
+from ..repos.postgres import cluster_repo
 from ..services import app_service as db
 from .util import MyRunner
 
@@ -41,9 +42,9 @@ def scale_cluster(
 ) -> None:
     cluster_scale_request = ClusterScaleRequest(**data)
 
-    current_cluster = db.get_cluster(cluster_scale_request.name, [], True)
+    current_cluster = cluster_repo.get_cluster(cluster_scale_request.name, [], True)
 
-    db.update_cluster(
+    cluster_repo.update_cluster(
         cluster_scale_request.name,
         requested_by,
         status=ClusterState.SCALING,
@@ -84,7 +85,7 @@ def scale_cluster_worker_entry(
             "FAILURE",
             str(err),
         )
-        db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+        cluster_repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
 
 
 # TODO refactor this method and use it in create_cluster.py
@@ -145,14 +146,14 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_DISK_SIZE", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 csr.name,
                 requested_by,
                 status=ClusterState.SCALE_FAILED,
             )
             return
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -174,10 +175,10 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_NODE_CPUS", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            cluster_repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name, requested_by, status=ClusterState.SCALING, node_cpus=csr.node_cpus
         )
     #
@@ -189,7 +190,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region(cloud, region)
+            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -282,12 +283,12 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            cluster_repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -305,7 +306,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region(cloud, region)
+            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -392,12 +393,12 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            cluster_repo.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name,
             requested_by,
             node_count=csr.node_count,
@@ -418,7 +419,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions + new_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region(cloud, region)
+            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -512,12 +513,12 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            cluster_repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
             return
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -539,7 +540,7 @@ def scale_cluster_worker(
         for cloud_region in csr.regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = db.get_region(cloud, region)
+            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -626,7 +627,7 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 csr.name,
                 requested_by,
                 status=ClusterState.SCALE_FAILED,
@@ -635,7 +636,7 @@ def scale_cluster_worker(
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -643,7 +644,7 @@ def scale_cluster_worker(
             lbs_inventory=current_cluster.lbs_inventory,
         )
 
-    db.update_cluster(
+    cluster_repo.update_cluster(
         csr.name,
         requested_by,
         status=ClusterState.RUNNING,

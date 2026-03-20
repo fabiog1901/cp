@@ -3,6 +3,7 @@ import logging
 from threading import Thread
 
 from ..models import ClusterState, JobState, RestoreRequest
+from ..repos.postgres import cluster_repo
 from ..services import app_service as db
 from .util import MyRunner
 
@@ -19,7 +20,7 @@ def restore_cluster(
     # TODO check user permissions
 
     # check if cluster with same cluster_id exists
-    c = db.get_cluster(rr.name, [], True)
+    c = cluster_repo.get_cluster(rr.name, [], True)
 
     # TODO verify what states are appropriate for running a restore job
     if c is None or c.status != ClusterState.RUNNING:
@@ -36,7 +37,7 @@ def restore_cluster(
         )
         return
 
-    db.update_cluster(
+    cluster_repo.update_cluster(
         rr.name,
         requested_by,
         status=ClusterState.RESTORING,
@@ -78,14 +79,14 @@ def restore_cluster_worker(
         job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
 
         if job_status != "successful":
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 rr.name,
                 requested_by,
                 status=ClusterState.RESTORE_FAILED,
             )
             return
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             rr.name,
             requested_by,
             status=ClusterState.RUNNING,
@@ -100,7 +101,7 @@ def restore_cluster_worker(
             "FAILURE",
             str(err),
         )
-        db.update_cluster(
+        cluster_repo.update_cluster(
             rr.name,
             requested_by,
             status=ClusterState.RESTORE_FAILED,

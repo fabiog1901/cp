@@ -3,6 +3,7 @@ import logging
 from threading import Thread
 
 from ..models import ClusterState, JobState
+from ..repos.postgres import cluster_repo
 from ..services import app_service as db
 from .util import MyRunner
 
@@ -16,7 +17,7 @@ def delete_cluster(
 ) -> None:
     cluster_id = cluster.get("cluster_id")
 
-    c = db.get_cluster(cluster_id, [], True)
+    c = cluster_repo.get_cluster(cluster_id, [], True)
     if not c or c.status == ClusterState.DELETED:
         db.update_job(
             job_id,
@@ -31,7 +32,7 @@ def delete_cluster(
         )
         return
 
-    db.update_cluster(
+    cluster_repo.update_cluster(
         cluster_id,
         requested_by,
         status=ClusterState.DELETING,
@@ -66,13 +67,13 @@ def delete_cluster_worker(
         job_status, _, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
 
         if job_status == "successful":
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 cluster_id,
                 requested_by,
                 status=ClusterState.DELETED,
             )
         else:
-            db.update_cluster(
+            cluster_repo.update_cluster(
                 cluster_id,
                 requested_by,
                 status=ClusterState.DELETE_FAILED,
@@ -87,7 +88,7 @@ def delete_cluster_worker(
             "FAILURE",
             str(err),
         )
-        db.update_cluster(
+        cluster_repo.update_cluster(
             cluster_id,
             requested_by,
             status=ClusterState.DELETE_FAILED,

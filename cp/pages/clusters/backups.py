@@ -5,11 +5,11 @@ import reflex as rx
 from psycopg.rows import class_row
 from pydantic import ValidationError
 
-from ...services import app_service as db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import BackupDetails, Cluster, JobType, RestoreRequest, StrID
+from ...models import BackupDetails, Cluster
+from ...services import cluster_service
 from ...state import AuthState
 from ...template import template
 
@@ -95,35 +95,31 @@ class State(AuthState):
     @rx.event
     def initiate_restore(self, form_data: dict):
         try:
-            rr = RestoreRequest(
+            rr = cluster_service.validate_restore_request(
                 name=self.current_cluster.cluster_id,
                 backup_path=form_data.get("path"),
                 restore_aost=form_data.get("aost"),
                 restore_full_cluster=self.full_cluster,
                 object_type=self.object_type if not self.full_cluster else None,
-                object_name=(
-                    form_data.get("object_name") if not self.full_cluster else None
-                ),
-                backup_into=(
-                    form_data.get("backup_into") if not self.full_cluster else None
-                ),
+                object_name=form_data.get("object_name") if not self.full_cluster else None,
+                backup_into=form_data.get("backup_into") if not self.full_cluster else None,
             )
-            msg_id: StrID = db.insert_into_mq(
-                JobType.RESTORE_CLUSTER,
-                rr.model_dump(),
-                self.webuser.username,
-            )
-            db.insert_event_log(
-                self.webuser.username,
-                JobType.RESTORE_CLUSTER,
-                rr.model_dump() | {"job_id": msg_id.id},
+            job_id = cluster_service.request_cluster_restore(
+                cluster_id=self.current_cluster.cluster_id,
+                backup_path=rr["backup_path"],
+                restore_aost=rr["restore_aost"],
+                restore_full_cluster=rr["restore_full_cluster"],
+                object_type=rr["object_type"],
+                object_name=rr["object_name"],
+                backup_into=rr["backup_into"],
+                requested_by=self.webuser.username,
             )
         except ValidationError as ve:
             return NotifyState.show("Validation Error", str(ve))
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {job_id} requested.")
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -146,7 +142,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = db.get_cluster(
+                    cluster: Cluster = cluster_service.get_cluster_for_user(
                         self.cluster_id,
                         list(self.webuser.groups),
                         self.is_admin,

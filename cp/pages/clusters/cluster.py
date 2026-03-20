@@ -2,12 +2,12 @@ import asyncio
 
 import reflex as rx
 
-from ...services import app_service as db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import TS_FORMAT, Cluster, IntID, JobType, StrID
+from ...models import TS_FORMAT, Cluster, RegionOption
+from ...services import cluster_service
 from ...state import AuthState
 from ...template import template
 from ..util import get_human_size
@@ -31,7 +31,7 @@ class State(AuthState):
 
     # SCALE CLUSTER DIALOG PARAMETERS
     available_versions: list[str] = []
-    available_regions: list[StrID] = []
+    available_regions: list[RegionOption] = []
     available_node_counts: list[int] = []
     available_cpus_per_node: list[int] = []
     disk_fmt_2_size_map: dict[str, int] = {}
@@ -46,54 +46,34 @@ class State(AuthState):
     selected_group: str = ""
 
     @rx.event
-    def scale_cluster(self, form_data: dict):
-        form_data["name"] = self.current_cluster.cluster_id
-        form_data["node_cpus"] = self.selected_cpus_per_node
-        form_data["disk_size"] = self.disk_fmt_2_size_map[self.selected_disk_size]
-        form_data["node_count"] = self.selected_node_count
-        form_data["regions"] = list(self.selected_regions)
-
-        # TODO check if user is permissioned?
-        # TODO use pydantic model to validate data, see /admin/regions.py
+    def scale_cluster(self, _form_data: dict):
         try:
-            msg_id: IntID = db.insert_into_mq(
-                JobType.SCALE_CLUSTER,
-                form_data,
+            job_id = cluster_service.request_cluster_scale(
+                self.current_cluster.cluster_id,
+                self.selected_cpus_per_node,
+                self.disk_fmt_2_size_map[self.selected_disk_size],
+                self.selected_node_count,
+                self.selected_regions,
                 self.webuser.username,
-            )
-
-            db.insert_event_log(
-                self.webuser.username,
-                JobType.SCALE_CLUSTER,
-                form_data | {"job_id": msg_id.id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {job_id} requested.")
 
     @rx.event
-    def upgrade_cluster(self, form_data: dict):
-        form_data["name"] = self.current_cluster.cluster_id
-        form_data["version"] = self.selected_version
-        form_data["auto_finalize"] = self.auto_finalize
-
+    def upgrade_cluster(self, _form_data: dict):
         try:
-            msg_id: StrID = db.insert_into_mq(
-                JobType.UPGRADE_CLUSTER,
-                form_data,
+            job_id = cluster_service.request_cluster_upgrade(
+                self.current_cluster.cluster_id,
+                self.selected_version,
+                self.auto_finalize,
                 self.webuser.username,
-            )
-
-            db.insert_event_log(
-                self.webuser.username,
-                JobType.UPGRADE_CLUSTER,
-                form_data | {"job_id": msg_id.id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {job_id} requested.")
 
     @rx.var
     def cluster_id(self) -> str | None:
@@ -131,14 +111,14 @@ class State(AuthState):
             # fetch this data only once
 
             try:
-                self.available_node_counts = [x.id for x in db.get_node_counts()]
-                self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+                options = cluster_service.get_create_dialog_options()
+                self.available_node_counts = options["node_counts"]
+                self.available_cpus_per_node = options["cpus_per_node"]
                 self.disk_fmt_2_size_map = {
-                    get_human_size(x.id): x.id for x in db.get_disk_sizes()
+                    get_human_size(x): x for x in options["disk_sizes"]
                 }
                 self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
-                # self.selected_disk_size = self.available_disk_sizes[0]
-                self.available_regions = db.get_regions()
+                self.available_regions = options["regions"]
             except Exception as e:
                 self.is_running = False
                 return NotifyState.show("Error", str(e))
@@ -159,7 +139,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = db.get_cluster(
+                    cluster: Cluster = cluster_service.get_cluster_for_user(
                         self.cluster_id,
                         list(self.webuser.groups),
                         self.is_admin,
@@ -177,43 +157,15 @@ class State(AuthState):
                     self.just_once = False
 
                     try:
-                        upgrade_versions = db.get_upgrade_versions(
-                            self.current_cluster.version[:5]
+                        options = cluster_service.get_cluster_dialog_options(
+                            self.current_cluster
                         )
                     except Exception as e:
                         self.is_running = False
                         return NotifyState.show("Error", str(e))
 
-                    all_new_versions = [x.version for x in upgrade_versions]
-
-                    major_yy, major_mm, _ = [
-                        int(x) for x in self.current_cluster.version[1:].split(".")
-                    ]
-
-                    self.available_versions = []
-                    for v in all_new_versions:
-                        f1, f2, _ = [int(x) for x in v[1:].split(".")]
-
-                        # only a patch upgrade
-                        if major_yy == f1 and major_mm == f2:
-                            self.available_versions.append(v)
-                            continue
-
-                        # innovation to regular
-                        if major_yy == f1 and major_mm in [1, 3] and f2 == major_mm + 1:
-                            self.available_versions.append(v)
-                            continue
-
-                        if major_yy == f1 and major_mm == 2 and f2 in [3, 4]:
-                            self.available_versions.append(v)
-                            continue
-
-                        if major_yy + 1 == f1 and major_mm == 4 and f2 in [1, 2]:
-                            self.available_versions.append(v)
-
-                    self.selected_version = (
-                        self.available_versions[0] if self.available_versions else ""
-                    )
+                    self.available_versions = options["upgrade_versions"]
+                    self.selected_version = self.available_versions[0] if self.available_versions else ""
 
                     self.selected_node_count = self.current_cluster.node_count
 
@@ -290,21 +242,21 @@ def region_selector() -> rx.Component:
             rx.foreach(
                 State.available_regions,
                 lambda item: rx.cond(
-                    State.selected_regions.contains(item.id),
+                    State.selected_regions.contains(item.region_id),
                     rx.fragment(),
                     rx.badge(
                         rx.match(
-                            item.id[:3],
+                            item.region_id[:3],
                             ("aws", rx.image("/aws.png", width="30px", height="auto")),
                             ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
                             ("azr", rx.image("/azr.png", width="35px", height="auto")),
                             ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
                         ),
-                        item.id[4:],
+                        item.region_id[4:],
                         rx.icon("circle-plus", size=18),
                         color_scheme="gray",
                         **chip_props,
-                        on_click=State.multi_add_selected(item.id),
+                        on_click=State.multi_add_selected(item.region_id),
                     ),
                 ),
             ),

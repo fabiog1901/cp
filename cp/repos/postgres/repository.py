@@ -12,15 +12,21 @@ from pydantic import BaseModel, TypeAdapter
 
 from ...models import (
     Cluster,
+    ClusterIDRef,
     ClusterOverview,
+    CpuCountOption,
+    DiskSizeOption,
     EventLog,
     IntID,
     InventoryLB,
     InventoryRegion,
     Job,
+    JobID,
+    NodeCountOption,
     Nodes,
     Playbook,
     PlaybookOverview,
+    RegionOption,
     Region,
     RoleGroupMap,
     Setting,
@@ -46,7 +52,7 @@ def insert_into_mq(
     msg_type: str,
     msg_data: dict,
     created_by: str,
-) -> IntID:
+) -> JobID:
     return execute_stmt(
         """
         WITH 
@@ -59,7 +65,7 @@ def insert_into_mq(
         ) 
         INSERT INTO jobs (job_id, job_type, status, description, created_by) 
         VALUES ((select msg_id from create_new_job), %s, %s, %s, %s) 
-        RETURNING job_id AS id
+        RETURNING job_id AS job_id
         """,
         (
             msg_type,
@@ -70,7 +76,7 @@ def insert_into_mq(
             msg_data,
             created_by,
         ),
-        IntID,
+        JobID,
         return_list=False,
     )
 
@@ -247,16 +253,16 @@ def delete_cluster(cluster_id):
 ############
 
 
-def get_linked_clusters_from_job(job_id: int) -> list[StrID]:
+def get_linked_clusters_from_job(job_id: int) -> list[ClusterIDRef]:
     return execute_stmt(
         """
-        SELECT cluster_id AS id
+        SELECT cluster_id AS cluster_id
         FROM map_clusters_jobs
         WHERE job_id = %s
         ORDER BY cluster_id
         """,
         (job_id,),
-        StrID,
+        ClusterIDRef,
     )
 
 
@@ -534,15 +540,15 @@ def insert_event_log(
 # REGIONS
 
 
-def get_regions() -> list[StrID]:
+def get_regions() -> list[RegionOption]:
     return execute_stmt(
         """
-        SELECT DISTINCT cloud || ':' || region AS id
+        SELECT DISTINCT cloud || ':' || region AS region_id
         FROM regions
-        ORDER BY id ASC
+        ORDER BY region_id ASC
         """,
         (),
-        StrID,
+        RegionOption,
     )
 
 
@@ -734,39 +740,39 @@ def get_upgrade_versions(major_version: str) -> list[Version]:
 # NODE COUNT
 
 
-def get_node_counts() -> list[IntID]:
+def get_node_counts() -> list[NodeCountOption]:
     return execute_stmt(
         """
-        SELECT nodes AS id
+        SELECT nodes AS node_count
         FROM nodes_per_region
         ORDER BY nodes ASC
         """,
         (),
-        IntID,
+        NodeCountOption,
     )
 
 
-def get_cpus_per_node() -> list[IntID]:
+def get_cpus_per_node() -> list[CpuCountOption]:
     return execute_stmt(
         """
-        SELECT cpus AS id
+        SELECT cpus AS cpu_count
         FROM cpus_per_node
         ORDER BY cpus ASC
         """,
         (),
-        IntID,
+        CpuCountOption,
     )
 
 
-def get_disk_sizes() -> list[IntID]:
+def get_disk_sizes() -> list[DiskSizeOption]:
     return execute_stmt(
         """
-        SELECT size_gb AS id
+        SELECT size_gb
         FROM disk_sizes
         ORDER BY size_gb
         """,
         (),
-        IntID,
+        DiskSizeOption,
     )
 
 

@@ -7,7 +7,7 @@ from ...services import app_service as db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import TS_FORMAT, Job, JobType, StrID, Task
+from ...models import ClusterIDRef, Job, JobID, JobType, TS_FORMAT, Task
 from ...state import AuthState
 from ...template import template
 
@@ -17,7 +17,7 @@ ROUTE = "/jobs/[j_id]"
 class State(AuthState):
     current_job: Job = None
     current_job_description: str = ""
-    linked_clusters: list[StrID] = []
+    linked_clusters: list[ClusterIDRef] = []
     tasks: list[Task] = []
 
     @rx.var
@@ -44,19 +44,19 @@ class State(AuthState):
         )
 
         try:
-            msg_id: StrID = db.insert_into_mq(
+            msg_id: JobID = db.insert_into_mq(
                 job_type, j.description, self.webuser.username
             )
 
             db.insert_event_log(
                 self.webuser.username,
                 job_type,
-                j.description | {"job_id": msg_id.id},
+                j.description | {"job_id": msg_id.job_id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {msg_id.job_id} requested.")
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -253,7 +253,7 @@ def webpage():
                     rx.foreach(
                         State.linked_clusters,
                         lambda lc: rx.hstack(
-                            rx.link(lc.id, href=f"/clusters/{lc.id}"),
+                            rx.link(lc.cluster_id, href=f"/clusters/{lc.cluster_id}"),
                             class_name="py-2",
                             align="center",
                         ),

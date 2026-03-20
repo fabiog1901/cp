@@ -2,12 +2,12 @@ import asyncio
 
 import reflex as rx
 
-from ...services import app_service as db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Cluster, Job
+from ...services import cluster_service
 from ...state import AuthState
 from ...template import template
 
@@ -44,7 +44,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = db.get_cluster(
+                    cluster, jobs = cluster_service.list_cluster_jobs_for_user(
                         self.cluster_id,
                         list(self.webuser.groups),
                         self.is_admin,
@@ -59,11 +59,7 @@ class State(AuthState):
 
                 self.current_cluster = cluster
 
-                try:
-                    self.jobs = db.get_all_linked_jobs(self.cluster_id)
-                except Exception as e:
-                    self.is_running = False
-                    return NotifyState.show("Error", str(e))
+                self.jobs = jobs
 
             await asyncio.sleep(5)
 

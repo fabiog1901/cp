@@ -241,6 +241,22 @@ class Version(BaseModel):
     version: str
 
 
+class RegionOption(BaseModel):
+    region_id: str
+
+
+class NodeCountOption(BaseModel):
+    node_count: int
+
+
+class CpuCountOption(BaseModel):
+    cpu_count: int
+
+
+class DiskSizeOption(BaseModel):
+    size_gb: int
+
+
 class Setting(BaseModel):
     id: str
     value: str
@@ -268,7 +284,15 @@ class Playbook(PlaybookOverview):
     playbook: bytes | None = None
 
 
-# GENERIC
+# GENERIC / LEGACY
+
+
+class JobID(BaseModel):
+    job_id: int
+
+
+class ClusterIDRef(BaseModel):
+    cluster_id: str
 
 
 class StrID(BaseModel):

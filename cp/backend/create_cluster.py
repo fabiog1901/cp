@@ -10,6 +10,7 @@ from ..models import (
     JobState,
     Region,
 )
+from ..repos.postgres import cluster_repo
 from ..services import app_service as db
 from .util import MyRunner
 
@@ -42,7 +43,7 @@ def create_cluster(
     cluster_request = ClusterRequest(**data)
 
     # check if cluster with same cluster_id exists
-    c = db.get_cluster(cluster_request.name, [], True)
+    c = cluster_repo.get_cluster(cluster_request.name, [], True)
 
     if not recreate and c and not c.status.startswith("DELET"):
         db.update_job(
@@ -58,7 +59,7 @@ def create_cluster(
         )
         return
 
-    db.upsert_cluster(
+    cluster_repo.create_or_update_cluster(
         cluster_request.name,
         ClusterState.PROVISIONING,
         created_by,
@@ -91,7 +92,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         for cloud_region in cluster_request.regions:
             cloud, region = cloud_region.split(":")
-            region_details: list[Region] = db.get_region(cloud, region)
+            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
             if not region_details:
                 raise ValueError(f"No region configuration found for {cloud_region}")
 
@@ -189,7 +190,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         )
 
         if job_status != "successful":
-            db.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+            cluster_repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
             return
 
         cluster_inventory: list[InventoryRegion] = []
@@ -216,7 +217,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                         )
                     )
 
-        db.update_cluster(
+        cluster_repo.update_cluster(
             cluster_request.name,
             created_by,
             status=ClusterState.RUNNING,
@@ -233,4 +234,4 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "FAILURE",
             str(err),
         )
-        db.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+        cluster_repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)

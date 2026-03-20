@@ -2,12 +2,12 @@ import asyncio
 
 import reflex as rx
 
-from ...services import app_service as db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Cluster, ClusterOverview, IntID, JobType, StrID
+from ...models import Cluster, ClusterOverview, RegionOption
+from ...services import cluster_service
 from ...state import AuthState
 from ...template import template
 from ..util import get_funny_name, get_human_size
@@ -25,7 +25,7 @@ class State(AuthState):
 
     # CREATE NEW CLUSTER DIALOG PARAMETERS
     available_versions: list[str] = []
-    available_regions: list[StrID] = []
+    available_regions: list[RegionOption] = []
     available_node_counts: list[int] = []
     available_cpus_per_node: list[int] = []
     disk_fmt_2_size_map: dict[str, int] = {}
@@ -78,30 +78,16 @@ class State(AuthState):
 
     @rx.event
     def create_new_cluster(self, form_data: dict):
-        form_data["node_cpus"] = self.selected_cpus_per_node
-        form_data["disk_size"] = self.disk_fmt_2_size_map[self.selected_disk_size]
-        form_data["node_count"] = self.selected_node_count
-        form_data["regions"] = list(self.selected_regions)
-        form_data["version"] = self.selected_version
-        form_data["group"] = self.selected_group
-        form_data["name"] = "".join(
-            [
-                x.lower()
-                for x in form_data["name"]
-                if x.lower() in "-abcdefghijklmnopqrstuvwxyz"
-            ]
-        )
-
         try:
-            msg_id: StrID = db.insert_into_mq(
-                JobType.CREATE_CLUSTER,
+            job_id = cluster_service.request_cluster_creation(
                 form_data,
+                self.selected_cpus_per_node,
+                self.disk_fmt_2_size_map[self.selected_disk_size],
+                self.selected_node_count,
+                self.selected_regions,
+                self.selected_version,
+                self.selected_group,
                 self.webuser.username,
-            )
-            db.insert_event_log(
-                self.webuser.username,
-                JobType.CREATE_CLUSTER,
-                form_data | {"job_id": msg_id.id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
@@ -114,26 +100,19 @@ class State(AuthState):
         self.selected_disk_size = self.available_disk_sizes[0]
         self.selected_group = self.webuser.groups[0]
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {job_id} requested.")
 
     @rx.event
     def delete_cluster(self, cluster_id: str):
-
         try:
-            msg_id: IntID = db.insert_into_mq(
-                JobType.DELETE_CLUSTER,
-                {"cluster_id": cluster_id},
+            job_id = cluster_service.request_cluster_deletion(
+                cluster_id,
                 self.webuser.username,
-            )
-            db.insert_event_log(
-                self.webuser.username,
-                JobType.DELETE_CLUSTER,
-                {"cluster_id": cluster_id, "job_id": msg_id.id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.id} requested.")
+        return rx.toast.info(f"Job {job_id} requested.")
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -141,24 +120,23 @@ class State(AuthState):
             return
         async with self:
             try:
-                # fetch this data only once
-                # this data powers the Create New Cluster dialog
-                self.available_versions = [x.version for x in db.get_versions()]
+                options = cluster_service.get_create_dialog_options()
+                self.available_versions = options["versions"]
                 self.selected_version = self.available_versions[0]
 
-                self.available_node_counts = [x.id for x in db.get_node_counts()]
+                self.available_node_counts = options["node_counts"]
                 self.selected_node_count = self.available_node_counts[0]
 
-                self.available_cpus_per_node = [x.id for x in db.get_cpus_per_node()]
+                self.available_cpus_per_node = options["cpus_per_node"]
                 self.selected_cpus_per_node = self.available_cpus_per_node[0]
 
                 self.disk_fmt_2_size_map = {
-                    get_human_size(x.id): x.id for x in db.get_disk_sizes()
+                    get_human_size(x): x for x in options["disk_sizes"]
                 }
                 self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
                 self.selected_disk_size = self.available_disk_sizes[0]
 
-                self.available_regions = db.get_regions()
+                self.available_regions = options["regions"]
 
             except Exception as e:
                 self.is_running = False
@@ -182,7 +160,7 @@ class State(AuthState):
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
                 try:
-                    self.clusters = db.fetch_all_clusters(
+                    self.clusters = cluster_service.list_visible_clusters(
                         list(self.webuser.groups), self.is_admin
                     )
                 except Exception as e:
@@ -242,21 +220,21 @@ def region_selector() -> rx.Component:
             rx.foreach(
                 State.available_regions,
                 lambda item: rx.cond(
-                    State.selected_regions.contains(item.id),
+                    State.selected_regions.contains(item.region_id),
                     rx.fragment(),
                     rx.badge(
                         rx.match(
-                            item.id[:3],
+                            item.region_id[:3],
                             ("aws", rx.image("/aws.png", width="30px", height="auto")),
                             ("gcp", rx.image("/gcp.png", width="30px", height="auto")),
                             ("azr", rx.image("/azr.png", width="35px", height="auto")),
                             ("vmw", rx.image("/vmw.png", width="30px", height="auto")),
                         ),
-                        item.id[4:],
+                        item.region_id[4:],
                         rx.icon("circle-plus", size=18),
                         color_scheme="gray",
                         **chip_props,
-                        on_click=State.multi_add_selected(item.id),
+                        on_click=State.multi_add_selected(item.region_id),
                     ),
                 ),
             ),
