@@ -3,18 +3,24 @@ import asyncio
 import reflex as rx
 
 from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import Job
-from ...services import jobs_service
+from ....cp import app
+from ....models import Cluster, ClusterJobsSnapshot, Job
+from ....services import cluster_jobs_service
 from ...state import AuthState
 from ...template import template
 
-ROUTE = "/jobs"
+ROUTE = "/clusters/[c_id]/jobs"
 
 
 class State(AuthState):
+    current_cluster: Cluster = None
     jobs: list[Job] = []
+
+    @rx.var
+    def cluster_id(self) -> str | None:
+        return self.router.page.params.get("c_id") or None
 
     is_running: bool = False
 
@@ -38,14 +44,23 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.jobs = jobs_service.list_visible_jobs(
-                        list(self.webuser.groups), self.is_admin
+                    snapshot: ClusterJobsSnapshot | None = (
+                        cluster_jobs_service.load_cluster_jobs_snapshot(
+                            self.cluster_id,
+                            list(self.webuser.groups),
+                            self.is_admin,
+                        )
                     )
                 except Exception as e:
                     self.is_running = False
-                    return NotifyState.show(
-                        "Error communicating with the database", str(e)
-                    )
+                    return NotifyState.show("Error", str(e))
+
+                if snapshot is None:
+                    self.is_running = False
+                    return rx.redirect("/_notfound", replace=True)
+
+                self.current_cluster = snapshot.cluster
+                self.jobs = snapshot.jobs
 
             await asyncio.sleep(5)
 
@@ -92,20 +107,31 @@ def data_table():
 
 @rx.page(
     route=ROUTE,
-    title="Jobs",
+    title=f"Cluster {State.current_cluster.cluster_id}: Jobs",
     on_load=AuthState.check_login,
 )
 @template
 def webpage():
     return rx.flex(
-        rx.text(
-            "Jobs",
-            class_name="p-2 text-8xl font-semibold",
+        cluster_banner(
+            "boxes",
+            State.current_cluster.cluster_id,
+            State.current_cluster.status,
+            State.current_cluster.version,
         ),
-        rx.vstack(
-            data_table(),
-            class_name="flex-1 flex-col overflow-y-scroll pt-8",
+        rx.flex(
+            rx.flex(
+                mini_breadcrumb(
+                    State.cluster_id, f"/clusters/{State.cluster_id}", "Jobs"
+                ),
+                rx.flex(
+                    data_table(),
+                    class_name="flex-1 flex-col overflow-y-scroll p-2 pt-8",
+                ),
+                class_name="flex-1 flex-col overflow-hidden",
+            ),
+            class_name="flex-1 pt-8 overflow-hidden",
         ),
-        class_name="flex-1 flex-col overflow-hidden",
+        class_name="flex-col flex-1 overflow-hidden",
         on_mount=State.start_bg_event,
     )

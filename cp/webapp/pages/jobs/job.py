@@ -4,9 +4,9 @@ import reflex as rx
 
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import ClusterIDRef, Job, TS_FORMAT, Task
-from ...services import jobs_service
+from ....cp import app
+from ....models import ClusterIDRef, Job, TS_FORMAT, Task
+from ....services import jobs_service
 from ...state import AuthState
 from ...template import template
 

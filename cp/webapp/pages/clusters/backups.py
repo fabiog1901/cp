@@ -5,9 +5,9 @@ from pydantic import ValidationError
 
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ...services import cluster_backups_service
+from ....cp import app
+from ....models import BackupDetails, Cluster, ClusterBackupsSnapshot
+from ....services import cluster_backups_service
 from ...state import AuthState
 from ...template import template
 

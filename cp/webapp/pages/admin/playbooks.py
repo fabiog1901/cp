@@ -6,7 +6,7 @@ from reflex_monaco import monaco
 
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ...services import playbooks_service
+from ....services import playbooks_service
 from ...state import AuthState
 from ...template import template
 

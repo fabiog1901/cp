@@ -6,9 +6,9 @@ import reflex as rx
 
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import Version
-from ...services import versions_service
+from ....cp import app
+from ....models import Version
+from ....services import versions_service
 from ...state import AuthState
 from ...template import template
 

@@ -6,9 +6,9 @@ import reflex as rx
 
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import Cluster, DashboardSnapshot
-from ...services import dashboard_service
+from ....cp import app
+from ....models import Cluster, DashboardSnapshot
+from ....services import dashboard_service
 from ...state import AuthState
 from ...template import template
 
