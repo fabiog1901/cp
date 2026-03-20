@@ -6,8 +6,8 @@ from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Cluster, Job
-from ...services import cluster_service
+from ...models import Cluster, ClusterJobsSnapshot, Job
+from ...services import cluster_jobs_service
 from ...state import AuthState
 from ...template import template
 
@@ -44,22 +44,23 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster, jobs = cluster_service.list_cluster_jobs_for_user(
-                        self.cluster_id,
-                        list(self.webuser.groups),
-                        self.is_admin,
+                    snapshot: ClusterJobsSnapshot | None = (
+                        cluster_jobs_service.load_cluster_jobs_snapshot(
+                            self.cluster_id,
+                            list(self.webuser.groups),
+                            self.is_admin,
+                        )
                     )
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
 
-                if cluster is None:
+                if snapshot is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
-                self.current_cluster = cluster
-
-                self.jobs = jobs
+                self.current_cluster = snapshot.cluster
+                self.jobs = snapshot.jobs
 
             await asyncio.sleep(5)
 

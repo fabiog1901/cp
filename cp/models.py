@@ -294,6 +294,11 @@ class DashboardSnapshot(BaseModel):
     metrics: DashboardMetrics
 
 
+class ClusterJobsSnapshot(BaseModel):
+    cluster: Cluster
+    jobs: list[Job]
+
+
 # GENERIC / LEGACY
 
 
