@@ -182,6 +182,10 @@ class BackupDetails(BaseModel):
     end_time: dt.datetime
 
 
+class BackupPathOption(BaseModel):
+    path: str
+
+
 class DatabaseUser(BaseModel):
     username: str
     options: str | None
@@ -302,6 +306,11 @@ class ClusterJobsSnapshot(BaseModel):
 class ClusterUsersSnapshot(BaseModel):
     cluster: Cluster
     database_users: list[DatabaseUser]
+
+
+class ClusterBackupsSnapshot(BaseModel):
+    cluster: Cluster
+    backup_paths: list[BackupPathOption]
 
 
 # GENERIC / LEGACY

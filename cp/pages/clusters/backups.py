@@ -1,15 +1,13 @@
 import asyncio
 
-import psycopg
 import reflex as rx
-from psycopg.rows import class_row
 from pydantic import ValidationError
 
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import BackupDetails, Cluster
-from ...services import cluster_service
+from ...models import BackupDetails, Cluster, ClusterBackupsSnapshot
+from ...services import cluster_backups_service
 from ...state import AuthState
 from ...template import template
 
@@ -48,70 +46,31 @@ class State(AuthState):
     is_running: bool = False
 
     @rx.event
-    def get_backups(self):
-        try:
-            with psycopg.connect(
-                # TODO fetch the right username and password
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor() as cur:
-                    rs = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
-
-                p = [r[0] for r in rs]
-                p.sort(reverse=True)
-                self.paths = ["LATEST"] + p
-
-        except Exception as e:
-            self.paths = []
-            return NotifyState.show("Error", str(e))
-
-    @rx.event
     def get_backup(self, backup_path: str):
         self.selected_path = backup_path
         try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
-                    rs = cur.execute(
-                        f"""
-                        select database_name, parent_schema_name, object_name, object_type,end_time 
-                        from [SHOW BACKUP '{backup_path}' IN 'external://backup']
-                        WHERE database_name NOT IN ('system', 'postgres')
-                            or object_name NOT IN ('system', 'postgres') AND object_type = 'database'
-                            ;
-                        """
-                    ).fetchall()
-
-            self.backup_details = rs
-
+            self.backup_details = cluster_backups_service.load_backup_details(
+                self.cluster_id,
+                list(self.webuser.groups),
+                self.is_admin,
+                backup_path,
+            )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
     @rx.event
     def initiate_restore(self, form_data: dict):
         try:
-            rr = cluster_service.validate_restore_request(
-                name=self.current_cluster.cluster_id,
+            job_id = cluster_backups_service.request_cluster_restore(
+                cluster_id=self.cluster_id,
+                groups=list(self.webuser.groups),
+                is_admin=self.is_admin,
                 backup_path=form_data.get("path"),
                 restore_aost=form_data.get("aost"),
                 restore_full_cluster=self.full_cluster,
                 object_type=self.object_type if not self.full_cluster else None,
                 object_name=form_data.get("object_name") if not self.full_cluster else None,
                 backup_into=form_data.get("backup_into") if not self.full_cluster else None,
-            )
-            job_id = cluster_service.request_cluster_restore(
-                cluster_id=self.current_cluster.cluster_id,
-                backup_path=rr["backup_path"],
-                restore_aost=rr["restore_aost"],
-                restore_full_cluster=rr["restore_full_cluster"],
-                object_type=rr["object_type"],
-                object_name=rr["object_name"],
-                backup_into=rr["backup_into"],
                 requested_by=self.webuser.username,
             )
         except ValidationError as ve:
@@ -142,20 +101,27 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = cluster_service.get_cluster_for_user(
-                        self.cluster_id,
-                        list(self.webuser.groups),
-                        self.is_admin,
+                    snapshot: ClusterBackupsSnapshot | None = (
+                        cluster_backups_service.load_cluster_backups_snapshot(
+                            self.cluster_id,
+                            list(self.webuser.groups),
+                            self.is_admin,
+                        )
                     )
                 except Exception as e:
                     return NotifyState.show("Error", str(e))
 
-                if cluster is None:
+                if snapshot is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
-                self.current_cluster = cluster
-                self.get_backups()
+                self.current_cluster = snapshot.cluster
+                self.paths = [item.path for item in snapshot.backup_paths]
+                if self.select_value not in self.paths:
+                    self.select_value = self.paths[0] if self.paths else ""
+                if self.selected_path not in self.paths:
+                    self.selected_path = self.paths[0] if self.paths else ""
+                    self.backup_details = []
 
             await asyncio.sleep(5)
 
