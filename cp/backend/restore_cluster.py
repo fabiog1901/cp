@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ..models import ClusterState, JobState, RestoreRequest
-from . import db
+from ..services import app_service as db
 from .util import MyRunner
 
 logger = logging.getLogger(__name__)

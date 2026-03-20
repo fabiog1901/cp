@@ -4,7 +4,7 @@ import psycopg
 import reflex as rx
 from psycopg.rows import class_row
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app

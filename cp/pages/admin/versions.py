@@ -5,7 +5,7 @@ from typing import List
 import reflex as rx
 from pydantic import ValidationError
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app

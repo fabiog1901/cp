@@ -10,7 +10,7 @@ import ansible_runner
 import yaml
 
 from ..models import JobState, Playbook
-from . import db
+from ..services import app_service as db
 
 logger = logging.getLogger(__name__)
 

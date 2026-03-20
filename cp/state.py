@@ -8,7 +8,7 @@ import reflex as rx
 import requests
 from jwt.algorithms import RSAAlgorithm
 
-from .backend import db
+from .services import app_service as db
 from .models import EventType, WebUser
 
 SSO_CACHE_VALID_UNTIL = 0

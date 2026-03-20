@@ -5,7 +5,7 @@ import gzip
 import reflex as rx
 from reflex_monaco import monaco
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...models import STRFTIME, EventType, Playbook, PlaybookOverview

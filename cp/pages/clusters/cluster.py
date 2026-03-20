@@ -2,7 +2,7 @@ import asyncio
 
 import reflex as rx
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState

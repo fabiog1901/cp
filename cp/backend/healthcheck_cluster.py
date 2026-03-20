@@ -2,7 +2,7 @@ import os
 from threading import Thread
 
 from ..models import ClusterState, JobType
-from . import db
+from ..services import app_service as db
 from .util import MyRunnerLite
 
 

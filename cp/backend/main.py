@@ -6,7 +6,7 @@ import random
 from psycopg.rows import class_row
 
 from ..models import JobState, JobType, Msg, Nodes
-from . import db
+from ..services import app_service as db
 from .create_cluster import create_cluster
 from .delete_cluster import delete_cluster
 from .healthcheck_cluster import healthcheck_clusters

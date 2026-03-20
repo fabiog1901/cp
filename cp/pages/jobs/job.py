@@ -3,7 +3,7 @@ import asyncio
 import reflex as rx
 import yaml
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
 from ...cp import app

@@ -5,7 +5,7 @@ from typing import Any
 import reflex as rx
 import requests
 
-from ...backend import db
+from ...services import app_service as db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app

@@ -11,7 +11,7 @@ from ..models import (
     JobState,
     Region,
 )
-from . import db
+from ..services import app_service as db
 from .util import MyRunner
 
 logger = logging.getLogger(__name__)
