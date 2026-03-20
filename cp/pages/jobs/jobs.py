@@ -2,11 +2,11 @@ import asyncio
 
 import reflex as rx
 
-from ...services import app_service as db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
 from ...cp import app
 from ...models import Job
+from ...services import jobs_service
 from ...state import AuthState
 from ...template import template
 
@@ -38,7 +38,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.jobs = db.fetch_all_jobs(
+                    self.jobs = jobs_service.list_visible_jobs(
                         list(self.webuser.groups), self.is_admin
                     )
                 except Exception as e:

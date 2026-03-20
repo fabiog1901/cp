@@ -1,13 +1,12 @@
 import asyncio
 
 import reflex as rx
-import yaml
 
-from ...services import app_service as db
 from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import ClusterIDRef, Job, JobID, JobType, TS_FORMAT, Task
+from ...models import ClusterIDRef, Job, TS_FORMAT, Task
+from ...services import jobs_service
 from ...state import AuthState
 from ...template import template
 
@@ -28,35 +27,17 @@ class State(AuthState):
 
     @rx.event
     def reschedule_job(self):
-        # TODO fix so we can use self.current_job.descripton
-
         try:
-            j: Job = db.fetch_job(
-                self.current_job.job_id, list(self.webuser.groups), self.is_admin
-            )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
-
-        job_type = (
-            JobType.RECREATE_CLUSTER
-            if self.current_job.job_type == JobType.CREATE_CLUSTER
-            else self.current_job.job_type
-        )
-
-        try:
-            msg_id: JobID = db.insert_into_mq(
-                job_type, j.description, self.webuser.username
-            )
-
-            db.insert_event_log(
+            rescheduled_job_id = jobs_service.request_job_reschedule(
+                self.current_job.job_id,
+                list(self.webuser.groups),
+                self.is_admin,
                 self.webuser.username,
-                job_type,
-                j.description | {"job_id": msg_id.job_id},
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        return rx.toast.info(f"Job {msg_id.job_id} requested.")
+        return rx.toast.info(f"Job {rescheduled_job_id} requested.")
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -78,26 +59,23 @@ class State(AuthState):
 
             async with self:
                 try:
-                    job: Job = db.fetch_job(
-                        int(self.job_id), list(self.webuser.groups), self.is_admin
+                    data = jobs_service.get_job_details_for_user(
+                        int(self.job_id),
+                        list(self.webuser.groups),
+                        self.is_admin,
                     )
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
 
-                if job is None:
+                if data is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
-                self.current_job_description = yaml.dump(job.description)
-                self.current_job = job
-
-                try:
-                    self.tasks = db.get_all_tasks(self.job_id)
-                    self.linked_clusters = db.get_linked_clusters_from_job(self.job_id)
-                except Exception as e:
-                    self.is_running = False
-                    return NotifyState.show("Error", str(e))
+                self.current_job = data["job"]
+                self.current_job_description = data["description_yaml"]
+                self.tasks = data["tasks"]
+                self.linked_clusters = data["linked_clusters"]
 
             await asyncio.sleep(5)
 
