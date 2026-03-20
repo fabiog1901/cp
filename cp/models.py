@@ -284,6 +284,16 @@ class Playbook(PlaybookOverview):
     playbook: bytes | None = None
 
 
+class DashboardMetrics(BaseModel):
+    current_nodes: list[int]
+    chart_data: list[dict[str, Any]]
+
+
+class DashboardSnapshot(BaseModel):
+    cluster: Cluster
+    metrics: DashboardMetrics
+
+
 # GENERIC / LEGACY
 
 
