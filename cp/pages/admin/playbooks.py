@@ -1,14 +1,12 @@
 # app.py
 import datetime as dt
-import gzip
 
 import reflex as rx
 from reflex_monaco import monaco
 
-from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ...models import STRFTIME, EventType, Playbook, PlaybookOverview
+from ...services import playbooks_service
 from ...state import AuthState
 from ...template import template
 
@@ -43,96 +41,66 @@ class State(AuthState):
 
     @rx.event
     def on_playbook_change(self, value: str):
-        self.playbook_name = value
-        self.default_version = ""
-
         try:
-            po: list[PlaybookOverview] = db.get_playbook_versions(self.playbook_name)
+            selection = playbooks_service.load_playbook_selection(value)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        self.playbook_versions = sorted([x.version.strftime(STRFTIME) for x in po])
-
-        # find the default version
-        _running_v = ""
-        for p in po:
-            if p.default_version and p.default_version.strftime(STRFTIME) > _running_v:
-                _running_v = p.default_version.strftime(STRFTIME)
-                self.playbook_version = p.version.strftime(STRFTIME)
-
-            self.default_version = self.playbook_version
-
-        try:
-            p: Playbook = db.get_playbook(self.playbook_name, self.playbook_version)
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
-
-        self.original_content = gzip.decompress(p.playbook).decode("utf-8")
-        self.modified_content = self.original_content
+        self.playbook_name = selection["playbook_name"]
+        self.playbook_version = selection["playbook_version"]
+        self.default_version = selection["default_version"]
+        self.playbook_versions = selection["playbook_versions"]
+        self.original_content = selection["original_content"]
+        self.modified_content = selection["modified_content"]
 
     @rx.event
     def on_version_change(self, v: str):
-        self.playbook_version = v
-
         try:
-            p: Playbook = db.get_playbook(self.playbook_name, v)
+            selection = playbooks_service.load_playbook_version(self.playbook_name, v)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        self.original_content = gzip.decompress(p.playbook).decode("utf-8")
-        self.modified_content = self.original_content
+        self.playbook_version = selection["playbook_version"]
+        self.original_content = selection["original_content"]
+        self.modified_content = selection["modified_content"]
 
     @rx.event
     def set_default(self):
-
-        self.default_version = self.playbook_version
-
         try:
-            db.set_default_playbook(
-                self.playbook_name,
-                self.playbook_version,
-                self.webuser.username,
-            )
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.PLAYBOOK_SET_DEFAULT,
-                {"name": self.playbook_name, "version": self.playbook_version},
+            playbooks_service.set_default_playbook(
+                self.playbook_name, self.playbook_version, self.webuser.username
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
+        self.default_version = self.playbook_version
         return rx.toast.success(
             f"Successfully set version '{self.playbook_version}' as the default version."
         )
 
     @rx.event
     def delete_version(self):
-
-        if self.playbook_version == self.default_version:
-            return rx.toast.error("Cannot delete the default version")
-
         try:
-            db.remove_playbook(
+            selection = playbooks_service.delete_playbook_version(
                 self.playbook_name,
                 self.playbook_version,
-            )
-            db.insert_event_log(
+                self.default_version,
                 self.webuser.username,
-                EventType.PLAYBOOK_REMOVE,
-                {"name": self.playbook_name, "version": self.playbook_version},
             )
-            po: list[PlaybookOverview] = db.get_playbook_versions(self.playbook_name)
-
+        except ValueError as e:
+            return rx.toast.error(str(e))
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        # refresh the list, then move to the default version
-        self.playbook_versions = sorted([x.version.strftime(STRFTIME) for x in po])
-        self.playbook_version = self.default_version
-        self.on_version_change(self.playbook_version)
+        deleted_version = self.playbook_version
+        self.playbook_versions = selection["playbook_versions"]
+        self.playbook_version = selection["playbook_version"]
+        self.default_version = selection["default_version"]
+        self.original_content = selection["original_content"]
+        self.modified_content = selection["modified_content"]
 
         return rx.toast.success(
-            f"Successfully deleted version '{self.playbook_version}'."
+            f"Successfully deleted version '{deleted_version}'."
         )
 
     @rx.event
@@ -147,27 +115,19 @@ class State(AuthState):
 
     @rx.event
     def save_changes(self):
-        """Update the active view."""
-
         try:
-            p = db.add_playbook(
+            selection = playbooks_service.save_playbook_content(
                 self.playbook_name,
-                gzip.compress(self.modified_content.encode("utf-8")),
+                self.modified_content,
                 self.webuser.username,
             )
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.PLAYBOOK_ADD,
-                {"name": self.playbook_name, "version": p.version.strftime(STRFTIME)},
-            )
-            po: list[PlaybookOverview] = db.get_playbook_versions(self.playbook_name)
-
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-        # refresh the list, then update the version name of current selected playbook
-        self.playbook_versions = sorted([x.version.strftime(STRFTIME) for x in po])
-        self.playbook_version = p.version.strftime(STRFTIME)
+        self.playbook_versions = selection["playbook_versions"]
+        self.playbook_version = selection["playbook_version"]
+        self.original_content = selection["original_content"]
+        self.modified_content = selection["modified_content"]
 
         return rx.toast.success(
             f"Successfully saved new version of {self.playbook_name}"
