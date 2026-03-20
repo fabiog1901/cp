@@ -1,8 +1,12 @@
+import datetime as dt
+import logging
 from threading import Thread
 
 from ..models import ClusterState, ClusterUpgradeRequest, JobState
 from . import db
 from .util import MyRunner
+
+logger = logging.getLogger(__name__)
 
 
 def upgrade_cluster(
@@ -59,26 +63,41 @@ def upgrade_cluster_worker(
     cur: ClusterUpgradeRequest,
     requested_by: str,
 ):
+    try:
+        extra_vars = {
+            "deployment_id": cur.name,
+            "cockroachdb_version": cur.version,
+            "cockroachdb_autofinalize": cur.auto_finalize,
+        }
 
-    extra_vars = {
-        "deployment_id": cur.name,
-        "cockroachdb_version": cur.version,
-        "cockroachdb_autofinalize": cur.auto_finalize,
-    }
+        job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
 
-    job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
+        if job_status != "successful":
+            db.update_cluster(
+                cur.name,
+                requested_by,
+                status=ClusterState.UPGRADE_FAILED,
+            )
+            return
 
-    if job_status != "successful":
+        db.update_cluster(
+            cur.name,
+            requested_by,
+            status=ClusterState.RUNNING,
+            version=cur.version,
+        )
+    except Exception as err:
+        logger.exception("Unhandled error while upgrading cluster '%s'", cur.name)
+        db.update_job(job_id, JobState.FAILED)
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
+        )
         db.update_cluster(
             cur.name,
             requested_by,
             status=ClusterState.UPGRADE_FAILED,
         )
-        return
-
-    db.update_cluster(
-        cur.name,
-        requested_by,
-        status=ClusterState.RUNNING,
-        version=cur.version,
-    )

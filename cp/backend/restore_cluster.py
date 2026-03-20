@@ -1,9 +1,12 @@
 import datetime as dt
+import logging
 from threading import Thread
 
 from ..models import ClusterState, JobState, RestoreRequest
 from . import db
 from .util import MyRunner
+
+logger = logging.getLogger(__name__)
 
 
 def restore_cluster(
@@ -60,31 +63,45 @@ def restore_cluster_worker(
     rr: RestoreRequest,
     requested_by: str,
 ):
+    try:
+        extra_vars = {
+            "deployment_id": rr.name,
+            "backup_path": rr.backup_path,
+            "restore_aost": rr.restore_aost,
+            "restore_full_cluster": rr.restore_full_cluster,
+            "object_type": rr.object_type,
+            "object_name": rr.object_name,
+            "backup_into": rr.backup_into,
+            "cloud_storage_url": db.get_setting("cloud_storage_url"),
+        }
 
-    # TODO should just use rr.model_dump()
-    extra_vars = {
-        "deployment_id": rr.name,
-        "backup_path": rr.backup_path,
-        "restore_aost": rr.restore_aost,
-        "restore_full_cluster": rr.restore_full_cluster,
-        "object_type": rr.object_type,
-        "object_name": rr.object_name,
-        "backup_into": rr.backup_into,
-        "cloud_storage_url": db.get_setting("cloud_storage_url"),
-    }
+        job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
 
-    job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
+        if job_status != "successful":
+            db.update_cluster(
+                rr.name,
+                requested_by,
+                status=ClusterState.RESTORE_FAILED,
+            )
+            return
 
-    if job_status != "successful":
+        db.update_cluster(
+            rr.name,
+            requested_by,
+            status=ClusterState.RUNNING,
+        )
+    except Exception as err:
+        logger.exception("Unhandled error while restoring cluster '%s'", rr.name)
+        db.update_job(job_id, JobState.FAILED)
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
+        )
         db.update_cluster(
             rr.name,
             requested_by,
             status=ClusterState.RESTORE_FAILED,
         )
-        return
-
-    db.update_cluster(
-        rr.name,
-        requested_by,
-        status=ClusterState.RUNNING,
-    )

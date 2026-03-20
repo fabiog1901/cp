@@ -1,3 +1,5 @@
+import datetime as dt
+import logging
 from threading import Thread
 
 from ..models import (
@@ -11,6 +13,8 @@ from ..models import (
 )
 from . import db
 from .util import MyRunner
+
+logger = logging.getLogger(__name__)
 
 
 def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
@@ -52,7 +56,7 @@ def scale_cluster(
     )
 
     Thread(
-        target=scale_cluster_worker,
+        target=scale_cluster_worker_entry,
         args=(
             job_id,
             cluster_scale_request,
@@ -60,6 +64,27 @@ def scale_cluster(
             requested_by,
         ),
     ).start()
+
+
+def scale_cluster_worker_entry(
+    job_id: int,
+    csr: ClusterScaleRequest,
+    current_cluster: Cluster,
+    requested_by: str,
+):
+    try:
+        scale_cluster_worker(job_id, csr, current_cluster, requested_by)
+    except Exception as err:
+        logger.exception("Unhandled error while scaling cluster '%s'", csr.name)
+        db.update_job(job_id, JobState.FAILED)
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
+        )
+        db.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
 
 
 # TODO refactor this method and use it in create_cluster.py

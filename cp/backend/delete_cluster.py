@@ -1,9 +1,12 @@
 import datetime as dt
+import logging
 from threading import Thread
 
 from ..models import ClusterState, JobState
 from . import db
 from .util import MyRunner
+
+logger = logging.getLogger(__name__)
 
 
 def delete_cluster(
@@ -55,19 +58,35 @@ def delete_cluster_worker(
     cluster_id: str,
     requested_by: str,
 ):
-    extra_vars = {
-        "deployment_id": cluster_id,
-    }
+    try:
+        extra_vars = {
+            "deployment_id": cluster_id,
+        }
 
-    job_status, _, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
+        job_status, _, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
 
-    if job_status == "successful":
-        db.update_cluster(
-            cluster_id,
-            requested_by,
-            status=ClusterState.DELETED,
+        if job_status == "successful":
+            db.update_cluster(
+                cluster_id,
+                requested_by,
+                status=ClusterState.DELETED,
+            )
+        else:
+            db.update_cluster(
+                cluster_id,
+                requested_by,
+                status=ClusterState.DELETE_FAILED,
+            )
+    except Exception as err:
+        logger.exception("Unhandled error while deleting cluster '%s'", cluster_id)
+        db.update_job(job_id, JobState.FAILED)
+        db.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
         )
-    else:
         db.update_cluster(
             cluster_id,
             requested_by,

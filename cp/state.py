@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Optional
 from urllib.parse import urlencode
@@ -20,6 +21,13 @@ SSO_USERINFO_URL = ""
 SSO_REDIRECT_URI = ""
 SSO_JWKS_URL = ""
 SSO_ISSUER = ""
+SSO_CLAIM_NAME = ""
+
+logger = logging.getLogger(__name__)
+
+
+class AuthError(Exception):
+    """Raised when authentication cannot be completed safely."""
 
 
 class AuthState(rx.State):
@@ -69,65 +77,69 @@ class AuthState(rx.State):
         return self.webuser is not None
 
     def callback(self):
-        token_res = requests.post(
-            SSO_TOKEN_URL,
-            data={
-                "grant_type": "authorization_code",
-                "code": self.router.page.params.get("code"),
-                "redirect_uri": SSO_REDIRECT_URI,
-                "client_id": SSO_CLIENT_ID,
-                "client_secret": SSO_CLIENT_SECRET,
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
+        try:
+            token_res = requests.post(
+                SSO_TOKEN_URL,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": self.router.page.params.get("code"),
+                    "redirect_uri": SSO_REDIRECT_URI,
+                    "client_id": SSO_CLIENT_ID,
+                    "client_secret": SSO_CLIENT_SECRET,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+            token_res.raise_for_status()
 
-        if token_res.status_code == 200:
             tokens = token_res.json()
             access_token = tokens.get("access_token")
+            user_claims = validate_token(access_token) #, audience=SSO_CLIENT_ID)
 
-            try:
-                user_claims = validate_token(access_token, audience=SSO_CLIENT_ID)
+            grp_role_maps: dict[str, list[str]] = {
+                x.role: x.groups for x in db.get_role_to_groups_mappings()
+            }
 
-                grp_role_maps: dict[str, list[str]] = {
-                    x.role: x.groups for x in db.get_role_to_groups_mappings()
-                }
+            user_roles = set[str]()
+            user_groups = set[str]()
+            claim_groups = user_claims.get("groups") or []
+            for r in ["ro", "rw", "admin"]:
+                for g in grp_role_maps.get(r, []):
+                    if g in claim_groups:
+                        user_roles.add(r)
+                        user_groups.add(g)
 
-                # create a WebUser out of the User
-                # assign all roles and groups
-                user_roles = set[str]()
-                user_groups = set[str]()
-                for r in ["ro", "rw", "admin"]:
-                    for g in grp_role_maps.get(r):
-                        if g in user_claims.get("groups"):
-                            user_roles.add(r)
-                            user_groups.add(g)
-
-                if not user_roles:
-                    return rx.window_alert(
-                        "User is not authorized. Contact your administrator."
-                    )
-
-                self._webuser = WebUser(
-                    username=user_claims.get(SSO_CLAIM_NAME),
-                    roles=list(user_roles),
-                    groups=list(user_groups),
+            if not user_roles:
+                return rx.window_alert(
+                    "User is not authorized. Contact your administrator."
                 )
 
-                db.insert_event_log(
-                    self.webuser.username,
-                    EventType.LOGIN,
-                    {
-                        "roles": list(self.webuser.roles),
-                        "groups": list(self.webuser.groups),
-                    },
-                )
+            username = user_claims.get(SSO_CLAIM_NAME)
+            if not username:
+                raise AuthError(f"Token is missing required claim '{SSO_CLAIM_NAME}'")
 
-                return rx.redirect(self.original_url)
-            except Exception as e:
-                print(f"Token validation failed: {e}")
-                return rx.redirect("/login")
+            self._webuser = WebUser(
+                username=username,
+                roles=list(user_roles),
+                groups=list(user_groups),
+            )
 
-        return rx.redirect("/login")
+            db.insert_event_log(
+                self.webuser.username,
+                EventType.LOGIN,
+                {
+                    "roles": list(self.webuser.roles),
+                    "groups": list(self.webuser.groups),
+                },
+            )
+
+            return rx.redirect(self.original_url)
+        except (AuthError, requests.RequestException, ValueError) as err:
+            logger.warning("Authentication callback failed: %s", err)
+            return rx.redirect("/login")
+        except Exception:
+            logger.exception("Unexpected error during authentication callback")
+            return rx.redirect("/login")
 
     def login_redirect(self):
         if time.time() > SSO_CACHE_VALID_UNTIL:
@@ -171,12 +183,29 @@ def refresh_cache():
 
 
 def get_jwks_keys():
-    response = requests.get(SSO_JWKS_URL)
-    response.raise_for_status()
-    return response.json()["keys"]
+    if not SSO_JWKS_URL:
+        raise AuthError("SSO JWKS URL is not configured")
+
+    try:
+        response = requests.get(SSO_JWKS_URL, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+    except requests.RequestException as err:
+        raise AuthError(f"Unable to fetch JWKS keys: {err}") from err
+    except ValueError as err:
+        raise AuthError("JWKS response is not valid JSON") from err
+
+    keys = payload.get("keys")
+    if not isinstance(keys, list):
+        raise AuthError("JWKS response does not contain a 'keys' list")
+    return keys
 
 
 def validate_token(token: str, audience: str = None) -> dict:
+    print(token)
+    if not token:
+        raise AuthError("Authorization token is missing")
+
     keys = get_jwks_keys()
     unverified_header = jwt.get_unverified_header(token)
 
@@ -191,30 +220,32 @@ def validate_token(token: str, audience: str = None) -> dict:
                 "e": key["e"],
             }
 
-    if rsa_key:
-        try:
-            public_key = RSAAlgorithm.from_jwk(rsa_key)
-            payload = jwt.decode(
-                token,
-                public_key,
-                algorithms=[
-                    unverified_header["alg"],
-                ],
-                issuer=SSO_ISSUER,
-                options=dict(
-                    verify_aud=False,
-                    verify_sub=False,
-                    verify_exp=True,
-                ),
-            )
+    if not rsa_key:
+        raise AuthError("No matching signing key found for authorization token")
 
-        except jwt.ExpiredSignatureError:
-            raise "token is expired"
-
-        except Exception as e:
-            raise f"Unable to parse authentication token: {e.args}"
+    try:
+        
+        public_key = RSAAlgorithm.from_jwk(rsa_key)
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=[unverified_header["alg"]],
+            issuer=SSO_ISSUER,
+            audience=audience,
+            options=dict(
+                verify_aud=audience is not None,
+                verify_sub=False,
+                verify_exp=True,
+            ),
+        )
+    except jwt.ExpiredSignatureError as err:
+        raise AuthError("Authorization token is expired") from err
+    except jwt.InvalidTokenError as err:
+        raise AuthError(f"Invalid authorization token: {err}") from err
+    except Exception as err:
+        raise AuthError(f"Unable to parse authentication token: {err}") from err
 
     if not payload:
-        raise "Invalid authorization token"
+        raise AuthError("Invalid authorization token")
 
     return payload

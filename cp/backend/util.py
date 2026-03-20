@@ -1,5 +1,7 @@
+import datetime as dt
 import gzip
 import json
+import logging
 import os
 import shutil
 import time
@@ -9,6 +11,8 @@ import yaml
 
 from ..models import JobState, Playbook
 from . import db
+
+logger = logging.getLogger(__name__)
 
 
 class MyRunner:
@@ -91,47 +95,67 @@ class MyRunner:
     def launch_runner(
         self, playbook_name: str, extra_vars: dict
     ) -> tuple[str, dict, int]:
-
-        p: Playbook = db.get_default_playbook(playbook_name)
-
-        # create a new working directory
-        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
-        os.mkdir(path=f"/tmp/job-{self.job_id}")
-
-        db.update_job(self.job_id, JobState.RUNNING)
-
-        # Execute the playbook
+        job_dir = f"/tmp/job-{self.job_id}"
         try:
+            p: Playbook = db.get_default_playbook(playbook_name)
+            if p is None or p.playbook is None:
+                raise RuntimeError(
+                    f"Default playbook '{playbook_name}' is not configured"
+                )
+
+            shutil.rmtree(job_dir, ignore_errors=True)
+            os.makedirs(job_dir, exist_ok=True)
+            db.update_job(self.job_id, JobState.RUNNING)
+
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
                 playbook=yaml.safe_load(gzip.decompress(p.playbook).decode()),
-                private_data_dir=f"/tmp/job-{self.job_id}",
+                private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
                 status_handler=self.my_status_handler,
             )
-        except Exception as e:
+        except Exception as err:
             db.update_job(self.job_id, JobState.FAILED)
-            print(f"Error running playbook: {e}")
+            db.insert_task(
+                self.job_id,
+                self.counter,
+                dt.datetime.now(dt.timezone.utc),
+                "FAILURE",
+                str(err),
+            )
+            logger.exception(
+                "Error starting playbook '%s' for job %s",
+                playbook_name,
+                self.job_id,
+            )
+            shutil.rmtree(job_dir, ignore_errors=True)
+            return "failed", self.data, self.counter + 1
 
         heartbeat_ts = time.time() + 60
-        while thread.is_alive():
-            # send hb messsage periodically
-            if time.time() > heartbeat_ts:
-                db.update_job(self.job_id, JobState.RUNNING)
-                heartbeat_ts = time.time() + 60
+        try:
+            while thread.is_alive():
+                if time.time() > heartbeat_ts:
+                    db.update_job(self.job_id, JobState.RUNNING)
+                    heartbeat_ts = time.time() + 60
 
-            time.sleep(1)
+                time.sleep(1)
 
-        # update the Job status
-        if runner.status == "successful":
-            db.update_job(self.job_id, JobState.COMPLETED)
-        else:
+            if runner.status == "successful":
+                db.update_job(self.job_id, JobState.COMPLETED)
+            else:
+                db.update_job(self.job_id, JobState.FAILED)
+        except Exception:
             db.update_job(self.job_id, JobState.FAILED)
-
-        # rm -rf job-directory
-        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
+            logger.exception(
+                "Error while monitoring playbook '%s' for job %s",
+                playbook_name,
+                self.job_id,
+            )
+            return "failed", self.data, self.counter
+        finally:
+            shutil.rmtree(job_dir, ignore_errors=True)
 
         return runner.status, self.data, self.counter
 
@@ -153,29 +177,38 @@ class MyRunnerLite:
                 self.data = e["event_data"]["res"]["msg"]
 
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
-        p: Playbook = db.get_default_playbook(playbook_name)
-
-        # create a new working directory
-        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
-        os.mkdir(path=f"/tmp/job-{self.job_id}")
-
-        # Execute the playbook
+        job_dir = f"/tmp/job-{self.job_id}"
         try:
+            p: Playbook = db.get_default_playbook(playbook_name)
+            if p is None or p.playbook is None:
+                raise RuntimeError(
+                    f"Default playbook '{playbook_name}' is not configured"
+                )
+
+            shutil.rmtree(job_dir, ignore_errors=True)
+            os.makedirs(job_dir, exist_ok=True)
+
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
                 playbook=gzip.decompress(p.playbook).decode(),
-                private_data_dir=f"/tmp/job-{self.job_id}",
+                private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
                 status_handler=self.my_status_handler,
             )
-        except Exception as e:
-            print(f"Error running playbook: {e}")
+        except Exception:
+            logger.exception(
+                "Error starting playbook '%s' for job %s",
+                playbook_name,
+                self.job_id,
+            )
+            shutil.rmtree(job_dir, ignore_errors=True)
+            return "failed", self.data
 
-        thread.join()
-
-        # rm -rf job-directory
-        shutil.rmtree(f"/tmp/job-{self.job_id}", ignore_errors=True)
+        try:
+            thread.join()
+        finally:
+            shutil.rmtree(job_dir, ignore_errors=True)
 
         return runner.status, self.data

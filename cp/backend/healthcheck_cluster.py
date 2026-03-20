@@ -45,7 +45,7 @@ def healthcheck_clusters_worker(
         "ssh_key": ssh_key,
     }
 
-    job_status, data, _ = MyRunnerLite().launch_runner(
+    job_status, data = MyRunnerLite(job_id).launch_runner(
         JobType.HEALTHCHECK_CLUSTERS, extra_vars
     )
 
