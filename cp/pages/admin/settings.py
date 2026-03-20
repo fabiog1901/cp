@@ -2,11 +2,11 @@ import asyncio
 
 import reflex as rx
 
-from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import TS_FORMAT, EventType, Setting
+from ...models import TS_FORMAT, Setting
+from ...services import settings_service
 from ...state import AuthState
 from ...template import template
 
@@ -25,12 +25,7 @@ class State(AuthState):
 
     def save(self, id):
         try:
-            db.update_setting(id, self.draft[id], self.webuser.username)
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.UPDATE_SETTING,
-                {"ID": id, "value": self.draft[id]},
-            )
+            settings_service.update_setting(id, self.draft[id], self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -68,7 +63,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.settings = db.fetch_all_settings()
+                    self.settings = settings_service.list_settings()
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))

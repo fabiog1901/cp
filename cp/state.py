@@ -8,8 +8,9 @@ import reflex as rx
 import requests
 from jwt.algorithms import RSAAlgorithm
 
-from .services import app_service as db
 from .models import EventType, WebUser
+from .services import app_service as db
+from .services import settings_service
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -169,17 +170,19 @@ def refresh_cache():
     global SSO_ISSUER
     global SSO_CLAIM_NAME
 
-    SSO_CLIENT_ID = db.get_setting("sso_client_id")
-    SSO_CLIENT_SECRET = db.get_setting("sso_client_secret")
-    SSO_AUTH_URL = db.get_setting("sso_auth_url")
-    SSO_TOKEN_URL = db.get_setting("sso_token_url")
-    SSO_USERINFO_URL = db.get_setting("sso_userinfo_url")
-    SSO_REDIRECT_URI = db.get_setting("sso_redirect_uri")
-    SSO_JWKS_URL = db.get_setting("sso_jwks_url")
-    SSO_ISSUER = db.get_setting("sso_issuer")
-    SSO_CLAIM_NAME = db.get_setting("sso_claim_name")
+    SSO_CLIENT_ID = settings_service.get_setting("sso_client_id")
+    SSO_CLIENT_SECRET = settings_service.get_setting("sso_client_secret")
+    SSO_AUTH_URL = settings_service.get_setting("sso_auth_url")
+    SSO_TOKEN_URL = settings_service.get_setting("sso_token_url")
+    SSO_USERINFO_URL = settings_service.get_setting("sso_userinfo_url")
+    SSO_REDIRECT_URI = settings_service.get_setting("sso_redirect_uri")
+    SSO_JWKS_URL = settings_service.get_setting("sso_jwks_url")
+    SSO_ISSUER = settings_service.get_setting("sso_issuer")
+    SSO_CLAIM_NAME = settings_service.get_setting("sso_claim_name")
 
-    SSO_CACHE_VALID_UNTIL = time.time() + int(db.get_setting("sso_cache_expiry"))
+    SSO_CACHE_VALID_UNTIL = time.time() + int(
+        settings_service.get_setting("sso_cache_expiry")
+    )
 
 
 def get_jwks_keys():
