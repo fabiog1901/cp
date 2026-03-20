@@ -8,7 +8,7 @@ from ...services import app_service as db
 from ..components.notify import NotifyState
 from ...models import TS_FORMAT, EventLogYaml
 from ..state import AuthState
-from ..template import template
+from ..layouts.template import template
 
 ROUTE = "/events"
 

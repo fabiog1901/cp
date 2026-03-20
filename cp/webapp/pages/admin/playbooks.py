@@ -8,7 +8,7 @@ from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ....services import playbooks_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/admin/playbooks"
 

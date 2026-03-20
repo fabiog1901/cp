@@ -10,7 +10,7 @@ from ....cp import app
 from ....models import Version
 from ....services import versions_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/admin/versions"
 

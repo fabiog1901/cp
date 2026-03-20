@@ -10,7 +10,7 @@ from ....cp import app
 from ....models import Region
 from ....services import regions_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/admin/regions"
 

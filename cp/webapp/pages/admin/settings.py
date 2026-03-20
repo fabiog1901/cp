@@ -8,7 +8,7 @@ from ....cp import app
 from ....models import TS_FORMAT, Setting
 from ....services import settings_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/admin/settings"
 

@@ -10,7 +10,7 @@ from ....cp import app
 from ....models import Cluster, DashboardSnapshot
 from ....services import dashboard_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/clusters/[c_id]/dashboard"
 

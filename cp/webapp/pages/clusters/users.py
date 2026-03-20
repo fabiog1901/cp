@@ -8,7 +8,7 @@ from ....cp import app
 from ....models import Cluster, ClusterUsersSnapshot, DatabaseUser
 from ....services import cluster_users_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/clusters/[c_id]/users"
 

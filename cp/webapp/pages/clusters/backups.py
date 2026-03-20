@@ -9,7 +9,7 @@ from ....cp import app
 from ....models import BackupDetails, Cluster, ClusterBackupsSnapshot
 from ....services import cluster_backups_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/clusters/[c_id]/backups"
 

@@ -1,7 +1,7 @@
 import reflex as rx
 
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 
 # ---- Reusable "card" link for the admin tiles ----

@@ -9,8 +9,8 @@ from ....cp import app
 from ....models import TS_FORMAT, Cluster, RegionOption
 from ....services import cluster_service
 from ...state import AuthState
-from ...template import template
-from ..util import get_human_size
+from ...layouts.template import template
+from ...shared.util import get_human_size
 from .clusters import State as ClusterState
 
 ROUTE = "/clusters/[c_id]"

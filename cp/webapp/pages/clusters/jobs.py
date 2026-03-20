@@ -9,7 +9,7 @@ from ....cp import app
 from ....models import Cluster, ClusterJobsSnapshot, Job
 from ....services import cluster_jobs_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/clusters/[c_id]/jobs"
 

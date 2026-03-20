@@ -2,11 +2,11 @@ from typing import Callable
 
 import reflex as rx
 
-from .components.footer import footer
-from .components.navbar import navbar
-from .components.notify import notify_dialog
-from .components.sidebar import sidebar
-from .state import AuthState
+from ..components.footer import footer
+from ..components.navbar import navbar
+from ..components.notify import notify_dialog
+from ..components.sidebar import sidebar
+from ..state import AuthState
 
 
 def template(page: Callable[[], rx.Component]) -> rx.Component:

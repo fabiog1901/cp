@@ -8,7 +8,7 @@ from ....cp import app
 from ....models import Job
 from ....services import jobs_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/jobs"
 

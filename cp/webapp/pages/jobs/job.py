@@ -8,7 +8,7 @@ from ....cp import app
 from ....models import ClusterIDRef, Job, TS_FORMAT, Task
 from ....services import jobs_service
 from ...state import AuthState
-from ...template import template
+from ...layouts.template import template
 
 ROUTE = "/jobs/[j_id]"
 
