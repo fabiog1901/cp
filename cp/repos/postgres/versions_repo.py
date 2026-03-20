@@ -1,16 +1,16 @@
 """Versions repository backed by CockroachDB/Postgres."""
 
 from ...models import Version
-from . import repository
+from . import admin_queries
 
 
 def list_versions() -> list[Version]:
-    return repository.get_versions()
+    return admin_queries.get_versions()
 
 
 def add_version(version: Version) -> None:
-    repository.add_version(version)
+    admin_queries.add_version(version)
 
 
 def remove_version(version: str) -> None:
-    repository.remove_version(version)
+    admin_queries.remove_version(version)

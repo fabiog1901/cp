@@ -5,9 +5,10 @@ It currently delegates to the Cockroach/Postgres repository implementation so
 we can migrate call sites incrementally without changing behavior.
 """
 
+from ..infra import db as infra_db
 from ..repos.postgres import repository as repo
 
-pool = repo.pool
+pool = infra_db.pool
 
 
 def __getattr__(name: str):

@@ -1,11 +1,11 @@
 """Cluster repository backed by CockroachDB/Postgres."""
 
 from ...models import Cluster, ClusterOverview, CpuCountOption, DiskSizeOption, InventoryLB, InventoryRegion, Job, NodeCountOption, Region, RegionOption, Version
-from . import repository
+from . import admin_queries, cluster_queries, job_queries
 
 
 def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOverview]:
-    return repository.fetch_all_clusters(groups, is_admin)
+    return cluster_queries.fetch_all_clusters(groups, is_admin)
 
 
 def get_cluster(
@@ -13,11 +13,11 @@ def get_cluster(
     groups: list[str],
     is_admin: bool = False,
 ) -> Cluster | None:
-    return repository.get_cluster(cluster_id, groups, is_admin)
+    return cluster_queries.get_cluster(cluster_id, groups, is_admin)
 
 
 def get_running_clusters() -> list[Cluster]:
-    return repository.get_running_clusters()
+    return cluster_queries.get_running_clusters()
 
 
 def create_or_update_cluster(
@@ -30,7 +30,7 @@ def create_or_update_cluster(
     node_count: int,
     disk_size: int,
 ) -> None:
-    repository.upsert_cluster(
+    cluster_queries.upsert_cluster(
         cluster_id,
         status,
         created_by,
@@ -54,7 +54,7 @@ def update_cluster(
     status: str | None = None,
     grp: str | None = None,
 ) -> None:
-    repository.update_cluster(
+    cluster_queries.update_cluster(
         cluster_id=cluster_id,
         updated_by=updated_by,
         cluster_inventory=cluster_inventory,
@@ -69,36 +69,36 @@ def update_cluster(
 
 
 def delete_cluster(cluster_id: str) -> None:
-    repository.delete_cluster(cluster_id)
+    cluster_queries.delete_cluster(cluster_id)
 
 
 def list_cluster_jobs(cluster_id: str) -> list[Job]:
-    return repository.get_all_linked_jobs(cluster_id)
+    return job_queries.get_all_linked_jobs(cluster_id)
 
 
 def list_regions() -> list[RegionOption]:
-    return repository.get_regions()
+    return admin_queries.get_regions()
 
 
 def get_region_config(cloud: str, region: str) -> list[Region]:
-    return repository.get_region(cloud, region)
+    return admin_queries.get_region(cloud, region)
 
 
 def list_versions() -> list[Version]:
-    return repository.get_versions()
+    return admin_queries.get_versions()
 
 
 def list_upgrade_versions(major_version: str) -> list[Version]:
-    return repository.get_upgrade_versions(major_version)
+    return admin_queries.get_upgrade_versions(major_version)
 
 
 def list_node_counts() -> list[NodeCountOption]:
-    return repository.get_node_counts()
+    return admin_queries.get_node_counts()
 
 
 def list_cpus_per_node() -> list[CpuCountOption]:
-    return repository.get_cpus_per_node()
+    return admin_queries.get_cpus_per_node()
 
 
 def list_disk_sizes() -> list[DiskSizeOption]:
-    return repository.get_disk_sizes()
+    return admin_queries.get_disk_sizes()
