@@ -12,6 +12,7 @@ def get_secret(secret_id: str) -> str:
         WHERE id = %s
         """,
         (secret_id,),
+        operation="auth.get_secret",
     )
 
 
@@ -23,4 +24,5 @@ def list_role_group_mappings() -> list[RoleGroupMap]:
         """,
         (),
         RoleGroupMap,
+        operation="auth.list_role_group_mappings",
     )

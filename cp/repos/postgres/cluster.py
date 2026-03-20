@@ -21,6 +21,7 @@ def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOver
             """,
             (),
             ClusterOverview,
+            operation="cluster.list_clusters.admin",
         )
 
     return fetch_all(
@@ -35,6 +36,7 @@ def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOver
         """,
         (groups,),
         ClusterOverview,
+        operation="cluster.list_clusters",
     )
 
 
@@ -52,6 +54,7 @@ def get_cluster(
             """,
             (cluster_id,),
             Cluster,
+            operation="cluster.get_cluster.admin",
         )
 
     return fetch_one(
@@ -63,6 +66,7 @@ def get_cluster(
         """,
         (groups, cluster_id),
         Cluster,
+        operation="cluster.get_cluster",
     )
 
 
@@ -76,6 +80,7 @@ def get_running_clusters() -> list[Cluster]:
         """,
         (),
         Cluster,
+        operation="cluster.get_running_clusters",
     )
 
 
@@ -110,6 +115,7 @@ def create_or_update_cluster(
             node_count,
             disk_size,
         ),
+        operation="cluster.create_or_update_cluster",
     )
 
 
@@ -151,6 +157,7 @@ def update_cluster(
             updated_by,
             cluster_id,
         ),
+        operation="cluster.update_cluster",
     )
 
 
@@ -161,6 +168,7 @@ def delete_cluster(cluster_id: str) -> None:
         WHERE cluster_id = %s
         """,
         (cluster_id,),
+        operation="cluster.delete_cluster",
     )
 
 
@@ -215,4 +223,5 @@ def get_nodes():
         """,
         (),
         Nodes,
+        operation="cluster.get_nodes",
     )

@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 
+from .infra.logging import configure_logging
+
 load_dotenv(override=True)
+configure_logging()
 
 from .webapp.pages import events, index, login
 from .webapp.pages.admin import admin, playbooks, regions, settings, versions

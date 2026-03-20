@@ -12,6 +12,7 @@ def list_settings() -> list[Setting]:
         """,
         (),
         Setting,
+        operation="settings.list_settings",
     )
 
 
@@ -23,6 +24,7 @@ def get_setting(setting_id: str) -> str:
         WHERE id = %s
         """,
         (setting_id,),
+        operation="settings.get_setting",
     )
     return value
 
@@ -36,4 +38,5 @@ def update_setting(setting_id: str, value: str, updated_by: str) -> None:
         WHERE id = %s
         """,
         (value, updated_by, setting_id),
+        operation="settings.update_setting",
     )

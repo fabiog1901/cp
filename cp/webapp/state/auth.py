@@ -10,6 +10,7 @@ from jwt.algorithms import RSAAlgorithm
 
 from ...models import WebUser
 from ...services import auth, settings
+from ...services.errors import ServiceError
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -131,7 +132,7 @@ class AuthState(rx.State):
             )
 
             return rx.redirect(self.original_url)
-        except (AuthError, requests.RequestException, ValueError) as err:
+        except (AuthError, ServiceError, requests.RequestException, ValueError) as err:
             logger.warning("Authentication callback failed: %s", err)
             return rx.redirect("/login")
         except Exception:
@@ -140,7 +141,16 @@ class AuthState(rx.State):
 
     def login_redirect(self):
         if time.time() > SSO_CACHE_VALID_UNTIL:
-            refresh_cache()
+            try:
+                refresh_cache()
+            except ServiceError as err:
+                logger.warning("Unable to refresh SSO configuration: %s", err)
+                return rx.window_alert(err.user_message)
+            except Exception:
+                logger.exception("Unexpected error while refreshing SSO configuration")
+                return rx.window_alert(
+                    "Single sign-on is temporarily unavailable. Please try again later."
+                )
 
         query = urlencode(
             {
@@ -201,7 +211,6 @@ def get_jwks_keys():
 
 
 def validate_token(token: str, audience: str = None) -> dict:
-    print(token)
     if not token:
         raise AuthError("Authorization token is missing")
 

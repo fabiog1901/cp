@@ -21,6 +21,7 @@ def list_events(
             """,
             (limit, offset),
             EventLog,
+            operation="events.list_events",
         )
 
     return []
@@ -33,6 +34,7 @@ def get_event_count() -> int:
         FROM event_log AS OF SYSTEM TIME follower_read_timestamp()
         """,
         (),
+        operation="events.get_event_count",
     )
 
 
@@ -53,4 +55,5 @@ def insert_event_log(
             event_type,
             event_details,
         ),
+        operation="events.insert_event_log",
     )

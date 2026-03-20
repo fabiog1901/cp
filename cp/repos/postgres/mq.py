@@ -33,4 +33,5 @@ def insert_into_mq(
             created_by,
         ),
         JobID,
+        operation="mq.insert_into_mq",
     )

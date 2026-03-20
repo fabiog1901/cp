@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import reflex as rx
 
@@ -7,10 +8,12 @@ from ...components.notify import NotifyState
 from ....cp import app
 from ....models import TS_FORMAT, Setting
 from ....services import settings
+from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
 
 ROUTE = "/admin/settings"
+logger = logging.getLogger(__name__)
 
 
 class State(AuthState):
@@ -26,8 +29,11 @@ class State(AuthState):
     def save(self, id):
         try:
             settings.update_setting(id, self.draft[id], self.webuser.username)
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception("Unexpected error while saving setting %s", id)
+            return NotifyState.show("Error", "Unable to save the setting right now.")
 
         self.original[id] = self.draft[id]
 
@@ -54,7 +60,7 @@ class State(AuthState):
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print(f"{ROUTE}: Stopping background task.")
+                logger.info("%s: stopping background task", ROUTE)
                 async with self:
                     self.is_running = False
                     self.has_copied = False
@@ -64,9 +70,16 @@ class State(AuthState):
             async with self:
                 try:
                     self.settings = settings.list_settings()
-                except Exception as e:
+                except ServiceError as err:
                     self.is_running = False
-                    return NotifyState.show("Error", str(e))
+                    return NotifyState.show(err.user_title, err.user_message)
+                except Exception:
+                    self.is_running = False
+                    logger.exception("Unexpected error while loading settings")
+                    return NotifyState.show(
+                        "Error",
+                        "Unable to load settings right now.",
+                    )
 
                 self.original = {item.id: item.value for item in self.settings}
                 if not self.has_copied:

@@ -1,14 +1,25 @@
 """Low-level database infrastructure."""
 
+import logging
 import os
 from typing import Any
 
+from psycopg import DatabaseError, InterfaceError, OperationalError
 from psycopg.abc import Dumper
+from psycopg import errors as psycopg_errors
 from psycopg.pq import Format
 from psycopg.rows import class_row
 from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
+
+from .errors import (
+    RepositoryConflictError,
+    RepositoryError,
+    RepositoryPermissionError,
+    RepositoryUnavailableError,
+    RepositoryValidationError,
+)
 
 DB_URL = os.getenv("DB_URL")
 
@@ -17,6 +28,7 @@ if not DB_URL:
 
 
 pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
+logger = logging.getLogger(__name__)
 
 
 class Dict2JsonbDumper(JsonbDumper):
@@ -42,6 +54,8 @@ class SelectorDumper(Dumper):
 def execute_stmt(
     stmt: str,
     bind_args: tuple = (),
+    *,
+    operation: str | None = None,
 ) -> None:
     with pool.connection() as conn:
         _register_dumpers(conn)
@@ -49,18 +63,17 @@ def execute_stmt(
         with conn.cursor() as cur:
             try:
                 stmt = _normalize_stmt(stmt)
-
-                print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
             except Exception as err:
-                print(f"SQL ERROR: {err}")
-                raise err
+                raise _translate_database_error(err, operation) from err
 
 
 def fetch_all(
     stmt: str,
     bind_args: tuple,
     row_type,
+    *,
+    operation: str | None = None,
 ) -> list[Any]:
     with pool.connection() as conn:
         _register_dumpers(conn)
@@ -68,19 +81,18 @@ def fetch_all(
         with conn.cursor(row_factory=class_row(row_type)) as cur:
             try:
                 stmt = _normalize_stmt(stmt)
-
-                print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
                 return cur.fetchall()
             except Exception as err:
-                print(f"SQL ERROR: {err}")
-                raise err
+                raise _translate_database_error(err, operation) from err
 
 
 def fetch_one(
     stmt: str,
     bind_args: tuple,
     row_type,
+    *,
+    operation: str | None = None,
 ) -> Any | None:
     with pool.connection() as conn:
         _register_dumpers(conn)
@@ -88,18 +100,17 @@ def fetch_one(
         with conn.cursor(row_factory=class_row(row_type)) as cur:
             try:
                 stmt = _normalize_stmt(stmt)
-
-                print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
                 return cur.fetchone()
             except Exception as err:
-                print(f"SQL ERROR: {err}")
-                raise err
+                raise _translate_database_error(err, operation) from err
 
 
 def fetch_scalar(
     stmt: str,
     bind_args: tuple = (),
+    *,
+    operation: str | None = None,
 ) -> Any | None:
     with pool.connection() as conn:
         _register_dumpers(conn)
@@ -107,16 +118,13 @@ def fetch_scalar(
         with conn.cursor() as cur:
             try:
                 stmt = _normalize_stmt(stmt)
-
-                print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
                 row = cur.fetchone()
                 if row is None:
                     return None
                 return row[0]
             except Exception as err:
-                print(f"SQL ERROR: {err}")
-                raise err
+                raise _translate_database_error(err, operation) from err
 
 
 def _register_dumpers(conn) -> None:
@@ -127,3 +135,70 @@ def _register_dumpers(conn) -> None:
 
 def _normalize_stmt(stmt: str) -> str:
     return " ".join([s.strip() for s in stmt.split("\n")])
+
+
+def _translate_database_error(
+    err: Exception,
+    operation: str | None,
+) -> RepositoryError:
+    operation_name = operation or "database.statement"
+    sqlstate = getattr(err, "sqlstate", None)
+
+    logger.exception(
+        "Database operation failed [operation=%s sqlstate=%s error=%s]",
+        operation_name,
+        sqlstate,
+        err.__class__.__name__,
+    )
+
+    if isinstance(
+        err,
+        (
+            OperationalError,
+            InterfaceError,
+            psycopg_errors.SerializationFailure,
+            psycopg_errors.DeadlockDetected,
+        ),
+    ):
+        return RepositoryUnavailableError(
+            "Database is temporarily unavailable.",
+            operation=operation_name,
+            retryable=True,
+        )
+
+    if isinstance(err, psycopg_errors.UniqueViolation):
+        return RepositoryConflictError(
+            "Database write conflicts with existing data.",
+            operation=operation_name,
+        )
+
+    if isinstance(
+        err,
+        (
+            psycopg_errors.ForeignKeyViolation,
+            psycopg_errors.CheckViolation,
+            psycopg_errors.NotNullViolation,
+            psycopg_errors.InvalidTextRepresentation,
+        ),
+    ):
+        return RepositoryValidationError(
+            "Database rejected invalid data.",
+            operation=operation_name,
+        )
+
+    if isinstance(err, psycopg_errors.InsufficientPrivilege):
+        return RepositoryPermissionError(
+            "Database permission denied.",
+            operation=operation_name,
+        )
+
+    if isinstance(err, DatabaseError):
+        return RepositoryError(
+            "Database operation failed.",
+            operation=operation_name,
+        )
+
+    return RepositoryError(
+        "Repository operation failed.",
+        operation=operation_name,
+    )

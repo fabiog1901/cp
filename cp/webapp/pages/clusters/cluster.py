@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import reflex as rx
 
@@ -8,12 +9,14 @@ from ...components.notify import NotifyState
 from ....cp import app
 from ....models import TS_FORMAT, Cluster, RegionOption
 from ....services import cluster
+from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
 from ...shared.util import get_human_size
 from .clusters import State as ClusterState
 
 ROUTE = "/clusters/[c_id]"
+logger = logging.getLogger(__name__)
 
 
 class State(AuthState):
@@ -56,8 +59,17 @@ class State(AuthState):
                 self.selected_regions,
                 self.webuser.username,
             )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception(
+                "Unexpected error while requesting scale for cluster %s",
+                self.current_cluster.cluster_id if self.current_cluster else None,
+            )
+            return NotifyState.show(
+                "Error",
+                "Unable to request cluster scaling right now.",
+            )
 
         return rx.toast.info(f"Job {job_id} requested.")
 
@@ -70,8 +82,17 @@ class State(AuthState):
                 self.auto_finalize,
                 self.webuser.username,
             )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception(
+                "Unexpected error while requesting upgrade for cluster %s",
+                self.current_cluster.cluster_id if self.current_cluster else None,
+            )
+            return NotifyState.show(
+                "Error",
+                "Unable to request cluster upgrade right now.",
+            )
 
         return rx.toast.info(f"Job {job_id} requested.")
 
@@ -119,9 +140,16 @@ class State(AuthState):
                 }
                 self.available_disk_sizes = list(self.disk_fmt_2_size_map.keys())
                 self.available_regions = options["regions"]
-            except Exception as e:
+            except ServiceError as err:
                 self.is_running = False
-                return NotifyState.show("Error", str(e))
+                return NotifyState.show(err.user_title, err.user_message)
+            except Exception:
+                self.is_running = False
+                logger.exception("Unexpected error while loading cluster options")
+                return NotifyState.show(
+                    "Error",
+                    "Unable to load cluster options right now.",
+                )
 
             self.is_running = True
 
@@ -131,7 +159,7 @@ class State(AuthState):
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print(f"{ROUTE}: Stopping background task.")
+                logger.info("%s: stopping background task", ROUTE)
                 async with self:
                     self.is_running = False
                     self.just_once = True
@@ -139,19 +167,28 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = cluster.get_cluster_for_user(
+                    selected_cluster: Cluster = cluster.get_cluster_for_user(
                         self.cluster_id,
                         list(self.webuser.groups),
                         self.is_admin,
                     )
-                except Exception as e:
-                    return NotifyState.show("Error", str(e))
+                except ServiceError as err:
+                    return NotifyState.show(err.user_title, err.user_message)
+                except Exception:
+                    logger.exception(
+                        "Unexpected error while loading cluster %s",
+                        self.cluster_id,
+                    )
+                    return NotifyState.show(
+                        "Error",
+                        "Unable to load the cluster right now.",
+                    )
 
-                if cluster is None:
+                if selected_cluster is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
-                self.current_cluster = cluster
+                self.current_cluster = selected_cluster
 
                 if self.just_once and self.current_cluster:
                     self.just_once = False
@@ -160,9 +197,19 @@ class State(AuthState):
                         options = cluster.get_cluster_dialog_options(
                             self.current_cluster
                         )
-                    except Exception as e:
+                    except ServiceError as err:
                         self.is_running = False
-                        return NotifyState.show("Error", str(e))
+                        return NotifyState.show(err.user_title, err.user_message)
+                    except Exception:
+                        self.is_running = False
+                        logger.exception(
+                            "Unexpected error while loading cluster dialog options for %s",
+                            self.cluster_id,
+                        )
+                        return NotifyState.show(
+                            "Error",
+                            "Unable to load cluster options right now.",
+                        )
 
                     self.available_versions = options["upgrade_versions"]
                     self.selected_version = self.available_versions[0] if self.available_versions else ""

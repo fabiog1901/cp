@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import reflex as rx
 
@@ -8,11 +9,13 @@ from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterOverview, RegionOption
 from ....services import cluster
+from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
 from ...shared.util import get_funny_name, get_human_size
 
 ROUTE = "/clusters"
+logger = logging.getLogger(__name__)
 
 
 class State(AuthState):
@@ -89,8 +92,14 @@ class State(AuthState):
                 self.selected_group,
                 self.webuser.username,
             )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception("Unexpected error while requesting cluster creation")
+            return NotifyState.show(
+                "Error",
+                "Unable to request cluster creation right now.",
+            )
 
         self.selected_name = get_funny_name()
         self.selected_regions = []
@@ -109,8 +118,17 @@ class State(AuthState):
                 cluster_id,
                 self.webuser.username,
             )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception(
+                "Unexpected error while requesting deletion for cluster %s",
+                cluster_id,
+            )
+            return NotifyState.show(
+                "Error",
+                "Unable to request cluster deletion right now.",
+            )
 
         return rx.toast.info(f"Job {job_id} requested.")
 
@@ -138,9 +156,16 @@ class State(AuthState):
 
                 self.available_regions = options["regions"]
 
-            except Exception as e:
+            except ServiceError as err:
                 self.is_running = False
-                return NotifyState.show("Error", str(e))
+                return NotifyState.show(err.user_title, err.user_message)
+            except Exception:
+                self.is_running = False
+                logger.exception("Unexpected error while loading cluster options")
+                return NotifyState.show(
+                    "Error",
+                    "Unable to load cluster options right now.",
+                )
 
             self.selected_group = self.webuser.groups[0]
             self.is_running = True
@@ -151,7 +176,7 @@ class State(AuthState):
                 or self.router.session.client_token
                 not in app.event_namespace.token_to_sid
             ):
-                print(f"{ROUTE}: Stopping background task.")
+                logger.info("%s: stopping background task", ROUTE)
                 async with self:
                     self.is_running = False
                 break
@@ -163,9 +188,16 @@ class State(AuthState):
                     self.clusters = cluster.list_visible_clusters(
                         list(self.webuser.groups), self.is_admin
                     )
-                except Exception as e:
+                except ServiceError as err:
                     self.is_running = False
-                    return NotifyState.show("Error", str(e))
+                    return NotifyState.show(err.user_title, err.user_message)
+                except Exception:
+                    self.is_running = False
+                    logger.exception("Unexpected error while loading clusters")
+                    return NotifyState.show(
+                        "Error",
+                        "Unable to load clusters right now.",
+                    )
 
             await asyncio.sleep(5)
 

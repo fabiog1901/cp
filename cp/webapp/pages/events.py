@@ -1,3 +1,4 @@
+import logging
 from typing import get_args
 
 import reflex as rx
@@ -5,12 +6,14 @@ import yaml
 from reflex.components.radix.themes.base import LiteralAccentColor
 
 from ...services import events
+from ...services.errors import ServiceError
 from ..components.notify import NotifyState
 from ...models import TS_FORMAT, EventLogYaml
 from ..state import AuthState
 from ..layouts.template import template
 
 ROUTE = "/events"
+logger = logging.getLogger(__name__)
 
 
 class State(AuthState):
@@ -55,8 +58,14 @@ class State(AuthState):
                 list(self.webuser.groups),
                 self.is_admin,
             )
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception("Unexpected error while loading events")
+            return NotifyState.show(
+                "Error",
+                "Unable to load events right now.",
+            )
 
         self.events = [
             EventLogYaml(
@@ -70,8 +79,14 @@ class State(AuthState):
 
         try:
             self.total_items = events.get_event_total()
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
+        except ServiceError as err:
+            return NotifyState.show(err.user_title, err.user_message)
+        except Exception:
+            logger.exception("Unexpected error while loading event count")
+            return NotifyState.show(
+                "Error",
+                "Unable to load the event count right now.",
+            )
 
 
 def table_row(event: EventLogYaml):

@@ -1,16 +1,32 @@
 """Business logic for auth-related shared operations."""
 
+from ..infra.errors import RepositoryError
 from ..models import EventType
 from ..repos.postgres import auth, events
+from .errors import from_repository_error
 
 
 def list_role_group_mappings():
-    return auth.list_role_group_mappings()
+    try:
+        return auth.list_role_group_mappings()
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Authentication role mappings are temporarily unavailable.",
+            fallback_message="Unable to load authorization settings.",
+        ) from err
 
 
 def record_login(username: str, roles: list[str], groups: list[str]) -> None:
-    events.insert_event_log(
-        username,
-        EventType.LOGIN,
-        {"roles": roles, "groups": groups},
-    )
+    try:
+        events.insert_event_log(
+            username,
+            EventType.LOGIN,
+            {"roles": roles, "groups": groups},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Login auditing is temporarily unavailable.",
+            fallback_message="Unable to complete login bookkeeping.",
+        ) from err
