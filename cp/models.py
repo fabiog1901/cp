@@ -299,6 +299,11 @@ class ClusterJobsSnapshot(BaseModel):
     jobs: list[Job]
 
 
+class ClusterUsersSnapshot(BaseModel):
+    cluster: Cluster
+    database_users: list[DatabaseUser]
+
+
 # GENERIC / LEGACY
 
 

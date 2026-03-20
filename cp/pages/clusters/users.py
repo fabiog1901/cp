@@ -1,14 +1,12 @@
 import asyncio
 
-import psycopg
 import reflex as rx
-from psycopg.rows import class_row
 
-from ...services import app_service as db
 from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import Cluster, DatabaseUser, EventType
+from ...models import Cluster, ClusterUsersSnapshot, DatabaseUser
+from ...services import cluster_users_service
 from ...state import AuthState
 from ...template import template
 
@@ -27,134 +25,67 @@ class State(AuthState):
     is_running: bool = False
 
     @rx.event
-    def get_users(self):
+    def add_new_user(self, form_data: dict):
         try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
-                    self.database_users = cur.execute(
-                        """
-                        select username, options, member_of 
-                        from [show users] 
-                        where username not in ('admin', 'root', 'cockroach');
-                        """
-                    ).fetchall()
-
-        except Exception as e:
-            return NotifyState.show("Error", str(e))
-
-    @rx.event
-    def add_new_user(self, form_data):
-        try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"CREATE USER {form_data.get('username')} WITH password '{form_data.get('password')}'"
-                    )
-
-            db.insert_event_log(
+            cluster_users_service.create_database_user(
+                self.cluster_id,
+                list(self.webuser.groups),
+                self.is_admin,
+                form_data.get("username"),
+                form_data.get("password"),
                 self.webuser.username,
-                EventType.DB_USER_ADD,
-                {
-                    "cluster_id": self.current_cluster.cluster_id,
-                    "db_user": form_data.get("username"),
-                },
             )
-
-            return rx.toast.success(f"User '{form_data.get('username')}' created")
-
         except Exception as e:
             return NotifyState.show("Error", str(e))
+
+        return rx.toast.success(f"User '{form_data.get('username')}' created")
 
     @rx.event
     def remove_user(self, x: DatabaseUser):
         try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(f"DROP USER {x.username}")
-
-            db.insert_event_log(
+            cluster_users_service.remove_database_user(
+                self.cluster_id,
+                list(self.webuser.groups),
+                self.is_admin,
+                x.username,
                 self.webuser.username,
-                EventType.DB_USER_REMOVE,
-                {
-                    "cluster_id": self.current_cluster.cluster_id,
-                    "db_user": x.username,
-                },
             )
-
-            return rx.toast.success(f"User '{x.username}' removed successfully")
-
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
-    # TODO protect from sql injections
+        return rx.toast.success(f"User '{x.username}' removed successfully")
+
     @rx.event
     def remove_user_role(self, username: str, role: str):
         try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(f"REVOKE {role} FROM {username}")
-
-            db.insert_event_log(
+            cluster_users_service.revoke_database_user_role(
+                self.cluster_id,
+                list(self.webuser.groups),
+                self.is_admin,
+                username,
+                role,
                 self.webuser.username,
-                EventType.DB_USER_REMOVE_ROLE,
-                {
-                    "cluster_id": self.current_cluster.cluster_id,
-                    "db_user": username,
-                    "role": role,
-                },
             )
-
-            return rx.toast.success(
-                f"Role '{role}' successfully revoked from {username}."
-            )
-
         except Exception as e:
             return NotifyState.show("Error", str(e))
+
+        return rx.toast.success(f"Role '{role}' successfully revoked from {username}.")
 
     @rx.event
-    def edit_user(self, form_data: dict):
-        username = form_data.get("username")
-        password = form_data.get("password")
-
+    def edit_user(self, username: str, form_data: dict):
         try:
-            with psycopg.connect(
-                f"postgres://cockroach:cockroach@{self.current_cluster.lbs_inventory[0].dns_address}:26257/defaultdb?sslmode=require",
-                autocommit=True,
-                connect_timeout=2,
-            ) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(f"ALTER USER {username} WITH password '{password}'")
-
-            db.insert_event_log(
+            cluster_users_service.update_database_user_password(
+                self.cluster_id,
+                list(self.webuser.groups),
+                self.is_admin,
+                username,
+                form_data.get("password"),
                 self.webuser.username,
-                EventType.DB_USER_UPDATE,
-                {
-                    "cluster_id": self.current_cluster.cluster_id,
-                    "db_user": username,
-                },
-            )
-
-            return rx.toast.success(
-                f"Password updated successfully for user '{username}'."
             )
         except Exception as e:
             return NotifyState.show("Error", str(e))
+
+        return rx.toast.success(f"Password updated successfully for user '{username}'.")
 
     @rx.event(background=True)
     async def start_bg_event(self):
@@ -176,20 +107,22 @@ class State(AuthState):
 
             async with self:
                 try:
-                    cluster: Cluster = db.get_cluster(
-                        self.cluster_id,
-                        list(self.webuser.groups),
-                        self.is_admin,
+                    snapshot: ClusterUsersSnapshot | None = (
+                        cluster_users_service.load_cluster_users_snapshot(
+                            self.cluster_id,
+                            list(self.webuser.groups),
+                            self.is_admin,
+                        )
                     )
                 except Exception as e:
                     return NotifyState.show("Error", str(e))
 
-                if cluster is None:
+                if snapshot is None:
                     self.is_running = False
                     return rx.redirect("/_notfound", replace=True)
 
-                self.current_cluster = cluster
-                self.get_users()
+                self.current_cluster = snapshot.cluster
+                self.database_users = snapshot.database_users
 
             await asyncio.sleep(5)
 
@@ -354,7 +287,7 @@ def edit_user_dialog(user: str):
                     spacing="3",
                     justify="end",
                 ),
-                on_submit=lambda form_data: State.edit_user(form_data),
+                on_submit=lambda form_data: State.edit_user(user, form_data),
                 reset_on_submit=False,
             ),
             max_width="850px",
