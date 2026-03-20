@@ -1,16 +1,14 @@
 # app.py
 import asyncio
-import json
-from typing import Any, Dict, List
+from typing import List
 
 import reflex as rx
-from pydantic import ValidationError
 
-from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import EventType, Region
+from ...models import Region
+from ...services import regions_service
 from ...state import AuthState
 from ...template import template
 
@@ -52,59 +50,25 @@ class State(AuthState):
 
     def remove_region(self, r: Region):
         try:
-            db.remove_version(r.cloud, r.region, r.zone)
-
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.REGION_REMOVE,
-                {"cloud": r.cloud, "region": r.region, "zone": r.zone},
-            )
+            regions_service.delete_region(r, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
     def submit_new_region(self):
-
         self.dialog_open = False
 
-        """Validate draft with Pydantic, print to stdout, and add to the list."""
-        # parse security groups
-        sgs = [s.strip() for s in self.security_groups_text.split(",")]
-
-        # parse extras JSON (optional)
-        # TODO not sure we need extra_text at all
-        extras: Dict[str, Any] = {}
-        if self.extras_text.strip():
-            try:
-                parsed = json.loads(self.extras_text)
-                if not isinstance(parsed, dict):
-                    raise ValueError("extras must be a JSON object")
-                extras = parsed
-            except Exception as e:
-                print(f"[AddRegion] Invalid extras JSON: {e}")
-                return  # keep modal open so user can correct
-
         try:
-            r = Region(
+            regions_service.create_region(
                 cloud=self.cloud,
                 region=self.region,
                 zone=self.zone,
                 vpc_id=self.vpc_id,
-                security_groups=sgs,
+                security_groups_text=self.security_groups_text,
                 subnet=self.subnet,
                 image=self.image,
-                extras=extras,
+                extras_text=self.extras_text,
+                created_by=self.webuser.username,
             )
-
-            db.add_region(r)
-
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.REGION_ADD,
-                r.model_dump_json(),
-            )
-
-        except ValidationError as ve:
-            print("Validation Error:", ve)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -130,7 +94,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.regions = db.get_all_regions()
+                    self.regions = regions_service.list_regions()
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
