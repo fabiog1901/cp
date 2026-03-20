@@ -1,6 +1,6 @@
 """Message queue repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
+from ...infra.db import fetch_one
 from ...models import JobID
 
 
@@ -9,7 +9,7 @@ def insert_into_mq(
     msg_data: dict,
     created_by: str,
 ) -> JobID:
-    return execute_stmt(
+    return fetch_one(
         """
         WITH
         create_new_job AS (
@@ -33,5 +33,4 @@ def insert_into_mq(
             created_by,
         ),
         JobID,
-        return_list=False,
     )

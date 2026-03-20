@@ -2,7 +2,7 @@
 
 from pydantic import TypeAdapter
 
-from ...infra.db import execute_stmt
+from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import Cluster, ClusterOverview, CpuCountOption, DiskSizeOption, InventoryLB, InventoryRegion, Job, NodeCountOption, Region, RegionOption, Version
 from ...models import Nodes
 from . import cluster_jobs, regions, versions
@@ -10,7 +10,7 @@ from . import cluster_jobs, regions, versions
 
 def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOverview]:
     if is_admin:
-        return execute_stmt(
+        return fetch_all(
             """
             SELECT cluster_id, grp,
                 created_by, status,
@@ -23,7 +23,7 @@ def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOver
             ClusterOverview,
         )
 
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT cluster_id, grp,
             created_by, status,
@@ -44,7 +44,7 @@ def get_cluster(
     is_admin: bool = False,
 ) -> Cluster | None:
     if is_admin:
-        return execute_stmt(
+        return fetch_one(
             """
             SELECT *
             FROM clusters
@@ -52,10 +52,9 @@ def get_cluster(
             """,
             (cluster_id,),
             Cluster,
-            return_list=False,
         )
 
-    return execute_stmt(
+    return fetch_one(
         """
         SELECT *
         FROM clusters
@@ -64,12 +63,11 @@ def get_cluster(
         """,
         (groups, cluster_id),
         Cluster,
-        return_list=False,
     )
 
 
 def get_running_clusters() -> list[Cluster]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT *
         FROM clusters
@@ -199,7 +197,7 @@ def list_disk_sizes() -> list[DiskSizeOption]:
 
 
 def get_nodes():
-    return execute_stmt(
+    return fetch_all(
         """
         WITH
         c AS (
@@ -216,6 +214,5 @@ def get_nodes():
         GROUP BY cluster_id;
         """,
         (),
-        model=Nodes,
-        return_list=True,
+        Nodes,
     )

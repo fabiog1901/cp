@@ -2,14 +2,13 @@
 
 import datetime as dt
 
-from ...infra.db import execute_stmt
-from ...models import ClusterIDRef, Job, Task
-from ...models import IntID
+from ...infra.db import execute_stmt, fetch_all, fetch_one
+from ...models import ClusterIDRef, IntID, Job, Task
 
 
 def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
     if is_admin:
-        return execute_stmt(
+        return fetch_all(
             """
             SELECT *
             FROM jobs
@@ -19,7 +18,7 @@ def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
             Job,
         )
 
-    return execute_stmt(
+    return fetch_all(
         """
         WITH
         c AS (
@@ -44,7 +43,7 @@ def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
 
 def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
     if is_admin:
-        return execute_stmt(
+        return fetch_one(
             """
             SELECT *
             FROM jobs
@@ -52,9 +51,8 @@ def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | Non
             """,
             (job_id,),
             Job,
-            return_list=False,
         )
-    return execute_stmt(
+    return fetch_one(
         """
         WITH
         c AS (
@@ -74,12 +72,11 @@ def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | Non
         """,
         (groups, job_id),
         Job,
-        return_list=False,
     )
 
 
 def list_tasks(job_id: int) -> list[Task]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT job_id, task_id,
             created_at, task_name, task_desc
@@ -93,7 +90,7 @@ def list_tasks(job_id: int) -> list[Task]:
 
 
 def list_linked_clusters(job_id: int) -> list[ClusterIDRef]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT cluster_id AS cluster_id
         FROM map_clusters_jobs
@@ -135,7 +132,7 @@ def update_job(job_id: int, status: str) -> None:
 
 
 def fail_zombie_jobs():
-    return execute_stmt(
+    return fetch_all(
         """
         WITH
         fail_zombie_jobs AS (

@@ -1,7 +1,7 @@
 """Event repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
-from ...models import EventLog, IntID
+from ...infra.db import execute_stmt, fetch_all, fetch_scalar
+from ...models import EventLog
 
 
 def list_events(
@@ -11,7 +11,7 @@ def list_events(
     is_admin: bool = False,
 ) -> list[EventLog]:
     if is_admin:
-        return execute_stmt(
+        return fetch_all(
             """
             SELECT *
             FROM event_log
@@ -27,16 +27,13 @@ def list_events(
 
 
 def get_event_count() -> int:
-    int_id: IntID = execute_stmt(
+    return fetch_scalar(
         """
         SELECT count(*) AS id
         FROM event_log AS OF SYSTEM TIME follower_read_timestamp()
         """,
         (),
-        IntID,
-        False,
     )
-    return int_id.id
 
 
 def insert_event_log(

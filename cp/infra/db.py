@@ -41,29 +41,89 @@ class SelectorDumper(Dumper):
 
 def execute_stmt(
     stmt: str,
-    bind_args: tuple,
-    model=None,
-    return_list: bool = True,
-) -> Any | list[Any] | None:
+    bind_args: tuple = (),
+) -> None:
     with pool.connection() as conn:
-        conn.adapters.register_dumper(set, ListDumper)
-        conn.adapters.register_dumper(dict, Dict2JsonbDumper)
-        conn.adapters.register_dumper(list, SelectorDumper)
+        _register_dumpers(conn)
 
-        with conn.cursor(row_factory=class_row(model)) as cur:
+        with conn.cursor() as cur:
             try:
-                stmt = " ".join([s.strip() for s in stmt.split("\n")])
+                stmt = _normalize_stmt(stmt)
 
                 print(f"SQL> {stmt}; {bind_args}")
                 cur.execute(stmt, bind_args)
-
-                if model is None:
-                    return None
-
-                if return_list:
-                    return cur.fetchall()
-                return cur.fetchone()
-
             except Exception as err:
                 print(f"SQL ERROR: {err}")
                 raise err
+
+
+def fetch_all(
+    stmt: str,
+    bind_args: tuple,
+    row_type,
+) -> list[Any]:
+    with pool.connection() as conn:
+        _register_dumpers(conn)
+
+        with conn.cursor(row_factory=class_row(row_type)) as cur:
+            try:
+                stmt = _normalize_stmt(stmt)
+
+                print(f"SQL> {stmt}; {bind_args}")
+                cur.execute(stmt, bind_args)
+                return cur.fetchall()
+            except Exception as err:
+                print(f"SQL ERROR: {err}")
+                raise err
+
+
+def fetch_one(
+    stmt: str,
+    bind_args: tuple,
+    row_type,
+) -> Any | None:
+    with pool.connection() as conn:
+        _register_dumpers(conn)
+
+        with conn.cursor(row_factory=class_row(row_type)) as cur:
+            try:
+                stmt = _normalize_stmt(stmt)
+
+                print(f"SQL> {stmt}; {bind_args}")
+                cur.execute(stmt, bind_args)
+                return cur.fetchone()
+            except Exception as err:
+                print(f"SQL ERROR: {err}")
+                raise err
+
+
+def fetch_scalar(
+    stmt: str,
+    bind_args: tuple = (),
+) -> Any | None:
+    with pool.connection() as conn:
+        _register_dumpers(conn)
+
+        with conn.cursor() as cur:
+            try:
+                stmt = _normalize_stmt(stmt)
+
+                print(f"SQL> {stmt}; {bind_args}")
+                cur.execute(stmt, bind_args)
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                return row[0]
+            except Exception as err:
+                print(f"SQL ERROR: {err}")
+                raise err
+
+
+def _register_dumpers(conn) -> None:
+    conn.adapters.register_dumper(set, ListDumper)
+    conn.adapters.register_dumper(dict, Dict2JsonbDumper)
+    conn.adapters.register_dumper(list, SelectorDumper)
+
+
+def _normalize_stmt(stmt: str) -> str:
+    return " ".join([s.strip() for s in stmt.split("\n")])

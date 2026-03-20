@@ -1,13 +1,13 @@
 """Regions repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
+from ...infra.db import execute_stmt, fetch_all
 from ...models import Region
 from ...models import RegionOption
 from .common import convert_model_to_sql
 
 
 def list_regions() -> list[Region]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
         FROM regions
@@ -18,7 +18,7 @@ def list_regions() -> list[Region]:
 
 
 def list_region_options() -> list[RegionOption]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT DISTINCT cloud || ':' || region AS region_id
         FROM regions
@@ -30,7 +30,7 @@ def list_region_options() -> list[RegionOption]:
 
 
 def get_region_config(cloud: str, region: str) -> list[Region]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
         FROM regions

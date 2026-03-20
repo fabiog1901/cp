@@ -1,11 +1,11 @@
 """Playbooks repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
+from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import Playbook, PlaybookOverview
 
 
 def get_playbook(name: str, version: str) -> Playbook:
-    return execute_stmt(
+    return fetch_one(
         """
         SELECT *
         FROM playbooks
@@ -13,12 +13,11 @@ def get_playbook(name: str, version: str) -> Playbook:
         """,
         (name, version),
         Playbook,
-        return_list=False,
     )
 
 
 def get_default_playbook(name: str) -> Playbook:
-    return execute_stmt(
+    return fetch_one(
         """
         SELECT *
         FROM playbooks
@@ -28,12 +27,11 @@ def get_default_playbook(name: str) -> Playbook:
         """,
         (name,),
         Playbook,
-        return_list=False,
     )
 
 
 def list_playbook_versions(name: str) -> list[PlaybookOverview]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT name, version, default_version, created_at, created_by, updated_by
         FROM playbooks
@@ -42,12 +40,11 @@ def list_playbook_versions(name: str) -> list[PlaybookOverview]:
         """,
         (name,),
         PlaybookOverview,
-        return_list=True,
     )
 
 
 def add_playbook(name: str, playbook: bytes, created_by: str) -> PlaybookOverview:
-    return execute_stmt(
+    return fetch_one(
         """
         INSERT INTO playbooks (name, playbook, created_by)
         VALUES (%s, %s, %s)
@@ -55,7 +52,6 @@ def add_playbook(name: str, playbook: bytes, created_by: str) -> PlaybookOvervie
         """,
         (name, playbook, created_by),
         PlaybookOverview,
-        return_list=False,
     )
 
 

@@ -1,13 +1,13 @@
 """Versions repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
+from ...infra.db import execute_stmt, fetch_all
 from ...models import CpuCountOption, DiskSizeOption, NodeCountOption
 from ...models import Version
 from .common import convert_model_to_sql
 
 
 def list_versions() -> list[Version]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT version
         FROM versions
@@ -35,7 +35,7 @@ def remove_version(version: str) -> None:
 
 
 def list_upgrade_versions(major_version: str) -> list[Version]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT version
         FROM versions
@@ -48,7 +48,7 @@ def list_upgrade_versions(major_version: str) -> list[Version]:
 
 
 def list_node_counts() -> list[NodeCountOption]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT nodes AS node_count
         FROM nodes_per_region
@@ -60,7 +60,7 @@ def list_node_counts() -> list[NodeCountOption]:
 
 
 def list_cpus_per_node() -> list[CpuCountOption]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT cpus AS cpu_count
         FROM cpus_per_node
@@ -72,7 +72,7 @@ def list_cpus_per_node() -> list[CpuCountOption]:
 
 
 def list_disk_sizes() -> list[DiskSizeOption]:
-    return execute_stmt(
+    return fetch_all(
         """
         SELECT size_gb
         FROM disk_sizes
