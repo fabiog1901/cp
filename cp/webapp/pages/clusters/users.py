@@ -6,7 +6,7 @@ from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterUsersSnapshot, DatabaseUser
-from ....services import cluster_users_service
+from ....services import cluster_users
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -27,7 +27,7 @@ class State(AuthState):
     @rx.event
     def add_new_user(self, form_data: dict):
         try:
-            cluster_users_service.create_database_user(
+            cluster_users.create_database_user(
                 self.cluster_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -43,7 +43,7 @@ class State(AuthState):
     @rx.event
     def remove_user(self, x: DatabaseUser):
         try:
-            cluster_users_service.remove_database_user(
+            cluster_users.remove_database_user(
                 self.cluster_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -58,7 +58,7 @@ class State(AuthState):
     @rx.event
     def remove_user_role(self, username: str, role: str):
         try:
-            cluster_users_service.revoke_database_user_role(
+            cluster_users.revoke_database_user_role(
                 self.cluster_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -74,7 +74,7 @@ class State(AuthState):
     @rx.event
     def edit_user(self, username: str, form_data: dict):
         try:
-            cluster_users_service.update_database_user_password(
+            cluster_users.update_database_user_password(
                 self.cluster_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -108,7 +108,7 @@ class State(AuthState):
             async with self:
                 try:
                     snapshot: ClusterUsersSnapshot | None = (
-                        cluster_users_service.load_cluster_users_snapshot(
+                        cluster_users.load_cluster_users_snapshot(
                             self.cluster_id,
                             list(self.webuser.groups),
                             self.is_admin,

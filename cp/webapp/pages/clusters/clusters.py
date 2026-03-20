@@ -7,7 +7,7 @@ from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterOverview, RegionOption
-from ....services import cluster_service
+from ....services import cluster
 from ...state import AuthState
 from ...layouts.template import template
 from ...shared.util import get_funny_name, get_human_size
@@ -79,7 +79,7 @@ class State(AuthState):
     @rx.event
     def create_new_cluster(self, form_data: dict):
         try:
-            job_id = cluster_service.request_cluster_creation(
+            job_id = cluster.request_cluster_creation(
                 form_data,
                 self.selected_cpus_per_node,
                 self.disk_fmt_2_size_map[self.selected_disk_size],
@@ -105,7 +105,7 @@ class State(AuthState):
     @rx.event
     def delete_cluster(self, cluster_id: str):
         try:
-            job_id = cluster_service.request_cluster_deletion(
+            job_id = cluster.request_cluster_deletion(
                 cluster_id,
                 self.webuser.username,
             )
@@ -120,7 +120,7 @@ class State(AuthState):
             return
         async with self:
             try:
-                options = cluster_service.get_create_dialog_options()
+                options = cluster.get_create_dialog_options()
                 self.available_versions = options["versions"]
                 self.selected_version = self.available_versions[0]
 
@@ -160,7 +160,7 @@ class State(AuthState):
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
                 try:
-                    self.clusters = cluster_service.list_visible_clusters(
+                    self.clusters = cluster.list_visible_clusters(
                         list(self.webuser.groups), self.is_admin
                     )
                 except Exception as e:

@@ -7,7 +7,7 @@ from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ....services import cluster_backups_service
+from ....services import cluster_backups
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -49,7 +49,7 @@ class State(AuthState):
     def get_backup(self, backup_path: str):
         self.selected_path = backup_path
         try:
-            self.backup_details = cluster_backups_service.load_backup_details(
+            self.backup_details = cluster_backups.load_backup_details(
                 self.cluster_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -61,7 +61,7 @@ class State(AuthState):
     @rx.event
     def initiate_restore(self, form_data: dict):
         try:
-            job_id = cluster_backups_service.request_cluster_restore(
+            job_id = cluster_backups.request_cluster_restore(
                 cluster_id=self.cluster_id,
                 groups=list(self.webuser.groups),
                 is_admin=self.is_admin,
@@ -102,7 +102,7 @@ class State(AuthState):
             async with self:
                 try:
                     snapshot: ClusterBackupsSnapshot | None = (
-                        cluster_backups_service.load_cluster_backups_snapshot(
+                        cluster_backups.load_cluster_backups_snapshot(
                             self.cluster_id,
                             list(self.webuser.groups),
                             self.is_admin,

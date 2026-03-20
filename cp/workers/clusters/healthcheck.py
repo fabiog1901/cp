@@ -2,18 +2,18 @@ import os
 from threading import Thread
 
 from ...models import ClusterState, JobType
-from ...repos.postgres import auth_repo, cluster_repo
+from ...repos.postgres import auth, cluster
 from ..ansible import MyRunnerLite
 
 
 def healthcheck_clusters(job_id: int) -> None:
-    running_clusters = cluster_repo.get_running_clusters()
+    running_clusters = cluster.get_running_clusters()
 
     for cluster in running_clusters:
         ssh_key_name = cluster.description["ssh_key"]
 
         if not os.path.exists(f"/tmp/{ssh_key_name}"):
-            ssh_key = auth_repo.get_secret(ssh_key_name)
+            ssh_key = auth.get_secret(ssh_key_name)
 
             with open(f"/tmp/{ssh_key_name}", "w") as f:
                 f.write(ssh_key)
@@ -50,7 +50,7 @@ def healthcheck_clusters_worker(
     )
 
     if not data or job_status != "successful":
-        cluster_repo.update_cluster(
+        cluster.update_cluster(
             cluster_id,
             "system",
             status=ClusterState.UNHEALTHY,
@@ -58,7 +58,7 @@ def healthcheck_clusters_worker(
 
     for node in data.get("data", []):
         if node["is_live"] == "false":
-            cluster_repo.update_cluster(
+            cluster.update_cluster(
                 cluster_id,
                 "system",
                 status=ClusterState.UNHEALTHY,

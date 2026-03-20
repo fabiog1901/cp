@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from ...infra.db import execute_stmt
 from ...models import Cluster, ClusterOverview, CpuCountOption, DiskSizeOption, InventoryLB, InventoryRegion, Job, NodeCountOption, Region, RegionOption, Version
 from ...models import Nodes
-from . import cluster_jobs_repo, regions_repo, versions_repo
+from . import cluster_jobs, regions, versions
 
 
 def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOverview]:
@@ -167,35 +167,35 @@ def delete_cluster(cluster_id: str) -> None:
 
 
 def list_cluster_jobs(cluster_id: str) -> list[Job]:
-    return cluster_jobs_repo.list_cluster_jobs(cluster_id)
+    return cluster_jobs.list_cluster_jobs(cluster_id)
 
 
 def list_regions() -> list[RegionOption]:
-    return regions_repo.list_region_options()
+    return regions.list_region_options()
 
 
 def get_region_config(cloud: str, region: str) -> list[Region]:
-    return regions_repo.get_region_config(cloud, region)
+    return regions.get_region_config(cloud, region)
 
 
 def list_versions() -> list[Version]:
-    return versions_repo.list_versions()
+    return versions.list_versions()
 
 
 def list_upgrade_versions(major_version: str) -> list[Version]:
-    return versions_repo.list_upgrade_versions(major_version)
+    return versions.list_upgrade_versions(major_version)
 
 
 def list_node_counts() -> list[NodeCountOption]:
-    return versions_repo.list_node_counts()
+    return versions.list_node_counts()
 
 
 def list_cpus_per_node() -> list[CpuCountOption]:
-    return versions_repo.list_cpus_per_node()
+    return versions.list_cpus_per_node()
 
 
 def list_disk_sizes() -> list[DiskSizeOption]:
-    return versions_repo.list_disk_sizes()
+    return versions.list_disk_sizes()
 
 
 def get_nodes():

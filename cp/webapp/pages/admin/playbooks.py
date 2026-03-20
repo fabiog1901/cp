@@ -6,7 +6,7 @@ from reflex_monaco import monaco
 
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ....services import playbooks_service
+from ....services import playbooks
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -42,7 +42,7 @@ class State(AuthState):
     @rx.event
     def on_playbook_change(self, value: str):
         try:
-            selection = playbooks_service.load_playbook_selection(value)
+            selection = playbooks.load_playbook_selection(value)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -56,7 +56,7 @@ class State(AuthState):
     @rx.event
     def on_version_change(self, v: str):
         try:
-            selection = playbooks_service.load_playbook_version(self.playbook_name, v)
+            selection = playbooks.load_playbook_version(self.playbook_name, v)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -67,7 +67,7 @@ class State(AuthState):
     @rx.event
     def set_default(self):
         try:
-            playbooks_service.set_default_playbook(
+            playbooks.set_default_playbook(
                 self.playbook_name, self.playbook_version, self.webuser.username
             )
         except Exception as e:
@@ -81,7 +81,7 @@ class State(AuthState):
     @rx.event
     def delete_version(self):
         try:
-            selection = playbooks_service.delete_playbook_version(
+            selection = playbooks.delete_playbook_version(
                 self.playbook_name,
                 self.playbook_version,
                 self.default_version,
@@ -116,7 +116,7 @@ class State(AuthState):
     @rx.event
     def save_changes(self):
         try:
-            selection = playbooks_service.save_playbook_content(
+            selection = playbooks.save_playbook_content(
                 self.playbook_name,
                 self.modified_content,
                 self.webuser.username,

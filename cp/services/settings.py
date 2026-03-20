@@ -1,20 +1,20 @@
 """Business logic for the settings vertical."""
 
 from ..models import EventType, Setting
-from ..repos.postgres import event_repo, settings_repo
+from ..repos.postgres import events, settings
 
 
 def list_settings() -> list[Setting]:
-    return settings_repo.list_settings()
+    return settings.list_settings()
 
 
 def get_setting(setting_id: str) -> str:
-    return settings_repo.get_setting(setting_id)
+    return settings.get_setting(setting_id)
 
 
 def update_setting(setting_id: str, value: str, updated_by: str) -> None:
-    settings_repo.update_setting(setting_id, value, updated_by)
-    event_repo.insert_event_log(
+    settings.update_setting(setting_id, value, updated_by)
+    events.insert_event_log(
         updated_by,
         EventType.UPDATE_SETTING,
         {"ID": setting_id, "value": value},

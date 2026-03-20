@@ -8,7 +8,7 @@ from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, DashboardSnapshot
-from ....services import dashboard_service
+from ....services import dashboard
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -80,7 +80,7 @@ class State(AuthState):
                 self.end = int(time.time())
                 try:
                     snapshot: DashboardSnapshot | None = (
-                        dashboard_service.load_dashboard_snapshot(
+                        dashboard.load_dashboard_snapshot(
                             self.cluster_id,
                             list(self.webuser.groups),
                             self.is_admin,

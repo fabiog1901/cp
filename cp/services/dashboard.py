@@ -4,12 +4,12 @@ import time
 from typing import Any
 
 from ..models import DashboardMetrics, DashboardSnapshot
-from ..repos.postgres import dashboard_repo
-from . import cluster_service, settings_service
+from ..repos.postgres import dashboard
+from . import cluster, settings
 
 
 def get_prometheus_url() -> str:
-    prom_url = settings_service.get_setting("prom_url").strip()
+    prom_url = settings.get_setting("prom_url").strip()
     if not prom_url:
         raise ValueError("Missing Prometheus URL in settings.")
     return prom_url
@@ -23,7 +23,7 @@ def load_dashboard_snapshot(
     end: int,
     interval_secs: int,
 ) -> DashboardSnapshot | None:
-    cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
     if cluster is None:
         return None
 
@@ -86,7 +86,7 @@ def load_dashboard_metrics(
             False,
         ),
     ]:
-        response = dashboard_repo.query_prometheus_range(
+        response = dashboard.query_prometheus_range(
             prom_url,
             query=query,
             start=effective_start,

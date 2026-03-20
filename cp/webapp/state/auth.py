@@ -9,7 +9,7 @@ import requests
 from jwt.algorithms import RSAAlgorithm
 
 from ...models import WebUser
-from ...services import auth_service, settings_service
+from ...services import auth, settings
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -97,7 +97,7 @@ class AuthState(rx.State):
             user_claims = validate_token(access_token) #, audience=SSO_CLIENT_ID)
 
             grp_role_maps: dict[str, list[str]] = {
-                x.role: x.groups for x in auth_service.list_role_group_mappings()
+                x.role: x.groups for x in auth.list_role_group_mappings()
             }
 
             user_roles = set[str]()
@@ -124,7 +124,7 @@ class AuthState(rx.State):
                 groups=list(user_groups),
             )
 
-            auth_service.record_login(
+            auth.record_login(
                 self.webuser.username,
                 list(self.webuser.roles),
                 list(self.webuser.groups),
@@ -166,18 +166,18 @@ def refresh_cache():
     global SSO_ISSUER
     global SSO_CLAIM_NAME
 
-    SSO_CLIENT_ID = settings_service.get_setting("sso_client_id")
-    SSO_CLIENT_SECRET = settings_service.get_setting("sso_client_secret")
-    SSO_AUTH_URL = settings_service.get_setting("sso_auth_url")
-    SSO_TOKEN_URL = settings_service.get_setting("sso_token_url")
-    SSO_USERINFO_URL = settings_service.get_setting("sso_userinfo_url")
-    SSO_REDIRECT_URI = settings_service.get_setting("sso_redirect_uri")
-    SSO_JWKS_URL = settings_service.get_setting("sso_jwks_url")
-    SSO_ISSUER = settings_service.get_setting("sso_issuer")
-    SSO_CLAIM_NAME = settings_service.get_setting("sso_claim_name")
+    SSO_CLIENT_ID = settings.get_setting("sso_client_id")
+    SSO_CLIENT_SECRET = settings.get_setting("sso_client_secret")
+    SSO_AUTH_URL = settings.get_setting("sso_auth_url")
+    SSO_TOKEN_URL = settings.get_setting("sso_token_url")
+    SSO_USERINFO_URL = settings.get_setting("sso_userinfo_url")
+    SSO_REDIRECT_URI = settings.get_setting("sso_redirect_uri")
+    SSO_JWKS_URL = settings.get_setting("sso_jwks_url")
+    SSO_ISSUER = settings.get_setting("sso_issuer")
+    SSO_CLAIM_NAME = settings.get_setting("sso_claim_name")
 
     SSO_CACHE_VALID_UNTIL = time.time() + int(
-        settings_service.get_setting("sso_cache_expiry")
+        settings.get_setting("sso_cache_expiry")
     )
 
 

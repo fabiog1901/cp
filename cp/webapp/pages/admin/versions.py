@@ -8,7 +8,7 @@ from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Version
-from ....services import versions_service
+from ....services import versions
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -35,7 +35,7 @@ class State(AuthState):
 
     def remove_version(self, v: Version):
         try:
-            versions_service.delete_version(v.version, self.webuser.username)
+            versions.delete_version(v.version, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -43,7 +43,7 @@ class State(AuthState):
         self.dialog_open = False
 
         try:
-            versions_service.create_version(self.version, self.webuser.username)
+            versions.create_version(self.version, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -69,7 +69,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.versions = versions_service.list_versions()
+                    self.versions = versions.list_versions()
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))

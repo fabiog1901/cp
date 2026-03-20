@@ -3,15 +3,15 @@
 import gzip
 
 from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
-from ..repos.postgres import event_repo, playbooks_repo
+from ..repos.postgres import events, playbooks
 
 
 def load_playbook_selection(name: str) -> dict:
-    versions = playbooks_repo.list_playbook_versions(name)
+    versions = playbooks.list_playbook_versions(name)
     version_strings = sorted([x.version.strftime(STRFTIME) for x in versions])
     selected_version = _find_default_version(versions)
 
-    playbook = playbooks_repo.get_playbook(name, selected_version)
+    playbook = playbooks.get_playbook(name, selected_version)
     content = _decode_playbook(playbook)
 
     return {
@@ -25,7 +25,7 @@ def load_playbook_selection(name: str) -> dict:
 
 
 def load_playbook_version(name: str, version: str) -> dict:
-    playbook = playbooks_repo.get_playbook(name, version)
+    playbook = playbooks.get_playbook(name, version)
     content = _decode_playbook(playbook)
     return {
         "playbook_version": version,
@@ -35,8 +35,8 @@ def load_playbook_version(name: str, version: str) -> dict:
 
 
 def set_default_playbook(name: str, version: str, updated_by: str) -> None:
-    playbooks_repo.set_default_playbook(name, version, updated_by)
-    event_repo.insert_event_log(
+    playbooks.set_default_playbook(name, version, updated_by)
+    events.insert_event_log(
         updated_by,
         EventType.PLAYBOOK_SET_DEFAULT,
         {"name": name, "version": version},
@@ -52,16 +52,16 @@ def delete_playbook_version(
     if version == default_version:
         raise ValueError("Cannot delete the default version")
 
-    playbooks_repo.remove_playbook(name, version)
-    event_repo.insert_event_log(
+    playbooks.remove_playbook(name, version)
+    events.insert_event_log(
         deleted_by,
         EventType.PLAYBOOK_REMOVE,
         {"name": name, "version": version},
     )
 
-    versions = playbooks_repo.list_playbook_versions(name)
+    versions = playbooks.list_playbook_versions(name)
     selected_version = default_version
-    playbook = playbooks_repo.get_playbook(name, selected_version)
+    playbook = playbooks.get_playbook(name, selected_version)
     content = _decode_playbook(playbook)
 
     return {
@@ -74,19 +74,19 @@ def delete_playbook_version(
 
 
 def save_playbook_content(name: str, content: str, created_by: str) -> dict:
-    saved = playbooks_repo.add_playbook(
+    saved = playbooks.add_playbook(
         name,
         gzip.compress(content.encode("utf-8")),
         created_by,
     )
     saved_version = saved.version.strftime(STRFTIME)
-    event_repo.insert_event_log(
+    events.insert_event_log(
         created_by,
         EventType.PLAYBOOK_ADD,
         {"name": name, "version": saved_version},
     )
 
-    versions = playbooks_repo.list_playbook_versions(name)
+    versions = playbooks.list_playbook_versions(name)
     return {
         "playbook_versions": sorted([x.version.strftime(STRFTIME) for x in versions]),
         "playbook_version": saved_version,

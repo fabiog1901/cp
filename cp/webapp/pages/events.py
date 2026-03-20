@@ -4,7 +4,7 @@ import reflex as rx
 import yaml
 from reflex.components.radix.themes.base import LiteralAccentColor
 
-from ...services import events_service
+from ...services import events
 from ..components.notify import NotifyState
 from ...models import TS_FORMAT, EventLogYaml
 from ..state import AuthState
@@ -49,7 +49,7 @@ class State(AuthState):
         """Get all users from the database."""
 
         try:
-            all_events = events_service.list_visible_events(
+            all_events = events.list_visible_events(
                 self.limit,
                 self.offset,
                 list(self.webuser.groups),
@@ -69,7 +69,7 @@ class State(AuthState):
         ]
 
         try:
-            self.total_items = events_service.get_event_total()
+            self.total_items = events.get_event_total()
         except Exception as e:
             return NotifyState.show("Error", str(e))
 

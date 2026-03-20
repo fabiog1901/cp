@@ -3,11 +3,11 @@
 from pydantic import ValidationError
 
 from ..models import Cluster, ClusterScaleRequest, ClusterUpgradeRequest, JobID, JobType, RestoreRequest
-from ..repos.postgres import cluster_jobs_repo, cluster_repo, event_repo, mq_repo
+from ..repos.postgres import cluster_jobs, cluster, events, mq
 
 
 def list_visible_clusters(groups: list[str], is_admin: bool) -> list:
-    return cluster_repo.list_clusters(groups, is_admin)
+    return cluster.list_clusters(groups, is_admin)
 
 
 def get_cluster_for_user(
@@ -15,7 +15,7 @@ def get_cluster_for_user(
     groups: list[str],
     is_admin: bool,
 ) -> Cluster | None:
-    return cluster_repo.get_cluster(cluster_id, groups, is_admin)
+    return cluster.get_cluster(cluster_id, groups, is_admin)
 
 
 def list_cluster_jobs_for_user(
@@ -26,22 +26,22 @@ def list_cluster_jobs_for_user(
     cluster = get_cluster_for_user(cluster_id, groups, is_admin)
     if cluster is None:
         return None, []
-    return cluster, cluster_jobs_repo.list_cluster_jobs(cluster_id)
+    return cluster, cluster_jobs.list_cluster_jobs(cluster_id)
 
 
 def get_create_dialog_options() -> dict:
     return {
-        "versions": [x.version for x in cluster_repo.list_versions()],
-        "node_counts": [x.node_count for x in cluster_repo.list_node_counts()],
-        "cpus_per_node": [x.cpu_count for x in cluster_repo.list_cpus_per_node()],
-        "disk_sizes": [x.size_gb for x in cluster_repo.list_disk_sizes()],
-        "regions": cluster_repo.list_regions(),
+        "versions": [x.version for x in cluster.list_versions()],
+        "node_counts": [x.node_count for x in cluster.list_node_counts()],
+        "cpus_per_node": [x.cpu_count for x in cluster.list_cpus_per_node()],
+        "disk_sizes": [x.size_gb for x in cluster.list_disk_sizes()],
+        "regions": cluster.list_regions(),
     }
 
 
 def get_cluster_dialog_options(cluster: Cluster) -> dict:
     all_new_versions = [
-        x.version for x in cluster_repo.list_upgrade_versions(cluster.version[:5])
+        x.version for x in cluster.list_upgrade_versions(cluster.version[:5])
     ]
 
     major_yy, major_mm, _ = [int(x) for x in cluster.version[1:].split(".")]
@@ -61,10 +61,10 @@ def get_cluster_dialog_options(cluster: Cluster) -> dict:
             available_versions.append(version)
 
     return {
-        "node_counts": [x.node_count for x in cluster_repo.list_node_counts()],
-        "cpus_per_node": [x.cpu_count for x in cluster_repo.list_cpus_per_node()],
-        "disk_sizes": [x.size_gb for x in cluster_repo.list_disk_sizes()],
-        "regions": cluster_repo.list_regions(),
+        "node_counts": [x.node_count for x in cluster.list_node_counts()],
+        "cpus_per_node": [x.cpu_count for x in cluster.list_cpus_per_node()],
+        "disk_sizes": [x.size_gb for x in cluster.list_disk_sizes()],
+        "regions": cluster.list_regions(),
         "upgrade_versions": available_versions,
     }
 
@@ -92,12 +92,12 @@ def request_cluster_creation(
     payload["group"] = selected_group
     payload["name"] = _normalize_cluster_name(payload["name"])
 
-    msg_id: JobID = mq_repo.insert_into_mq(
+    msg_id: JobID = mq.insert_into_mq(
         JobType.CREATE_CLUSTER,
         payload,
         requested_by,
     )
-    event_repo.insert_event_log(
+    events.insert_event_log(
         requested_by,
         JobType.CREATE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -106,12 +106,12 @@ def request_cluster_creation(
 
 
 def request_cluster_deletion(cluster_id: str, requested_by: str) -> int:
-    msg_id: JobID = mq_repo.insert_into_mq(
+    msg_id: JobID = mq.insert_into_mq(
         JobType.DELETE_CLUSTER,
         {"cluster_id": cluster_id},
         requested_by,
     )
-    event_repo.insert_event_log(
+    events.insert_event_log(
         requested_by,
         JobType.DELETE_CLUSTER,
         {"cluster_id": cluster_id, "job_id": msg_id.job_id},
@@ -135,12 +135,12 @@ def request_cluster_scale(
         regions=list(selected_regions),
     ).model_dump()
 
-    msg_id: JobID = mq_repo.insert_into_mq(
+    msg_id: JobID = mq.insert_into_mq(
         JobType.SCALE_CLUSTER,
         payload,
         requested_by,
     )
-    event_repo.insert_event_log(
+    events.insert_event_log(
         requested_by,
         JobType.SCALE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -160,12 +160,12 @@ def request_cluster_upgrade(
         auto_finalize=auto_finalize,
     ).model_dump()
 
-    msg_id: JobID = mq_repo.insert_into_mq(
+    msg_id: JobID = mq.insert_into_mq(
         JobType.UPGRADE_CLUSTER,
         payload,
         requested_by,
     )
-    event_repo.insert_event_log(
+    events.insert_event_log(
         requested_by,
         JobType.UPGRADE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -193,12 +193,12 @@ def request_cluster_restore(
         backup_into=backup_into,
     ).model_dump()
 
-    msg_id: JobID = mq_repo.insert_into_mq(
+    msg_id: JobID = mq.insert_into_mq(
         JobType.RESTORE_CLUSTER,
         payload,
         requested_by,
     )
-    event_repo.insert_event_log(
+    events.insert_event_log(
         requested_by,
         JobType.RESTORE_CLUSTER,
         payload | {"job_id": msg_id.job_id},

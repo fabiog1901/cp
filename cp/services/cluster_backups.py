@@ -3,8 +3,8 @@
 from pydantic import ValidationError
 
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ..repos.postgres import cluster_backups_repo
-from . import cluster_service
+from ..repos.postgres import cluster_backups
+from . import cluster
 
 
 def load_cluster_backups_snapshot(
@@ -12,13 +12,13 @@ def load_cluster_backups_snapshot(
     groups: list[str],
     is_admin: bool,
 ) -> ClusterBackupsSnapshot | None:
-    cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
     if cluster is None:
         return None
 
     return ClusterBackupsSnapshot(
         cluster=cluster,
-        backup_paths=cluster_backups_repo.list_backup_paths(_get_primary_dns_address(cluster)),
+        backup_paths=cluster_backups.list_backup_paths(_get_primary_dns_address(cluster)),
     )
 
 
@@ -29,7 +29,7 @@ def load_backup_details(
     backup_path: str,
 ) -> list[BackupDetails]:
     cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    return cluster_backups_repo.list_backup_details(
+    return cluster_backups.list_backup_details(
         _get_primary_dns_address(cluster),
         backup_path,
     )
@@ -50,7 +50,7 @@ def request_cluster_restore(
     cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
 
     try:
-        restore_request = cluster_service.validate_restore_request(
+        restore_request = cluster.validate_restore_request(
             name=cluster.cluster_id,
             backup_path=backup_path,
             restore_aost=restore_aost,
@@ -62,7 +62,7 @@ def request_cluster_restore(
     except ValidationError:
         raise
 
-    return cluster_service.request_cluster_restore(
+    return cluster.request_cluster_restore(
         cluster_id=cluster.cluster_id,
         backup_path=restore_request["backup_path"],
         restore_aost=restore_request["restore_aost"],
@@ -79,7 +79,7 @@ def _get_cluster_or_raise(
     groups: list[str],
     is_admin: bool,
 ) -> Cluster:
-    cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
     if cluster is None:
         raise ValueError(f"Cluster {cluster_id} was not found")
     return cluster
