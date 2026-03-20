@@ -1,7 +1,7 @@
 import reflex as rx
 from fastapi import FastAPI
 
-from .backend.main import get_nodes, pull_from_mq
+from .workers.queue import get_nodes, pull_from_mq
 
 # Create a FastAPI app
 api_app = FastAPI(title="My API")
