@@ -1,8 +1,23 @@
 """Cluster jobs repository backed by CockroachDB/Postgres."""
 
+from ...infra.db import execute_stmt
 from ...models import Job
-from . import job_queries
 
 
 def list_cluster_jobs(cluster_id: str) -> list[Job]:
-    return job_queries.get_all_linked_jobs(cluster_id)
+    return execute_stmt(
+        """
+        WITH
+        cluster_jobs AS (
+            SELECT job_id
+            FROM map_clusters_jobs
+            WHERE cluster_id = %s
+        )
+        SELECT *
+        FROM jobs
+        WHERE job_id IN (SELECT job_id FROM cluster_jobs)
+        ORDER BY created_at DESC
+        """,
+        (cluster_id,),
+        Job,
+    )

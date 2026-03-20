@@ -1,11 +1,41 @@
 """Cluster repository backed by CockroachDB/Postgres."""
 
+from pydantic import TypeAdapter
+
+from ...infra.db import execute_stmt
 from ...models import Cluster, ClusterOverview, CpuCountOption, DiskSizeOption, InventoryLB, InventoryRegion, Job, NodeCountOption, Region, RegionOption, Version
-from . import admin_queries, cluster_queries
+from ...models import Nodes
+from . import cluster_jobs_repo, regions_repo, versions_repo
 
 
 def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOverview]:
-    return cluster_queries.fetch_all_clusters(groups, is_admin)
+    if is_admin:
+        return execute_stmt(
+            """
+            SELECT cluster_id, grp,
+                created_by, status,
+                version, node_count,
+                node_cpus, disk_size
+            FROM clusters
+            ORDER BY created_at DESC
+            """,
+            (),
+            ClusterOverview,
+        )
+
+    return execute_stmt(
+        """
+        SELECT cluster_id, grp,
+            created_by, status,
+            version, node_count,
+            node_cpus, disk_size
+        FROM clusters
+        WHERE grp = ANY (%s)
+        ORDER BY created_at DESC
+        """,
+        (groups,),
+        ClusterOverview,
+    )
 
 
 def get_cluster(
@@ -13,11 +43,42 @@ def get_cluster(
     groups: list[str],
     is_admin: bool = False,
 ) -> Cluster | None:
-    return cluster_queries.get_cluster(cluster_id, groups, is_admin)
+    if is_admin:
+        return execute_stmt(
+            """
+            SELECT *
+            FROM clusters
+            WHERE cluster_id = %s
+            """,
+            (cluster_id,),
+            Cluster,
+            return_list=False,
+        )
+
+    return execute_stmt(
+        """
+        SELECT *
+        FROM clusters
+        WHERE grp = ANY (%s)
+            AND cluster_id = %s
+        """,
+        (groups, cluster_id),
+        Cluster,
+        return_list=False,
+    )
 
 
 def get_running_clusters() -> list[Cluster]:
-    return cluster_queries.get_running_clusters()
+    return execute_stmt(
+        """
+        SELECT *
+        FROM clusters
+        WHERE status = 'RUNNING'
+        ORDER BY created_at ASC
+        """,
+        (),
+        Cluster,
+    )
 
 
 def create_or_update_cluster(
@@ -30,15 +91,27 @@ def create_or_update_cluster(
     node_count: int,
     disk_size: int,
 ) -> None:
-    cluster_queries.upsert_cluster(
-        cluster_id,
-        status,
-        created_by,
-        grp,
-        version,
-        node_cpus,
-        node_count,
-        disk_size,
+    execute_stmt(
+        """
+        UPSERT INTO clusters
+            (cluster_id, status,
+            created_by, updated_by, grp,
+            version, node_cpus, node_count, disk_size)
+        VALUES
+            (%s, %s, %s, %s, %s,
+             %s, %s, %s, %s)
+        """,
+        (
+            cluster_id,
+            status,
+            created_by,
+            created_by,
+            grp,
+            version,
+            node_cpus,
+            node_count,
+            disk_size,
+        ),
     )
 
 
@@ -54,57 +127,95 @@ def update_cluster(
     status: str | None = None,
     grp: str | None = None,
 ) -> None:
-    cluster_queries.update_cluster(
-        cluster_id=cluster_id,
-        updated_by=updated_by,
-        cluster_inventory=cluster_inventory,
-        lbs_inventory=lbs_inventory,
-        version=version,
-        node_count=node_count,
-        node_cpus=node_cpus,
-        disk_size=disk_size,
-        status=status,
-        grp=grp,
+    execute_stmt(
+        """
+        UPDATE clusters SET
+            cluster_inventory = coalesce(%s, cluster_inventory),
+            lbs_inventory = coalesce(%s, lbs_inventory),
+            version = coalesce(%s, version),
+            node_count = coalesce(%s, node_count),
+            node_cpus = coalesce(%s, node_cpus),
+            disk_size = coalesce(%s, disk_size),
+            status = coalesce(%s, status),
+            grp = coalesce(%s, grp),
+            updated_by = coalesce(%s, updated_by)
+        WHERE cluster_id = %s
+        """,
+        (
+            TypeAdapter(list[InventoryRegion]).dump_python(cluster_inventory),
+            TypeAdapter(list[InventoryLB]).dump_python(lbs_inventory),
+            version,
+            node_count,
+            node_cpus,
+            disk_size,
+            status,
+            grp,
+            updated_by,
+            cluster_id,
+        ),
     )
 
 
 def delete_cluster(cluster_id: str) -> None:
-    cluster_queries.delete_cluster(cluster_id)
+    execute_stmt(
+        """
+        DELETE FROM clusters
+        WHERE cluster_id = %s
+        """,
+        (cluster_id,),
+    )
 
 
 def list_cluster_jobs(cluster_id: str) -> list[Job]:
-    from . import cluster_jobs_repo
-
     return cluster_jobs_repo.list_cluster_jobs(cluster_id)
 
 
 def list_regions() -> list[RegionOption]:
-    return admin_queries.get_regions()
+    return regions_repo.list_region_options()
 
 
 def get_region_config(cloud: str, region: str) -> list[Region]:
-    return admin_queries.get_region(cloud, region)
+    return regions_repo.get_region_config(cloud, region)
 
 
 def list_versions() -> list[Version]:
-    return admin_queries.get_versions()
+    return versions_repo.list_versions()
 
 
 def list_upgrade_versions(major_version: str) -> list[Version]:
-    return admin_queries.get_upgrade_versions(major_version)
+    return versions_repo.list_upgrade_versions(major_version)
 
 
 def list_node_counts() -> list[NodeCountOption]:
-    return admin_queries.get_node_counts()
+    return versions_repo.list_node_counts()
 
 
 def list_cpus_per_node() -> list[CpuCountOption]:
-    return admin_queries.get_cpus_per_node()
+    return versions_repo.list_cpus_per_node()
 
 
 def list_disk_sizes() -> list[DiskSizeOption]:
-    return admin_queries.get_disk_sizes()
+    return versions_repo.list_disk_sizes()
 
 
 def get_nodes():
-    return admin_queries.get_nodes()
+    return execute_stmt(
+        """
+        WITH
+        c AS (
+        SELECT cluster_id, jsonb_array_elements(cluster_inventory) AS j
+        FROM clusters
+        ),
+        x AS
+        (
+        SELECT cluster_id, jsonb_array_elements_text(j->'nodes') AS node
+        FROM (SELECT cluster_id, j FROM c)
+        )
+        SELECT cluster_id, jsonb_agg(node) AS nodes
+        FROM (SELECT * FROM x) AS OF SYSTEM TIME follower_read_timestamp()
+        GROUP BY cluster_id;
+        """,
+        (),
+        model=Nodes,
+        return_list=True,
+    )

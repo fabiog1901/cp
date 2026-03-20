@@ -1,12 +1,30 @@
 """Auth/support repository backed by CockroachDB/Postgres."""
 
+from ...infra.db import execute_stmt
 from ...models import RoleGroupMap
-from . import admin_queries
+from ...models import StrID
 
 
 def get_secret(secret_id: str) -> str:
-    return admin_queries.get_secret(secret_id)
+    str_id: StrID = execute_stmt(
+        """
+        SELECT data AS id
+        FROM secrets
+        WHERE id = %s
+        """,
+        (secret_id,),
+        StrID,
+        return_list=False,
+    )
+    return str_id.id
 
 
 def list_role_group_mappings() -> list[RoleGroupMap]:
-    return admin_queries.get_role_to_groups_mappings()
+    return execute_stmt(
+        """
+        SELECT role, groups
+        FROM role_to_groups_mappings
+        """,
+        (),
+        RoleGroupMap,
+    )
