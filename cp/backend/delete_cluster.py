@@ -1,5 +1,6 @@
-from threading import Thread
 import datetime as dt
+from threading import Thread
+
 from ..models import ClusterState, JobState
 from . import db
 from .util import MyRunner

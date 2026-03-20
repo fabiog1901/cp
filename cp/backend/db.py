@@ -1,6 +1,6 @@
 import datetime as dt
 import os
-from typing import Any, List
+from typing import Any
 
 from psycopg.abc import Dumper
 from psycopg.pq import Format
@@ -607,16 +607,16 @@ def get_playbook(name: str, version: str) -> Playbook:
     )
 
 
-def get_default_playbook(name: str, version: str) -> Playbook:
+def get_default_playbook(name: str) -> Playbook:
     return execute_stmt(
         """
         SELECT * 
         FROM playbooks 
-        WHERE (name, version) = (%s, %s)
+        WHERE name = %s
         ORDER BY default_version DESC
         LIMIT 1
         """,
-        (name, version),
+        (name,),
         Playbook,
         return_list=False,
     )

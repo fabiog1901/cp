@@ -1,18 +1,14 @@
 # app.py
-import asyncio
 import datetime as dt
 import gzip
-from typing import List
 
 import reflex as rx
-from pydantic import ValidationError
 from reflex_monaco import monaco
 
 from ...backend import db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ...cp import app
-from ...models import STRFTIME, EventType, Playbook, PlaybookOverview, Version
+from ...models import STRFTIME, EventType, Playbook, PlaybookOverview
 from ...state import AuthState
 from ...template import template
 

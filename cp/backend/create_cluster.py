@@ -1,5 +1,5 @@
-from threading import Thread
 import datetime as dt
+from threading import Thread
 
 from ..models import (
     ClusterRequest,

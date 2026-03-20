@@ -7,16 +7,7 @@ from ...components.BadgeClusterStatus import get_cluster_status_badge
 from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import (
-    TS_FORMAT,
-    Cluster,
-    IntID,
-    InventoryLB,
-    InventoryRegion,
-    Job,
-    JobType,
-    StrID,
-)
+from ...models import TS_FORMAT, Cluster, IntID, JobType, StrID
 from ...state import AuthState
 from ...template import template
 from ..util import get_human_size

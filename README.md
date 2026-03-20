@@ -30,5 +30,5 @@ Install and setup Keycloak as per [blog post](https://dev.to/cockroachlabs/cockr
 
     ```bash
     poetry shell
-    REFLEX_HOT_RELOAD_EXCLUDE_PATHS="/Users/fabio/projects/cp/playbooks" reflex run
+    reflex run
     ```

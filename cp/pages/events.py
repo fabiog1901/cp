@@ -1,4 +1,3 @@
-import asyncio
 from typing import get_args
 
 import reflex as rx
@@ -7,8 +6,7 @@ from reflex.components.radix.themes.base import LiteralAccentColor
 
 from ..backend import db
 from ..components.notify import NotifyState
-from ..cp import app
-from ..models import TS_FORMAT, EventLog, EventLogYaml
+from ..models import TS_FORMAT, EventLogYaml
 from ..state import AuthState
 from ..template import template
 

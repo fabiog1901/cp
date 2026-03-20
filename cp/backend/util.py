@@ -5,6 +5,7 @@ import shutil
 import time
 
 import ansible_runner
+import yaml
 
 from ..models import JobState, Playbook
 from . import db
@@ -104,7 +105,7 @@ class MyRunner:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=gzip.decompress(p.playbook).decode(),
+                playbook=yaml.safe_load(gzip.decompress(p.playbook).decode()),
                 private_data_dir=f"/tmp/job-{self.job_id}",
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,

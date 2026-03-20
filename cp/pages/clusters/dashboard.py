@@ -33,7 +33,7 @@ def merge_by_ts(named_series: dict[str, dict[int, float]]):
                 r[name] = series[ts]
 
         # summing up all 3 SQL statement types
-        r["t"] = r["s"] + r["i"] + r["u"] + r["d"]
+        r["t"] = r.get("s", 0) + r.get("i", 0) + r.get("u", 0) + r.get("d", 0)
         rows.append(r)
 
     return rows

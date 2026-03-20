@@ -1,9 +1,9 @@
+import datetime as dt
 from threading import Thread
 
 from ..models import ClusterState, JobState, RestoreRequest
 from . import db
 from .util import MyRunner
-import datetime as dt
 
 
 def restore_cluster(
