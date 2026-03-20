@@ -3,13 +3,9 @@
 import time
 from typing import Any
 
-import requests
-
 from ..models import DashboardMetrics, DashboardSnapshot
+from ..repos.postgres import dashboard_repo
 from . import cluster_service, settings_service
-
-
-PROMETHEUS_TIMEOUT_SECS = 10
 
 
 def get_prometheus_url() -> str:
@@ -90,7 +86,7 @@ def load_dashboard_metrics(
             False,
         ),
     ]:
-        response = _query_prometheus(
+        response = dashboard_repo.query_prometheus_range(
             prom_url,
             query=query,
             start=effective_start,
@@ -115,29 +111,6 @@ def load_dashboard_metrics(
         current_nodes=sorted(current_nodes),
         chart_data=_merge_by_ts(series),
     )
-
-
-def _query_prometheus(
-    prom_url: str,
-    *,
-    query: str,
-    start: int,
-    end: int,
-    interval_secs: int,
-) -> dict[str, Any]:
-    response = requests.get(
-        prom_url,
-        params={
-            "query": query,
-            "start": start,
-            "end": end,
-            "step": f"{interval_secs}s",
-        },
-        timeout=PROMETHEUS_TIMEOUT_SECS,
-    )
-    response.raise_for_status()
-    return response.json()
-
 
 def _first_result_values(response: dict[str, Any]) -> list[list[str | float]]:
     result = response.get("data", {}).get("result", [])

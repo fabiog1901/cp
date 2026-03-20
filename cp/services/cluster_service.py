@@ -3,8 +3,7 @@
 from pydantic import ValidationError
 
 from ..models import Cluster, ClusterScaleRequest, ClusterUpgradeRequest, JobID, JobType, RestoreRequest
-from ..repos.postgres import cluster_repo
-from . import app_service
+from ..repos.postgres import cluster_jobs_repo, cluster_repo, event_repo, mq_repo
 
 
 def list_visible_clusters(groups: list[str], is_admin: bool) -> list:
@@ -27,7 +26,7 @@ def list_cluster_jobs_for_user(
     cluster = get_cluster_for_user(cluster_id, groups, is_admin)
     if cluster is None:
         return None, []
-    return cluster, cluster_repo.list_cluster_jobs(cluster_id)
+    return cluster, cluster_jobs_repo.list_cluster_jobs(cluster_id)
 
 
 def get_create_dialog_options() -> dict:
@@ -93,12 +92,12 @@ def request_cluster_creation(
     payload["group"] = selected_group
     payload["name"] = _normalize_cluster_name(payload["name"])
 
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         JobType.CREATE_CLUSTER,
         payload,
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         JobType.CREATE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -107,12 +106,12 @@ def request_cluster_creation(
 
 
 def request_cluster_deletion(cluster_id: str, requested_by: str) -> int:
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         JobType.DELETE_CLUSTER,
         {"cluster_id": cluster_id},
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         JobType.DELETE_CLUSTER,
         {"cluster_id": cluster_id, "job_id": msg_id.job_id},
@@ -136,12 +135,12 @@ def request_cluster_scale(
         regions=list(selected_regions),
     ).model_dump()
 
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         JobType.SCALE_CLUSTER,
         payload,
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         JobType.SCALE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -161,12 +160,12 @@ def request_cluster_upgrade(
         auto_finalize=auto_finalize,
     ).model_dump()
 
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         JobType.UPGRADE_CLUSTER,
         payload,
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         JobType.UPGRADE_CLUSTER,
         payload | {"job_id": msg_id.job_id},
@@ -194,12 +193,12 @@ def request_cluster_restore(
         backup_into=backup_into,
     ).model_dump()
 
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         JobType.RESTORE_CLUSTER,
         payload,
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         JobType.RESTORE_CLUSTER,
         payload | {"job_id": msg_id.job_id},

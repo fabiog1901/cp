@@ -3,8 +3,7 @@ import logging
 from threading import Thread
 
 from ...models import ClusterState, JobState, RestoreRequest
-from ...repos.postgres import cluster_repo
-from ...services import app_service as db
+from ...repos.postgres import cluster_repo, jobs_repo, settings_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -24,11 +23,11 @@ def restore_cluster(
 
     # TODO verify what states are appropriate for running a restore job
     if c is None or c.status != ClusterState.RUNNING:
-        db.update_job(
+        jobs_repo.update_job(
             job_id,
             JobState.FAILED,
         )
-        db.insert_task(
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -43,7 +42,7 @@ def restore_cluster(
         status=ClusterState.RESTORING,
     )
 
-    db.insert_mapped_job(
+    jobs_repo.insert_mapped_job(
         rr.name,
         job_id,
         JobState.SCHEDULED,
@@ -73,7 +72,7 @@ def restore_cluster_worker(
             "object_type": rr.object_type,
             "object_name": rr.object_name,
             "backup_into": rr.backup_into,
-            "cloud_storage_url": db.get_setting("cloud_storage_url"),
+            "cloud_storage_url": settings_repo.get_setting("cloud_storage_url"),
         }
 
         job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
@@ -93,8 +92,8 @@ def restore_cluster_worker(
         )
     except Exception as err:
         logger.exception("Unhandled error while restoring cluster '%s'", rr.name)
-        db.update_job(job_id, JobState.FAILED)
-        db.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

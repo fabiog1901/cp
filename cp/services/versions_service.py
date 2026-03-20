@@ -1,8 +1,7 @@
 """Business logic for the versions vertical."""
 
 from ..models import EventType, Version
-from ..repos.postgres import versions_repo
-from . import app_service
+from ..repos.postgres import event_repo, versions_repo
 
 
 def list_versions() -> list[Version]:
@@ -12,7 +11,7 @@ def list_versions() -> list[Version]:
 def create_version(version: str, created_by: str) -> Version:
     model = Version(version=version)
     versions_repo.add_version(model)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         created_by,
         EventType.VERSION_ADD,
         model.version,
@@ -22,7 +21,7 @@ def create_version(version: str, created_by: str) -> Version:
 
 def delete_version(version: str, deleted_by: str) -> None:
     versions_repo.remove_version(version)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         deleted_by,
         EventType.VERSION_REMOVE,
         version,

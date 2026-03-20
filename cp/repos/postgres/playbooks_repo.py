@@ -8,6 +8,10 @@ def get_playbook(name: str, version: str) -> Playbook:
     return admin_queries.get_playbook(name, version)
 
 
+def get_default_playbook(name: str) -> Playbook:
+    return admin_queries.get_default_playbook(name)
+
+
 def list_playbook_versions(name: str) -> list[PlaybookOverview]:
     return admin_queries.get_playbook_versions(name)
 

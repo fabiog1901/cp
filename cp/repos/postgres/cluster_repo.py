@@ -1,7 +1,7 @@
 """Cluster repository backed by CockroachDB/Postgres."""
 
 from ...models import Cluster, ClusterOverview, CpuCountOption, DiskSizeOption, InventoryLB, InventoryRegion, Job, NodeCountOption, Region, RegionOption, Version
-from . import admin_queries, cluster_queries, job_queries
+from . import admin_queries, cluster_queries
 
 
 def list_clusters(groups: list[str], is_admin: bool = False) -> list[ClusterOverview]:
@@ -73,7 +73,9 @@ def delete_cluster(cluster_id: str) -> None:
 
 
 def list_cluster_jobs(cluster_id: str) -> list[Job]:
-    return job_queries.get_all_linked_jobs(cluster_id)
+    from . import cluster_jobs_repo
+
+    return cluster_jobs_repo.list_cluster_jobs(cluster_id)
 
 
 def list_regions() -> list[RegionOption]:
@@ -102,3 +104,7 @@ def list_cpus_per_node() -> list[CpuCountOption]:
 
 def list_disk_sizes() -> list[DiskSizeOption]:
     return admin_queries.get_disk_sizes()
+
+
+def get_nodes():
+    return admin_queries.get_nodes()

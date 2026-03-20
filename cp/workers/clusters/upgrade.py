@@ -3,8 +3,7 @@ import logging
 from threading import Thread
 
 from ...models import ClusterState, ClusterUpgradeRequest, JobState
-from ...repos.postgres import cluster_repo
-from ...services import app_service as db
+from ...repos.postgres import cluster_repo, jobs_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ def upgrade_cluster(
     ]:
         # TODO update message for failed job:
         # cannot upgrade a deleting cluster
-        db.update_job(
+        jobs_repo.update_job(
             job_id,
             JobState.FAILED,
         )
@@ -43,7 +42,7 @@ def upgrade_cluster(
         status=ClusterState.UPGRADING,
     )
 
-    db.insert_mapped_job(
+    jobs_repo.insert_mapped_job(
         cur.name,
         job_id,
         JobState.SCHEDULED,
@@ -89,8 +88,8 @@ def upgrade_cluster_worker(
         )
     except Exception as err:
         logger.exception("Unhandled error while upgrading cluster '%s'", cur.name)
-        db.update_job(job_id, JobState.FAILED)
-        db.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

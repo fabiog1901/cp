@@ -8,9 +8,8 @@ import reflex as rx
 import requests
 from jwt.algorithms import RSAAlgorithm
 
-from ...models import EventType, WebUser
-from ...services import app_service as db
-from ...services import settings_service
+from ...models import WebUser
+from ...services import auth_service, settings_service
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -98,7 +97,7 @@ class AuthState(rx.State):
             user_claims = validate_token(access_token) #, audience=SSO_CLIENT_ID)
 
             grp_role_maps: dict[str, list[str]] = {
-                x.role: x.groups for x in db.get_role_to_groups_mappings()
+                x.role: x.groups for x in auth_service.list_role_group_mappings()
             }
 
             user_roles = set[str]()
@@ -125,13 +124,10 @@ class AuthState(rx.State):
                 groups=list(user_groups),
             )
 
-            db.insert_event_log(
+            auth_service.record_login(
                 self.webuser.username,
-                EventType.LOGIN,
-                {
-                    "roles": list(self.webuser.roles),
-                    "groups": list(self.webuser.groups),
-                },
+                list(self.webuser.roles),
+                list(self.webuser.groups),
             )
 
             return rx.redirect(self.original_url)

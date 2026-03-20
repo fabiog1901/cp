@@ -11,8 +11,7 @@ from ...models import (
     JobState,
     Region,
 )
-from ...repos.postgres import cluster_repo
-from ...services import app_service as db
+from ...repos.postgres import cluster_repo, jobs_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -50,7 +49,7 @@ def scale_cluster(
         status=ClusterState.SCALING,
     )
 
-    db.insert_mapped_job(
+    jobs_repo.insert_mapped_job(
         cluster_scale_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -77,8 +76,8 @@ def scale_cluster_worker_entry(
         scale_cluster_worker(job_id, csr, current_cluster, requested_by)
     except Exception as err:
         logger.exception("Unhandled error while scaling cluster '%s'", csr.name)
-        db.update_job(job_id, JobState.FAILED)
-        db.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

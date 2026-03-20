@@ -10,8 +10,7 @@ from ...models import (
     JobState,
     Region,
 )
-from ...repos.postgres import cluster_repo
-from ...services import app_service as db
+from ...repos.postgres import cluster_repo, jobs_repo, settings_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -46,11 +45,11 @@ def create_cluster(
     c = cluster_repo.get_cluster(cluster_request.name, [], True)
 
     if not recreate and c and not c.status.startswith("DELET"):
-        db.update_job(
+        jobs_repo.update_job(
             job_id,
             JobState.FAILED,
         )
-        db.insert_task(
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -70,7 +69,7 @@ def create_cluster(
         cluster_request.disk_size,
     )
 
-    db.insert_mapped_job(
+    jobs_repo.insert_mapped_job(
         cluster_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -172,17 +171,17 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "deployment_id": cluster_request.name,
             "deployment": deployment,
             "cockroachdb_version": cluster_request.version,
-            "cockroachdb_cluster_organization": db.get_setting("licence_org"),
-            "cockroachdb_enterprise_license": db.get_setting("licence_key"),
+            "cockroachdb_cluster_organization": settings_repo.get_setting("licence_org"),
+            "cockroachdb_enterprise_license": settings_repo.get_setting("licence_key"),
             "dbusers": [
                 {
-                    "name": db.get_setting("default_username"),
-                    "password": db.get_setting("default_password"),
+                    "name": settings_repo.get_setting("default_username"),
+                    "password": settings_repo.get_setting("default_password"),
                     "is_cert": False,
                     "is_admin": True,
                 }
             ],
-            "cloud_storage_url": db.get_setting("cloud_storage_url"),
+            "cloud_storage_url": settings_repo.get_setting("cloud_storage_url"),
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(
@@ -226,8 +225,8 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         )
     except Exception as err:
         logger.exception("Unhandled error while creating cluster '%s'", cluster_request.name)
-        db.update_job(job_id, JobState.FAILED)
-        db.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

@@ -3,8 +3,7 @@
 import gzip
 
 from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
-from ..repos.postgres import playbooks_repo
-from . import app_service
+from ..repos.postgres import event_repo, playbooks_repo
 
 
 def load_playbook_selection(name: str) -> dict:
@@ -37,7 +36,7 @@ def load_playbook_version(name: str, version: str) -> dict:
 
 def set_default_playbook(name: str, version: str, updated_by: str) -> None:
     playbooks_repo.set_default_playbook(name, version, updated_by)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         updated_by,
         EventType.PLAYBOOK_SET_DEFAULT,
         {"name": name, "version": version},
@@ -54,7 +53,7 @@ def delete_playbook_version(
         raise ValueError("Cannot delete the default version")
 
     playbooks_repo.remove_playbook(name, version)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         deleted_by,
         EventType.PLAYBOOK_REMOVE,
         {"name": name, "version": version},
@@ -81,7 +80,7 @@ def save_playbook_content(name: str, content: str, created_by: str) -> dict:
         created_by,
     )
     saved_version = saved.version.strftime(STRFTIME)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         created_by,
         EventType.PLAYBOOK_ADD,
         {"name": name, "version": saved_version},

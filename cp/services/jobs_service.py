@@ -3,8 +3,7 @@
 import yaml
 
 from ..models import Job, JobID, JobType
-from ..repos.postgres import jobs_repo
-from . import app_service
+from ..repos.postgres import event_repo, jobs_repo, mq_repo
 
 
 def list_visible_jobs(groups: list[str], is_admin: bool) -> list[Job]:
@@ -44,12 +43,12 @@ def request_job_reschedule(
         else job.job_type
     )
 
-    msg_id: JobID = app_service.insert_into_mq(
+    msg_id: JobID = mq_repo.insert_into_mq(
         job_type,
         job.description,
         requested_by,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         job_type,
         job.description | {"job_id": msg_id.job_id},

@@ -4,8 +4,7 @@ import json
 from typing import Any
 
 from ..models import EventType, Region
-from ..repos.postgres import regions_repo
-from . import app_service
+from ..repos.postgres import event_repo, regions_repo
 
 
 def list_regions() -> list[Region]:
@@ -14,7 +13,7 @@ def list_regions() -> list[Region]:
 
 def delete_region(region: Region, deleted_by: str) -> None:
     regions_repo.delete_region(region.cloud, region.region, region.zone)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         deleted_by,
         EventType.REGION_REMOVE,
         {"cloud": region.cloud, "region": region.region, "zone": region.zone},
@@ -48,7 +47,7 @@ def create_region(
     )
 
     regions_repo.add_region(new_region)
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         created_by,
         EventType.REGION_ADD,
         new_region.model_dump_json(),

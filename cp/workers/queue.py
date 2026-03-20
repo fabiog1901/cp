@@ -5,8 +5,9 @@ import random
 
 from psycopg.rows import class_row
 
+from ..infra.db import pool
 from ..models import JobState, JobType, Msg, Nodes
-from ..services import app_service as db
+from ..repos.postgres import cluster_repo, jobs_repo
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def fail_zombie_jobs():
-    db.fail_zombie_jobs()
+    jobs_repo.fail_zombie_jobs()
 
 
 def get_nodes():
@@ -26,7 +27,7 @@ def get_nodes():
     rs: list[Nodes] = []
 
     try:
-        rs = db.get_nodes()
+        rs = cluster_repo.get_nodes()
     except Exception as e:
         print("Error", str(e))
 
@@ -41,7 +42,7 @@ async def pull_from_mq():
         while True:
             await asyncio.sleep(5 * random.uniform(0.7, 1.3))
             try:
-                with db.pool.connection() as conn:
+                with pool.connection() as conn:
                     with conn.cursor(row_factory=class_row(Msg)) as cur:
                         with conn.transaction():
                             msg = cur.execute(
@@ -112,14 +113,14 @@ async def pull_from_mq():
                                     msg.msg_id,
                                 )
                                 try:
-                                    db.update_job(msg.msg_id, JobState.FAILED)
+                                    jobs_repo.update_job(msg.msg_id, JobState.FAILED)
                                 except Exception:
                                     logger.exception(
                                         "Unable to mark job %s as failed",
                                         msg.msg_id,
                                     )
                                 try:
-                                    db.insert_task(
+                                    jobs_repo.insert_task(
                                         msg.msg_id,
                                         0,
                                         dt.datetime.now(dt.timezone.utc),

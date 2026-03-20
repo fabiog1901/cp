@@ -1,8 +1,8 @@
 """Business logic for the cluster users vertical."""
 
 from ..models import Cluster, ClusterUsersSnapshot, EventType, NewDatabaseUserRequest
-from ..repos.postgres import cluster_users_repo
-from . import app_service, cluster_service
+from ..repos.postgres import cluster_users_repo, event_repo
+from . import cluster_service
 
 
 def load_cluster_users_snapshot(
@@ -37,7 +37,7 @@ def create_database_user(
         request.username,
         request.password,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         EventType.DB_USER_ADD,
         {"cluster_id": cluster.cluster_id, "db_user": request.username},
@@ -56,7 +56,7 @@ def remove_database_user(
         _get_primary_dns_address(cluster),
         username,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         EventType.DB_USER_REMOVE,
         {"cluster_id": cluster.cluster_id, "db_user": username},
@@ -77,7 +77,7 @@ def revoke_database_user_role(
         username,
         role,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         EventType.DB_USER_REMOVE_ROLE,
         {"cluster_id": cluster.cluster_id, "db_user": username, "role": role},
@@ -101,7 +101,7 @@ def update_database_user_password(
         username,
         password,
     )
-    app_service.insert_event_log(
+    event_repo.insert_event_log(
         requested_by,
         EventType.DB_USER_UPDATE,
         {"cluster_id": cluster.cluster_id, "db_user": username},
