@@ -3,13 +3,12 @@ import asyncio
 from typing import List
 
 import reflex as rx
-from pydantic import ValidationError
 
-from ...services import app_service as db
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ...cp import app
-from ...models import EventType, Version
+from ...models import Version
+from ...services import versions_service
 from ...state import AuthState
 from ...template import template
 
@@ -36,35 +35,15 @@ class State(AuthState):
 
     def remove_version(self, v: Version):
         try:
-            db.remove_version(v.version)
-
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.VERSION_REMOVE,
-                v.version,
-            )
+            versions_service.delete_version(v.version, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
     def submit_new_version(self):
-        """Validate draft with Pydantic, print to stdout, and add to the list."""
-
         self.dialog_open = False
 
         try:
-            v = Version(
-                version=self.version,
-            )
-
-            db.add_version(v)
-
-            db.insert_event_log(
-                self.webuser.username,
-                EventType.VERSION_ADD,
-                v.version,
-            )
-        except ValidationError as ve:
-            return NotifyState.show("Validation Error", str(ve))
+            versions_service.create_version(self.version, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -90,7 +69,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.versions = db.get_versions()
+                    self.versions = versions_service.list_versions()
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
