@@ -1,6 +1,6 @@
 # cp
 
-🌍 `cp` is a Python Reflex based control plane for CockroachDB clusters and a DBaaS-style platform for operating them safely and consistently.
+🌍 `cp` is a control plane for CockroachDB clusters and a DBaaS-style platform for operating them safely and consistently.
 
 It is designed to let teams create, manage, and monitor CockroachDB clusters across public clouds and, when integrated, private cloud environments too. The platform is secured through SSO login via an identity provider using OIDC, and auditable user actions are preserved internally in an event log so operational changes remain traceable over time.
 
