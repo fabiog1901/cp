@@ -1,12 +1,10 @@
 # cp
 
-🌍 `cp` is a control plane for CockroachDB clusters and a DBaaS-style platform for operating them safely and consistently.
+🌍 `cp` is a Python Reflex based control plane for CockroachDB clusters and a DBaaS-style platform for operating them safely and consistently.
 
 It is designed to let teams create, manage, and monitor CockroachDB clusters across public clouds and, when integrated, private cloud environments too. The platform is secured through SSO login via an identity provider using OIDC, and auditable user actions are preserved internally in an event log so operational changes remain traceable over time.
 
 At a solution level, this repository contains the application itself, but the full platform also depends on a CockroachDB cluster to store metadata and back the internal message queue, plus a Prometheus server to power dashboard queries and cluster health visibility. Integration with Alertmanager is a natural next step and is planned as a potential path for active alerting. 📈
-
-🚀 `cp` is a Reflex-based control plane for managing CockroachDB clusters and the operational workflows around them.
 
 It combines:
 
@@ -17,9 +15,9 @@ It combines:
 - 🔐 SSO integration for authentication and authorization
 - 📈 Prometheus-backed dashboards for cluster metrics
 
-## 🌱 Mental Model
+## 🌱 Application Architecture Overview
 
-The project now follows a fairly clean layered shape:
+The project follows a fairly clean layered shape:
 
 1. `webapp` handles UI state, forms, routing, and page rendering.
 2. `services` contain application/business logic.
@@ -27,17 +25,9 @@ The project now follows a fairly clean layered shape:
 4. `infra` contains lower-level shared infrastructure helpers.
 5. `workers` execute asynchronous job workflows.
 
-The intended direction is:
-
-`webapp -> services -> repos -> infra`
-
-and separately:
-
-`workers -> repos -> infra`
-
 This keeps the UI thin, the business rules centralized, and the persistence logic isolated.
 
-## 🧱 Project Layout
+### 🧱 Project Layout
 
 ```text
 cp/
@@ -64,8 +54,6 @@ Important areas:
   Shared database execution helpers and error translation.
 - `cp/workers`
   MQ polling, Ansible execution, and cluster lifecycle workflows.
-
-## 🧭 Architecture By Layer
 
 ### 🖥️ Webapp Layer
 
@@ -139,7 +127,8 @@ Notable examples:
 - `errors.py` for repository-level error types
 - logging setup
 
-This layer is intentionally more utility-like than object-oriented. The helpers in `db.py` are generic infrastructure functions, so keeping them as module-level functions is a good fit for now.
+This layer is intentionally more utility-like than object-oriented.
+The helpers in `db.py` are generic infrastructure functions, so keeping them as module-level functions is a good fit for now.
 
 ### 🛠️ Worker Layer
 
@@ -156,7 +145,7 @@ Workers usually call repos directly because they are closer to infrastructure ex
 
 ## ✅ Current Conventions
 
-After the refactor, these conventions are the preferred default:
+These conventions are the preferred default:
 
 - 📁 File names use `snake_case.py`
 - 🏛️ Service modules expose a service class
@@ -254,14 +243,3 @@ The cluster should have a database named `cp`.
 poetry shell
 reflex run
 ```
-
-## 📝 Notes For Future Refactors
-
-A few follow-up ideas that may be worth exploring later:
-
-- 🧪 introduce dependency injection only if testability or replaceable implementations start to matter more
-- 📦 keep pushing for consistent naming between file names and exported classes
-- 🧭 continue keeping webapp code thin and service code central
-- 🧹 gradually improve docstrings and type hints in older modules
-
-For now, the current architecture is in a much better place: clearer boundaries, cleaner naming, and a more teachable structure for new contributors. 🎉
