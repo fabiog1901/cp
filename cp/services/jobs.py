@@ -4,9 +4,9 @@ import yaml
 
 from ..infra.errors import RepositoryError
 from ..models import Job, JobID, JobType
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.jobs_repo import JobsRepo
-from ..repos.postgres.mq_repo import MqRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.jobs import JobsRepo
+from ..repos.postgres.mq import MqRepo
 from .errors import ServiceNotFoundError, from_repository_error
 
 

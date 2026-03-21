@@ -10,8 +10,8 @@ import ansible_runner
 import yaml
 
 from ..models import JobState, Playbook
-from ..repos.postgres.jobs_repo import JobsRepo
-from ..repos.postgres.playbooks_repo import PlaybooksRepo
+from ..repos.postgres.jobs import JobsRepo
+from ..repos.postgres.playbooks import PlaybooksRepo
 
 logger = logging.getLogger(__name__)
 

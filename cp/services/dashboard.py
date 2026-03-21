@@ -5,7 +5,7 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import DashboardMetrics, DashboardSnapshot
-from ..repos.postgres.dashboard_repo import DashboardRepo
+from ..repos.postgres.dashboard import DashboardRepo
 from .cluster import ClusterService
 from .errors import ServiceValidationError, from_repository_error
 from .settings import SettingsService

@@ -2,8 +2,8 @@ import os
 from threading import Thread
 
 from ...models import ClusterState, JobType
-from ...repos.postgres.auth_repo import AuthRepo
-from ...repos.postgres.cluster_repo import ClusterRepo
+from ...repos.postgres.auth import AuthRepo
+from ...repos.postgres.cluster import ClusterRepo
 from ..ansible import MyRunnerLite
 
 

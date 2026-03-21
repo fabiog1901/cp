@@ -2,8 +2,8 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Setting
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.settings_repo import SettingsRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.settings import SettingsRepo
 from .errors import ServiceValidationError, from_repository_error
 
 

@@ -4,8 +4,8 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Version
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.versions_repo import VersionsRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.versions import VersionsRepo
 from .errors import ServiceValidationError, from_repository_error
 
 

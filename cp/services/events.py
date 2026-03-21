@@ -2,7 +2,7 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventLog
-from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.event import EventRepo
 from .errors import from_repository_error
 
 

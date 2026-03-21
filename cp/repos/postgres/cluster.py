@@ -17,9 +17,9 @@ from ...models import (
     RegionOption,
     Version,
 )
-from .cluster_jobs_repo import ClusterJobsRepo
-from .regions_repo import RegionsRepo
-from .versions_repo import VersionsRepo
+from .cluster_jobs import ClusterJobsRepo
+from .regions import RegionsRepo
+from .versions import VersionsRepo
 
 
 class ClusterRepo:

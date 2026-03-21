@@ -11,9 +11,9 @@ from ..models import (
     JobType,
     RestoreRequest,
 )
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.mq_repo import MqRepo
-from ..repos.postgres.cluster_repo import ClusterRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.mq import MqRepo
+from ..repos.postgres.cluster import ClusterRepo
 from .errors import ServiceValidationError, from_repository_error
 
 

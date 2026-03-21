@@ -2,7 +2,7 @@
 
 from ..infra.errors import RepositoryError
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ..repos.postgres.cluster_backups_repo import ClusterBackupsRepo
+from ..repos.postgres.cluster_backups import ClusterBackupsRepo
 from .cluster import ClusterService
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 

@@ -4,8 +4,8 @@ import gzip
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.playbooks_repo import PlaybooksRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.playbooks import PlaybooksRepo
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 

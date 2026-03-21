@@ -7,8 +7,8 @@ from psycopg.rows import class_row
 
 from ..infra.db import pool
 from ..models import JobState, JobType, Msg, Nodes
-from ..repos.postgres.jobs_repo import JobsRepo
-from ..repos.postgres.cluster_repo import ClusterRepo
+from ..repos.postgres.jobs import JobsRepo
+from ..repos.postgres.cluster import ClusterRepo
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters

@@ -4,8 +4,8 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import Cluster, ClusterUsersSnapshot, EventType, NewDatabaseUserRequest
-from ..repos.postgres.cluster_users_repo import ClusterUsersRepo
-from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.cluster_users import ClusterUsersRepo
+from ..repos.postgres.event import EventRepo
 from .cluster import ClusterService
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 

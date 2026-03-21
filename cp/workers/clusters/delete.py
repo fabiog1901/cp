@@ -3,8 +3,8 @@ import logging
 from threading import Thread
 
 from ...models import ClusterState, JobState
-from ...repos.postgres.jobs_repo import JobsRepo
-from ...repos.postgres.cluster_repo import ClusterRepo
+from ...repos.postgres.jobs import JobsRepo
+from ...repos.postgres.cluster import ClusterRepo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)

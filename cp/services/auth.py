@@ -2,8 +2,8 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventType
-from ..repos.postgres.auth_repo import AuthRepo
-from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.auth import AuthRepo
+from ..repos.postgres.event import EventRepo
 from .errors import from_repository_error
 
 

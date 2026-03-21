@@ -10,9 +10,9 @@ from ...models import (
     JobState,
     Region,
 )
-from ...repos.postgres.jobs_repo import JobsRepo
-from ...repos.postgres.settings_repo import SettingsRepo
-from ...repos.postgres.cluster_repo import ClusterRepo
+from ...repos.postgres.jobs import JobsRepo
+from ...repos.postgres.settings import SettingsRepo
+from ...repos.postgres.cluster import ClusterRepo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Region
-from ..repos.postgres.event_repo import EventRepo
-from ..repos.postgres.regions_repo import RegionsRepo
+from ..repos.postgres.event import EventRepo
+from ..repos.postgres.regions import RegionsRepo
 from .errors import ServiceValidationError, from_repository_error
 
 
