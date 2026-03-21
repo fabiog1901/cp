@@ -2,8 +2,8 @@
 
 from ..infra.errors import RepositoryError
 from ..models import ClusterJobsSnapshot
-from ..repos.postgres import cluster_repo
-from . import cluster as cluster_service
+from ..repos.postgres.cluster_repo import ClusterRepo
+from .cluster import ClusterService
 from .errors import from_repository_error
 
 
@@ -12,14 +12,14 @@ def load_cluster_jobs_snapshot(
     groups: list[str],
     is_admin: bool,
 ) -> ClusterJobsSnapshot | None:
-    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    selected_cluster = ClusterService.get_cluster_for_user(cluster_id, groups, is_admin)
     if selected_cluster is None:
         return None
 
     try:
         return ClusterJobsSnapshot(
             cluster=selected_cluster,
-            jobs=cluster_repo.list_cluster_jobs(cluster_id),
+            jobs=ClusterRepo.list_cluster_jobs(cluster_id),
         )
     except RepositoryError as err:
         raise from_repository_error(

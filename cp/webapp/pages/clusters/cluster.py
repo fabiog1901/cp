@@ -8,7 +8,7 @@ from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import TS_FORMAT, Cluster, RegionOption
-from ....services import cluster
+from ....services.cluster import ClusterService
 from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
@@ -51,7 +51,7 @@ class State(AuthState):
     @rx.event
     def scale_cluster(self, _form_data: dict):
         try:
-            job_id = cluster.request_cluster_scale(
+            job_id = ClusterService.request_cluster_scale(
                 self.current_cluster.cluster_id,
                 self.selected_cpus_per_node,
                 self.disk_fmt_2_size_map[self.selected_disk_size],
@@ -76,7 +76,7 @@ class State(AuthState):
     @rx.event
     def upgrade_cluster(self, _form_data: dict):
         try:
-            job_id = cluster.request_cluster_upgrade(
+            job_id = ClusterService.request_cluster_upgrade(
                 self.current_cluster.cluster_id,
                 self.selected_version,
                 self.auto_finalize,
@@ -132,7 +132,7 @@ class State(AuthState):
             # fetch this data only once
 
             try:
-                options = cluster.get_create_dialog_options()
+                options = ClusterService.get_create_dialog_options()
                 self.available_node_counts = options["node_counts"]
                 self.available_cpus_per_node = options["cpus_per_node"]
                 self.disk_fmt_2_size_map = {
@@ -167,7 +167,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    selected_cluster: Cluster = cluster.get_cluster_for_user(
+                    selected_cluster: Cluster = ClusterService.get_cluster_for_user(
                         self.cluster_id,
                         list(self.webuser.groups),
                         self.is_admin,
@@ -194,7 +194,7 @@ class State(AuthState):
                     self.just_once = False
 
                     try:
-                        options = cluster.get_cluster_dialog_options(
+                        options = ClusterService.get_cluster_dialog_options(
                             self.current_cluster
                         )
                     except ServiceError as err:

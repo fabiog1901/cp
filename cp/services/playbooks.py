@@ -4,13 +4,14 @@ import gzip
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
-from ..repos.postgres import event_repo, playbooks_repo
+from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.playbooks_repo import PlaybooksRepo
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
 def load_playbook_selection(name: str) -> dict:
     try:
-        versions = playbooks_repo.list_playbook_versions(name)
+        versions = PlaybooksRepo.list_playbook_versions(name)
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -21,7 +22,7 @@ def load_playbook_selection(name: str) -> dict:
     selected_version = _find_default_version(versions)
 
     try:
-        playbook = playbooks_repo.get_playbook(name, selected_version)
+        playbook = PlaybooksRepo.get_playbook(name, selected_version)
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -42,7 +43,7 @@ def load_playbook_selection(name: str) -> dict:
 
 def load_playbook_version(name: str, version: str) -> dict:
     try:
-        playbook = playbooks_repo.get_playbook(name, version)
+        playbook = PlaybooksRepo.get_playbook(name, version)
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -59,8 +60,8 @@ def load_playbook_version(name: str, version: str) -> dict:
 
 def set_default_playbook(name: str, version: str, updated_by: str) -> None:
     try:
-        playbooks_repo.set_default_playbook(name, version, updated_by)
-        event_repo.insert_event_log(
+        PlaybooksRepo.set_default_playbook(name, version, updated_by)
+        EventRepo.insert_event_log(
             updated_by,
             EventType.PLAYBOOK_SET_DEFAULT,
             {"name": name, "version": version},
@@ -83,16 +84,16 @@ def delete_playbook_version(
         raise ServiceValidationError("Cannot delete the default version.")
 
     try:
-        playbooks_repo.remove_playbook(name, version)
-        event_repo.insert_event_log(
+        PlaybooksRepo.remove_playbook(name, version)
+        EventRepo.insert_event_log(
             deleted_by,
             EventType.PLAYBOOK_REMOVE,
             {"name": name, "version": version},
         )
 
-        versions = playbooks_repo.list_playbook_versions(name)
+        versions = PlaybooksRepo.list_playbook_versions(name)
         selected_version = default_version
-        playbook = playbooks_repo.get_playbook(name, selected_version)
+        playbook = PlaybooksRepo.get_playbook(name, selected_version)
         content = _decode_playbook(playbook)
     except RepositoryError as err:
         raise from_repository_error(
@@ -112,19 +113,19 @@ def delete_playbook_version(
 
 def save_playbook_content(name: str, content: str, created_by: str) -> dict:
     try:
-        saved = playbooks_repo.add_playbook(
+        saved = PlaybooksRepo.add_playbook(
             name,
             gzip.compress(content.encode("utf-8")),
             created_by,
         )
         saved_version = saved.version.strftime(STRFTIME)
-        event_repo.insert_event_log(
+        EventRepo.insert_event_log(
             created_by,
             EventType.PLAYBOOK_ADD,
             {"name": name, "version": saved_version},
         )
 
-        versions = playbooks_repo.list_playbook_versions(name)
+        versions = PlaybooksRepo.list_playbook_versions(name)
     except RepositoryError as err:
         raise from_repository_error(
             err,

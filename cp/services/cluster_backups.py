@@ -2,8 +2,8 @@
 
 from ..infra.errors import RepositoryError
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ..repos.postgres import cluster_backups_repo
-from . import cluster as cluster_service
+from ..repos.postgres.cluster_backups_repo import ClusterBackupsRepo
+from .cluster import ClusterService
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
@@ -12,14 +12,14 @@ def load_cluster_backups_snapshot(
     groups: list[str],
     is_admin: bool,
 ) -> ClusterBackupsSnapshot | None:
-    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    selected_cluster = ClusterService.get_cluster_for_user(cluster_id, groups, is_admin)
     if selected_cluster is None:
         return None
 
     try:
         return ClusterBackupsSnapshot(
             cluster=selected_cluster,
-            backup_paths=cluster_backups_repo.list_backup_paths(
+            backup_paths=ClusterBackupsRepo.list_backup_paths(
                 _get_primary_dns_address(selected_cluster)
             ),
         )
@@ -39,7 +39,7 @@ def load_backup_details(
 ) -> list[BackupDetails]:
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
     try:
-        return cluster_backups_repo.list_backup_details(
+        return ClusterBackupsRepo.list_backup_details(
             _get_primary_dns_address(selected_cluster),
             backup_path,
         )
@@ -64,7 +64,7 @@ def request_cluster_restore(
     requested_by: str,
 ) -> int:
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    restore_request = cluster_service.validate_restore_request(
+    restore_request = ClusterService.validate_restore_request(
         name=selected_cluster.cluster_id,
         backup_path=backup_path,
         restore_aost=restore_aost,
@@ -74,7 +74,7 @@ def request_cluster_restore(
         backup_into=backup_into,
     )
 
-    return cluster_service.request_cluster_restore(
+    return ClusterService.request_cluster_restore(
         cluster_id=selected_cluster.cluster_id,
         backup_path=restore_request["backup_path"],
         restore_aost=restore_request["restore_aost"],
@@ -91,7 +91,7 @@ def _get_cluster_or_raise(
     groups: list[str],
     is_admin: bool,
 ) -> Cluster:
-    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    selected_cluster = ClusterService.get_cluster_for_user(cluster_id, groups, is_admin)
     if selected_cluster is None:
         raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
     return selected_cluster

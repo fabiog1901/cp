@@ -5,8 +5,9 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import DashboardMetrics, DashboardSnapshot
-from ..repos.postgres import dashboard_repo
-from . import cluster as cluster_service, settings
+from ..repos.postgres.dashboard_repo import DashboardRepo
+from . import settings
+from .cluster import ClusterService
 from .errors import ServiceValidationError, from_repository_error
 
 
@@ -25,7 +26,7 @@ def load_dashboard_snapshot(
     end: int,
     interval_secs: int,
 ) -> DashboardSnapshot | None:
-    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    selected_cluster = ClusterService.get_cluster_for_user(cluster_id, groups, is_admin)
     if selected_cluster is None:
         return None
 
@@ -89,7 +90,7 @@ def load_dashboard_metrics(
         ),
     ]:
         try:
-            response = dashboard_repo.query_prometheus_range(
+            response = DashboardRepo.query_prometheus_range(
                 prom_url,
                 query=query,
                 start=effective_start,

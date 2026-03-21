@@ -6,157 +6,165 @@ from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import ClusterIDRef, IntID, Job, Task
 
 
-def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
-    if is_admin:
+class JobsRepo:
+    @staticmethod
+    def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
+        if is_admin:
+            return fetch_all(
+                """
+                SELECT *
+                FROM jobs
+                ORDER BY created_at DESC
+                """,
+                (),
+                Job,
+            )
+
         return fetch_all(
             """
+            WITH
+            c AS (
+                SELECT cluster_id
+                FROM clusters
+                WHERE grp = ANY (%s)
+            ),
+            cj AS (
+                SELECT job_id
+                FROM map_clusters_jobs
+                WHERE cluster_id IN (SELECT * FROM c)
+            )
             SELECT *
             FROM jobs
-            ORDER BY created_at DESC
+            WHERE job_id IN (SELECT * FROM cj)
+            ORDER BY created_at DESC;
             """,
-            (),
+            (groups,),
             Job,
         )
 
-    return fetch_all(
-        """
-        WITH
-        c AS (
-            SELECT cluster_id
-            FROM clusters
-            WHERE grp = ANY (%s)
-        ),
-        cj AS (
-            SELECT job_id
-            FROM map_clusters_jobs
-            WHERE cluster_id IN (SELECT * FROM c)
-        )
-        SELECT *
-        FROM jobs
-        WHERE job_id IN (SELECT * FROM cj)
-        ORDER BY created_at DESC;
-        """,
-        (groups,),
-        Job,
-    )
-
-
-def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
-    if is_admin:
+    @staticmethod
+    def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
+        if is_admin:
+            return fetch_one(
+                """
+                SELECT *
+                FROM jobs
+                WHERE job_id = %s
+                """,
+                (job_id,),
+                Job,
+            )
         return fetch_one(
             """
+            WITH
+            c AS (
+                SELECT cluster_id
+                FROM clusters
+                WHERE grp = ANY (%s)
+            ),
+            cj AS (
+                SELECT job_id
+                FROM map_clusters_jobs
+                WHERE cluster_id IN (SELECT * FROM c)
+            )
             SELECT *
             FROM jobs
-            WHERE job_id = %s
+            WHERE job_id IN (SELECT * FROM cj)
+                AND job_id = %s
             """,
-            (job_id,),
+            (groups, job_id),
             Job,
         )
-    return fetch_one(
-        """
-        WITH
-        c AS (
-            SELECT cluster_id
-            FROM clusters
-            WHERE grp = ANY (%s)
-        ),
-        cj AS (
-            SELECT job_id
+
+    @staticmethod
+    def list_tasks(job_id: int) -> list[Task]:
+        return fetch_all(
+            """
+            SELECT job_id, task_id,
+                created_at, task_name, task_desc
+            FROM tasks
+            WHERE job_id = %s
+            ORDER BY task_id DESC
+            """,
+            (job_id,),
+            Task,
+        )
+
+    @staticmethod
+    def list_linked_clusters(job_id: int) -> list[ClusterIDRef]:
+        return fetch_all(
+            """
+            SELECT cluster_id AS cluster_id
             FROM map_clusters_jobs
-            WHERE cluster_id IN (SELECT * FROM c)
+            WHERE job_id = %s
+            ORDER BY cluster_id
+            """,
+            (job_id,),
+            ClusterIDRef,
         )
-        SELECT *
-        FROM jobs
-        WHERE job_id IN (SELECT * FROM cj)
-            AND job_id = %s
-        """,
-        (groups, job_id),
-        Job,
-    )
 
-
-def list_tasks(job_id: int) -> list[Task]:
-    return fetch_all(
-        """
-        SELECT job_id, task_id,
-            created_at, task_name, task_desc
-        FROM tasks
-        WHERE job_id = %s
-        ORDER BY task_id DESC
-        """,
-        (job_id,),
-        Task,
-    )
-
-
-def list_linked_clusters(job_id: int) -> list[ClusterIDRef]:
-    return fetch_all(
-        """
-        SELECT cluster_id AS cluster_id
-        FROM map_clusters_jobs
-        WHERE job_id = %s
-        ORDER BY cluster_id
-        """,
-        (job_id,),
-        ClusterIDRef,
-    )
-
-
-def insert_mapped_job(cluster_id: str, job_id: int, status: str) -> None:
-    execute_stmt(
-        """
-        WITH
-        create_job_linked AS (
-            INSERT INTO map_clusters_jobs
-                (cluster_id, job_id)
-            VALUES (%s, %s)
-            RETURNING 1
+    @staticmethod
+    def insert_mapped_job(cluster_id: str, job_id: int, status: str) -> None:
+        execute_stmt(
+            """
+            WITH
+            create_job_linked AS (
+                INSERT INTO map_clusters_jobs
+                    (cluster_id, job_id)
+                VALUES (%s, %s)
+                RETURNING 1
+            )
+            UPDATE jobs
+            SET status = %s
+            WHERE job_id = %s
+            """,
+            (cluster_id, job_id, status, job_id),
         )
-        UPDATE jobs
-        SET status = %s
-        WHERE job_id = %s
-        """,
-        (cluster_id, job_id, status, job_id),
-    )
 
-
-def update_job(job_id: int, status: str) -> None:
-    execute_stmt(
-        """
-        UPDATE jobs
-        SET status = %s
-        WHERE job_id = %s
-        """,
-        (status, job_id),
-    )
-
-
-def fail_zombie_jobs():
-    return fetch_all(
-        """
-        WITH
-        fail_zombie_jobs AS (
-            INSERT INTO mq (msg_type, start_after)
-            VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
-            RETURNING 1
+    @staticmethod
+    def update_job(job_id: int, status: str) -> None:
+        execute_stmt(
+            """
+            UPDATE jobs
+            SET status = %s
+            WHERE job_id = %s
+            """,
+            (status, job_id),
         )
-        UPDATE jobs
-        SET status = 'FAILED'
-        WHERE status in ('RUNNING', 'SCHEDULED')
-            AND now() > updated_at + INTERVAL '120s'
-        RETURNING job_id
-        """,
-        (),
-        IntID,
-    )
 
+    @staticmethod
+    def fail_zombie_jobs():
+        return fetch_all(
+            """
+            WITH
+            fail_zombie_jobs AS (
+                INSERT INTO mq (msg_type, start_after)
+                VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
+                RETURNING 1
+            )
+            UPDATE jobs
+            SET status = 'FAILED'
+            WHERE status in ('RUNNING', 'SCHEDULED')
+                AND now() > updated_at + INTERVAL '120s'
+            RETURNING job_id
+            """,
+            (),
+            IntID,
+        )
 
-def insert_task(job_id: int, task_id: int, created_at, task_name: str, task_desc) -> None:
-    execute_stmt(
-        """
-        INSERT INTO tasks
-            (job_id, task_id, created_at, task_name, task_desc)
-        VALUES (%s, %s, %s, %s, %s)
-        """,
-        (job_id, task_id, created_at, task_name, task_desc),
-    )
+    @staticmethod
+    def insert_task(
+        job_id: int,
+        task_id: int,
+        created_at,
+        task_name: str,
+        task_desc,
+    ) -> None:
+        execute_stmt(
+            """
+            INSERT INTO tasks
+                (job_id, task_id, created_at, task_name, task_desc)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (job_id, task_id, created_at, task_name, task_desc),
+        )

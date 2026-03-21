@@ -8,7 +8,7 @@ from ...components.main import chip_props, item_selector
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterOverview, RegionOption
-from ....services import cluster
+from ....services.cluster import ClusterService
 from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
@@ -82,7 +82,7 @@ class State(AuthState):
     @rx.event
     def create_new_cluster(self, form_data: dict):
         try:
-            job_id = cluster.request_cluster_creation(
+            job_id = ClusterService.request_cluster_creation(
                 form_data,
                 self.selected_cpus_per_node,
                 self.disk_fmt_2_size_map[self.selected_disk_size],
@@ -114,7 +114,7 @@ class State(AuthState):
     @rx.event
     def delete_cluster(self, cluster_id: str):
         try:
-            job_id = cluster.request_cluster_deletion(
+            job_id = ClusterService.request_cluster_deletion(
                 cluster_id,
                 self.webuser.username,
             )
@@ -138,7 +138,7 @@ class State(AuthState):
             return
         async with self:
             try:
-                options = cluster.get_create_dialog_options()
+                options = ClusterService.get_create_dialog_options()
                 self.available_versions = options["versions"]
                 self.selected_version = self.available_versions[0]
 
@@ -185,7 +185,7 @@ class State(AuthState):
                 # NOTE for some reason, `groups` has to be casted to a list
                 # even though it's already a list[str]
                 try:
-                    self.clusters = cluster.list_visible_clusters(
+                    self.clusters = ClusterService.list_visible_clusters(
                         list(self.webuser.groups), self.is_admin
                     )
                 except ServiceError as err:
@@ -400,28 +400,28 @@ def new_cluster_dialog():
     )
 
 
-def table_row(cluster: ClusterOverview):
+def table_row(cluster_overview: ClusterOverview):
     """Show a cluster in a table row."""
     return rx.table.row(
         # CLUSTER_ID
         rx.table.cell(
             rx.link(
-                rx.text(cluster.cluster_id, class_name="text-2xl font-semibold"),
-                href=f"/clusters/{cluster.cluster_id}",
+                rx.text(cluster_overview.cluster_id, class_name="text-2xl font-semibold"),
+                href=f"/clusters/{cluster_overview.cluster_id}",
             )
         ),
         # GROUP
-        rx.table.cell(cluster.grp),
+        rx.table.cell(cluster_overview.grp),
         # CREATED BY
-        rx.table.cell(cluster.created_by),
+        rx.table.cell(cluster_overview.created_by),
         # STATUS
-        rx.table.cell(get_cluster_status_badge(cluster.status)),
+        rx.table.cell(get_cluster_status_badge(cluster_overview.status)),
         # VERSION
-        rx.table.cell(cluster.version),
+        rx.table.cell(cluster_overview.version),
         # ACTION
         rx.table.cell(
             rx.match(
-                cluster.status,
+                cluster_overview.status,
                 ("DELETED", rx.box()),
                 ("DELETING...", rx.box()),
                 rx.hstack(
@@ -442,7 +442,7 @@ def table_row(cluster: ClusterOverview):
                                 ),
                             ),
                             rx.alert_dialog.content(
-                                rx.alert_dialog.title(cluster.cluster_id),
+                                rx.alert_dialog.title(cluster_overview.cluster_id),
                                 rx.alert_dialog.description(
                                     size="2",
                                 ),
@@ -460,7 +460,7 @@ def table_row(cluster: ClusterOverview):
                                             color_scheme="red",
                                             variant="solid",
                                             on_click=lambda: State.delete_cluster(
-                                                cluster.cluster_id,
+                                                cluster_overview.cluster_id,
                                             ),
                                         ),
                                     ),

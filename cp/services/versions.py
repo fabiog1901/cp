@@ -4,18 +4,19 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Version
-from ..repos.postgres import event_repo, versions_repo
+from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.versions_repo import VersionsRepo
 from .errors import ServiceValidationError, from_repository_error
 
 
 def list_versions() -> list[Version]:
     try:
-        return versions_repo.list_versions()
+        return VersionsRepo.list_versions()
     except RepositoryError as err:
         raise from_repository_error(
             err,
             unavailable_message="Versions are temporarily unavailable.",
-            fallback_message="Unable to load versions_repo.",
+            fallback_message="Unable to load VersionsRepo.",
         ) from err
 
 
@@ -26,8 +27,8 @@ def create_version(version: str, created_by: str) -> Version:
         raise ServiceValidationError("Version format is invalid.") from err
 
     try:
-        versions_repo.add_version(model)
-        event_repo.insert_event_log(
+        VersionsRepo.add_version(model)
+        EventRepo.insert_event_log(
             created_by,
             EventType.VERSION_ADD,
             model.version,
@@ -45,8 +46,8 @@ def create_version(version: str, created_by: str) -> Version:
 
 def delete_version(version: str, deleted_by: str) -> None:
     try:
-        versions_repo.remove_version(version)
-        event_repo.insert_event_log(
+        VersionsRepo.remove_version(version)
+        EventRepo.insert_event_log(
             deleted_by,
             EventType.VERSION_REMOVE,
             version,

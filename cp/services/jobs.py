@@ -4,24 +4,26 @@ import yaml
 
 from ..infra.errors import RepositoryError
 from ..models import Job, JobID, JobType
-from ..repos.postgres import event_repo, jobs_repo, mq_repo
+from ..repos.postgres.event_repo import EventRepo
+from ..repos.postgres.jobs_repo import JobsRepo
+from ..repos.postgres.mq_repo import MqRepo
 from .errors import ServiceNotFoundError, from_repository_error
 
 
 def list_visible_jobs(groups: list[str], is_admin: bool) -> list[Job]:
     try:
-        return jobs_repo.list_jobs(groups, is_admin)
+        return JobsRepo.list_jobs(groups, is_admin)
     except RepositoryError as err:
         raise from_repository_error(
             err,
             unavailable_message="Jobs are temporarily unavailable.",
-            fallback_message="Unable to load jobs_repo.",
+            fallback_message="Unable to load JobsRepo.",
         ) from err
 
 
 def get_job_for_user(job_id: int, groups: list[str], is_admin: bool) -> Job | None:
     try:
-        return jobs_repo.get_job(job_id, groups, is_admin)
+        return JobsRepo.get_job(job_id, groups, is_admin)
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -39,8 +41,8 @@ def get_job_details_for_user(job_id: int, groups: list[str], is_admin: bool) -> 
         return {
             "job": selected_job,
             "description_yaml": yaml.dump(selected_job.description),
-            "tasks": jobs_repo.list_tasks(job_id),
-            "linked_clusters": jobs_repo.list_linked_clusters(job_id),
+            "tasks": JobsRepo.list_tasks(job_id),
+            "linked_clusters": JobsRepo.list_linked_clusters(job_id),
         }
     except RepositoryError as err:
         raise from_repository_error(
@@ -67,12 +69,12 @@ def request_job_reschedule(
     )
 
     try:
-        msg_id: JobID = mq_repo.insert_into_mq(
+        msg_id: JobID = MqRepo.insert_into_mq(
             job_type,
             selected_job.description,
             requested_by,
         )
-        event_repo.insert_event_log(
+        EventRepo.insert_event_log(
             requested_by,
             job_type,
             selected_job.description | {"job_id": msg_id.job_id},

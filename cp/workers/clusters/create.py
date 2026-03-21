@@ -10,7 +10,9 @@ from ...models import (
     JobState,
     Region,
 )
-from ...repos.postgres import cluster_repo, jobs_repo, settings_repo
+from ...repos.postgres.jobs_repo import JobsRepo
+from ...repos.postgres.settings_repo import SettingsRepo
+from ...repos.postgres.cluster_repo import ClusterRepo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -42,14 +44,14 @@ def create_cluster(
     cluster_request = ClusterRequest(**data)
 
     # check if cluster with same cluster_id exists
-    c = cluster_repo.get_cluster(cluster_request.name, [], True)
+    c = ClusterRepo.get_cluster(cluster_request.name, [], True)
 
     if not recreate and c and not c.status.startswith("DELET"):
-        jobs_repo.update_job(
+        JobsRepo.update_job(
             job_id,
             JobState.FAILED,
         )
-        jobs_repo.insert_task(
+        JobsRepo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -58,7 +60,7 @@ def create_cluster(
         )
         return
 
-    cluster_repo.create_or_update_cluster(
+    ClusterRepo.create_or_update_cluster(
         cluster_request.name,
         ClusterState.PROVISIONING,
         created_by,
@@ -69,7 +71,7 @@ def create_cluster(
         cluster_request.disk_size,
     )
 
-    jobs_repo.insert_mapped_job(
+    JobsRepo.insert_mapped_job(
         cluster_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -91,7 +93,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         for cloud_region in cluster_request.regions:
             cloud, region = cloud_region.split(":")
-            region_details: list[Region] = cluster_repo.get_region_config(cloud, region)
+            region_details: list[Region] = ClusterRepo.get_region_config(cloud, region)
             if not region_details:
                 raise ValueError(f"No region configuration found for {cloud_region}")
 
@@ -171,17 +173,17 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "deployment_id": cluster_request.name,
             "deployment": deployment,
             "cockroachdb_version": cluster_request.version,
-            "cockroachdb_cluster_organization": settings_repo.get_setting("licence_org"),
-            "cockroachdb_enterprise_license": settings_repo.get_setting("licence_key"),
+            "cockroachdb_cluster_organization": SettingsRepo.get_setting("licence_org"),
+            "cockroachdb_enterprise_license": SettingsRepo.get_setting("licence_key"),
             "dbusers": [
                 {
-                    "name": settings_repo.get_setting("default_username"),
-                    "password": settings_repo.get_setting("default_password"),
+                    "name": SettingsRepo.get_setting("default_username"),
+                    "password": SettingsRepo.get_setting("default_password"),
                     "is_cert": False,
                     "is_admin": True,
                 }
             ],
-            "cloud_storage_url": settings_repo.get_setting("cloud_storage_url"),
+            "cloud_storage_url": SettingsRepo.get_setting("cloud_storage_url"),
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(
@@ -189,7 +191,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         )
 
         if job_status != "successful":
-            cluster_repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+            ClusterRepo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
             return
 
         cluster_inventory: list[InventoryRegion] = []
@@ -216,7 +218,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
                         )
                     )
 
-        cluster_repo.update_cluster(
+        ClusterRepo.update_cluster(
             cluster_request.name,
             created_by,
             status=ClusterState.RUNNING,
@@ -225,12 +227,12 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         )
     except Exception as err:
         logger.exception("Unhandled error while creating cluster '%s'", cluster_request.name)
-        jobs_repo.update_job(job_id, JobState.FAILED)
-        jobs_repo.insert_task(
+        JobsRepo.update_job(job_id, JobState.FAILED)
+        JobsRepo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
             "FAILURE",
             str(err),
         )
-        cluster_repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+        ClusterRepo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
