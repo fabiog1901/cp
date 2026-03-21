@@ -17,6 +17,7 @@ requests = "^2.32.3"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 reflex-monaco = "^0.0.3"
 cloud-instance = "^0.1.6"
+systemd-python = {version = "^235", markers = "sys_platform == 'linux'"}
 
 
 [build-system]

@@ -2242,6 +2242,18 @@ anyio = ">=3.6.2,<5"
 full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
 
 [[package]]
+name = "systemd-python"
+version = "235"
+description = "Python interface for libsystemd"
+optional = false
+python-versions = "*"
+groups = ["main"]
+markers = "sys_platform == \"linux\""
+files = [
+    {file = "systemd-python-235.tar.gz", hash = "sha256:4e57f39797fd5d9e2d22b8806a252d7c0106c936039d1e71c8c6b8008e695c0a"},
+]
+
+[[package]]
 name = "tabulate"
 version = "0.9.0"
 description = "Pretty-print tabular data"
@@ -2523,4 +2535,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "871ca4b04d18a12607a86c76a75e11f24563e623f278143974a19ae125d5537c"
+content-hash = "422f53c1c877d1c05ec0021e5085ee67d3ef972c871592e83d5955590c230f8d"
