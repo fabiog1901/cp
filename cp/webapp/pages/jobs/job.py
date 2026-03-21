@@ -6,7 +6,7 @@ from ...components.BadgeJobStatus import get_job_status_badge
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import ClusterIDRef, Job, TS_FORMAT, Task
-from ....services import jobs
+from ....services.jobs import JobsService
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -28,7 +28,7 @@ class State(AuthState):
     @rx.event
     def reschedule_job(self):
         try:
-            rescheduled_job_id = jobs.request_job_reschedule(
+            rescheduled_job_id = JobsService.request_job_reschedule(
                 self.current_job.job_id,
                 list(self.webuser.groups),
                 self.is_admin,
@@ -59,7 +59,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    data = jobs.get_job_details_for_user(
+                    data = JobsService.get_job_details_for_user(
                         int(self.job_id),
                         list(self.webuser.groups),
                         self.is_admin,

@@ -7,7 +7,7 @@ from ...components.main import cluster_banner, mini_breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterJobsSnapshot, Job
-from ....services import cluster_jobs
+from ....services.cluster_jobs import ClusterJobsService
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -45,7 +45,7 @@ class State(AuthState):
             async with self:
                 try:
                     snapshot: ClusterJobsSnapshot | None = (
-                        cluster_jobs.load_cluster_jobs_snapshot(
+                        ClusterJobsService.load_cluster_jobs_snapshot(
                             self.cluster_id,
                             list(self.webuser.groups),
                             self.is_admin,

@@ -7,7 +7,7 @@ from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import TS_FORMAT, Setting
-from ....services import settings
+from ....services.settings import SettingsService
 from ....services.errors import ServiceError
 from ...state import AuthState
 from ...layouts.template import template
@@ -28,7 +28,7 @@ class State(AuthState):
 
     def save(self, id):
         try:
-            settings.update_setting(id, self.draft[id], self.webuser.username)
+            SettingsService.update_setting(id, self.draft[id], self.webuser.username)
         except ServiceError as err:
             return NotifyState.show(err.user_title, err.user_message)
         except Exception:
@@ -69,7 +69,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.settings = settings.list_settings()
+                    self.settings = SettingsService.list_settings()
                 except ServiceError as err:
                     self.is_running = False
                     return NotifyState.show(err.user_title, err.user_message)

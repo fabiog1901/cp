@@ -8,7 +8,7 @@ from ...components.main import breadcrumb
 from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Region
-from ....services import regions
+from ....services.regions import RegionsService
 from ...state import AuthState
 from ...layouts.template import template
 
@@ -50,7 +50,7 @@ class State(AuthState):
 
     def remove_region(self, r: Region):
         try:
-            regions.delete_region(r, self.webuser.username)
+            RegionsService.delete_region(r, self.webuser.username)
         except Exception as e:
             return NotifyState.show("Error", str(e))
 
@@ -58,7 +58,7 @@ class State(AuthState):
         self.dialog_open = False
 
         try:
-            regions.create_region(
+            RegionsService.create_region(
                 cloud=self.cloud,
                 region=self.region,
                 zone=self.zone,
@@ -94,7 +94,7 @@ class State(AuthState):
 
             async with self:
                 try:
-                    self.regions = regions.list_regions()
+                    self.regions = RegionsService.list_regions()
                 except Exception as e:
                     self.is_running = False
                     return NotifyState.show("Error", str(e))
