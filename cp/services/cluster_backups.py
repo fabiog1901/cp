@@ -1,10 +1,10 @@
 """Business logic for the cluster backups vertical."""
 
-from pydantic import ValidationError
-
+from ..infra.errors import RepositoryError
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
 from ..repos.postgres import cluster_backups
-from . import cluster
+from . import cluster as cluster_service
+from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
 def load_cluster_backups_snapshot(
@@ -12,14 +12,23 @@ def load_cluster_backups_snapshot(
     groups: list[str],
     is_admin: bool,
 ) -> ClusterBackupsSnapshot | None:
-    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
-    if cluster is None:
+    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    if selected_cluster is None:
         return None
 
-    return ClusterBackupsSnapshot(
-        cluster=cluster,
-        backup_paths=cluster_backups.list_backup_paths(_get_primary_dns_address(cluster)),
-    )
+    try:
+        return ClusterBackupsSnapshot(
+            cluster=selected_cluster,
+            backup_paths=cluster_backups.list_backup_paths(
+                _get_primary_dns_address(selected_cluster)
+            ),
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Cluster backups are temporarily unavailable.",
+            fallback_message=f"Unable to load backups for cluster '{cluster_id}'.",
+        ) from err
 
 
 def load_backup_details(
@@ -28,11 +37,18 @@ def load_backup_details(
     is_admin: bool,
     backup_path: str,
 ) -> list[BackupDetails]:
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    return cluster_backups.list_backup_details(
-        _get_primary_dns_address(cluster),
-        backup_path,
-    )
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    try:
+        return cluster_backups.list_backup_details(
+            _get_primary_dns_address(selected_cluster),
+            backup_path,
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Backup details are temporarily unavailable.",
+            fallback_message=f"Unable to load backup details for cluster '{cluster_id}'.",
+        ) from err
 
 
 def request_cluster_restore(
@@ -47,23 +63,19 @@ def request_cluster_restore(
     backup_into: str | None,
     requested_by: str,
 ) -> int:
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    restore_request = cluster_service.validate_restore_request(
+        name=selected_cluster.cluster_id,
+        backup_path=backup_path,
+        restore_aost=restore_aost,
+        restore_full_cluster=restore_full_cluster,
+        object_type=object_type,
+        object_name=object_name,
+        backup_into=backup_into,
+    )
 
-    try:
-        restore_request = cluster.validate_restore_request(
-            name=cluster.cluster_id,
-            backup_path=backup_path,
-            restore_aost=restore_aost,
-            restore_full_cluster=restore_full_cluster,
-            object_type=object_type,
-            object_name=object_name,
-            backup_into=backup_into,
-        )
-    except ValidationError:
-        raise
-
-    return cluster.request_cluster_restore(
-        cluster_id=cluster.cluster_id,
+    return cluster_service.request_cluster_restore(
+        cluster_id=selected_cluster.cluster_id,
         backup_path=restore_request["backup_path"],
         restore_aost=restore_request["restore_aost"],
         restore_full_cluster=restore_request["restore_full_cluster"],
@@ -79,13 +91,15 @@ def _get_cluster_or_raise(
     groups: list[str],
     is_admin: bool,
 ) -> Cluster:
-    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
-    if cluster is None:
-        raise ValueError(f"Cluster {cluster_id} was not found")
-    return cluster
+    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    if selected_cluster is None:
+        raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
+    return selected_cluster
 
 
 def _get_primary_dns_address(cluster: Cluster) -> str:
     if not cluster.lbs_inventory:
-        raise ValueError(f"Cluster {cluster.cluster_id} has no load balancer endpoint.")
+        raise ServiceValidationError(
+            f"Cluster '{cluster.cluster_id}' has no load balancer endpoint."
+        )
     return cluster.lbs_inventory[0].dns_address

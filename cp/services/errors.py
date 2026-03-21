@@ -46,6 +46,11 @@ class ServiceAuthorizationError(ServiceError):
     default_message = "You are not authorized to perform this action."
 
 
+class ServiceNotFoundError(ServiceError):
+    default_title = "Not Found"
+    default_message = "The requested item could not be found."
+
+
 def from_repository_error(
     err: RepositoryError,
     *,

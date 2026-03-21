@@ -3,15 +3,17 @@
 import time
 from typing import Any
 
+from ..infra.errors import RepositoryError
 from ..models import DashboardMetrics, DashboardSnapshot
 from ..repos.postgres import dashboard
-from . import cluster, settings
+from . import cluster as cluster_service, settings
+from .errors import ServiceValidationError, from_repository_error
 
 
 def get_prometheus_url() -> str:
     prom_url = settings.get_setting("prom_url").strip()
     if not prom_url:
-        raise ValueError("Missing Prometheus URL in settings.")
+        raise ServiceValidationError("Missing Prometheus URL in settings.")
     return prom_url
 
 
@@ -23,8 +25,8 @@ def load_dashboard_snapshot(
     end: int,
     interval_secs: int,
 ) -> DashboardSnapshot | None:
-    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
-    if cluster is None:
+    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    if selected_cluster is None:
         return None
 
     metrics = load_dashboard_metrics(
@@ -34,7 +36,7 @@ def load_dashboard_snapshot(
         end,
         interval_secs,
     )
-    return DashboardSnapshot(cluster=cluster, metrics=metrics)
+    return DashboardSnapshot(cluster=selected_cluster, metrics=metrics)
 
 
 def load_dashboard_metrics(
@@ -86,13 +88,20 @@ def load_dashboard_metrics(
             False,
         ),
     ]:
-        response = dashboard.query_prometheus_range(
-            prom_url,
-            query=query,
-            start=effective_start,
-            end=end,
-            interval_secs=interval_secs,
-        )
+        try:
+            response = dashboard.query_prometheus_range(
+                prom_url,
+                query=query,
+                start=effective_start,
+                end=end,
+                interval_secs=interval_secs,
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Dashboard metrics are temporarily unavailable.",
+                fallback_message=f"Unable to load dashboard metrics for cluster '{cluster_id}'.",
+            ) from err
 
         if track_nodes:
             prefix = "p99" if metric_name == "latency" else "cpu"

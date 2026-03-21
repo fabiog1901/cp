@@ -2,16 +2,32 @@
 
 import gzip
 
+from ..infra.errors import RepositoryError
 from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
 from ..repos.postgres import events, playbooks
+from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
 def load_playbook_selection(name: str) -> dict:
-    versions = playbooks.list_playbook_versions(name)
+    try:
+        versions = playbooks.list_playbook_versions(name)
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbooks are temporarily unavailable.",
+            fallback_message=f"Unable to load playbook '{name}'.",
+        ) from err
     version_strings = sorted([x.version.strftime(STRFTIME) for x in versions])
     selected_version = _find_default_version(versions)
 
-    playbook = playbooks.get_playbook(name, selected_version)
+    try:
+        playbook = playbooks.get_playbook(name, selected_version)
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbooks are temporarily unavailable.",
+            fallback_message=f"Unable to load playbook '{name}'.",
+        ) from err
     content = _decode_playbook(playbook)
 
     return {
@@ -25,7 +41,14 @@ def load_playbook_selection(name: str) -> dict:
 
 
 def load_playbook_version(name: str, version: str) -> dict:
-    playbook = playbooks.get_playbook(name, version)
+    try:
+        playbook = playbooks.get_playbook(name, version)
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbooks are temporarily unavailable.",
+            fallback_message=f"Unable to load playbook '{name}'.",
+        ) from err
     content = _decode_playbook(playbook)
     return {
         "playbook_version": version,
@@ -35,12 +58,19 @@ def load_playbook_version(name: str, version: str) -> dict:
 
 
 def set_default_playbook(name: str, version: str, updated_by: str) -> None:
-    playbooks.set_default_playbook(name, version, updated_by)
-    events.insert_event_log(
-        updated_by,
-        EventType.PLAYBOOK_SET_DEFAULT,
-        {"name": name, "version": version},
-    )
+    try:
+        playbooks.set_default_playbook(name, version, updated_by)
+        events.insert_event_log(
+            updated_by,
+            EventType.PLAYBOOK_SET_DEFAULT,
+            {"name": name, "version": version},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbook updates are temporarily unavailable.",
+            fallback_message=f"Unable to set default playbook version for '{name}'.",
+        ) from err
 
 
 def delete_playbook_version(
@@ -50,19 +80,26 @@ def delete_playbook_version(
     deleted_by: str,
 ) -> dict:
     if version == default_version:
-        raise ValueError("Cannot delete the default version")
+        raise ServiceValidationError("Cannot delete the default version.")
 
-    playbooks.remove_playbook(name, version)
-    events.insert_event_log(
-        deleted_by,
-        EventType.PLAYBOOK_REMOVE,
-        {"name": name, "version": version},
-    )
+    try:
+        playbooks.remove_playbook(name, version)
+        events.insert_event_log(
+            deleted_by,
+            EventType.PLAYBOOK_REMOVE,
+            {"name": name, "version": version},
+        )
 
-    versions = playbooks.list_playbook_versions(name)
-    selected_version = default_version
-    playbook = playbooks.get_playbook(name, selected_version)
-    content = _decode_playbook(playbook)
+        versions = playbooks.list_playbook_versions(name)
+        selected_version = default_version
+        playbook = playbooks.get_playbook(name, selected_version)
+        content = _decode_playbook(playbook)
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbook updates are temporarily unavailable.",
+            fallback_message=f"Unable to delete playbook version for '{name}'.",
+        ) from err
 
     return {
         "playbook_versions": sorted([x.version.strftime(STRFTIME) for x in versions]),
@@ -74,19 +111,27 @@ def delete_playbook_version(
 
 
 def save_playbook_content(name: str, content: str, created_by: str) -> dict:
-    saved = playbooks.add_playbook(
-        name,
-        gzip.compress(content.encode("utf-8")),
-        created_by,
-    )
-    saved_version = saved.version.strftime(STRFTIME)
-    events.insert_event_log(
-        created_by,
-        EventType.PLAYBOOK_ADD,
-        {"name": name, "version": saved_version},
-    )
+    try:
+        saved = playbooks.add_playbook(
+            name,
+            gzip.compress(content.encode("utf-8")),
+            created_by,
+        )
+        saved_version = saved.version.strftime(STRFTIME)
+        events.insert_event_log(
+            created_by,
+            EventType.PLAYBOOK_ADD,
+            {"name": name, "version": saved_version},
+        )
 
-    versions = playbooks.list_playbook_versions(name)
+        versions = playbooks.list_playbook_versions(name)
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Playbook saves are temporarily unavailable.",
+            conflict_message=f"A conflicting playbook version already exists for '{name}'.",
+            fallback_message=f"Unable to save playbook '{name}'.",
+        ) from err
     return {
         "playbook_versions": sorted([x.version.strftime(STRFTIME) for x in versions]),
         "playbook_version": saved_version,
@@ -107,7 +152,7 @@ def _find_default_version(versions: list[PlaybookOverview]) -> str:
         return selected_version
     if versions:
         return versions[-1].version.strftime(STRFTIME)
-    raise ValueError("No playbook versions found")
+    raise ServiceNotFoundError("No playbook versions found.")
 
 
 def _decode_playbook(playbook: Playbook) -> str:

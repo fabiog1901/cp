@@ -1,8 +1,12 @@
 """Business logic for the cluster users vertical."""
 
+from pydantic import ValidationError
+
+from ..infra.errors import RepositoryError
 from ..models import Cluster, ClusterUsersSnapshot, EventType, NewDatabaseUserRequest
 from ..repos.postgres import cluster_users, events
-from . import cluster
+from . import cluster as cluster_service
+from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
 def load_cluster_users_snapshot(
@@ -10,16 +14,23 @@ def load_cluster_users_snapshot(
     groups: list[str],
     is_admin: bool,
 ) -> ClusterUsersSnapshot | None:
-    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
-    if cluster is None:
+    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    if selected_cluster is None:
         return None
 
-    return ClusterUsersSnapshot(
-        cluster=cluster,
-        database_users=cluster_users.list_database_users(
-            _get_primary_dns_address(cluster)
-        ),
-    )
+    try:
+        return ClusterUsersSnapshot(
+            cluster=selected_cluster,
+            database_users=cluster_users.list_database_users(
+                _get_primary_dns_address(selected_cluster)
+            ),
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Database users are temporarily unavailable.",
+            fallback_message=f"Unable to load database users for cluster '{cluster_id}'.",
+        ) from err
 
 
 def create_database_user(
@@ -30,18 +41,31 @@ def create_database_user(
     password: str,
     requested_by: str,
 ) -> None:
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    request = NewDatabaseUserRequest(username=username, password=password)
-    cluster_users.create_database_user(
-        _get_primary_dns_address(cluster),
-        request.username,
-        request.password,
-    )
-    events.insert_event_log(
-        requested_by,
-        EventType.DB_USER_ADD,
-        {"cluster_id": cluster.cluster_id, "db_user": request.username},
-    )
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    try:
+        request = NewDatabaseUserRequest(username=username, password=password)
+    except ValidationError as err:
+        raise ServiceValidationError("Database username or password is invalid.") from err
+
+    try:
+        cluster_users.create_database_user(
+            _get_primary_dns_address(selected_cluster),
+            request.username,
+            request.password,
+        )
+        events.insert_event_log(
+            requested_by,
+            EventType.DB_USER_ADD,
+            {"cluster_id": selected_cluster.cluster_id, "db_user": request.username},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Database user creation is temporarily unavailable.",
+            conflict_message=f"Database user '{request.username}' already exists.",
+            validation_message="Database user details are invalid.",
+            fallback_message=f"Unable to create database user '{request.username}'.",
+        ) from err
 
 
 def remove_database_user(
@@ -51,16 +75,23 @@ def remove_database_user(
     username: str,
     requested_by: str,
 ) -> None:
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    cluster_users.remove_database_user(
-        _get_primary_dns_address(cluster),
-        username,
-    )
-    events.insert_event_log(
-        requested_by,
-        EventType.DB_USER_REMOVE,
-        {"cluster_id": cluster.cluster_id, "db_user": username},
-    )
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    try:
+        cluster_users.remove_database_user(
+            _get_primary_dns_address(selected_cluster),
+            username,
+        )
+        events.insert_event_log(
+            requested_by,
+            EventType.DB_USER_REMOVE,
+            {"cluster_id": selected_cluster.cluster_id, "db_user": username},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Database user removal is temporarily unavailable.",
+            fallback_message=f"Unable to remove database user '{username}'.",
+        ) from err
 
 
 def revoke_database_user_role(
@@ -71,17 +102,24 @@ def revoke_database_user_role(
     role: str,
     requested_by: str,
 ) -> None:
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    cluster_users.revoke_database_user_role(
-        _get_primary_dns_address(cluster),
-        username,
-        role,
-    )
-    events.insert_event_log(
-        requested_by,
-        EventType.DB_USER_REMOVE_ROLE,
-        {"cluster_id": cluster.cluster_id, "db_user": username, "role": role},
-    )
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    try:
+        cluster_users.revoke_database_user_role(
+            _get_primary_dns_address(selected_cluster),
+            username,
+            role,
+        )
+        events.insert_event_log(
+            requested_by,
+            EventType.DB_USER_REMOVE_ROLE,
+            {"cluster_id": selected_cluster.cluster_id, "db_user": username, "role": role},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Database role updates are temporarily unavailable.",
+            fallback_message=f"Unable to revoke role '{role}' from '{username}'.",
+        ) from err
 
 
 def update_database_user_password(
@@ -93,19 +131,27 @@ def update_database_user_password(
     requested_by: str,
 ) -> None:
     if not password:
-        raise ValueError("Password is required.")
+        raise ServiceValidationError("Password is required.")
 
-    cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
-    cluster_users.update_database_user_password(
-        _get_primary_dns_address(cluster),
-        username,
-        password,
-    )
-    events.insert_event_log(
-        requested_by,
-        EventType.DB_USER_UPDATE,
-        {"cluster_id": cluster.cluster_id, "db_user": username},
-    )
+    selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
+    try:
+        cluster_users.update_database_user_password(
+            _get_primary_dns_address(selected_cluster),
+            username,
+            password,
+        )
+        events.insert_event_log(
+            requested_by,
+            EventType.DB_USER_UPDATE,
+            {"cluster_id": selected_cluster.cluster_id, "db_user": username},
+        )
+    except RepositoryError as err:
+        raise from_repository_error(
+            err,
+            unavailable_message="Password updates are temporarily unavailable.",
+            validation_message="The new password is invalid.",
+            fallback_message=f"Unable to update password for '{username}'.",
+        ) from err
 
 
 def _get_cluster_or_raise(
@@ -113,13 +159,15 @@ def _get_cluster_or_raise(
     groups: list[str],
     is_admin: bool,
 ) -> Cluster:
-    cluster = cluster.get_cluster_for_user(cluster_id, groups, is_admin)
-    if cluster is None:
-        raise ValueError(f"Cluster {cluster_id} was not found")
-    return cluster
+    selected_cluster = cluster_service.get_cluster_for_user(cluster_id, groups, is_admin)
+    if selected_cluster is None:
+        raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
+    return selected_cluster
 
 
 def _get_primary_dns_address(cluster: Cluster) -> str:
     if not cluster.lbs_inventory:
-        raise ValueError(f"Cluster {cluster.cluster_id} has no load balancer endpoint.")
+        raise ServiceValidationError(
+            f"Cluster '{cluster.cluster_id}' has no load balancer endpoint."
+        )
     return cluster.lbs_inventory[0].dns_address

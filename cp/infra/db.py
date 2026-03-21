@@ -65,7 +65,7 @@ def execute_stmt(
                 stmt = _normalize_stmt(stmt)
                 cur.execute(stmt, bind_args)
             except Exception as err:
-                raise _translate_database_error(err, operation) from err
+                raise translate_database_error(err, operation) from err
 
 
 def fetch_all(
@@ -84,7 +84,7 @@ def fetch_all(
                 cur.execute(stmt, bind_args)
                 return cur.fetchall()
             except Exception as err:
-                raise _translate_database_error(err, operation) from err
+                raise translate_database_error(err, operation) from err
 
 
 def fetch_one(
@@ -103,7 +103,7 @@ def fetch_one(
                 cur.execute(stmt, bind_args)
                 return cur.fetchone()
             except Exception as err:
-                raise _translate_database_error(err, operation) from err
+                raise translate_database_error(err, operation) from err
 
 
 def fetch_scalar(
@@ -124,7 +124,7 @@ def fetch_scalar(
                     return None
                 return row[0]
             except Exception as err:
-                raise _translate_database_error(err, operation) from err
+                raise translate_database_error(err, operation) from err
 
 
 def _register_dumpers(conn) -> None:
@@ -137,7 +137,7 @@ def _normalize_stmt(stmt: str) -> str:
     return " ".join([s.strip() for s in stmt.split("\n")])
 
 
-def _translate_database_error(
+def translate_database_error(
     err: Exception,
     operation: str | None,
 ) -> RepositoryError:

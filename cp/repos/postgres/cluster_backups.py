@@ -1,9 +1,12 @@
 """Repository for listing backups on a cluster."""
 
+import logging
+
 import psycopg
 from psycopg import sql
 from psycopg.rows import class_row
 
+from ...infra.db import translate_database_error
 from ...models import BackupDetails, BackupPathOption
 
 CONNECT_TIMEOUT_SECS = 2
@@ -11,12 +14,17 @@ CLUSTER_DB_PORT = 26257
 CLUSTER_DB_NAME = "defaultdb"
 CLUSTER_DB_USERNAME = "cockroach"
 CLUSTER_DB_PASSWORD = "cockroach"
+logger = logging.getLogger(__name__)
 
 
 def list_backup_paths(dns_address: str) -> list[BackupPathOption]:
-    with _connect(dns_address) as conn:
-        with conn.cursor() as cur:
-            rows = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
+    try:
+        with _connect(dns_address) as conn:
+            with conn.cursor() as cur:
+                rows = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
+    except Exception as err:
+        logger.debug("Cluster backup query failed [operation=cluster_backups.list_backup_paths]")
+        raise translate_database_error(err, "cluster_backups.list_backup_paths") from err
 
     paths = sorted((str(row[0]) for row in rows), reverse=True)
     return [BackupPathOption(path="LATEST")] + [
@@ -40,9 +48,13 @@ def list_backup_details(
         """
     ).format(sql.Literal(backup_path))
 
-    with _connect(dns_address) as conn:
-        with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
-            return cur.execute(query).fetchall()
+    try:
+        with _connect(dns_address) as conn:
+            with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
+                return cur.execute(query).fetchall()
+    except Exception as err:
+        logger.debug("Cluster backup query failed [operation=cluster_backups.list_backup_details]")
+        raise translate_database_error(err, "cluster_backups.list_backup_details") from err
 
 
 def _connect(dns_address: str) -> psycopg.Connection:
