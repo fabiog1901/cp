@@ -2,13 +2,13 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventType
-from ..repos.postgres import auth, events
+from ..repos.postgres import auth_repo, event_repo
 from .errors import from_repository_error
 
 
 def list_role_group_mappings():
     try:
-        return auth.list_role_group_mappings()
+        return auth_repo.list_role_group_mappings()
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -19,7 +19,7 @@ def list_role_group_mappings():
 
 def record_login(username: str, roles: list[str], groups: list[str]) -> None:
     try:
-        events.insert_event_log(
+        event_repo.insert_event_log(
             username,
             EventType.LOGIN,
             {"roles": roles, "groups": groups},

@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...models import ClusterState, ClusterUpgradeRequest, JobState
-from ...repos.postgres import cluster, jobs
+from ...repos.postgres import cluster_repo, jobs_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -19,9 +19,23 @@ def upgrade_cluster(
     # TODO check user permissions
 
     # check if cluster with same cluster_id exists
-    c = cluster.get_cluster(cur.name, [], True)
+    c = cluster_repo.get_cluster(cur.name, [], True)
 
-    if c is None or c.status in [
+    if c is None:
+        # TODO update message for failed job:
+        # cannot upgrade a deleting cluster
+        jobs_repo.update_job(
+            job_id,
+            JobState.FAILED,
+        )
+        return
+
+    jobs_repo.insert_mapped_job(
+        cur.name,
+        job_id,
+        JobState.SCHEDULED,
+    )
+    if c.status in [
         ClusterState.DELETED,
         ClusterState.DELETING,
         ClusterState.PROVISIONING,
@@ -30,23 +44,18 @@ def upgrade_cluster(
     ]:
         # TODO update message for failed job:
         # cannot upgrade a deleting cluster
-        jobs.update_job(
+        jobs_repo.update_job(
             job_id,
             JobState.FAILED,
         )
         return
-
-    cluster.update_cluster(
+    
+    cluster_repo.update_cluster(
         cur.name,
         requested_by,
         status=ClusterState.UPGRADING,
     )
 
-    jobs.insert_mapped_job(
-        cur.name,
-        job_id,
-        JobState.SCHEDULED,
-    )
 
     Thread(
         target=upgrade_cluster_worker,
@@ -73,14 +82,14 @@ def upgrade_cluster_worker(
         job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
 
         if job_status != "successful":
-            cluster.update_cluster(
+            cluster_repo.update_cluster(
                 cur.name,
                 requested_by,
                 status=ClusterState.UPGRADE_FAILED,
             )
             return
 
-        cluster.update_cluster(
+        cluster_repo.update_cluster(
             cur.name,
             requested_by,
             status=ClusterState.RUNNING,
@@ -88,15 +97,15 @@ def upgrade_cluster_worker(
         )
     except Exception as err:
         logger.exception("Unhandled error while upgrading cluster '%s'", cur.name)
-        jobs.update_job(job_id, JobState.FAILED)
-        jobs.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
             "FAILURE",
             str(err),
         )
-        cluster.update_cluster(
+        cluster_repo.update_cluster(
             cur.name,
             requested_by,
             status=ClusterState.UPGRADE_FAILED,

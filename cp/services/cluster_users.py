@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import Cluster, ClusterUsersSnapshot, EventType, NewDatabaseUserRequest
-from ..repos.postgres import cluster_users, events
+from ..repos.postgres import cluster_users_repo, event_repo
 from . import cluster as cluster_service
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
@@ -21,7 +21,7 @@ def load_cluster_users_snapshot(
     try:
         return ClusterUsersSnapshot(
             cluster=selected_cluster,
-            database_users=cluster_users.list_database_users(
+            database_users=cluster_users_repo.list_database_users(
                 _get_primary_dns_address(selected_cluster)
             ),
         )
@@ -48,12 +48,12 @@ def create_database_user(
         raise ServiceValidationError("Database username or password is invalid.") from err
 
     try:
-        cluster_users.create_database_user(
+        cluster_users_repo.create_database_user(
             _get_primary_dns_address(selected_cluster),
             request.username,
             request.password,
         )
-        events.insert_event_log(
+        event_repo.insert_event_log(
             requested_by,
             EventType.DB_USER_ADD,
             {"cluster_id": selected_cluster.cluster_id, "db_user": request.username},
@@ -77,11 +77,11 @@ def remove_database_user(
 ) -> None:
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
     try:
-        cluster_users.remove_database_user(
+        cluster_users_repo.remove_database_user(
             _get_primary_dns_address(selected_cluster),
             username,
         )
-        events.insert_event_log(
+        event_repo.insert_event_log(
             requested_by,
             EventType.DB_USER_REMOVE,
             {"cluster_id": selected_cluster.cluster_id, "db_user": username},
@@ -104,12 +104,12 @@ def revoke_database_user_role(
 ) -> None:
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
     try:
-        cluster_users.revoke_database_user_role(
+        cluster_users_repo.revoke_database_user_role(
             _get_primary_dns_address(selected_cluster),
             username,
             role,
         )
-        events.insert_event_log(
+        event_repo.insert_event_log(
             requested_by,
             EventType.DB_USER_REMOVE_ROLE,
             {"cluster_id": selected_cluster.cluster_id, "db_user": username, "role": role},
@@ -135,12 +135,12 @@ def update_database_user_password(
 
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
     try:
-        cluster_users.update_database_user_password(
+        cluster_users_repo.update_database_user_password(
             _get_primary_dns_address(selected_cluster),
             username,
             password,
         )
-        events.insert_event_log(
+        event_repo.insert_event_log(
             requested_by,
             EventType.DB_USER_UPDATE,
             {"cluster_id": selected_cluster.cluster_id, "db_user": username},

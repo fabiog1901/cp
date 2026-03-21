@@ -4,24 +4,24 @@ import yaml
 
 from ..infra.errors import RepositoryError
 from ..models import Job, JobID, JobType
-from ..repos.postgres import events, jobs, mq
+from ..repos.postgres import event_repo, jobs_repo, mq_repo
 from .errors import ServiceNotFoundError, from_repository_error
 
 
 def list_visible_jobs(groups: list[str], is_admin: bool) -> list[Job]:
     try:
-        return jobs.list_jobs(groups, is_admin)
+        return jobs_repo.list_jobs(groups, is_admin)
     except RepositoryError as err:
         raise from_repository_error(
             err,
             unavailable_message="Jobs are temporarily unavailable.",
-            fallback_message="Unable to load jobs.",
+            fallback_message="Unable to load jobs_repo.",
         ) from err
 
 
 def get_job_for_user(job_id: int, groups: list[str], is_admin: bool) -> Job | None:
     try:
-        return jobs.get_job(job_id, groups, is_admin)
+        return jobs_repo.get_job(job_id, groups, is_admin)
     except RepositoryError as err:
         raise from_repository_error(
             err,
@@ -39,8 +39,8 @@ def get_job_details_for_user(job_id: int, groups: list[str], is_admin: bool) -> 
         return {
             "job": selected_job,
             "description_yaml": yaml.dump(selected_job.description),
-            "tasks": jobs.list_tasks(job_id),
-            "linked_clusters": jobs.list_linked_clusters(job_id),
+            "tasks": jobs_repo.list_tasks(job_id),
+            "linked_clusters": jobs_repo.list_linked_clusters(job_id),
         }
     except RepositoryError as err:
         raise from_repository_error(
@@ -67,12 +67,12 @@ def request_job_reschedule(
     )
 
     try:
-        msg_id: JobID = mq.insert_into_mq(
+        msg_id: JobID = mq_repo.insert_into_mq(
             job_type,
             selected_job.description,
             requested_by,
         )
-        events.insert_event_log(
+        event_repo.insert_event_log(
             requested_by,
             job_type,
             selected_job.description | {"job_id": msg_id.job_id},

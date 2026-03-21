@@ -10,7 +10,7 @@ import ansible_runner
 import yaml
 
 from ..models import JobState, Playbook
-from ..repos.postgres import jobs, playbooks
+from ..repos.postgres import jobs_repo, playbooks_repo
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class MyRunner:
             task_type = e["event"]
             task_data = json.dumps(e)
 
-        jobs.insert_task(
+        jobs_repo.insert_task(
             self.job_id,
             self.counter,
             e["created"],
@@ -97,7 +97,7 @@ class MyRunner:
     ) -> tuple[str, dict, int]:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
-            p: Playbook = playbooks.get_default_playbook(playbook_name)
+            p: Playbook = playbooks_repo.get_default_playbook(playbook_name)
             if p is None or p.playbook is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"
@@ -105,7 +105,7 @@ class MyRunner:
 
             shutil.rmtree(job_dir, ignore_errors=True)
             os.makedirs(job_dir, exist_ok=True)
-            jobs.update_job(self.job_id, JobState.RUNNING)
+            jobs_repo.update_job(self.job_id, JobState.RUNNING)
 
             thread, runner = ansible_runner.run_async(
                 quiet=False,
@@ -117,8 +117,8 @@ class MyRunner:
                 status_handler=self.my_status_handler,
             )
         except Exception as err:
-            jobs.update_job(self.job_id, JobState.FAILED)
-            jobs.insert_task(
+            jobs_repo.update_job(self.job_id, JobState.FAILED)
+            jobs_repo.insert_task(
                 self.job_id,
                 self.counter,
                 dt.datetime.now(dt.timezone.utc),
@@ -137,17 +137,17 @@ class MyRunner:
         try:
             while thread.is_alive():
                 if time.time() > heartbeat_ts:
-                    jobs.update_job(self.job_id, JobState.RUNNING)
+                    jobs_repo.update_job(self.job_id, JobState.RUNNING)
                     heartbeat_ts = time.time() + 60
 
                 time.sleep(1)
 
             if runner.status == "successful":
-                jobs.update_job(self.job_id, JobState.COMPLETED)
+                jobs_repo.update_job(self.job_id, JobState.COMPLETED)
             else:
-                jobs.update_job(self.job_id, JobState.FAILED)
+                jobs_repo.update_job(self.job_id, JobState.FAILED)
         except Exception:
-            jobs.update_job(self.job_id, JobState.FAILED)
+            jobs_repo.update_job(self.job_id, JobState.FAILED)
             logger.exception(
                 "Error while monitoring playbook '%s' for job %s",
                 playbook_name,
@@ -179,7 +179,7 @@ class MyRunnerLite:
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
-            p: Playbook = playbooks.get_default_playbook(playbook_name)
+            p: Playbook = playbooks_repo.get_default_playbook(playbook_name)
             if p is None or p.playbook is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"

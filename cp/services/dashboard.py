@@ -5,7 +5,7 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import DashboardMetrics, DashboardSnapshot
-from ..repos.postgres import dashboard
+from ..repos.postgres import dashboard_repo
 from . import cluster as cluster_service, settings
 from .errors import ServiceValidationError, from_repository_error
 
@@ -89,7 +89,7 @@ def load_dashboard_metrics(
         ),
     ]:
         try:
-            response = dashboard.query_prometheus_range(
+            response = dashboard_repo.query_prometheus_range(
                 prom_url,
                 query=query,
                 start=effective_start,

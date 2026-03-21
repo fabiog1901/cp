@@ -5,25 +5,25 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import EventType, Region
-from ..repos.postgres import events, regions
+from ..repos.postgres import event_repo, regions_repo
 from .errors import ServiceValidationError, from_repository_error
 
 
 def list_regions() -> list[Region]:
     try:
-        return regions.list_regions()
+        return regions_repo.list_regions()
     except RepositoryError as err:
         raise from_repository_error(
             err,
             unavailable_message="Regions are temporarily unavailable.",
-            fallback_message="Unable to load regions.",
+            fallback_message="Unable to load regions_repo.",
         ) from err
 
 
 def delete_region(region: Region, deleted_by: str) -> None:
     try:
-        regions.delete_region(region.cloud, region.region, region.zone)
-        events.insert_event_log(
+        regions_repo.delete_region(region.cloud, region.region, region.zone)
+        event_repo.insert_event_log(
             deleted_by,
             EventType.REGION_REMOVE,
             {"cloud": region.cloud, "region": region.region, "zone": region.zone},
@@ -66,8 +66,8 @@ def create_region(
     )
 
     try:
-        regions.add_region(new_region)
-        events.insert_event_log(
+        regions_repo.add_region(new_region)
+        event_repo.insert_event_log(
             created_by,
             EventType.REGION_ADD,
             new_region.model_dump_json(),

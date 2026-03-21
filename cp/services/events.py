@@ -2,7 +2,7 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventLog
-from ..repos.postgres import events
+from ..repos.postgres import event_repo
 from .errors import from_repository_error
 
 
@@ -13,18 +13,18 @@ def list_visible_events(
     is_admin: bool,
 ) -> list[EventLog]:
     try:
-        return events.list_events(limit, offset, groups, is_admin)
+        return event_repo.list_events(limit, offset, groups, is_admin)
     except RepositoryError as err:
         raise from_repository_error(
             err,
             unavailable_message="Events are temporarily unavailable.",
-            fallback_message="Unable to load events.",
+            fallback_message="Unable to load event_repo.",
         ) from err
 
 
 def get_event_total() -> int:
     try:
-        return events.get_event_count()
+        return event_repo.get_event_count()
     except RepositoryError as err:
         raise from_repository_error(
             err,

@@ -2,7 +2,7 @@
 
 from ..infra.errors import RepositoryError
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
-from ..repos.postgres import cluster_backups
+from ..repos.postgres import cluster_backups_repo
 from . import cluster as cluster_service
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
@@ -19,7 +19,7 @@ def load_cluster_backups_snapshot(
     try:
         return ClusterBackupsSnapshot(
             cluster=selected_cluster,
-            backup_paths=cluster_backups.list_backup_paths(
+            backup_paths=cluster_backups_repo.list_backup_paths(
                 _get_primary_dns_address(selected_cluster)
             ),
         )
@@ -39,7 +39,7 @@ def load_backup_details(
 ) -> list[BackupDetails]:
     selected_cluster = _get_cluster_or_raise(cluster_id, groups, is_admin)
     try:
-        return cluster_backups.list_backup_details(
+        return cluster_backups_repo.list_backup_details(
             _get_primary_dns_address(selected_cluster),
             backup_path,
         )

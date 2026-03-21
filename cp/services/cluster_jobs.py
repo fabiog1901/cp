@@ -2,7 +2,7 @@
 
 from ..infra.errors import RepositoryError
 from ..models import ClusterJobsSnapshot
-from ..repos.postgres import cluster as cluster_repo
+from ..repos.postgres import cluster_repo
 from . import cluster as cluster_service
 from .errors import from_repository_error
 

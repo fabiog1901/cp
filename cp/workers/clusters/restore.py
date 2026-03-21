@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...models import ClusterState, JobState, RestoreRequest
-from ...repos.postgres import cluster, jobs, settings
+from ...repos.postgres import cluster_repo, jobs_repo, settings_repo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -19,15 +19,15 @@ def restore_cluster(
     # TODO check user permissions
 
     # check if cluster with same cluster_id exists
-    c = cluster.get_cluster(rr.name, [], True)
+    c = cluster_repo.get_cluster(rr.name, [], True)
 
     # TODO verify what states are appropriate for running a restore job
     if c is None or c.status != ClusterState.RUNNING:
-        jobs.update_job(
+        jobs_repo.update_job(
             job_id,
             JobState.FAILED,
         )
-        jobs.insert_task(
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -36,13 +36,13 @@ def restore_cluster(
         )
         return
 
-    cluster.update_cluster(
+    cluster_repo.update_cluster(
         rr.name,
         requested_by,
         status=ClusterState.RESTORING,
     )
 
-    jobs.insert_mapped_job(
+    jobs_repo.insert_mapped_job(
         rr.name,
         job_id,
         JobState.SCHEDULED,
@@ -72,35 +72,35 @@ def restore_cluster_worker(
             "object_type": rr.object_type,
             "object_name": rr.object_name,
             "backup_into": rr.backup_into,
-            "cloud_storage_url": settings.get_setting("cloud_storage_url"),
+            "cloud_storage_url": settings_repo.get_setting("cloud_storage_url"),
         }
 
         job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
 
         if job_status != "successful":
-            cluster.update_cluster(
+            cluster_repo.update_cluster(
                 rr.name,
                 requested_by,
                 status=ClusterState.RESTORE_FAILED,
             )
             return
 
-        cluster.update_cluster(
+        cluster_repo.update_cluster(
             rr.name,
             requested_by,
             status=ClusterState.RUNNING,
         )
     except Exception as err:
         logger.exception("Unhandled error while restoring cluster '%s'", rr.name)
-        jobs.update_job(job_id, JobState.FAILED)
-        jobs.insert_task(
+        jobs_repo.update_job(job_id, JobState.FAILED)
+        jobs_repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
             "FAILURE",
             str(err),
         )
-        cluster.update_cluster(
+        cluster_repo.update_cluster(
             rr.name,
             requested_by,
             status=ClusterState.RESTORE_FAILED,
