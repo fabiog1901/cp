@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from psycopg import DatabaseError, InterfaceError, OperationalError
 from psycopg.abc import Dumper
@@ -13,6 +13,7 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
+from ..repos.base import BaseRepo
 from .errors import (
     RepositoryConflictError,
     RepositoryError,
@@ -22,12 +23,8 @@ from .errors import (
 )
 
 DB_URL = os.getenv("DB_URL")
-
-if not DB_URL:
-    raise EnvironmentError("DB_URL env variable not found!")
-
-
-pool = ConnectionPool(DB_URL, kwargs={"autocommit": True})
+pool: ConnectionPool | None = None
+repo_factory: Callable[[], BaseRepo] | None = None
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +54,7 @@ def execute_stmt(
     *,
     operation: str | None = None,
 ) -> None:
-    with pool.connection() as conn:
+    with get_pool().connection() as conn:
         _register_dumpers(conn)
 
         with conn.cursor() as cur:
@@ -75,7 +72,7 @@ def fetch_all(
     *,
     operation: str | None = None,
 ) -> list[Any]:
-    with pool.connection() as conn:
+    with get_pool().connection() as conn:
         _register_dumpers(conn)
 
         with conn.cursor(row_factory=class_row(row_type)) as cur:
@@ -94,7 +91,7 @@ def fetch_one(
     *,
     operation: str | None = None,
 ) -> Any | None:
-    with pool.connection() as conn:
+    with get_pool().connection() as conn:
         _register_dumpers(conn)
 
         with conn.cursor(row_factory=class_row(row_type)) as cur:
@@ -112,7 +109,7 @@ def fetch_scalar(
     *,
     operation: str | None = None,
 ) -> Any | None:
-    with pool.connection() as conn:
+    with get_pool().connection() as conn:
         _register_dumpers(conn)
 
         with conn.cursor() as cur:
@@ -135,6 +132,51 @@ def _register_dumpers(conn) -> None:
 
 def _normalize_stmt(stmt: str) -> str:
     return " ".join([s.strip() for s in stmt.split("\n")])
+
+
+def initialize_postgres(db_url: str | None = None) -> None:
+    global pool
+    global repo_factory
+
+    effective_db_url = db_url or DB_URL
+    if not effective_db_url:
+        raise EnvironmentError("DB_URL env variable not found!")
+
+    if pool is not None:
+        return
+
+    pool = ConnectionPool(
+        effective_db_url,
+        kwargs={"autocommit": True},
+        configure=_register_dumpers,
+    )
+
+    from ..repos.postgres import PostgresRepo
+
+    repo_factory = lambda: PostgresRepo(get_pool())
+
+
+def get_pool() -> ConnectionPool:
+    if pool is None:
+        raise RuntimeError("Database pool not initialized. Ensure lifespan ran.")
+    return pool
+
+
+def get_repo() -> BaseRepo:
+    if repo_factory is None:
+        raise RuntimeError("Repository factory not initialized. Ensure lifespan ran.")
+    return repo_factory()
+
+
+def close_db() -> None:
+    global pool
+    global repo_factory
+
+    if pool is not None:
+        pool.close()
+
+    pool = None
+    repo_factory = None
 
 
 def translate_database_error(

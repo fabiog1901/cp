@@ -1,54 +1,38 @@
-from typing import Callable, Optional
+"""Compatibility shim for legacy dependency imports.
 
-from fastapi import Depends
+Prefer importing dependency factories from ``cp.infra``.
+"""
 
-from .repos.base import BaseRepo
-from .services.auth import AuthService
-from .services.cluster import ClusterService
-from .services.cluster_backups import ClusterBackupsService
-from .services.cluster_jobs import ClusterJobsService
-from .services.cluster_users import ClusterUsersService
-from .services.dashboard import DashboardService
-from .services.events import EventsService
-from .services.jobs import JobsService
-from .services.playbooks import PlaybooksService
-from .services.regions import RegionsService
-from .services.settings import SettingsService
-from .services.versions import VersionsService
-# from .services.compute_unit import ComputeUnitService
+from .infra import (
+    get_admin_service,
+    get_auth_service,
+    get_cluster_backups_service,
+    get_cluster_jobs_service,
+    get_cluster_service,
+    get_cluster_users_service,
+    get_dashboard_service,
+    get_events_service,
+    get_jobs_service,
+    get_playbooks_service,
+    get_regions_service,
+    get_repo,
+    get_settings_service,
+    get_versions_service,
+)
 
-# Global references
-
-REPO_FACTORY: Optional[Callable] = None
-
-
-# 1. The Repo Factory (Hidden from API)
-def get_repo() -> BaseRepo:
-    if REPO_FACTORY is None:
-        raise RuntimeError("Database not initialized. Ensure lifespan ran.")
-    return REPO_FACTORY()
-
-
-def _build_service(service_cls):
-    def _get_service(repo: BaseRepo = Depends(get_repo)):
-        return service_cls(repo)
-
-    return _get_service
-
-
-get_auth_service = _build_service(AuthService)
-get_cluster_service = _build_service(ClusterService)
-get_cluster_backups_service = _build_service(ClusterBackupsService)
-get_cluster_jobs_service = _build_service(ClusterJobsService)
-get_cluster_users_service = _build_service(ClusterUsersService)
-get_dashboard_service = _build_service(DashboardService)
-get_events_service = _build_service(EventsService)
-get_jobs_service = _build_service(JobsService)
-get_playbooks_service = _build_service(PlaybooksService)
-get_regions_service = _build_service(RegionsService)
-get_settings_service = _build_service(SettingsService)
-get_versions_service = _build_service(VersionsService)
-
-# Backward-compatible alias for the legacy admin API slice on this branch.
-def get_admin_service(repo: BaseRepo = Depends(get_repo)) -> AuthService:
-    return AuthService(repo)
+__all__ = [
+    "get_repo",
+    "get_admin_service",
+    "get_auth_service",
+    "get_cluster_service",
+    "get_cluster_backups_service",
+    "get_cluster_jobs_service",
+    "get_cluster_users_service",
+    "get_dashboard_service",
+    "get_events_service",
+    "get_jobs_service",
+    "get_playbooks_service",
+    "get_regions_service",
+    "get_settings_service",
+    "get_versions_service",
+]

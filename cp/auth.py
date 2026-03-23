@@ -24,7 +24,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie, APIKeyHeader
 
-from .dep import get_repo
+from .infra import get_repo
 from .models import Event, KloigosRole, LogMsg
 from .repos.base import BaseRepo
 from .util import (

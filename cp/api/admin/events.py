@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ...dep import get_admin_service
+from ...infra import get_admin_service
 from ...models import LogMsg
 from ...services.admin import AdminService
 

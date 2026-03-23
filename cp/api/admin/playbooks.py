@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, Response, status
 
 from ...auth import get_audit_actor
-from ...dep import get_admin_service
+from ...infra import get_admin_service
 from ...models import Playbook
 from ...services.admin import AdminService
 

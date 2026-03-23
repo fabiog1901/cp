@@ -5,7 +5,7 @@ import random
 
 from psycopg.rows import class_row
 
-from ..infra.db import pool
+from ..infra.db import get_pool
 from ..models import JobState, JobType, Msg, Nodes
 from ..repos.postgres.jobs import JobsRepo
 from ..repos.postgres.cluster import ClusterRepo
@@ -43,7 +43,7 @@ async def pull_from_mq():
         while True:
             await asyncio.sleep(5 * random.uniform(0.7, 1.3))
             try:
-                with pool.connection() as conn:
+                with get_pool().connection() as conn:
                     with conn.cursor(row_factory=class_row(Msg)) as cur:
                         with conn.transaction():
                             msg = cur.execute(

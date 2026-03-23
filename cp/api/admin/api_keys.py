@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.exceptions import RequestErrorModel
 
 from ...auth import get_audit_actor
-from ...dep import get_admin_service
+from ...infra import get_admin_service
 from ...models import (
     ApiKeyCreateRequest,
     ApiKeyCreateResponse,

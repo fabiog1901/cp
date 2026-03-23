@@ -8,10 +8,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import DB_ENGINE, DB_URL, dep
+from . import DB_ENGINE, DB_URL
 from .api import admin #, compute_unit
 from .auth import oidc
 from .auth import router as auth_router
+from .infra import close_db, initialize_postgres
 from .util import RequestIDFilter, ShorthandFormatter, request_id_ctx
 
 
@@ -58,31 +59,13 @@ async def lifespan(_app: FastAPI):
     oidc.validate_config()
 
     if DB_ENGINE == "postgres":
-        from psycopg_pool import ConnectionPool
-
-        from .infra.db import Dict2JsonbDumper
-        from .repos.postgres import PostgresRepo
-
-        # Initialize the global pool
-        dep.DB_POOL = ConnectionPool(
-            DB_URL,
-            kwargs={"autocommit": True},
-            configure=lambda conn: conn.adapters.register_dumper(
-                dict, Dict2JsonbDumper
-            ),
-        )
-        dep.REPO_FACTORY = lambda: PostgresRepo(dep.DB_POOL)
+        initialize_postgres(DB_URL)
     else:
         pass
-        # from .repos.sqlite import SQLiteRepo
-
-        # dep.REPO_FACTORY = lambda: SQLiteRepo(DB_URL)
 
     yield
 
-    # Cleanup
-    if dep.DB_POOL:
-        dep.DB_POOL.close()
+    close_db()
 
 
 app = FastAPI(lifespan=lifespan)

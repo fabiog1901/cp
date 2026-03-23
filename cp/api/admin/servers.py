@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 
 from ...auth import get_audit_actor
-from ...dep import get_admin_service
+from ...infra import get_admin_service
 from ...models import DeferredTask, ServerDecommRequest, ServerInDB, ServerInitRequest
 from ...services.admin import AdminService
 
