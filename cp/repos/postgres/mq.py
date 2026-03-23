@@ -2,11 +2,10 @@
 
 from ...infra.db import fetch_one
 from ...models import JobID
-
-
-class MqRepo:
-    @staticmethod
+from ..base import BaseRepo
+class MqRepo(BaseRepo):
     def insert_into_mq(
+        self,
         msg_type: str,
         msg_data: dict,
         created_by: str,

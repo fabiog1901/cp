@@ -10,18 +10,12 @@ from ..models import (
     Cluster,
     ClusterIDRef,
     ClusterOverview,
-    ComputeUnitInDB,
-    ComputeUnitOverview,
-    ComputeUnitStatus,
     CpuCountOption,
     DatabaseUser,
     DiskSizeOption,
-    IntID,
-    InventoryLB,
-    InventoryRegion,
+    EventLog,
     Job,
     JobID,
-    LogMsg,
     NodeCountOption,
     Nodes,
     Playbook,
@@ -29,11 +23,7 @@ from ..models import (
     Region,
     RegionOption,
     RoleGroupMap,
-    ServerInDB,
-    ServerInitRequest,
-    ServerStatus,
-    SettingKey,
-    SettingRecord,
+    Setting,
     Task,
     Version,
 )
@@ -63,105 +53,19 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def list_settings(self) -> list[SettingRecord]:
+    def list_settings(self) -> list[Setting]:
         pass
 
     @abstractmethod
-    def get_setting(self, key: SettingKey) -> SettingRecord | None:
+    def get_setting(self, setting_id: str) -> str | None:
         pass
 
     @abstractmethod
-    def update_setting(
-        self,
-        key: SettingKey,
-        value: Any,
-        *,
-        updated_by: str | None = None,
-    ) -> SettingRecord | None:
+    def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
         pass
 
     @abstractmethod
-    def reset_setting(
-        self,
-        key: SettingKey,
-        *,
-        updated_by: str | None = None,
-    ) -> SettingRecord | None:
-        pass
-
-    @abstractmethod
-    def playbook_get_content(self, playbook: Playbook) -> str:
-        pass
-
-    @abstractmethod
-    def playbook_update_content(self, playbook: Playbook, b64: str) -> None:
-        pass
-
-    @abstractmethod
-    def server_init_new(self, sir: ServerInitRequest, status: ServerStatus) -> None:
-        pass
-
-    @abstractmethod
-    def server_update_status(self, hostname: str, status: ServerStatus) -> None:
-        pass
-
-    @abstractmethod
-    def get_servers(self, hostname: str | None) -> list[ServerInDB]:
-        pass
-
-    @abstractmethod
-    def delete_server(self, hostname: str) -> None:
-        pass
-
-    @abstractmethod
-    def insert_new_compute_unit(self, cudb: ComputeUnitInDB) -> None:
-        pass
-
-    @abstractmethod
-    def update_compute_unit(
-        self,
-        compute_id: str,
-        status: ComputeUnitStatus | None = None,
-        tags: dict | None = None,
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def delete_compute_units(self, hostname: str) -> None:
-        pass
-
-    @abstractmethod
-    def lock_compute_unit(
-        self,
-        free_status: ComputeUnitStatus,
-        allocated_status: ComputeUnitStatus,
-        compute_id: str | None = None,
-        region: str | None = None,
-        zone: str | None = None,
-        cpu_count: int | None = None,
-    ) -> ComputeUnitOverview | None:
-        pass
-
-    @abstractmethod
-    def get_compute_units(
-        self,
-        compute_id: str | None = None,
-        hostname: str | None = None,
-        region: str | None = None,
-        zone: str | None = None,
-        cpu_count: int | None = None,
-        deployment_id: str | None = None,
-        status: str | None = None,
-        limit: int | None = None,
-    ) -> list[ComputeUnitOverview]:
-        pass
-
-    @abstractmethod
-    def get_events(self) -> list[LogMsg]:
-        pass
-
-    @abstractmethod
-    def log_event(self, event: LogMsg) -> None:
+    def reset_setting(self, setting_id: str, updated_by: str) -> None:
         pass
 
     @abstractmethod
@@ -212,8 +116,8 @@ class BaseRepo(ABC):
         self,
         cluster_id: str,
         updated_by: str,
-        cluster_inventory: list[InventoryRegion] | None = None,
-        lbs_inventory: list[InventoryLB] | None = None,
+        cluster_inventory: list[Any] | None = None,
+        lbs_inventory: list[Any] | None = None,
         version: str | None = None,
         node_count: int | None = None,
         node_cpus: int | None = None,
@@ -349,7 +253,7 @@ class BaseRepo(ABC):
         offset: int,
         groups: list[str] | None = None,
         is_admin: bool = False,
-    ) -> list[Any]:
+    ) -> list[EventLog]:
         pass
 
     @abstractmethod
@@ -395,7 +299,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def fail_zombie_jobs(self) -> list[IntID]:
+    def fail_zombie_jobs(self) -> list[Any]:
         pass
 
     @abstractmethod

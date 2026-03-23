@@ -2,11 +2,9 @@
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import Playbook, PlaybookOverview
-
-
-class PlaybooksRepo:
-    @staticmethod
-    def get_playbook(name: str, version: str) -> Playbook:
+from ..base import BaseRepo
+class PlaybooksRepo(BaseRepo):
+    def get_playbook(self, name: str, version: str) -> Playbook:
         return fetch_one(
             """
             SELECT *
@@ -17,8 +15,7 @@ class PlaybooksRepo:
             Playbook,
         )
 
-    @staticmethod
-    def get_default_playbook(name: str) -> Playbook:
+    def get_default_playbook(self, name: str) -> Playbook:
         return fetch_one(
             """
             SELECT *
@@ -31,8 +28,7 @@ class PlaybooksRepo:
             Playbook,
         )
 
-    @staticmethod
-    def list_playbook_versions(name: str) -> list[PlaybookOverview]:
+    def list_playbook_versions(self, name: str) -> list[PlaybookOverview]:
         return fetch_all(
             """
             SELECT name, version, default_version, created_at, created_by, updated_by
@@ -44,8 +40,12 @@ class PlaybooksRepo:
             PlaybookOverview,
         )
 
-    @staticmethod
-    def add_playbook(name: str, playbook: bytes, created_by: str) -> PlaybookOverview:
+    def add_playbook(
+        self,
+        name: str,
+        playbook: bytes,
+        created_by: str,
+    ) -> PlaybookOverview:
         return fetch_one(
             """
             INSERT INTO playbooks (name, playbook, created_by)
@@ -56,8 +56,7 @@ class PlaybooksRepo:
             PlaybookOverview,
         )
 
-    @staticmethod
-    def set_default_playbook(name: str, version: str, updated_by: str) -> None:
+    def set_default_playbook(self, name: str, version: str, updated_by: str) -> None:
         execute_stmt(
             """
             UPDATE playbooks
@@ -69,8 +68,7 @@ class PlaybooksRepo:
             (updated_by, name, version),
         )
 
-    @staticmethod
-    def remove_playbook(name: str, version: str) -> None:
+    def remove_playbook(self, name: str, version: str) -> None:
         execute_stmt(
             """
             DELETE

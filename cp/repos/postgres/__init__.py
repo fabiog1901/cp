@@ -8,7 +8,6 @@ from .cluster import ClusterRepo
 from .dashboard import DashboardRepo
 from .event import EventRepo
 from .jobs import JobsRepo
-from .kloigos import KloigosRepo
 from .mq import MqRepo
 from .playbooks import PlaybooksRepo
 from .regions import RegionsRepo
@@ -18,21 +17,19 @@ from .versions import VersionsRepo
 from psycopg_pool import ConnectionPool
 
 class PostgresRepo(
+    ClusterJobsRepo,
+    RegionsRepo,
+    VersionsRepo,
+    SettingsRepo,
+    PlaybooksRepo,
     AuthRepo,
     ClusterBackupsRepo,
-    ClusterJobsRepo,
     ClusterUsersRepo,
     ClusterRepo,
     DashboardRepo,
     EventRepo,
     JobsRepo,
-    KloigosRepo,
     MqRepo,
-    PlaybooksRepo,
-    RegionsRepo,
-    SettingsRepo,
-    VersionsRepo,
 ):
     def __init__(self, pool: ConnectionPool) -> None:
         self.pool: ConnectionPool = pool
-    

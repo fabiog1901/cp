@@ -16,12 +16,11 @@ CLUSTER_DB_USERNAME = "cockroach"
 CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
 
-
-class ClusterBackupsRepo:
-    @staticmethod
-    def list_backup_paths(dns_address: str) -> list[BackupPathOption]:
+from ..base import BaseRepo
+class ClusterBackupsRepo(BaseRepo):
+    def list_backup_paths(self, dns_address: str) -> list[BackupPathOption]:
         try:
-            with ClusterBackupsRepo._connect(dns_address) as conn:
+            with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:
                     rows = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
         except Exception as err:
@@ -35,8 +34,8 @@ class ClusterBackupsRepo:
             BackupPathOption(path=path) for path in paths
         ]
 
-    @staticmethod
     def list_backup_details(
+        self,
         dns_address: str,
         backup_path: str,
     ) -> list[BackupDetails]:
@@ -53,7 +52,7 @@ class ClusterBackupsRepo:
         ).format(sql.Literal(backup_path))
 
         try:
-            with ClusterBackupsRepo._connect(dns_address) as conn:
+            with self._connect(dns_address) as conn:
                 with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
                     return cur.execute(query).fetchall()
         except Exception as err:
@@ -64,8 +63,7 @@ class ClusterBackupsRepo:
                 err, "cluster_backups.list_backup_details"
             ) from err
 
-    @staticmethod
-    def _connect(dns_address: str) -> psycopg.Connection:
+    def _connect(self, dns_address: str) -> psycopg.Connection:
         return psycopg.connect(
             (
                 f"postgres://{CLUSTER_DB_USERNAME}:{CLUSTER_DB_PASSWORD}"

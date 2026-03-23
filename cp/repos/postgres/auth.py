@@ -5,7 +5,7 @@ import gzip
 from ...infra.db import fetch_all, fetch_scalar
 from ...models import RoleGroupMap
 from psycopg.rows import class_row
-from psycopg_pool import ConnectionPool
+from ..base import BaseRepo
 
 from ...models import (
     ApiKeyCreateRequest,
@@ -25,9 +25,6 @@ from ...models import (
 from ..base import BaseRepo
 
 class AuthRepo(BaseRepo):
-    def __init__(self, pool: ConnectionPool) -> None:
-        self.pool: ConnectionPool = pool
-
     @staticmethod
     def _setting_from_row(row) -> SettingRecord:
         value = row[1]
@@ -245,8 +242,7 @@ class AuthRepo(BaseRepo):
 
         return gzip.decompress(rs[0]).decode()  # type: ignore
     
-    @staticmethod
-    def get_secret(secret_id: str) -> str:
+    def get_secret(self, secret_id: str) -> str:
         return fetch_scalar(
             """
             SELECT data AS id
@@ -257,8 +253,7 @@ class AuthRepo(BaseRepo):
             operation="auth.get_secret",
         )
 
-    @staticmethod
-    def list_role_group_mappings() -> list[RoleGroupMap]:
+    def list_role_group_mappings(self) -> list[RoleGroupMap]:
         return fetch_all(
             """
             SELECT role, groups

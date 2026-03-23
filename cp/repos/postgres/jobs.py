@@ -4,11 +4,10 @@ import datetime as dt
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import ClusterIDRef, IntID, Job, Task
+from ..base import BaseRepo
 
-
-class JobsRepo:
-    @staticmethod
-    def list_jobs(groups: list[str], is_admin: bool = False) -> list[Job]:
+class JobsRepo(BaseRepo):
+    def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         if is_admin:
             return fetch_all(
                 """
@@ -42,8 +41,7 @@ class JobsRepo:
             Job,
         )
 
-    @staticmethod
-    def get_job(job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
+    def get_job(self, job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
         if is_admin:
             return fetch_one(
                 """
@@ -76,8 +74,7 @@ class JobsRepo:
             Job,
         )
 
-    @staticmethod
-    def list_tasks(job_id: int) -> list[Task]:
+    def list_tasks(self, job_id: int) -> list[Task]:
         return fetch_all(
             """
             SELECT job_id, task_id,
@@ -90,8 +87,7 @@ class JobsRepo:
             Task,
         )
 
-    @staticmethod
-    def list_linked_clusters(job_id: int) -> list[ClusterIDRef]:
+    def list_linked_clusters(self, job_id: int) -> list[ClusterIDRef]:
         return fetch_all(
             """
             SELECT cluster_id AS cluster_id
@@ -103,8 +99,7 @@ class JobsRepo:
             ClusterIDRef,
         )
 
-    @staticmethod
-    def insert_mapped_job(cluster_id: str, job_id: int, status: str) -> None:
+    def insert_mapped_job(self, cluster_id: str, job_id: int, status: str) -> None:
         execute_stmt(
             """
             WITH
@@ -121,8 +116,7 @@ class JobsRepo:
             (cluster_id, job_id, status, job_id),
         )
 
-    @staticmethod
-    def update_job(job_id: int, status: str) -> None:
+    def update_job(self, job_id: int, status: str) -> None:
         execute_stmt(
             """
             UPDATE jobs
@@ -132,8 +126,7 @@ class JobsRepo:
             (status, job_id),
         )
 
-    @staticmethod
-    def fail_zombie_jobs():
+    def fail_zombie_jobs(self):
         return fetch_all(
             """
             WITH
@@ -152,8 +145,8 @@ class JobsRepo:
             IntID,
         )
 
-    @staticmethod
     def insert_task(
+        self,
         job_id: int,
         task_id: int,
         created_at,

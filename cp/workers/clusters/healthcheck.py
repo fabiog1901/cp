@@ -1,20 +1,20 @@
 import os
 from threading import Thread
 
+from ...infra import get_repo
 from ...models import ClusterState, JobType
-from ...repos.postgres.auth import AuthRepo
-from ...repos.postgres.cluster import ClusterRepo
 from ..ansible import MyRunnerLite
 
 
 def healthcheck_clusters(job_id: int) -> None:
-    running_clusters = ClusterRepo.get_running_clusters()
+    repo = get_repo()
+    running_clusters = repo.get_running_clusters()
 
     for cluster in running_clusters:
         ssh_key_name = cluster.description["ssh_key"]
 
         if not os.path.exists(f"/tmp/{ssh_key_name}"):
-            ssh_key = AuthRepo.get_secret(ssh_key_name)
+            ssh_key = repo.get_secret(ssh_key_name)
 
             with open(f"/tmp/{ssh_key_name}", "w") as f:
                 f.write(ssh_key)
@@ -40,6 +40,7 @@ def healthcheck_clusters_worker(
     cockroachdb_nodes: list[str],
     ssh_key: str,
 ):
+    repo = get_repo()
     extra_vars = {
         "deployment_id": cluster_id,
         "cockroachdb_nodes": cockroachdb_nodes,
@@ -51,7 +52,7 @@ def healthcheck_clusters_worker(
     )
 
     if not data or job_status != "successful":
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             cluster_id,
             "system",
             status=ClusterState.UNHEALTHY,
@@ -59,7 +60,7 @@ def healthcheck_clusters_worker(
 
     for node in data.get("data", []):
         if node["is_live"] == "false":
-            ClusterRepo.update_cluster(
+            repo.update_cluster(
                 cluster_id,
                 "system",
                 status=ClusterState.UNHEALTHY,

@@ -2,11 +2,10 @@
 
 from ...infra.db import execute_stmt, fetch_all, fetch_scalar
 from ...models import EventLog
-
-
-class EventRepo:
-    @staticmethod
+from ..base import BaseRepo
+class EventRepo(BaseRepo):
     def list_events(
+        self,
         limit: int,
         offset: int,
         groups: list[str] | None = None,
@@ -28,8 +27,7 @@ class EventRepo:
 
         return []
 
-    @staticmethod
-    def get_event_count() -> int:
+    def get_event_count(self) -> int:
         return fetch_scalar(
             """
             SELECT count(*) AS id
@@ -39,8 +37,8 @@ class EventRepo:
             operation="events.get_event_count",
         )
 
-    @staticmethod
     def insert_event_log(
+        self,
         created_by: str,
         event_type: str,
         event_details=None,

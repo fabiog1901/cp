@@ -10,10 +10,11 @@ from ...infra.errors import RepositoryError, RepositoryUnavailableError
 PROMETHEUS_TIMEOUT_SECS = 10
 logger = logging.getLogger(__name__)
 
+from ..base import BaseRepo
 
-class DashboardRepo:
-    @staticmethod
+class DashboardRepo(BaseRepo):
     def query_prometheus_range(
+        self,
         prom_url: str,
         *,
         query: str,

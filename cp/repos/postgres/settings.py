@@ -2,11 +2,9 @@
 
 from ...infra.db import execute_stmt, fetch_all, fetch_scalar
 from ...models import Setting
-
-
-class SettingsRepo:
-    @staticmethod
-    def list_settings() -> list[Setting]:
+from ..base import BaseRepo
+class SettingsRepo(BaseRepo):
+    def list_settings(self) -> list[Setting]:
         return fetch_all(
             """
             SELECT *
@@ -17,8 +15,7 @@ class SettingsRepo:
             operation="settings.list_settings",
         )
 
-    @staticmethod
-    def get_setting(setting_id: str) -> str:
+    def get_setting(self, setting_id: str) -> str:
         value = fetch_scalar(
             """
             SELECT value AS id
@@ -30,8 +27,7 @@ class SettingsRepo:
         )
         return value
 
-    @staticmethod
-    def update_setting(setting_id: str, value: str, updated_by: str) -> None:
+    def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
         execute_stmt(
             """
             UPDATE settings
@@ -41,4 +37,16 @@ class SettingsRepo:
             """,
             (value, updated_by, setting_id),
             operation="settings.update_setting",
+        )
+
+    def reset_setting(self, setting_id: str, updated_by: str) -> None:
+        execute_stmt(
+            """
+            UPDATE settings
+            SET value = NULL,
+            updated_by = %s
+            WHERE id = %s
+            """,
+            (updated_by, setting_id),
+            operation="settings.reset_setting",
         )

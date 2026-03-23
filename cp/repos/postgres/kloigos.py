@@ -21,7 +21,7 @@ from ...models import (
     SettingRecord,
 )
 
-
+from psycopg_pool import ConnectionPool
 class Dict2JsonbDumper(JsonbDumper):
     def dump(self, obj):
         return super().dump(Jsonb(obj))
@@ -29,6 +29,8 @@ class Dict2JsonbDumper(JsonbDumper):
 
 
 class KloigosRepo():
+    def __init__(self, pool: ConnectionPool) -> None:
+        self.pool: ConnectionPool = pool
 
     @staticmethod
     def _setting_from_row(row) -> SettingRecord:
