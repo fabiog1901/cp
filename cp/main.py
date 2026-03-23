@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -13,57 +13,30 @@ from .api import admin #, compute_unit
 from .auth import oidc
 from .auth import router as auth_router
 from .infra import close_db, initialize_postgres
-from .infra import RequestIDFilter, ShorthandFormatter, request_id_ctx
-
-
-def setup_logging():
-
-    logging.getLogger("uvicorn").setLevel(logging.ERROR)
-    logging.getLogger("uvicorn.access").setLevel(logging.ERROR)
-
-    logger = logging.getLogger()
-
-    logger.setLevel(logging.INFO)
-
-    # Use the Journald Handler or
-
-    if sys.platform == "linux":
-        from systemd.journal import JournalHandler
-
-        handler = JournalHandler()
-    else:
-        # Fallback for environments without systemd-python
-        handler = logging.StreamHandler()
-
-    # Add our custom ID filter to the handler
-    handler.addFilter(RequestIDFilter())
-
-    # Format: Time | Level | ID | Message
-    # Journald also stores metadata fields automatically
-    formatter = ShorthandFormatter(
-        "%(asctime)s [%(levelname)s] [%(request_id)s] %(message)s"
-    )
-    formatter.converter = time.gmtime
-    formatter.default_msec_format = "%s.%06d"
-
-    handler.setFormatter(formatter)
-
-    logger.addHandler(handler)
-
-
-setup_logging()
+from .infra import request_id_ctx
+from .workers.queue import get_nodes, pull_from_mq
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    queue_task: asyncio.Task | None = None
+
     oidc.validate_config()
 
     if DB_ENGINE == "postgres":
         initialize_postgres(DB_URL)
+        queue_task = asyncio.create_task(pull_from_mq())
     else:
         pass
 
     yield
+
+    if queue_task is not None:
+        queue_task.cancel()
+        try:
+            await queue_task
+        except asyncio.CancelledError:
+            pass
 
     close_db()
 
@@ -79,6 +52,11 @@ api = FastAPI(
 api.include_router(auth_router)
 # api.include_router(compute_unit.router)
 # api.include_router(admin.router)
+
+
+@api.get("/prom-targets")
+async def get_targets():
+    return get_nodes()
 
 app.mount("/api", api)
 app.mount(
