@@ -3,7 +3,7 @@
 from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Version
+from ..models import Event, Version
 from ..repos.postgres.event import EventRepo
 from ..repos.postgres.versions import VersionsRepo
 from .errors import ServiceValidationError, from_repository_error
@@ -32,7 +32,7 @@ class VersionsService:
             VersionsRepo.add_version(model)
             EventRepo.insert_event_log(
                 created_by,
-                EventType.VERSION_ADD,
+                Event.VERSION_ADD,
                 model.version,
             )
             return model
@@ -51,7 +51,7 @@ class VersionsService:
             VersionsRepo.remove_version(version)
             EventRepo.insert_event_log(
                 deleted_by,
-                EventType.VERSION_REMOVE,
+                Event.VERSION_REMOVE,
                 version,
             )
         except RepositoryError as err:

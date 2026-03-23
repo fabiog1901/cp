@@ -1,7 +1,7 @@
 """Business logic for the settings vertical."""
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Setting
+from ..models import Event, Setting
 from ..repos.postgres.event import EventRepo
 from ..repos.postgres.settings import SettingsRepo
 from .errors import ServiceValidationError, from_repository_error
@@ -44,7 +44,7 @@ class SettingsService:
             SettingsRepo.update_setting(setting_id, value, updated_by)
             EventRepo.insert_event_log(
                 updated_by,
-                EventType.UPDATE_SETTING,
+                Event.UPDATE_SETTING,
                 {"ID": setting_id, "value": value},
             )
         except RepositoryError as err:

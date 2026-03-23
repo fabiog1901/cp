@@ -3,7 +3,7 @@
 import gzip
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Playbook, PlaybookOverview, STRFTIME
+from ..models import Event, Playbook, PlaybookOverview, STRFTIME
 from ..repos.postgres.event import EventRepo
 from ..repos.postgres.playbooks import PlaybooksRepo
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
@@ -65,7 +65,7 @@ class PlaybooksService:
             PlaybooksRepo.set_default_playbook(name, version, updated_by)
             EventRepo.insert_event_log(
                 updated_by,
-                EventType.PLAYBOOK_SET_DEFAULT,
+                Event.PLAYBOOK_SET_DEFAULT,
                 {"name": name, "version": version},
             )
         except RepositoryError as err:
@@ -89,7 +89,7 @@ class PlaybooksService:
             PlaybooksRepo.remove_playbook(name, version)
             EventRepo.insert_event_log(
                 deleted_by,
-                EventType.PLAYBOOK_REMOVE,
+                Event.PLAYBOOK_REMOVE,
                 {"name": name, "version": version},
             )
 
@@ -105,7 +105,9 @@ class PlaybooksService:
             ) from err
 
         return {
-            "playbook_versions": sorted([x.version.strftime(STRFTIME) for x in versions]),
+            "playbook_versions": sorted(
+                [x.version.strftime(STRFTIME) for x in versions]
+            ),
             "playbook_version": selected_version,
             "default_version": default_version,
             "original_content": content,
@@ -123,7 +125,7 @@ class PlaybooksService:
             saved_version = saved.version.strftime(STRFTIME)
             EventRepo.insert_event_log(
                 created_by,
-                EventType.PLAYBOOK_ADD,
+                Event.PLAYBOOK_ADD,
                 {"name": name, "version": saved_version},
             )
 
@@ -136,7 +138,9 @@ class PlaybooksService:
                 fallback_message=f"Unable to save playbook '{name}'.",
             ) from err
         return {
-            "playbook_versions": sorted([x.version.strftime(STRFTIME) for x in versions]),
+            "playbook_versions": sorted(
+                [x.version.strftime(STRFTIME) for x in versions]
+            ),
             "playbook_version": saved_version,
             "original_content": content,
             "modified_content": content,
@@ -147,7 +151,10 @@ class PlaybooksService:
         selected_version = ""
         running_default = ""
         for item in versions:
-            if item.default_version and item.default_version.strftime(STRFTIME) > running_default:
+            if (
+                item.default_version
+                and item.default_version.strftime(STRFTIME) > running_default
+            ):
                 running_default = item.default_version.strftime(STRFTIME)
                 selected_version = item.version.strftime(STRFTIME)
 

@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Region
+from ..models import Event, Region
 from ..repos.postgres.event import EventRepo
 from ..repos.postgres.regions import RegionsRepo
 from .errors import ServiceValidationError, from_repository_error
@@ -28,7 +28,7 @@ class RegionsService:
             RegionsRepo.delete_region(region.cloud, region.region, region.zone)
             EventRepo.insert_event_log(
                 deleted_by,
-                EventType.REGION_REMOVE,
+                Event.REGION_REMOVE,
                 {"cloud": region.cloud, "region": region.region, "zone": region.zone},
             )
         except RepositoryError as err:
@@ -51,7 +51,9 @@ class RegionsService:
         extras_text: str,
         created_by: str,
     ) -> Region:
-        security_groups = [s.strip() for s in security_groups_text.split(",") if s.strip()]
+        security_groups = [
+            s.strip() for s in security_groups_text.split(",") if s.strip()
+        ]
         try:
             extras = RegionsService._parse_extras(extras_text)
         except ValueError as err:
@@ -72,7 +74,7 @@ class RegionsService:
             RegionsRepo.add_region(new_region)
             EventRepo.insert_event_log(
                 created_by,
-                EventType.REGION_ADD,
+                Event.REGION_ADD,
                 new_region.model_dump_json(),
             )
         except RepositoryError as err:

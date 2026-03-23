@@ -6,8 +6,13 @@ from ..repos.postgres.cluster_backups import ClusterBackupsRepo
 from .cluster import ClusterService
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
+from ..repos.base import BaseRepo
 
 class ClusterBackupsService:
+    
+    def __init__(self, repo: BaseRepo):
+        self.repo = repo
+        
     @staticmethod
     def load_cluster_backups_snapshot(
         cluster_id: str,

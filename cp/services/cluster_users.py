@@ -3,7 +3,7 @@
 from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
-from ..models import Cluster, ClusterUsersSnapshot, EventType, NewDatabaseUserRequest
+from ..models import Cluster, ClusterUsersSnapshot, Event, NewDatabaseUserRequest
 from ..repos.postgres.cluster_users import ClusterUsersRepo
 from ..repos.postgres.event import EventRepo
 from .cluster import ClusterService
@@ -68,8 +68,11 @@ class ClusterUsersService:
             )
             EventRepo.insert_event_log(
                 requested_by,
-                EventType.DB_USER_ADD,
-                {"cluster_id": selected_cluster.cluster_id, "db_user": request.username},
+                Event.DB_USER_ADD,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "db_user": request.username,
+                },
             )
         except RepositoryError as err:
             raise from_repository_error(
@@ -100,7 +103,7 @@ class ClusterUsersService:
             )
             EventRepo.insert_event_log(
                 requested_by,
-                EventType.DB_USER_REMOVE,
+                Event.DB_USER_REMOVE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
             )
         except RepositoryError as err:
@@ -132,8 +135,12 @@ class ClusterUsersService:
             )
             EventRepo.insert_event_log(
                 requested_by,
-                EventType.DB_USER_REMOVE_ROLE,
-                {"cluster_id": selected_cluster.cluster_id, "db_user": username, "role": role},
+                Event.DB_USER_REMOVE_ROLE,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "db_user": username,
+                    "role": role,
+                },
             )
         except RepositoryError as err:
             raise from_repository_error(
@@ -167,7 +174,7 @@ class ClusterUsersService:
             )
             EventRepo.insert_event_log(
                 requested_by,
-                EventType.DB_USER_UPDATE,
+                Event.DB_USER_UPDATE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
             )
         except RepositoryError as err:
