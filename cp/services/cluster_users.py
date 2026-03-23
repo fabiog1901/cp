@@ -4,32 +4,29 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import Cluster, ClusterUsersSnapshot, Event, NewDatabaseUserRequest
-from ..repos.postgres.cluster_users import ClusterUsersRepo
-from ..repos.postgres.event import EventRepo
-from .cluster import ClusterService
+from ..repos.base import BaseRepo
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
 class ClusterUsersService:
-    @staticmethod
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
     def load_cluster_users_snapshot(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
     ) -> ClusterUsersSnapshot | None:
-        selected_cluster = ClusterService.get_cluster_for_user(
-            cluster_id,
-            groups,
-            is_admin,
-        )
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
 
         try:
             return ClusterUsersSnapshot(
                 cluster=selected_cluster,
-                database_users=ClusterUsersRepo.list_database_users(
-                    ClusterUsersService._get_primary_dns_address(selected_cluster)
+                database_users=self.repo.list_database_users(
+                    self._get_primary_dns_address(selected_cluster)
                 ),
             )
         except RepositoryError as err:
@@ -39,8 +36,8 @@ class ClusterUsersService:
                 fallback_message=f"Unable to load database users for cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
     def create_database_user(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
@@ -48,7 +45,7 @@ class ClusterUsersService:
         password: str,
         requested_by: str,
     ) -> None:
-        selected_cluster = ClusterUsersService._get_cluster_or_raise(
+        selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
             is_admin,
@@ -61,12 +58,12 @@ class ClusterUsersService:
             ) from err
 
         try:
-            ClusterUsersRepo.create_database_user(
-                ClusterUsersService._get_primary_dns_address(selected_cluster),
+            self.repo.create_database_user(
+                self._get_primary_dns_address(selected_cluster),
                 request.username,
                 request.password,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 Event.DB_USER_ADD,
                 {
@@ -83,25 +80,25 @@ class ClusterUsersService:
                 fallback_message=f"Unable to create database user '{request.username}'.",
             ) from err
 
-    @staticmethod
     def remove_database_user(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
         username: str,
         requested_by: str,
     ) -> None:
-        selected_cluster = ClusterUsersService._get_cluster_or_raise(
+        selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
             is_admin,
         )
         try:
-            ClusterUsersRepo.remove_database_user(
-                ClusterUsersService._get_primary_dns_address(selected_cluster),
+            self.repo.remove_database_user(
+                self._get_primary_dns_address(selected_cluster),
                 username,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 Event.DB_USER_REMOVE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
@@ -113,8 +110,8 @@ class ClusterUsersService:
                 fallback_message=f"Unable to remove database user '{username}'.",
             ) from err
 
-    @staticmethod
     def revoke_database_user_role(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
@@ -122,18 +119,18 @@ class ClusterUsersService:
         role: str,
         requested_by: str,
     ) -> None:
-        selected_cluster = ClusterUsersService._get_cluster_or_raise(
+        selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
             is_admin,
         )
         try:
-            ClusterUsersRepo.revoke_database_user_role(
-                ClusterUsersService._get_primary_dns_address(selected_cluster),
+            self.repo.revoke_database_user_role(
+                self._get_primary_dns_address(selected_cluster),
                 username,
                 role,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 Event.DB_USER_REMOVE_ROLE,
                 {
@@ -149,8 +146,8 @@ class ClusterUsersService:
                 fallback_message=f"Unable to revoke role '{role}' from '{username}'.",
             ) from err
 
-    @staticmethod
     def update_database_user_password(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
@@ -161,18 +158,18 @@ class ClusterUsersService:
         if not password:
             raise ServiceValidationError("Password is required.")
 
-        selected_cluster = ClusterUsersService._get_cluster_or_raise(
+        selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
             is_admin,
         )
         try:
-            ClusterUsersRepo.update_database_user_password(
-                ClusterUsersService._get_primary_dns_address(selected_cluster),
+            self.repo.update_database_user_password(
+                self._get_primary_dns_address(selected_cluster),
                 username,
                 password,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 Event.DB_USER_UPDATE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
@@ -185,17 +182,13 @@ class ClusterUsersService:
                 fallback_message=f"Unable to update password for '{username}'.",
             ) from err
 
-    @staticmethod
     def _get_cluster_or_raise(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
     ) -> Cluster:
-        selected_cluster = ClusterService.get_cluster_for_user(
-            cluster_id,
-            groups,
-            is_admin,
-        )
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
         return selected_cluster

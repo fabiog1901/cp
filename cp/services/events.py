@@ -2,20 +2,23 @@
 
 from ..infra.errors import RepositoryError
 from ..models import EventLog
-from ..repos.postgres.event import EventRepo
+from ..repos.base import BaseRepo
 from .errors import from_repository_error
 
 
 class EventsService:
-    @staticmethod
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
     def list_visible_events(
+        self,
         limit: int,
         offset: int,
         groups: list[str],
         is_admin: bool,
     ) -> list[EventLog]:
         try:
-            return EventRepo.list_events(limit, offset, groups, is_admin)
+            return self.repo.list_events(limit, offset, groups, is_admin)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -23,10 +26,9 @@ class EventsService:
                 fallback_message="Unable to load EventRepo.",
             ) from err
 
-    @staticmethod
-    def get_event_total() -> int:
+    def get_event_total(self) -> int:
         try:
-            return EventRepo.get_event_count()
+            return self.repo.get_event_count()
         except RepositoryError as err:
             raise from_repository_error(
                 err,

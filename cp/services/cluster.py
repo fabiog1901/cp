@@ -11,17 +11,17 @@ from ..models import (
     JobType,
     RestoreRequest,
 )
-from ..repos.postgres.event import EventRepo
-from ..repos.postgres.mq import MqRepo
-from ..repos.postgres.cluster import ClusterRepo
+from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
 
 class ClusterService:
-    @staticmethod
-    def list_visible_clusters(groups: list[str], is_admin: bool) -> list:
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def list_visible_clusters(self, groups: list[str], is_admin: bool) -> list:
         try:
-            return ClusterRepo.list_clusters(groups, is_admin)
+            return self.repo.list_clusters(groups, is_admin)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -29,14 +29,14 @@ class ClusterService:
                 fallback_message="Unable to load clusters.",
             ) from err
 
-    @staticmethod
     def get_cluster_for_user(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
     ) -> Cluster | None:
         try:
-            return ClusterRepo.get_cluster(cluster_id, groups, is_admin)
+            return self.repo.get_cluster(cluster_id, groups, is_admin)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -44,13 +44,13 @@ class ClusterService:
                 fallback_message=f"Unable to load cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
     def list_cluster_jobs_for_user(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
     ):
-        selected_cluster = ClusterService.get_cluster_for_user(
+        selected_cluster = self.get_cluster_for_user(
             cluster_id,
             groups,
             is_admin,
@@ -58,7 +58,7 @@ class ClusterService:
         if selected_cluster is None:
             return None, []
         try:
-            return selected_cluster, ClusterRepo.list_cluster_jobs(cluster_id)
+            return selected_cluster, self.repo.list_cluster_jobs(cluster_id)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -66,15 +66,14 @@ class ClusterService:
                 fallback_message=f"Unable to load jobs for cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
-    def get_create_dialog_options() -> dict:
+    def get_create_dialog_options(self) -> dict:
         try:
             return {
-                "versions": [x.version for x in ClusterRepo.list_versions()],
-                "node_counts": [x.node_count for x in ClusterRepo.list_node_counts()],
-                "cpus_per_node": [x.cpu_count for x in ClusterRepo.list_cpus_per_node()],
-                "disk_sizes": [x.size_gb for x in ClusterRepo.list_disk_sizes()],
-                "regions": ClusterRepo.list_regions(),
+                "versions": [x.version for x in self.repo.list_versions()],
+                "node_counts": [x.node_count for x in self.repo.list_node_counts()],
+                "cpus_per_node": [x.cpu_count for x in self.repo.list_cpus_per_node()],
+                "disk_sizes": [x.size_gb for x in self.repo.list_disk_sizes()],
+                "regions": self.repo.list_region_options(),
             }
         except RepositoryError as err:
             raise from_repository_error(
@@ -83,11 +82,10 @@ class ClusterService:
                 fallback_message="Unable to load cluster options.",
             ) from err
 
-    @staticmethod
-    def get_cluster_dialog_options(selected_cluster: Cluster) -> dict:
+    def get_cluster_dialog_options(self, selected_cluster: Cluster) -> dict:
         all_new_versions = [
             x.version
-            for x in ClusterRepo.list_upgrade_versions(selected_cluster.version[:5])
+            for x in self.repo.list_upgrade_versions(selected_cluster.version[:5])
         ]
 
         major_yy, major_mm, _ = [int(x) for x in selected_cluster.version[1:].split(".")]
@@ -108,10 +106,10 @@ class ClusterService:
 
         try:
             return {
-                "node_counts": [x.node_count for x in ClusterRepo.list_node_counts()],
-                "cpus_per_node": [x.cpu_count for x in ClusterRepo.list_cpus_per_node()],
-                "disk_sizes": [x.size_gb for x in ClusterRepo.list_disk_sizes()],
-                "regions": ClusterRepo.list_regions(),
+                "node_counts": [x.node_count for x in self.repo.list_node_counts()],
+                "cpus_per_node": [x.cpu_count for x in self.repo.list_cpus_per_node()],
+                "disk_sizes": [x.size_gb for x in self.repo.list_disk_sizes()],
+                "regions": self.repo.list_region_options(),
                 "upgrade_versions": available_versions,
             }
         except RepositoryError as err:
@@ -127,8 +125,8 @@ class ClusterService:
             [x.lower() for x in name if x.lower() in "-abcdefghijklmnopqrstuvwxyz"]
         )
 
-    @staticmethod
     def request_cluster_creation(
+        self,
         form_data: dict,
         selected_cpus_per_node: int,
         selected_disk_size: int,
@@ -145,15 +143,15 @@ class ClusterService:
         payload["regions"] = list(selected_regions)
         payload["version"] = selected_version
         payload["group"] = selected_group
-        payload["name"] = ClusterService._normalize_cluster_name(payload["name"])
+        payload["name"] = self._normalize_cluster_name(payload["name"])
 
         try:
-            msg_id: JobID = MqRepo.insert_into_mq(
+            msg_id: JobID = self.repo.insert_into_mq(
                 JobType.CREATE_CLUSTER,
                 payload,
                 requested_by,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 JobType.CREATE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -167,15 +165,14 @@ class ClusterService:
                 fallback_message="Unable to request cluster creation.",
             ) from err
 
-    @staticmethod
-    def request_cluster_deletion(cluster_id: str, requested_by: str) -> int:
+    def request_cluster_deletion(self, cluster_id: str, requested_by: str) -> int:
         try:
-            msg_id: JobID = MqRepo.insert_into_mq(
+            msg_id: JobID = self.repo.insert_into_mq(
                 JobType.DELETE_CLUSTER,
                 {"cluster_id": cluster_id},
                 requested_by,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 JobType.DELETE_CLUSTER,
                 {"cluster_id": cluster_id, "job_id": msg_id.job_id},
@@ -188,8 +185,8 @@ class ClusterService:
                 fallback_message=f"Unable to request deletion of cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
     def request_cluster_scale(
+        self,
         cluster_id: str,
         selected_cpus_per_node: int,
         selected_disk_size: int,
@@ -206,12 +203,12 @@ class ClusterService:
         ).model_dump()
 
         try:
-            msg_id: JobID = MqRepo.insert_into_mq(
+            msg_id: JobID = self.repo.insert_into_mq(
                 JobType.SCALE_CLUSTER,
                 payload,
                 requested_by,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 JobType.SCALE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -225,8 +222,8 @@ class ClusterService:
                 fallback_message=f"Unable to request scaling for cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
     def request_cluster_upgrade(
+        self,
         cluster_id: str,
         selected_version: str,
         auto_finalize: bool,
@@ -239,12 +236,12 @@ class ClusterService:
         ).model_dump()
 
         try:
-            msg_id: JobID = MqRepo.insert_into_mq(
+            msg_id: JobID = self.repo.insert_into_mq(
                 JobType.UPGRADE_CLUSTER,
                 payload,
                 requested_by,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 JobType.UPGRADE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -258,8 +255,8 @@ class ClusterService:
                 fallback_message=f"Unable to request upgrade for cluster '{cluster_id}'.",
             ) from err
 
-    @staticmethod
     def request_cluster_restore(
+        self,
         cluster_id: str,
         backup_path: str,
         restore_aost: str | None,
@@ -280,12 +277,12 @@ class ClusterService:
         ).model_dump()
 
         try:
-            msg_id: JobID = MqRepo.insert_into_mq(
+            msg_id: JobID = self.repo.insert_into_mq(
                 JobType.RESTORE_CLUSTER,
                 payload,
                 requested_by,
             )
-            EventRepo.insert_event_log(
+            self.repo.insert_event_log(
                 requested_by,
                 JobType.RESTORE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},

@@ -2,16 +2,17 @@
 
 from ..infra.errors import RepositoryError
 from ..models import Event, Setting
-from ..repos.postgres.event import EventRepo
-from ..repos.postgres.settings import SettingsRepo
+from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
 
 class SettingsService:
-    @staticmethod
-    def list_settings() -> list[Setting]:
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def list_settings(self) -> list[Setting]:
         try:
-            return SettingsRepo.list_settings()
+            return self.repo.list_settings()
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -19,10 +20,9 @@ class SettingsService:
                 fallback_message="Unable to load SettingsRepo.",
             ) from err
 
-    @staticmethod
-    def get_setting(setting_id: str) -> str:
+    def get_setting(self, setting_id: str) -> str:
         try:
-            value = SettingsRepo.get_setting(setting_id)
+            value = self.repo.get_setting(setting_id)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -38,11 +38,10 @@ class SettingsService:
 
         return value
 
-    @staticmethod
-    def update_setting(setting_id: str, value: str, updated_by: str) -> None:
+    def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
         try:
-            SettingsRepo.update_setting(setting_id, value, updated_by)
-            EventRepo.insert_event_log(
+            self.repo.update_setting(setting_id, value, updated_by)
+            self.repo.insert_event_log(
                 updated_by,
                 Event.UPDATE_SETTING,
                 {"ID": setting_id, "value": value},

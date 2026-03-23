@@ -5,22 +5,22 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import DashboardMetrics, DashboardSnapshot
-from ..repos.postgres.dashboard import DashboardRepo
-from .cluster import ClusterService
+from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
-from .settings import SettingsService
 
 
 class DashboardService:
-    @staticmethod
-    def get_prometheus_url() -> str:
-        prom_url = SettingsService.get_setting("prom_url").strip()
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def get_prometheus_url(self) -> str:
+        prom_url = self.repo.get_setting("prom_url").strip()
         if not prom_url:
             raise ServiceValidationError("Missing Prometheus URL in settings.")
         return prom_url
 
-    @staticmethod
     def load_dashboard_snapshot(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
@@ -28,16 +28,12 @@ class DashboardService:
         end: int,
         interval_secs: int,
     ) -> DashboardSnapshot | None:
-        selected_cluster = ClusterService.get_cluster_for_user(
-            cluster_id,
-            groups,
-            is_admin,
-        )
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
 
-        metrics = DashboardService.load_dashboard_metrics(
-            DashboardService.get_prometheus_url(),
+        metrics = self.load_dashboard_metrics(
+            self.get_prometheus_url(),
             cluster_id,
             start,
             end,
@@ -45,8 +41,8 @@ class DashboardService:
         )
         return DashboardSnapshot(cluster=selected_cluster, metrics=metrics)
 
-    @staticmethod
     def load_dashboard_metrics(
+        self,
         prom_url: str,
         cluster_id: str,
         start: int,
@@ -96,7 +92,7 @@ class DashboardService:
             ),
         ]:
             try:
-                response = DashboardRepo.query_prometheus_range(
+                response = self.repo.query_prometheus_range(
                     prom_url,
                     query=query,
                     start=effective_start,
@@ -120,12 +116,12 @@ class DashboardService:
                     }
                 continue
 
-            values = DashboardService._first_result_values(response)
+            values = self._first_result_values(response)
             series[metric_name[0]] = {ts: transform(value) for ts, value in values}
 
         return DashboardMetrics(
             current_nodes=sorted(current_nodes),
-            chart_data=DashboardService._merge_by_ts(series),
+            chart_data=self._merge_by_ts(series),
         )
 
     @staticmethod

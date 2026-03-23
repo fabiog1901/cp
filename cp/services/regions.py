@@ -5,16 +5,17 @@ from typing import Any
 
 from ..infra.errors import RepositoryError
 from ..models import Event, Region
-from ..repos.postgres.event import EventRepo
-from ..repos.postgres.regions import RegionsRepo
+from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
 
 class RegionsService:
-    @staticmethod
-    def list_regions() -> list[Region]:
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def list_regions(self) -> list[Region]:
         try:
-            return RegionsRepo.list_regions()
+            return self.repo.list_regions()
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -22,11 +23,10 @@ class RegionsService:
                 fallback_message="Unable to load RegionsRepo.",
             ) from err
 
-    @staticmethod
-    def delete_region(region: Region, deleted_by: str) -> None:
+    def delete_region(self, region: Region, deleted_by: str) -> None:
         try:
-            RegionsRepo.delete_region(region.cloud, region.region, region.zone)
-            EventRepo.insert_event_log(
+            self.repo.delete_region(region.cloud, region.region, region.zone)
+            self.repo.insert_event_log(
                 deleted_by,
                 Event.REGION_REMOVE,
                 {"cloud": region.cloud, "region": region.region, "zone": region.zone},
@@ -38,8 +38,8 @@ class RegionsService:
                 fallback_message=f"Unable to delete region '{region.cloud}:{region.region}:{region.zone}'.",
             ) from err
 
-    @staticmethod
     def create_region(
+        self,
         *,
         cloud: str,
         region: str,
@@ -71,8 +71,8 @@ class RegionsService:
         )
 
         try:
-            RegionsRepo.add_region(new_region)
-            EventRepo.insert_event_log(
+            self.repo.add_region(new_region)
+            self.repo.insert_event_log(
                 created_by,
                 Event.REGION_ADD,
                 new_region.model_dump_json(),
