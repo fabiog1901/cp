@@ -17,6 +17,7 @@ from .db import get_repo as _get_repo
 
 __all__ = [
     "get_repo",
+    "get_compute_unit_service",
     "get_auth_service",
     "get_cluster_service",
     "get_cluster_backups_service",
@@ -35,6 +36,11 @@ __all__ = [
 
 def get_repo() -> BaseRepo:
     return _get_repo()
+
+
+def get_compute_unit_service():
+    """Legacy placeholder for an unfinished compute-unit API slice on this branch."""
+    raise RuntimeError("Compute unit service is not available on this branch.")
 
 
 def _build_service(service_cls):

@@ -10,7 +10,7 @@ from fastapi import (
 from fastapi.exceptions import RequestErrorModel
 
 from ..auth import get_audit_actor, require_compute_access
-from ..dep import get_compute_unit_service
+from ..infra import get_compute_unit_service
 from ..models import (
     ComputeUnitNotFoundError,
     ComputeUnitOperationError,

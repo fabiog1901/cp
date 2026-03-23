@@ -8,6 +8,7 @@ from .dependencies import (
     get_cluster_jobs_service,
     get_cluster_service,
     get_cluster_users_service,
+    get_compute_unit_service,
     get_dashboard_service,
     get_events_service,
     get_jobs_service,
@@ -15,6 +16,18 @@ from .dependencies import (
     get_regions_service,
     get_settings_service,
     get_versions_service,
+)
+from .util import (
+    RequestIDFilter,
+    ShorthandFormatter,
+    as_bool,
+    decrypt_api_key_secret,
+    encrypt_api_key_secret,
+    request_id_ctx,
+    safe_csv_set,
+    safe_json_string_dict,
+    safe_next_path,
+    validate_api_key_crypto_config,
 )
 
 __all__ = [
@@ -28,6 +41,7 @@ __all__ = [
     "get_cluster_jobs_service",
     "get_cluster_service",
     "get_cluster_users_service",
+    "get_compute_unit_service",
     "get_dashboard_service",
     "get_events_service",
     "get_jobs_service",
@@ -35,4 +49,14 @@ __all__ = [
     "get_regions_service",
     "get_settings_service",
     "get_versions_service",
+    "RequestIDFilter",
+    "ShorthandFormatter",
+    "as_bool",
+    "decrypt_api_key_secret",
+    "encrypt_api_key_secret",
+    "request_id_ctx",
+    "safe_csv_set",
+    "safe_json_string_dict",
+    "safe_next_path",
+    "validate_api_key_crypto_config",
 ]

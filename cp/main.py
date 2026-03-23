@@ -13,7 +13,7 @@ from .api import admin #, compute_unit
 from .auth import oidc
 from .auth import router as auth_router
 from .infra import close_db, initialize_postgres
-from .util import RequestIDFilter, ShorthandFormatter, request_id_ctx
+from .infra import RequestIDFilter, ShorthandFormatter, request_id_ctx
 
 
 def setup_logging():

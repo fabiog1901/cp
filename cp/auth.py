@@ -27,7 +27,7 @@ from fastapi.security import APIKeyCookie, APIKeyHeader
 from .infra import get_repo
 from .models import Event, KloigosRole, LogMsg
 from .repos.base import BaseRepo
-from .util import (
+from .infra import (
     as_bool,
     decrypt_api_key_secret,
     request_id_ctx,
