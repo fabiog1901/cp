@@ -1,10 +1,13 @@
 """CockroachDB/Postgres repository implementation package."""
 
+from psycopg_pool import ConnectionPool
+
+from .api_keys import ApiKeysRepo
 from .auth import AuthRepo
+from .cluster import ClusterRepo
 from .cluster_backups import ClusterBackupsRepo
 from .cluster_jobs import ClusterJobsRepo
 from .cluster_users import ClusterUsersRepo
-from .cluster import ClusterRepo
 from .dashboard import DashboardRepo
 from .event import EventRepo
 from .jobs import JobsRepo
@@ -14,9 +17,9 @@ from .regions import RegionsRepo
 from .settings import SettingsRepo
 from .versions import VersionsRepo
 
-from psycopg_pool import ConnectionPool
 
 class PostgresRepo(
+    ApiKeysRepo,
     ClusterJobsRepo,
     RegionsRepo,
     VersionsRepo,

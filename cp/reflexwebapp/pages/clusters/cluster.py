@@ -3,16 +3,16 @@ import logging
 
 import reflex as rx
 
-from ...components.BadgeClusterStatus import get_cluster_status_badge
-from ...components.main import chip_props, item_selector
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import TS_FORMAT, Cluster, RegionOption
 from ....services.cluster import ClusterService
 from ....services.errors import ServiceError
-from ...state import AuthState
+from ...components.BadgeClusterStatus import get_cluster_status_badge
+from ...components.main import chip_props, item_selector
+from ...components.notify import NotifyState
 from ...layouts.template import template
 from ...shared.util import get_human_size
+from ...state import AuthState
 from .clusters import State as ClusterState
 
 ROUTE = "/clusters/[c_id]"
@@ -212,7 +212,9 @@ class State(AuthState):
                         )
 
                     self.available_versions = options["upgrade_versions"]
-                    self.selected_version = self.available_versions[0] if self.available_versions else ""
+                    self.selected_version = (
+                        self.available_versions[0] if self.available_versions else ""
+                    )
 
                     self.selected_node_count = self.current_cluster.node_count
 

@@ -7,7 +7,9 @@ TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
 
 from enum import StrEnum, auto
+
 from pydantic import BaseModel, Field
+
 
 class AutoNameStrEnum(StrEnum):
     def _generate_next_value_(name, start, count, last_values):
@@ -344,18 +346,6 @@ class StrID(BaseModel):
 
 class IntID(BaseModel):
     id: int
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 import datetime as dt

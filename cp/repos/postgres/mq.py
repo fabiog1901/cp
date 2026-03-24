@@ -3,6 +3,8 @@
 from ...infra.db import fetch_one
 from ...models import JobID
 from ..base import BaseRepo
+
+
 class MqRepo(BaseRepo):
     def insert_into_mq(
         self,

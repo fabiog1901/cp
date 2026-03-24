@@ -5,8 +5,8 @@ import os
 from typing import Any, Callable
 
 from psycopg import DatabaseError, InterfaceError, OperationalError
-from psycopg.abc import Dumper
 from psycopg import errors as psycopg_errors
+from psycopg.abc import Dumper
 from psycopg.pq import Format
 from psycopg.rows import class_row
 from psycopg.types.array import ListDumper

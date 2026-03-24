@@ -6,6 +6,7 @@ from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import ClusterIDRef, IntID, Job, Task
 from ..base import BaseRepo
 
+
 class JobsRepo(BaseRepo):
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         if is_admin:
@@ -41,7 +42,9 @@ class JobsRepo(BaseRepo):
             Job,
         )
 
-    def get_job(self, job_id: int, groups: list[str], is_admin: bool = False) -> Job | None:
+    def get_job(
+        self, job_id: int, groups: list[str], is_admin: bool = False
+    ) -> Job | None:
         if is_admin:
             return fetch_one(
                 """

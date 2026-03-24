@@ -5,12 +5,12 @@ import reflex as rx
 import yaml
 from reflex.components.radix.themes.base import LiteralAccentColor
 
-from ...services.events import EventsService
-from ...services.errors import ServiceError
-from ..components.notify import NotifyState
 from ...models import TS_FORMAT, EventLogYaml
-from ..state import AuthState
+from ...services.errors import ServiceError
+from ...services.events import EventsService
+from ..components.notify import NotifyState
 from ..layouts.template import template
+from ..state import AuthState
 
 ROUTE = "/events"
 logger = logging.getLogger(__name__)

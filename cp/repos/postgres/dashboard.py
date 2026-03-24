@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 from ..base import BaseRepo
 
+
 class DashboardRepo(BaseRepo):
     def query_prometheus_range(
         self,

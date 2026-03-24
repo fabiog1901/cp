@@ -154,6 +154,7 @@ class ClusterBackupsService:
     @staticmethod
     def validate_restore_request(**kwargs) -> dict:
         from pydantic import ValidationError
+
         from ..models import RestoreRequest
 
         try:

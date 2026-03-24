@@ -17,17 +17,23 @@ CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
 
 from ..base import BaseRepo
+
+
 class ClusterBackupsRepo(BaseRepo):
     def list_backup_paths(self, dns_address: str) -> list[BackupPathOption]:
         try:
             with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:
-                    rows = cur.execute("SHOW BACKUPS IN 'external://backup';").fetchall()
+                    rows = cur.execute(
+                        "SHOW BACKUPS IN 'external://backup';"
+                    ).fetchall()
         except Exception as err:
             logger.debug(
                 "Cluster backup query failed [operation=cluster_backups.list_backup_paths]"
             )
-            raise translate_database_error(err, "cluster_backups.list_backup_paths") from err
+            raise translate_database_error(
+                err, "cluster_backups.list_backup_paths"
+            ) from err
 
         paths = sorted((str(row[0]) for row in rows), reverse=True)
         return [BackupPathOption(path="LATEST")] + [

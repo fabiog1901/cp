@@ -1,10 +1,11 @@
 """Regions repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all
-from ...models import Region
-from ...models import RegionOption
+from ...models import Region, RegionOption
 from ..base import BaseRepo
 from .common import convert_model_to_sql
+
+
 class RegionsRepo(BaseRepo):
     def list_regions(self) -> list[Region]:
         return fetch_all(

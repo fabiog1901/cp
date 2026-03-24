@@ -4,13 +4,13 @@ from typing import List
 
 import reflex as rx
 
-from ...components.main import breadcrumb
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Version
 from ....services.versions import VersionsService
-from ...state import AuthState
+from ...components.main import breadcrumb
+from ...components.notify import NotifyState
 from ...layouts.template import template
+from ...state import AuthState
 
 ROUTE = "/admin/versions"
 

@@ -50,13 +50,12 @@ def upgrade_cluster(
             JobState.FAILED,
         )
         return
-    
+
     repo.update_cluster(
         cur.name,
         requested_by,
         status=ClusterState.UPGRADING,
     )
-
 
     Thread(
         target=upgrade_cluster_worker,

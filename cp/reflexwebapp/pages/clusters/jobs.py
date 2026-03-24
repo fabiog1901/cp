@@ -2,14 +2,14 @@ import asyncio
 
 import reflex as rx
 
-from ...components.BadgeJobStatus import get_job_status_badge
-from ...components.main import cluster_banner, mini_breadcrumb
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterJobsSnapshot, Job
 from ....services.cluster_jobs import ClusterJobsService
-from ...state import AuthState
+from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.main import cluster_banner, mini_breadcrumb
+from ...components.notify import NotifyState
 from ...layouts.template import template
+from ...state import AuthState
 
 ROUTE = "/clusters/[c_id]/jobs"
 

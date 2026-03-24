@@ -1,10 +1,10 @@
 """Versions repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all
-from ...models import CpuCountOption, DiskSizeOption, NodeCountOption
-from ...models import Version
+from ...models import CpuCountOption, DiskSizeOption, NodeCountOption, Version
 from ..base import BaseRepo
 from .common import convert_model_to_sql
+
 
 class VersionsRepo(BaseRepo):
     def list_versions(self) -> list[Version]:

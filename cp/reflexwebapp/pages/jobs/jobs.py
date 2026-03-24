@@ -2,13 +2,13 @@ import asyncio
 
 import reflex as rx
 
-from ...components.BadgeJobStatus import get_job_status_badge
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Job
 from ....services.jobs import JobsService
-from ...state import AuthState
+from ...components.BadgeJobStatus import get_job_status_badge
+from ...components.notify import NotifyState
 from ...layouts.template import template
+from ...state import AuthState
 
 ROUTE = "/jobs"
 

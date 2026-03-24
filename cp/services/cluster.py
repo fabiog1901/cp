@@ -88,7 +88,9 @@ class ClusterService:
             for x in self.repo.list_upgrade_versions(selected_cluster.version[:5])
         ]
 
-        major_yy, major_mm, _ = [int(x) for x in selected_cluster.version[1:].split(".")]
+        major_yy, major_mm, _ = [
+            int(x) for x in selected_cluster.version[1:].split(".")
+        ]
         available_versions = []
         for version in all_new_versions:
             f1, f2, _ = [int(x) for x in version[1:].split(".")]

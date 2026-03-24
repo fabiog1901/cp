@@ -3,7 +3,7 @@
 import gzip
 
 from ..infra.errors import RepositoryError
-from ..models import Event, Playbook, PlaybookOverview, STRFTIME
+from ..models import STRFTIME, Event, Playbook, PlaybookOverview
 from ..repos.base import BaseRepo
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 

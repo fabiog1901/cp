@@ -191,7 +191,9 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         )
 
         if job_status != "successful":
-            repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+            repo.update_cluster(
+                cluster_request.name, created_by, status=ClusterState.FAILED
+            )
             return
 
         cluster_inventory: list[InventoryRegion] = []
@@ -226,7 +228,9 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             lbs_inventory=lbs_inventory,
         )
     except Exception as err:
-        logger.exception("Unhandled error while creating cluster '%s'", cluster_request.name)
+        logger.exception(
+            "Unhandled error while creating cluster '%s'", cluster_request.name
+        )
         repo.update_job(job_id, JobState.FAILED)
         repo.insert_task(
             job_id,
@@ -235,4 +239,6 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "FAILURE",
             str(err),
         )
-        repo.update_cluster(cluster_request.name, created_by, status=ClusterState.FAILED)
+        repo.update_cluster(
+            cluster_request.name, created_by, status=ClusterState.FAILED
+        )

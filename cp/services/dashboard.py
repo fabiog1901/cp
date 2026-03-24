@@ -136,7 +136,9 @@ class DashboardService:
         if not named_series:
             return []
 
-        all_ts = sorted(set(ts for series in named_series.values() for ts in series.keys()))
+        all_ts = sorted(
+            set(ts for series in named_series.values() for ts in series.keys())
+        )
 
         rows = []
         for ts in all_ts:
@@ -147,7 +149,9 @@ class DashboardService:
                 if ts in series:
                     row[name] = series[ts]
 
-            row["t"] = row.get("s", 0) + row.get("i", 0) + row.get("u", 0) + row.get("d", 0)
+            row["t"] = (
+                row.get("s", 0) + row.get("i", 0) + row.get("u", 0) + row.get("d", 0)
+            )
             rows.append(row)
 
         return rows

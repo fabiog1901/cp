@@ -17,6 +17,7 @@ CLUSTER_DB_USERNAME = "cockroach"
 CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
 
+
 class ClusterUsersRepo(BaseRepo):
     def list_database_users(self, dns_address: str) -> list[DatabaseUser]:
         try:
@@ -33,9 +34,13 @@ class ClusterUsersRepo(BaseRepo):
             logger.debug(
                 "Cluster user query failed [operation=cluster_users.list_database_users]"
             )
-            raise translate_database_error(err, "cluster_users.list_database_users") from err
+            raise translate_database_error(
+                err, "cluster_users.list_database_users"
+            ) from err
 
-    def create_database_user(self, dns_address: str, username: str, password: str) -> None:
+    def create_database_user(
+        self, dns_address: str, username: str, password: str
+    ) -> None:
         try:
             with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:
@@ -49,20 +54,28 @@ class ClusterUsersRepo(BaseRepo):
             logger.debug(
                 "Cluster user query failed [operation=cluster_users.create_database_user]"
             )
-            raise translate_database_error(err, "cluster_users.create_database_user") from err
+            raise translate_database_error(
+                err, "cluster_users.create_database_user"
+            ) from err
 
     def remove_database_user(self, dns_address: str, username: str) -> None:
         try:
             with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:
-                    cur.execute(sql.SQL("DROP USER {}").format(sql.Identifier(username)))
+                    cur.execute(
+                        sql.SQL("DROP USER {}").format(sql.Identifier(username))
+                    )
         except Exception as err:
             logger.debug(
                 "Cluster user query failed [operation=cluster_users.remove_database_user]"
             )
-            raise translate_database_error(err, "cluster_users.remove_database_user") from err
+            raise translate_database_error(
+                err, "cluster_users.remove_database_user"
+            ) from err
 
-    def revoke_database_user_role(self, dns_address: str, username: str, role: str) -> None:
+    def revoke_database_user_role(
+        self, dns_address: str, username: str, role: str
+    ) -> None:
         try:
             with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:

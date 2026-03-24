@@ -24,18 +24,18 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie, APIKeyHeader
 
-from .infra import get_repo
-from .models import Event, KloigosRole, LogMsg
-from .repos.base import BaseRepo
 from .infra import (
     as_bool,
     decrypt_api_key_secret,
+    get_repo,
     request_id_ctx,
     safe_csv_set,
     safe_json_string_dict,
     safe_next_path,
     validate_api_key_crypto_config,
 )
+from .models import Event, KloigosRole, LogMsg
+from .repos.base import BaseRepo
 
 
 def _claim_groups(claim_value: Any) -> set[str]:

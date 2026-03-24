@@ -10,8 +10,8 @@ from jwt.algorithms import RSAAlgorithm
 
 from ...models import WebUser
 from ...services.auth import AuthService
-from ...services.settings import SettingsService
 from ...services.errors import ServiceError
+from ...services.settings import SettingsService
 
 SSO_CACHE_VALID_UNTIL = 0
 
@@ -96,7 +96,7 @@ class AuthState(rx.State):
 
             tokens = token_res.json()
             access_token = tokens.get("access_token")
-            user_claims = validate_token(access_token) #, audience=SSO_CLIENT_ID)
+            user_claims = validate_token(access_token)  # , audience=SSO_CLIENT_ID)
 
             grp_role_maps: dict[str, list[str]] = {
                 x.role: x.groups for x in AuthService.list_role_group_mappings()
@@ -233,7 +233,7 @@ def validate_token(token: str, audience: str = None) -> dict:
         raise AuthError("No matching signing key found for authorization token")
 
     try:
-        
+
         public_key = RSAAlgorithm.from_jwk(rsa_key)
         payload = jwt.decode(
             token,

@@ -3,16 +3,16 @@ import logging
 
 import reflex as rx
 
-from ...components.BadgeClusterStatus import get_cluster_status_badge
-from ...components.main import chip_props, item_selector
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import Cluster, ClusterOverview, RegionOption
 from ....services.cluster import ClusterService
 from ....services.errors import ServiceError
-from ...state import AuthState
+from ...components.BadgeClusterStatus import get_cluster_status_badge
+from ...components.main import chip_props, item_selector
+from ...components.notify import NotifyState
 from ...layouts.template import template
 from ...shared.util import get_funny_name, get_human_size
+from ...state import AuthState
 
 ROUTE = "/clusters"
 logger = logging.getLogger(__name__)
@@ -406,7 +406,9 @@ def table_row(cluster_overview: ClusterOverview):
         # CLUSTER_ID
         rx.table.cell(
             rx.link(
-                rx.text(cluster_overview.cluster_id, class_name="text-2xl font-semibold"),
+                rx.text(
+                    cluster_overview.cluster_id, class_name="text-2xl font-semibold"
+                ),
                 href=f"/clusters/{cluster_overview.cluster_id}",
             )
         ),

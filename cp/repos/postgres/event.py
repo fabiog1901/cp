@@ -1,8 +1,10 @@
 """Event repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all, fetch_scalar
-from ...models import EventLog
+from ...models import EventLog, LogMsg
 from ..base import BaseRepo
+
+
 class EventRepo(BaseRepo):
     def list_events(
         self,
@@ -56,4 +58,19 @@ class EventRepo(BaseRepo):
                 event_details,
             ),
             operation="events.insert_event_log",
+        )
+
+    def log_event(self, event: LogMsg):
+        execute_stmt(
+            """
+                    INSERT INTO event_log (ts, user_id, action, details, request_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+            (
+                event.ts,
+                event.user_id,
+                event.action,
+                event.details,
+                event.request_id,
+            ),
         )

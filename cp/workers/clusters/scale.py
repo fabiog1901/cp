@@ -177,7 +177,9 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_NODE_CPUS", extra_vars)
 
         if job_status != "successful":
-            repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
         repo.update_cluster(
@@ -285,7 +287,9 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
@@ -515,7 +519,9 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)

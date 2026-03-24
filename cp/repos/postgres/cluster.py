@@ -6,19 +6,13 @@ from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import (
     Cluster,
     ClusterOverview,
-    CpuCountOption,
-    DiskSizeOption,
     InventoryLB,
     InventoryRegion,
-    Job,
-    NodeCountOption,
     Nodes,
-    Region,
-    RegionOption,
-    Version,
-)
 
+)
 from ..base import BaseRepo
+
 
 class ClusterRepo(BaseRepo):
     def list_clusters(

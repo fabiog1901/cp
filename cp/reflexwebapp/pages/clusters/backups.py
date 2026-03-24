@@ -3,13 +3,13 @@ import asyncio
 import reflex as rx
 from pydantic import ValidationError
 
-from ...components.main import cluster_banner, mini_breadcrumb
-from ...components.notify import NotifyState
 from ....cp import app
 from ....models import BackupDetails, Cluster, ClusterBackupsSnapshot
 from ....services.cluster_backups import ClusterBackupsService
-from ...state import AuthState
+from ...components.main import cluster_banner, mini_breadcrumb
+from ...components.notify import NotifyState
 from ...layouts.template import template
+from ...state import AuthState
 
 ROUTE = "/clusters/[c_id]/backups"
 
@@ -69,8 +69,12 @@ class State(AuthState):
                 restore_aost=form_data.get("aost"),
                 restore_full_cluster=self.full_cluster,
                 object_type=self.object_type if not self.full_cluster else None,
-                object_name=form_data.get("object_name") if not self.full_cluster else None,
-                backup_into=form_data.get("backup_into") if not self.full_cluster else None,
+                object_name=(
+                    form_data.get("object_name") if not self.full_cluster else None
+                ),
+                backup_into=(
+                    form_data.get("backup_into") if not self.full_cluster else None
+                ),
                 requested_by=self.webuser.username,
             )
         except ValidationError as ve:

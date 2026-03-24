@@ -4,11 +4,11 @@ import datetime as dt
 import reflex as rx
 from reflex_monaco import monaco
 
+from ....services.playbooks import PlaybooksService
 from ...components.main import breadcrumb
 from ...components.notify import NotifyState
-from ....services.playbooks import PlaybooksService
-from ...state import AuthState
 from ...layouts.template import template
+from ...state import AuthState
 
 ROUTE = "/admin/playbooks"
 
@@ -99,9 +99,7 @@ class State(AuthState):
         self.original_content = selection["original_content"]
         self.modified_content = selection["modified_content"]
 
-        return rx.toast.success(
-            f"Successfully deleted version '{deleted_version}'."
-        )
+        return rx.toast.success(f"Successfully deleted version '{deleted_version}'.")
 
     @rx.event
     def revert_changes(self):

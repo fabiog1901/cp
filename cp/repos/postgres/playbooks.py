@@ -3,6 +3,8 @@
 from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import Playbook, PlaybookOverview
 from ..base import BaseRepo
+
+
 class PlaybooksRepo(BaseRepo):
     def get_playbook(self, name: str, version: str) -> Playbook:
         return fetch_one(
@@ -77,3 +79,41 @@ class PlaybooksRepo(BaseRepo):
             """,
             (name, version),
         )
+
+
+# def playbook_get_content(self, playbook: Playbook) -> str:
+
+#     with self.pool.connection() as conn:
+
+#         cur = conn.cursor()
+#         rs = cur.execute(
+#             """
+#             SELECT content
+#             FROM playbooks
+#             WHERE id = %s
+#             """,
+#             (playbook,),
+#         ).fetchone()
+
+#     return gzip.decompress(rs[0]).decode()  # type: ignore
+
+# def playbook_update_content(
+#     self,
+#     playbook: Playbook,
+#     b64: str,
+# ) -> None:
+
+#     with self.pool.connection() as conn:
+
+#         cur = conn.cursor()
+#         cur.execute(
+#             """
+#             UPDATE playbooks
+#             SET content = %s
+#             WHERE id = %s
+#             """,
+#             (
+#                 gzip.compress(b64.encode()),
+#                 playbook,
+#             ),
+#         )

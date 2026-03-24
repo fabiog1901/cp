@@ -9,11 +9,10 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import DB_ENGINE, DB_URL
-from .api import admin #, compute_unit
+from .api import admin  # , compute_unit
 from .auth import oidc
 from .auth import router as auth_router
-from .infra import close_db, initialize_postgres
-from .infra import request_id_ctx
+from .infra import close_db, initialize_postgres, request_id_ctx
 from .workers.queue import get_nodes, pull_from_mq
 
 
@@ -57,6 +56,7 @@ api.include_router(auth_router)
 @api.get("/prom-targets")
 async def get_targets():
     return get_nodes()
+
 
 app.mount("/api", api)
 app.mount(

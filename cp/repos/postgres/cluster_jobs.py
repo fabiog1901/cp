@@ -2,8 +2,8 @@
 
 from ...infra.db import fetch_all
 from ...models import Job
-
 from ..base import BaseRepo
+
 
 class ClusterJobsRepo(BaseRepo):
     def list_cluster_jobs(self, cluster_id: str) -> list[Job]:
