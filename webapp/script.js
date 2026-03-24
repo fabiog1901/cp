@@ -59,6 +59,7 @@ window.app = function () {
     jobsLoading: { list: false },
     jobsAutoRefreshEnabled: true,
     _jobsAutoTimer: null,
+    jobsContextClusterId: "",
 
     // ---------- Events state ----------
     events: [],
@@ -754,6 +755,18 @@ window.app = function () {
       return subtitles[this.view] || "Control plane workspace";
     },
 
+    jobsTitle() {
+      return this.jobsContextClusterId
+        ? `Jobs for ${this.jobsContextClusterId}`
+        : "Jobs";
+    },
+
+    jobsSubtitle() {
+      return this.jobsContextClusterId
+        ? "Cluster-scoped jobs loaded from the cluster jobs endpoint."
+        : "List of visible jobs from the jobs API.";
+    },
+
     handleForbiddenView(viewName, { fallback = true } = {}) {
       this.viewNotice = this.unauthorizedViewMessage(viewName);
       if (!fallback) return;
@@ -892,6 +905,7 @@ window.app = function () {
       const jobsFilter = localStorage.getItem("cp_jobs_filter");
       const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
       const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
+      const jobsContextClusterId = localStorage.getItem("cp_jobs_context_cluster_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
 
@@ -900,6 +914,7 @@ window.app = function () {
       if (sFilter !== null) this.filterQuery = sFilter;
       if (ssFilter !== null) this.serversFilterQuery = ssFilter;
       if (jobsFilter !== null) this.jobsFilterQuery = jobsFilter;
+      if (jobsContextClusterId !== null) this.jobsContextClusterId = jobsContextClusterId;
       if (seFilter !== null) this.eventsFilterQuery = seFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
@@ -1016,6 +1031,25 @@ window.app = function () {
       else if (this.view === "regions") this.ensureRegionsView();
       else if (this.view === "admin") this.ensureAdminView();
       else this.ensureDashboardView();
+    },
+
+    openJobsView(clusterId = "") {
+      const nextClusterId = String(clusterId || "").trim();
+      const contextChanged = this.jobsContextClusterId !== nextClusterId;
+      this.jobsContextClusterId = nextClusterId;
+      localStorage.setItem("cp_jobs_context_cluster_id", nextClusterId);
+      if (nextClusterId) {
+        this.jobsFilterQuery = nextClusterId;
+        this.persistJobsFilter();
+      }
+      if (contextChanged) {
+        this.jobs = [];
+      }
+      if (this.view === "jobs") {
+        this.ensureJobsView();
+        return;
+      }
+      this.setView("jobs");
     },
 
     async logout() {
@@ -1372,6 +1406,12 @@ window.app = function () {
       window.open(url, "_blank", "noopener");
     },
 
+    openClusterJobs() {
+      const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.openJobsView(clusterId);
+    },
+
     triggerClusterAction(label) {
       const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
@@ -1460,13 +1500,40 @@ window.app = function () {
       localStorage.setItem("cp_jobs_filter", this.jobsFilterQuery || "");
     },
 
+    async onJobsFilterInput() {
+      this.persistJobsFilter();
+      const query = String(this.jobsFilterQuery || "").trim();
+      if (!query && this.jobsContextClusterId) {
+        this.jobsContextClusterId = "";
+        localStorage.setItem("cp_jobs_context_cluster_id", "");
+        this.jobs = [];
+        await this.refreshJobs();
+        return;
+      }
+      this.applyJobsFilterSort();
+    },
+
     async refreshJobs() {
       this.jobsLoading.list = true;
       try {
-        const data = await this.apiFetch(this.visibilityPath("/jobs/"), {
-          method: "GET",
-        });
-        this.jobs = Array.isArray(data) ? data : [];
+        if (this.jobsContextClusterId) {
+          const data = await this.apiFetch(
+            this.visibilityPath(
+              `/clusters/${encodeURIComponent(this.jobsContextClusterId)}/jobs`,
+            ),
+            { method: "GET" },
+          );
+          this.jobs = Array.isArray(data?.jobs) ? data.jobs : [];
+          if (!this.jobsFilterQuery) {
+            this.jobsFilterQuery = this.jobsContextClusterId;
+            this.persistJobsFilter();
+          }
+        } else {
+          const data = await this.apiFetch(this.visibilityPath("/jobs/"), {
+            method: "GET",
+          });
+          this.jobs = Array.isArray(data) ? data : [];
+        }
         this.jobsLastUpdatedUtc = this.utcNowString();
         this.applyJobsFilterSort();
       } catch (e) {

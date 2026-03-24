@@ -62,7 +62,7 @@
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' }"
-              @click.prevent="setView('jobs')">Jobs</a>
+              @click.prevent="openJobsView()">Jobs</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'events' }"
               @click.prevent="setView('events')">Events</a>
@@ -111,7 +111,7 @@
             <h2>Quick Links</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
               <button class="btn" @click="setView('clusters')">Open Clusters</button>
-              <button class="btn" @click="setView('jobs')">Open Jobs</button>
+              <button class="btn" @click="openJobsView()">Open Jobs</button>
               <button class="btn" @click="setView('events')">Open Events</button>
               <button class="btn" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
               <a class="link-inline" href="/api/docs" target="_blank" rel="noopener">Open API docs</a>
@@ -167,7 +167,7 @@
                   Shows orchestration work from <span class="ip-pill">/api/jobs/</span> so operators can quickly scan
                   status, type, and ownership.
                 </p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('jobs')">
+                <a href="#" class="dashboard-link" @click.prevent="openJobsView()">
                   Open Jobs
                 </a>
               </article>
@@ -538,11 +538,12 @@
                   <div class="dashboard-card-kicker">Actions</div>
                   <h3 class="dashboard-card-title">Cluster Operations</h3>
                 </div>
-                <div class="dashboard-stat">7</div>
+                <div class="dashboard-stat">8</div>
               </div>
               <div class="cluster-action-grid">
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Delete cluster')">Delete Cluster</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show backups')">Show Backups</button>
+                <button class="btn cluster-action-btn" type="button" @click="openClusterJobs()">Show Jobs</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Create users')">Create Users</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Scale cluster')">Scale Cluster</button>
@@ -646,13 +647,16 @@
         <section class="main">
           <div class="main-header">
             <div class="main-header-left">
-              <div class="main-title">Jobs</div>
-              <div class="main-subtitle">List of visible jobs from the jobs API.</div>
+              <div class="main-title" x-text="jobsTitle()"></div>
+              <div class="main-subtitle" x-text="jobsSubtitle()"></div>
             </div>
 
             <div class="main-actions">
               <input type="search" class="search-input" placeholder="Filter by id, type, status, or owner…"
-                x-model="jobsFilterQuery" @input="persistJobsFilter(); applyJobsFilterSort();" />
+                x-model="jobsFilterQuery" @input="onJobsFilterInput()" />
+
+              <button class="btn btn-secondary" type="button" x-show="jobsContextClusterId"
+                @click="openCluster(jobsContextClusterId)">Back to Cluster</button>
 
               <div class="pill">Updated (UTC): <span x-text="jobsLastUpdatedUtc"></span></div>
             </div>
