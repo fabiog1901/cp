@@ -24,21 +24,37 @@ window.app = function () {
     serversSortIndex: null,
     serversSortDir: "asc",
     serversSortTypeByIndex: {
-      0: "string", // hostname
-      1: "ip", // ip
-      2: "string", // user_id
-      3: "string", // region
-      4: "string", // zone
-      5: "number", // cpu_count
-      6: "number", // mem_gb
-      7: "number", // disk_count
-      8: "number", // disk_size_gb
-      9: "string", // tags
-      10: "string", // status
+      0: "string", // cluster_id
+      1: "string", // grp
+      2: "string", // created_by
+      3: "string", // status
+      4: "string", // version
+      5: "number", // node_count
+      6: "number", // node_cpus
+      7: "number", // disk_size
     },
     serversLoading: { list: false, action: false },
     serversAutoRefreshEnabled: true,
     _serversAutoTimer: null,
+
+    // ---------- Jobs state ----------
+    jobs: [],
+    jobsVisibleRows: [],
+    jobsFilterQuery: "",
+    jobsLastUpdatedUtc: null,
+    jobsSortIndex: 0,
+    jobsSortDir: "desc",
+    jobsSortTypeByIndex: {
+      0: "number", // job_id
+      1: "string", // job_type
+      2: "string", // status
+      3: "string", // created_by
+      4: "date", // created_at
+      5: "date", // updated_at
+    },
+    jobsLoading: { list: false },
+    jobsAutoRefreshEnabled: true,
+    _jobsAutoTimer: null,
 
     // ---------- Events state ----------
     events: [],
@@ -100,6 +116,20 @@ window.app = function () {
     _settingsAutoTimer: null,
     settingsDrafts: {},
     settingsError: "",
+
+    // ---------- Versions state ----------
+    versions: [],
+    versionsVisibleRows: [],
+    versionsFilterQuery: "",
+    versionsLastUpdatedUtc: null,
+    versionsLoading: { list: false },
+
+    // ---------- Regions state ----------
+    regions: [],
+    regionsVisibleRows: [],
+    regionsFilterQuery: "",
+    regionsLastUpdatedUtc: null,
+    regionsLoading: { list: false },
 
     renderedAtUtc: "now",
 
@@ -603,9 +633,67 @@ window.app = function () {
       );
     },
 
+    isAdminSectionView(viewName = this.view) {
+      return [
+        "admin",
+        "settings",
+        "api_keys",
+        "versions",
+        "regions",
+        "playbooks",
+      ].includes(viewName);
+    },
+
+    authGroupsClaimName() {
+      return String(
+        this.authClaims?._groups_claim_name ||
+          this.authClaims?._cp?.groups_claim_name ||
+          "groups",
+      );
+    },
+
+    currentUserGroups() {
+      const claimName = this.authGroupsClaimName();
+      const claimValue = this.authClaims?.[claimName];
+      if (Array.isArray(claimValue)) return claimValue.filter(Boolean);
+      if (typeof claimValue === "string" && claimValue.trim()) {
+        return claimValue
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
+      return [];
+    },
+
+    buildPath(path, params = {}) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === "") return;
+        if (Array.isArray(value)) {
+          value.forEach((entry) => {
+            if (entry !== null && entry !== undefined && entry !== "") {
+              qs.append(key, String(entry));
+            }
+          });
+          return;
+        }
+        qs.set(key, String(value));
+      });
+      const query = qs.toString();
+      return query ? `${path}?${query}` : path;
+    },
+
+    visibilityPath(path, extra = {}) {
+      return this.buildPath(path, {
+        groups: this.currentUserGroups(),
+        is_admin: this.canViewAdmin(),
+        ...extra,
+      });
+    },
+
     isViewAccessible(viewName) {
       if (
-        ["servers", "events", "playbooks", "api_keys", "settings"].includes(
+        ["admin", "playbooks", "api_keys", "settings", "versions", "regions"].includes(
           viewName,
         )
       ) {
@@ -631,14 +719,34 @@ window.app = function () {
 
     unauthorizedViewMessage(viewName = this.view) {
       const labels = {
-        servers: "Servers",
+        clusters: "Clusters",
+        jobs: "Jobs",
         events: "Events",
+        admin: "Admin",
         playbooks: "Playbooks",
         api_keys: "API Keys",
         settings: "Settings",
+        versions: "Versions",
+        regions: "Regions",
       };
       const label = labels[viewName] || "This view";
       return `${label} is available only to admin users.`;
+    },
+
+    viewSubtitle() {
+      const subtitles = {
+        dashboard: "Infrastructure landing page and operational navigation",
+        clusters: "Cluster inventory and status",
+        jobs: "Queued and completed orchestration work",
+        events: "Cluster and platform activity stream",
+        admin: "Administrative landing page and tooling",
+        api_keys: "Manage API keys and one-time secret issuance",
+        settings: "Manage dynamic configuration settings",
+        versions: "List database versions",
+        regions: "List configured deployment regions",
+        playbooks: "Playbooks editor",
+      };
+      return subtitles[this.view] || "Control plane workspace";
     },
 
     handleForbiddenView(viewName, { fallback = true } = {}) {
@@ -761,7 +869,8 @@ window.app = function () {
       const sDir = localStorage.getItem("cp_sort_dir");
       const sFilter = localStorage.getItem("cp_filter");
       const sFmt = localStorage.getItem("cp_inspector_format");
-      const sView = localStorage.getItem("cp_view");
+      const sViewRaw = localStorage.getItem("cp_view");
+      const sView = sViewRaw === "servers" ? "clusters" : sViewRaw;
       const ssIdx = localStorage.getItem("cp_servers_sort_index");
       const ssDir = localStorage.getItem("cp_servers_sort_dir");
       const ssFilter = localStorage.getItem("cp_servers_filter");
@@ -774,33 +883,47 @@ window.app = function () {
       const setIdx = localStorage.getItem("cp_settings_sort_index");
       const setDir = localStorage.getItem("cp_settings_sort_dir");
       const setFilter = localStorage.getItem("cp_settings_filter");
+      const jobsFilter = localStorage.getItem("cp_jobs_filter");
+      const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
+      const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
+      const versionsFilter = localStorage.getItem("cp_versions_filter");
+      const regionsFilter = localStorage.getItem("cp_regions_filter");
 
       if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
       if (sDir === "desc") this.sortDir = "desc";
       if (sFilter !== null) this.filterQuery = sFilter;
       if (ssFilter !== null) this.serversFilterQuery = ssFilter;
+      if (jobsFilter !== null) this.jobsFilterQuery = jobsFilter;
       if (seFilter !== null) this.eventsFilterQuery = seFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
+      if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
+      if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
       if (ssIdx !== null && !Number.isNaN(+ssIdx))
         this.serversSortIndex = +ssIdx;
+      if (jobsIdx !== null && !Number.isNaN(+jobsIdx)) this.jobsSortIndex = +jobsIdx;
       if (seIdx !== null && !Number.isNaN(+seIdx)) this.eventsSortIndex = +seIdx;
       if (sakIdx !== null && !Number.isNaN(+sakIdx))
         this.apiKeysSortIndex = +sakIdx;
       if (setIdx !== null && !Number.isNaN(+setIdx))
         this.settingsSortIndex = +setIdx;
       if (ssDir === "desc") this.serversSortDir = "desc";
+      if (jobsDir === "asc" || jobsDir === "desc") this.jobsSortDir = jobsDir;
       if (seDir === "asc" || seDir === "desc") this.eventsSortDir = seDir;
       if (sakDir === "asc" || sakDir === "desc") this.apiKeysSortDir = sakDir;
       if (setDir === "asc" || setDir === "desc") this.settingsSortDir = setDir;
       if (sFmt === "json" || sFmt === "yaml") this.inspectorFormat = sFmt;
       if (
         sView === "dashboard" ||
+        sView === "clusters" ||
+        sView === "jobs" ||
+        sView === "admin" ||
         sView === "playbooks" ||
-        sView === "servers" ||
         sView === "events" ||
         sView === "api_keys" ||
-        sView === "settings"
+        sView === "settings" ||
+        sView === "versions" ||
+        sView === "regions"
       )
         this.view = sView;
 
@@ -823,10 +946,15 @@ window.app = function () {
           this.refreshDashboard();
       }, 10_000);
 
-      // Start servers timer (only refresh if servers tab is active)
+      // Start clusters timer (legacy internal state name is servers)
       this._serversAutoTimer = setInterval(() => {
-        if (this.serversAutoRefreshEnabled && this.view === "servers")
+        if (this.serversAutoRefreshEnabled && this.view === "clusters")
           this.refreshServers();
+      }, 15_000);
+
+      this._jobsAutoTimer = setInterval(() => {
+        if (this.jobsAutoRefreshEnabled && this.view === "jobs")
+          this.refreshJobs();
       }, 15_000);
 
       this._eventsAutoTimer = setInterval(() => {
@@ -846,10 +974,14 @@ window.app = function () {
 
       // Load the active tab
       if (this.view === "playbooks") this.ensurePlaybooksView();
-      else if (this.view === "servers") this.ensureServersView();
+      else if (this.view === "clusters") this.ensureServersView();
+      else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
       else if (this.view === "settings") this.ensureSettingsView();
+      else if (this.view === "versions") this.ensureVersionsView();
+      else if (this.view === "regions") this.ensureRegionsView();
+      else if (this.view === "admin") this.ensureAdminView();
       else this.ensureDashboardView();
     },
 
@@ -865,10 +997,14 @@ window.app = function () {
       localStorage.setItem("cp_view", this.view);
 
       if (this.view === "playbooks") this.ensurePlaybooksView();
-      else if (this.view === "servers") this.ensureServersView();
+      else if (this.view === "clusters") this.ensureServersView();
+      else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
       else if (this.view === "settings") this.ensureSettingsView();
+      else if (this.view === "versions") this.ensureVersionsView();
+      else if (this.view === "regions") this.ensureRegionsView();
+      else if (this.view === "admin") this.ensureAdminView();
       else this.ensureDashboardView();
     },
 
@@ -940,20 +1076,18 @@ window.app = function () {
 
     // ---------- Servers lifecycle ----------
     async ensureServersView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("servers", { fallback: false });
-        return;
-      }
       if (this.servers.length === 0 && !this.serversLoading.list)
         await this.refreshServers();
       else this.applyServersFilterSort();
     },
 
+    async ensureJobsView() {
+      if (this.jobs.length === 0 && !this.jobsLoading.list)
+        await this.refreshJobs();
+      else this.applyJobsFilterSort();
+    },
+
     async ensureEventsView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("events", { fallback: false });
-        return;
-      }
       if (this.events.length === 0 && !this.eventsLoading.list)
         await this.refreshEvents();
       else this.applyEventsFilterSort();
@@ -979,14 +1113,59 @@ window.app = function () {
       else this.applySettingsFilterSort();
     },
 
+    async ensureVersionsView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("versions", { fallback: false });
+        return;
+      }
+      if (this.versions.length === 0 && !this.versionsLoading.list)
+        await this.refreshVersions();
+      else this.applyVersionsFilter();
+    },
+
+    async ensureRegionsView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("regions", { fallback: false });
+        return;
+      }
+      if (this.regions.length === 0 && !this.regionsLoading.list)
+        await this.refreshRegions();
+      else this.applyRegionsFilter();
+    },
+
+    async ensureAdminView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("admin", { fallback: false });
+        return;
+      }
+      if (this.settings.length === 0 && !this.settingsLoading.list) {
+        await this.refreshSettings();
+      } else {
+        this.applySettingsFilterSort();
+      }
+      if (this.versions.length === 0 && !this.versionsLoading.list) {
+        await this.refreshVersions();
+      } else {
+        this.applyVersionsFilter();
+      }
+      if (this.regions.length === 0 && !this.regionsLoading.list) {
+        await this.refreshRegions();
+      } else {
+        this.applyRegionsFilter();
+      }
+    },
+
     serversRowText(s) {
-      const tags =
-        s.tags && typeof s.tags === "object"
-          ? Object.entries(s.tags)
-              .map(([k, v]) => `${k}:${Array.isArray(v) ? v.join(",") : v}`)
-              .join(" ")
-          : "";
-      return [s.hostname, s.ip, s.user_id, s.region, s.zone, s.status, tags]
+      return [
+        s.cluster_id,
+        s.grp,
+        s.created_by,
+        s.status,
+        s.version,
+        s.node_count,
+        s.node_cpus,
+        s.disk_size,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -995,39 +1174,24 @@ window.app = function () {
     serversCellText(s, colIndex) {
       switch (colIndex) {
         case 0:
-          return s.hostname || "";
+          return s.cluster_id || "";
         case 1:
-          return s.ip || "";
+          return s.grp || "";
         case 2:
-          return s.user_id || "";
+          return s.created_by || "";
         case 3:
-          return s.region || "";
-        case 4:
-          return s.zone || "";
-        case 5:
-          return s.cpu_count ?? "";
-        case 6:
-          return s.mem_gb ?? "";
-        case 7:
-          return s.disk_count ?? "";
-        case 8:
-          return s.disk_size_gb ?? "";
-        case 9:
-          return this.serversTagsCompact(s.tags) || "";
-        case 10:
           return s.status || "";
+        case 4:
+          return s.version || "";
+        case 5:
+          return s.node_count ?? "";
+        case 6:
+          return s.node_cpus ?? "";
+        case 7:
+          return s.disk_size ?? "";
         default:
           return "";
       }
-    },
-
-    serversTagsCompact(tags) {
-      if (!tags || typeof tags !== "object") return "";
-      // compact "k=v" pairs (limit length a bit)
-      const s = Object.entries(tags)
-        .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`)
-        .join(" ");
-      return s.length > 60 ? s.slice(0, 60) + "…" : s;
     },
 
     serversStatusClass(status) {
@@ -1086,7 +1250,9 @@ window.app = function () {
     async refreshServers() {
       this.serversLoading.list = true;
       try {
-        const data = await this.apiFetch("/admin/servers/", { method: "GET" });
+        const data = await this.apiFetch(this.visibilityPath("/clusters/"), {
+          method: "GET",
+        });
         this.servers = Array.isArray(data) ? data : [];
         this.serversLastUpdatedUtc = this.utcNowString();
         this.applyServersFilterSort();
@@ -1095,6 +1261,105 @@ window.app = function () {
         this.serversLastUpdatedUtc = this.utcNowString();
       } finally {
         this.serversLoading.list = false;
+      }
+    },
+
+    jobsDescriptionText(job) {
+      return this.toYaml(job?.description ?? null);
+    },
+
+    jobsRowText(job) {
+      return [
+        job?.job_id,
+        job?.job_type,
+        job?.status,
+        job?.created_by,
+        job?.created_at,
+        job?.updated_at,
+        this.jobsDescriptionText(job),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    jobsCellText(job, colIndex) {
+      switch (colIndex) {
+        case 0:
+          return job?.job_id ?? "";
+        case 1:
+          return job?.job_type || "";
+        case 2:
+          return job?.status || "";
+        case 3:
+          return job?.created_by || "";
+        case 4:
+          return job?.created_at || "";
+        case 5:
+          return job?.updated_at || "";
+        default:
+          return "";
+      }
+    },
+
+    jobsSortClass(index) {
+      if (this.jobsSortIndex !== index) return "";
+      return this.jobsSortDir === "asc" ? "sort-asc" : "sort-desc";
+    },
+
+    toggleJobsSort(index) {
+      if (this.jobsSortIndex === index)
+        this.jobsSortDir = this.jobsSortDir === "asc" ? "desc" : "asc";
+      else {
+        this.jobsSortIndex = index;
+        this.jobsSortDir = index === 0 || index >= 4 ? "desc" : "asc";
+      }
+
+      localStorage.setItem("cp_jobs_sort_index", String(this.jobsSortIndex));
+      localStorage.setItem("cp_jobs_sort_dir", this.jobsSortDir);
+      this.applyJobsFilterSort();
+    },
+
+    applyJobsFilterSort() {
+      const q = (this.jobsFilterQuery || "").toLowerCase().trim();
+      let rows = this.jobs.slice();
+      if (q) rows = rows.filter((job) => this.jobsRowText(job).includes(q));
+
+      if (this.jobsSortIndex !== null) {
+        const type = this.jobsSortTypeByIndex[this.jobsSortIndex] || "string";
+        const idx = this.jobsSortIndex;
+        const dir = this.jobsSortDir;
+
+        rows.sort((a, b) => {
+          const av = this.parseValue(type, this.jobsCellText(a, idx));
+          const bv = this.parseValue(type, this.jobsCellText(b, idx));
+          if (av < bv) return dir === "asc" ? -1 : 1;
+          if (av > bv) return dir === "asc" ? 1 : -1;
+          return 0;
+        });
+      }
+
+      this.jobsVisibleRows = rows;
+    },
+
+    persistJobsFilter() {
+      localStorage.setItem("cp_jobs_filter", this.jobsFilterQuery || "");
+    },
+
+    async refreshJobs() {
+      this.jobsLoading.list = true;
+      try {
+        const data = await this.apiFetch(this.visibilityPath("/jobs/"), {
+          method: "GET",
+        });
+        this.jobs = Array.isArray(data) ? data : [];
+        this.jobsLastUpdatedUtc = this.utcNowString();
+        this.applyJobsFilterSort();
+      } catch (e) {
+        console.error(e);
+        this.jobsLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.jobsLoading.list = false;
       }
     },
 
@@ -1178,14 +1443,20 @@ window.app = function () {
     async refreshEvents() {
       this.eventsLoading.list = true;
       try {
-        const data = await this.apiFetch("/admin/events", { method: "GET" });
-        this.events = Array.isArray(data) ? data : [];
+        const data = await this.apiFetch(
+          this.visibilityPath("/events/", { limit: 200, offset: 0 }),
+          { method: "GET" },
+        );
+        this.events = (Array.isArray(data) ? data : []).map((event) => ({
+          ts: event.created_at,
+          user_id: event.created_by,
+          action: event.event_type,
+          details: event.event_details,
+          request_id: "",
+        }));
         this.eventsLastUpdatedUtc = this.utcNowString();
         this.applyEventsFilterSort();
       } catch (e) {
-        if (e?.forbidden) {
-          this.handleForbiddenView("events", { fallback: false });
-        }
         console.error(e);
         this.eventsLastUpdatedUtc = this.utcNowString();
       } finally {
@@ -1718,6 +1989,91 @@ window.app = function () {
         );
       } finally {
         this.serversLoading.action = false;
+      }
+    },
+
+    versionsRowText(row) {
+      return String(row?.version || "").toLowerCase();
+    },
+
+    applyVersionsFilter() {
+      const q = (this.versionsFilterQuery || "").toLowerCase().trim();
+      let rows = this.versions.slice();
+      if (q) rows = rows.filter((row) => this.versionsRowText(row).includes(q));
+      rows.sort((a, b) =>
+        String(a.version || "").localeCompare(String(b.version || "")),
+      );
+      this.versionsVisibleRows = rows;
+    },
+
+    persistVersionsFilter() {
+      localStorage.setItem("cp_versions_filter", this.versionsFilterQuery || "");
+    },
+
+    async refreshVersions() {
+      this.versionsLoading.list = true;
+      try {
+        const data = await this.apiFetch("/admin/versions/", { method: "GET" });
+        this.versions = Array.isArray(data) ? data : [];
+        this.versionsLastUpdatedUtc = this.utcNowString();
+        this.applyVersionsFilter();
+      } catch (e) {
+        if (e?.forbidden) {
+          this.handleForbiddenView("versions", { fallback: false });
+        }
+        console.error(e);
+        this.versionsLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.versionsLoading.list = false;
+      }
+    },
+
+    regionsRowText(row) {
+      return [
+        row?.cloud,
+        row?.region,
+        row?.zone,
+        row?.vpc_id,
+        Array.isArray(row?.security_groups) ? row.security_groups.join(" ") : "",
+        row?.subnet,
+        row?.image,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    applyRegionsFilter() {
+      const q = (this.regionsFilterQuery || "").toLowerCase().trim();
+      let rows = this.regions.slice();
+      if (q) rows = rows.filter((row) => this.regionsRowText(row).includes(q));
+      rows.sort((a, b) =>
+        `${a.cloud || ""}/${a.region || ""}/${a.zone || ""}`.localeCompare(
+          `${b.cloud || ""}/${b.region || ""}/${b.zone || ""}`,
+        ),
+      );
+      this.regionsVisibleRows = rows;
+    },
+
+    persistRegionsFilter() {
+      localStorage.setItem("cp_regions_filter", this.regionsFilterQuery || "");
+    },
+
+    async refreshRegions() {
+      this.regionsLoading.list = true;
+      try {
+        const data = await this.apiFetch("/admin/regions/", { method: "GET" });
+        this.regions = Array.isArray(data) ? data : [];
+        this.regionsLastUpdatedUtc = this.utcNowString();
+        this.applyRegionsFilter();
+      } catch (e) {
+        if (e?.forbidden) {
+          this.handleForbiddenView("regions", { fallback: false });
+        }
+        console.error(e);
+        this.regionsLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.regionsLoading.list = false;
       }
     },
 

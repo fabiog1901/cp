@@ -81,7 +81,7 @@ function getHumanSize(valueInGb) {
   return `${rounded} ${suffixes[exponent]}`;
 }
 
-window.KloigosUtil = {
+window.CPUtil = {
   getFunnyName,
   getHumanSize,
 };

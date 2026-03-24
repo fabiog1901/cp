@@ -35,22 +35,6 @@ class IntID(BaseModel):
 # ENUMS FOR TYPES AND STATES
 
 
-class Event(AutoNameStrEnum):
-    LOGIN = auto()
-    LOGOUT = auto()
-    UPDATE_SETTING = auto()
-    VERSION_ADD = auto()
-    VERSION_REMOVE = auto()
-    DB_USER_UPDATE = auto()
-    DB_USER_ADD_ROLE = auto()
-    DB_USER_REMOVE_ROLE = auto()
-    DB_USER_ADD = auto()
-    DB_USER_REMOVE = auto()
-    REGION_ADD = auto()
-    REGION_REMOVE = auto()
-    PLAYBOOK_ADD = auto()
-    PLAYBOOK_REMOVE = auto()
-    PLAYBOOK_SET_DEFAULT = auto()
 
 
 class JobType(AutoNameStrEnum):
@@ -64,19 +48,6 @@ class JobType(AutoNameStrEnum):
     HEALTHCHECK_CLUSTERS = auto()
     FAIL_ZOMBIE_JOBS = auto()
 
-
-class KloigosRole(AutoNameStrEnum):
-    KLOIGOS_READONLY = auto()
-    KLOIGOS_USER = auto()
-    KLOIGOS_ADMIN = auto()
-
-
-class LogMsg(BaseModel):
-    ts: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.timezone.utc))
-    user_id: str
-    action: Event
-    details: dict[str, Any] | None = None
-    request_id: str | None = None
 
 
 class ClusterState(AutoNameStrEnum):
@@ -477,50 +448,48 @@ class Event(AutoNameStrEnum):
     API_KEY_DELETE = auto()
     SETTING_UPDATE = auto()
     SETTING_RESET = auto()
-    SERVER_INIT_REQUEST = auto()
-    SERVER_INIT_DONE = auto()
-    SERVER_INIT_FAILED = auto()
-    SERVER_DECOMM_REQUEST = auto()
-    SERVER_DECOMM_DONE = auto()
-    SERVER_DECOMM_FAILED = auto()
-    SERVER_DELETE_REQUEST = auto()
-    SERVER_DELETE_DONE = auto()
-    SERVER_DELETE_FAILED = auto()
-    CU_ALLOCATION_REQUEST = auto()
-    CU_ALLOCATION_DONE = auto()
-    CU_ALLOCATION_FAILED = auto()
-    CU_DEALLOCATION_REQUEST = auto()
-    CU_DEALLOCATION_DONE = auto()
-    CU_DEALLOCATION_FAILED = auto()
+    VERSION_ADD = auto()
+    VERSION_REMOVE = auto()
+    DB_USER_UPDATE = auto()
+    DB_USER_ADD_ROLE = auto()
+    DB_USER_REMOVE_ROLE = auto()
+    DB_USER_ADD = auto()
+    DB_USER_REMOVE = auto()
+    REGION_ADD = auto()
+    REGION_REMOVE = auto()
+    PLAYBOOK_ADD = auto()
+    PLAYBOOK_REMOVE = auto()
+    PLAYBOOK_SET_DEFAULT = auto()
 
 
-class KloigosRole(AutoNameStrEnum):
-    KLOIGOS_READONLY = auto()
-    KLOIGOS_USER = auto()
-    KLOIGOS_ADMIN = auto()
+
+class CPRole(AutoNameStrEnum):
+    CP_READONLY = auto()
+    CP_USER = auto()
+    CP_ADMIN = auto()
 
 
 class SettingKey(AutoNameStrEnum):
-    cloud_storage_url= auto()
-    default_password= auto()
-    default_username= auto()
-    licence_key= auto()
-    licence_org= auto()
-    playbooks_url= auto()
-    playbooks_url_cache_expiry= auto()
-    prom_url= auto()
-    sso_auth_url= auto()
-    sso_cache_expiry= auto()
-    sso_claim_name= auto()
-    sso_client_id= auto()
-    sso_client_secret= auto()
-    sso_issuer= auto()
-    sso_jwks_url= auto()
-    sso_redirect_uri= auto()
-    sso_token_url= auto()
+    cloud_storage_url = auto()
+    default_password = auto()
+    default_username = auto()
+    licence_key = auto()
+    licence_org = auto()
+    playbooks_url = auto()
+    playbooks_url_cache_expiry = auto()
+    prom_url = auto()
+    sso_auth_url = auto()
+    sso_cache_expiry = auto()
+    sso_claim_name = auto()
+    sso_client_id = auto()
+    sso_client_secret = auto()
+    sso_issuer = auto()
+    sso_jwks_url = auto()
+    sso_redirect_uri = auto()
+    sso_token_url = auto()
     sso_userinfo_url = auto()
     #
-    KLOIGOS_ENTERPRISE_LICENSE_KEY = auto()
+    CP_ENTERPRISE_LICENSE_KEY = auto()
     OIDC_ENABLED = auto()
     OIDC_ISSUER_URL = auto()
     OIDC_CLIENT_ID = auto()
@@ -574,19 +543,19 @@ class ApiKeyRecord(BaseModel):
     encrypted_secret_access_key: bytes
     owner: str
     valid_until: dt.datetime
-    roles: list[KloigosRole] | None = None
+    roles: list[CPRole] | None = None
 
 
 class ApiKeySummary(BaseModel):
     access_key: str
     owner: str
     valid_until: dt.datetime
-    roles: list[KloigosRole] | None = None
+    roles: list[CPRole] | None = None
 
 
 class ApiKeyCreateRequest(BaseModel):
     valid_until: dt.datetime
-    roles: list[KloigosRole] | None = None
+    roles: list[CPRole] | None = None
 
 
 class ApiKeyCreateRequestInDB(ApiKeyCreateRequest):

@@ -34,7 +34,7 @@ from .infra import (
     safe_next_path,
     validate_api_key_crypto_config,
 )
-from .models import Event, KloigosRole, LogMsg
+from .models import Event, CPRole, LogMsg
 from .repos.base import BaseRepo
 
 
@@ -165,22 +165,22 @@ class OIDCConfig:
     )
     session_cookie_name: str = field(
         default_factory=lambda: os.getenv(
-            "OIDC_SESSION_COOKIE_NAME", "kloigos_session"
+            "OIDC_SESSION_COOKIE_NAME", "cp_session"
         ).strip()
     )
     state_cookie_name: str = field(
         default_factory=lambda: os.getenv(
-            "OIDC_STATE_COOKIE_NAME", "kloigos_oidc_state"
+            "OIDC_STATE_COOKIE_NAME", "cp_oidc_state"
         ).strip()
     )
     nonce_cookie_name: str = field(
         default_factory=lambda: os.getenv(
-            "OIDC_NONCE_COOKIE_NAME", "kloigos_oidc_nonce"
+            "OIDC_NONCE_COOKIE_NAME", "cp_oidc_nonce"
         ).strip()
     )
     next_cookie_name: str = field(
         default_factory=lambda: os.getenv(
-            "OIDC_NEXT_COOKIE_NAME", "kloigos_oidc_next"
+            "OIDC_NEXT_COOKIE_NAME", "cp_oidc_next"
         ).strip()
     )
     cookie_secure: bool = field(default_factory=_cookie_secure_default)
@@ -214,12 +214,12 @@ class OIDCConfig:
     )
 
     @property
-    def role_groups(self) -> dict[KloigosRole, set[str]]:
+    def role_groups(self) -> dict[CPRole, set[str]]:
         """Map each application role to the configured OIDC groups that grant it."""
         return {
-            KloigosRole.KLOIGOS_READONLY: safe_csv_set(self.readonly_groups_raw),
-            KloigosRole.KLOIGOS_USER: safe_csv_set(self.user_groups_raw),
-            KloigosRole.KLOIGOS_ADMIN: safe_csv_set(self.admin_groups_raw),
+            CPRole.CP_READONLY: safe_csv_set(self.readonly_groups_raw),
+            CPRole.CP_USER: safe_csv_set(self.user_groups_raw),
+            CPRole.CP_ADMIN: safe_csv_set(self.admin_groups_raw),
         }
 
     @property
@@ -506,7 +506,7 @@ class OIDCManager:
         return claims
 
     def enrich_claims(self, claims: dict[str, Any]) -> dict[str, Any]:
-        """Add Kloigos-specific metadata that helps the webapp render auth state."""
+        """Add CP-specific metadata that helps the webapp render auth state."""
         payload = dict(claims)
         payload["_groups_claim_name"] = str(
             claims.get("_groups_claim_name", self.config.groups_claim_name)
@@ -519,18 +519,16 @@ class OIDCManager:
         payload["_role_groups"] = _jsonable_role_groups(effective_role_groups)
 
         existing_meta = (
-            claims.get("_kloigos") if isinstance(claims.get("_kloigos"), dict) else {}
+            claims.get("_cp") if isinstance(claims.get("_cp"), dict) else {}
         )
-        payload["_kloigos"] = {
+        payload["_cp"] = {
             **existing_meta,
             "display_name_claim": self.config.ui_username_claim,
             "session_cookie_name": self.config.session_cookie_name,
         }
         return payload
 
-    def ensure_any_role(
-        self, claims: dict[str, Any], *roles: KloigosRole
-    ) -> dict[str, Any]:
+    def ensure_any_role(self, claims: dict[str, Any], *roles: CPRole) -> dict[str, Any]:
         """Ensure the caller has at least one of the requested application roles."""
 
         if claims.get("auth_disabled"):
@@ -642,7 +640,7 @@ class OIDCManager:
             if not access_key or not signature or not timestamp:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="X-Kloigos-Access-Key, X-Kloigos-Signature, and X-Timestamp are required.",
+                    detail="X-CP-Access-Key, X-CP-Signature, and X-Timestamp are required.",
                 )
             return await self.validate_api_key(
                 request,
@@ -683,12 +681,12 @@ oidc = OIDCManager()
 router = APIRouter(prefix="/auth", tags=["auth"])
 cookie_scheme = APIKeyCookie(name=oidc.config.session_cookie_name, auto_error=False)
 access_key_scheme = APIKeyHeader(
-    name="X-Kloigos-Access-Key",
+    name="X-CP-Access-Key",
     scheme_name="XAccessKey",
     auto_error=False,
 )
 signature_scheme = APIKeyHeader(
-    name="X-Kloigos-Signature",
+    name="X-CP-Signature",
     scheme_name="XSignature",
     auto_error=False,
 )
@@ -722,9 +720,7 @@ def require_user(
     claims: dict[str, Any] = Security(require_authenticated),
 ) -> dict[str, Any]:
     """Require a role that permits mutating compute-unit operations."""
-    return oidc.ensure_any_role(
-        claims, KloigosRole.KLOIGOS_USER, KloigosRole.KLOIGOS_ADMIN
-    )
+    return oidc.ensure_any_role(claims, CPRole.CP_USER, CPRole.CP_ADMIN)
 
 
 def require_compute_access(
@@ -735,20 +731,18 @@ def require_compute_access(
     if request.method.upper() == "GET":
         return oidc.ensure_any_role(
             claims,
-            KloigosRole.KLOIGOS_READONLY,
-            KloigosRole.KLOIGOS_USER,
-            KloigosRole.KLOIGOS_ADMIN,
+            CPRole.CP_READONLY,
+            CPRole.CP_USER,
+            CPRole.CP_ADMIN,
         )
-    return oidc.ensure_any_role(
-        claims, KloigosRole.KLOIGOS_USER, KloigosRole.KLOIGOS_ADMIN
-    )
+    return oidc.ensure_any_role(claims, CPRole.CP_USER, CPRole.CP_ADMIN)
 
 
 def require_admin(
     claims: dict[str, Any] = Security(require_authenticated),
 ) -> dict[str, Any]:
     """Require the admin role."""
-    return oidc.ensure_any_role(claims, KloigosRole.KLOIGOS_ADMIN)
+    return oidc.ensure_any_role(claims, CPRole.CP_ADMIN)
 
 
 def get_audit_actor(
@@ -894,7 +888,7 @@ def oidc_logout(
 def oidc_me(
     request: Request, claims: dict[str, Any] = Security(require_authenticated)
 ) -> dict[str, Any]:
-    """Return the current caller's claims plus Kloigos-specific auth metadata."""
+    """Return the current caller's claims plus CP-specific auth metadata."""
     payload = oidc.enrich_claims(claims)
     payload["cookies"] = request.cookies
     return payload

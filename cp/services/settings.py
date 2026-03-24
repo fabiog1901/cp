@@ -39,11 +39,13 @@ class SettingsService:
         return value
 
     def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
+
         try:
             self.repo.update_setting(setting_id, value, updated_by)
+            
             self.repo.insert_event_log(
                 updated_by,
-                Event.UPDATE_SETTING,
+                Event.SETTING_UPDATE,
                 {"ID": setting_id, "value": value},
             )
         except RepositoryError as err:

@@ -49,18 +49,7 @@
           <div class="logo-pill">CP</div>
           <div>
             <h1>CP</h1>
-            <div class="topbar-sub" x-text="view === 'dashboard'
-                ? 'Infrastructure landing page and operational navigation'
-                : (view === 'servers'
-                  ? 'Servers inventory &amp; lifecycle'
-                  : (view === 'events'
-                    ? 'Audit trail of admin and allocation events'
-                    : (view === 'api_keys'
-                      ? 'Manage API keys and one-time secret issuance'
-                      : (view === 'settings'
-                        ? 'Manage dynamic configuration settings'
-                        : 'Playbooks editor'))))">
-            </div>
+            <div class="topbar-sub" x-text="viewSubtitle()"></div>
           </div>
         </div>
 
@@ -69,20 +58,17 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'servers' }" x-show="canViewAdmin()"
-              @click.prevent="setView('servers')">Servers</a>
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' }"
+              @click.prevent="setView('clusters')">Clusters</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'events' }" x-show="canViewAdmin()"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' }"
+              @click.prevent="setView('jobs')">Jobs</a>
+
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'events' }"
               @click.prevent="setView('events')">Events</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'api_keys' }" x-show="canViewAdmin()"
-              @click.prevent="setView('api_keys')">API Keys</a>
-
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'settings' }" x-show="canViewAdmin()"
-              @click.prevent="setView('settings')">Settings</a>
-
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'playbooks' }" x-show="canViewAdmin()"
-              @click.prevent="setView('playbooks')">Playbooks</a>
+            <a href="#" class="pill" :class="{ 'pill-accent': isAdminSectionView() }" x-show="canViewAdmin()"
+              @click.prevent="setView('admin')">Admin</a>
           </nav>
 
           <button type="button" class="user-chip" @click="openUserInfoModal()" :title="userIconTitle()"
@@ -141,14 +127,17 @@
             <div class="metric">
               <div class="metric-label">Current View</div>
               <div class="metric-value">Dashboard</div>
-              <div class="metric-sub">Use this landing page to open the preserved operational views.</div>
+              <div class="metric-sub">Use this landing page to move into the main CP sections.</div>
             </div>
           </div>
 
           <div>
             <h2>Quick Links</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
-              <button class="btn" x-show="canViewAdmin()" @click="setView('settings')">Open Settings</button>
+              <button class="btn" @click="setView('clusters')">Open Clusters</button>
+              <button class="btn" @click="setView('jobs')">Open Jobs</button>
+              <button class="btn" @click="setView('events')">Open Events</button>
+              <button class="btn" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
               <a class="link-inline" href="/api/docs" target="_blank" rel="noopener">Open API docs</a>
               <a class="link-inline" href="https://github.com/fabiog1901/cp" target="_blank" rel="noopener">Open repository</a>
             </div>
@@ -162,11 +151,12 @@
               <h2>Clean operational entry point for the infrastructure team.</h2>
               <p>
                 SSO and the session cookie flow stay in place while we refactor the webapp shell. For this phase,
-                the dashboard acts as a landing page and points into the preserved views, with the Settings view ready
-                for testing now.
+                the dashboard acts as the landing page for the top-level sections: clusters, jobs, events, and the
+                admin area for permissioned operators.
               </p>
               <div class="dashboard-hero-actions">
-                <button class="btn" x-show="canViewAdmin()" @click="setView('settings')">Open Settings View</button>
+                <button class="btn" @click="setView('clusters')">Open Clusters</button>
+                <button class="btn btn-secondary" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
                 <a class="btn btn-secondary" href="/api/docs" target="_blank" rel="noopener">API docs</a>
               </div>
             </section>
@@ -175,77 +165,67 @@
               <article class="dashboard-card">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Now available</div>
-                    <h3 class="dashboard-card-title">Settings</h3>
+                    <div class="dashboard-card-kicker">Core page</div>
+                    <h3 class="dashboard-card-title">Clusters</h3>
                   </div>
-                  <div class="dashboard-stat" x-text="settings.length"></div>
+                  <div class="dashboard-stat" x-text="servers.length"></div>
                 </div>
                 <p class="dashboard-card-copy">
-                  The Settings view remains connected and is the main path to validate the refactor right now.
-                  Use it to list configuration values and continue iterating on the admin workflow.
+                  Lists the clusters returned by <span class="ip-pill">/api/clusters/</span> with the current
+                  user visibility context.
                 </p>
-                <a href="#" class="dashboard-link" x-show="canViewAdmin()" @click.prevent="setView('settings')">
-                  Open Settings
+                <a href="#" class="dashboard-link" @click.prevent="setView('clusters')">
+                  Open Clusters
                 </a>
               </article>
 
               <article class="dashboard-card">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Preserved views</div>
-                    <h3 class="dashboard-card-title">Operational surfaces</h3>
+                    <div class="dashboard-card-kicker">Core page</div>
+                    <h3 class="dashboard-card-title">Jobs</h3>
                   </div>
-                  <div class="dashboard-stat">4</div>
+                  <div class="dashboard-stat" x-text="jobs.length"></div>
                 </div>
-                <div class="dashboard-list">
-                  <div class="dashboard-list-item">
-                    <span class="dashboard-list-label">Servers</span>
-                    <span class="dashboard-list-value">Kept for follow-up validation</span>
-                  </div>
-                  <div class="dashboard-list-item">
-                    <span class="dashboard-list-label">Events</span>
-                    <span class="dashboard-list-value">Kept for follow-up validation</span>
-                  </div>
-                  <div class="dashboard-list-item">
-                    <span class="dashboard-list-label">API Keys</span>
-                    <span class="dashboard-list-value">Kept for follow-up validation</span>
-                  </div>
-                  <div class="dashboard-list-item">
-                    <span class="dashboard-list-label">Playbooks</span>
-                    <span class="dashboard-list-value">Kept for follow-up validation</span>
-                  </div>
-                </div>
+                <p class="dashboard-card-copy">
+                  Shows orchestration work from <span class="ip-pill">/api/jobs/</span> so operators can quickly scan
+                  status, type, and ownership.
+                </p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('jobs')">
+                  Open Jobs
+                </a>
               </article>
 
               <article class="dashboard-card">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Access</div>
-                    <h3 class="dashboard-card-title">Authentication stays intact</h3>
+                    <div class="dashboard-card-kicker">Core page</div>
+                    <h3 class="dashboard-card-title">Events</h3>
                   </div>
-                  <div class="dashboard-stat">SSO</div>
+                  <div class="dashboard-stat" x-text="events.length"></div>
                 </div>
                 <p class="dashboard-card-copy">
-                  The current login flow still relies on the existing SSO redirect and session cookie bootstrap. This
-                  refactor only updates the app shell and navigation layer.
+                  Surfaces platform events from <span class="ip-pill">/api/events/</span> in a searchable activity
+                  stream for day-to-day operations.
                 </p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('events')">
+                  Open Events
+                </a>
               </article>
 
-              <article class="dashboard-card">
+              <article class="dashboard-card" x-show="canViewAdmin()">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Developer tools</div>
-                    <h3 class="dashboard-card-title">References</h3>
+                    <div class="dashboard-card-kicker">Restricted area</div>
+                    <h3 class="dashboard-card-title">Admin</h3>
                   </div>
-                  <div class="dashboard-stat" x-text="renderedAtUtc ? renderedAtUtc.slice(11, 16) : '--:--'"></div>
+                  <div class="dashboard-stat">CP</div>
                 </div>
                 <p class="dashboard-card-copy">
-                  The refactor keeps the app clean and clear for an infrastructure audience, with teal links reserved
-                  for navigation and external references.
+                  The admin section groups settings, API keys, versions, regions, and playbooks under a single
+                  permissioned landing page.
                 </p>
-                <a class="dashboard-link" href="/api/docs" target="_blank" rel="noopener">Open API documentation</a>
-                <a class="dashboard-link" href="https://github.com/fabiog1901/cp" target="_blank"
-                  rel="noopener">Open repository</a>
+                <a href="#" class="dashboard-link" @click.prevent="setView('admin')">Open Admin</a>
               </article>
             </section>
           </div>
@@ -308,13 +288,13 @@
       </div>
 
 
-      <!-- SERVERS VIEW -->
-      <main class="layout" x-show="view === 'servers' && canViewAdmin()">
+      <!-- CLUSTERS VIEW -->
+      <main class="layout" x-show="view === 'clusters'">
         <aside class="sidebar">
           <div>
             <h2>Summary</h2>
             <div class="metric">
-              <div class="metric-label">Total Servers</div>
+              <div class="metric-label">Total Clusters</div>
               <div class="metric-value" x-text="servers.length"></div>
             </div>
           </div>
@@ -326,9 +306,6 @@
                 <span x-show="!serversLoading.list">Refresh</span>
                 <span x-show="serversLoading.list">Loading…</span>
               </button>
-
-              <button class="btn btn-warn" @click="openInitModal()">Init server…</button>
-              <button class="btn btn-warn" @click="openDecommissionModal()">Decomm server…</button>
 
               <label
                 style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
@@ -342,12 +319,12 @@
         <section class="main">
           <div class="main-header">
             <div class="main-header-left">
-              <div class="main-title">Servers</div>
-              <div class="main-subtitle">Lifecycle actions are available per-row based on server status.</div>
+              <div class="main-title">Clusters</div>
+              <div class="main-subtitle">List of visible clusters from the clusters API.</div>
             </div>
 
             <div class="main-actions">
-              <input type="search" class="search-input" placeholder="Filter by hostname, ip, region, user…"
+              <input type="search" class="search-input" placeholder="Filter by cluster id, group, owner, version…"
                 x-model="serversFilterQuery" @input="persistServersFilter(); applyServersFilterSort();" />
 
               <div class="pill">Updated (UTC): <span x-text="serversLastUpdatedUtc"></span></div>
@@ -359,90 +336,39 @@
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="string" :class="serversSortClass(0)" @click="toggleServersSort(0)">Hostname</th>
-                    <th data-sort="ip" :class="serversSortClass(1)" @click="toggleServersSort(1)">IP</th>
-                    <th data-sort="string" :class="serversSortClass(2)" @click="toggleServersSort(2)">User</th>
-                    <th data-sort="string" :class="serversSortClass(3)" @click="toggleServersSort(3)">Region</th>
-                    <th data-sort="string" :class="serversSortClass(4)" @click="toggleServersSort(4)">Zone</th>
-                    <th data-sort="number" :class="serversSortClass(5)" @click="toggleServersSort(5)">CPU</th>
-                    <th data-sort="number" :class="serversSortClass(6)" @click="toggleServersSort(6)">Mem GB</th>
-                    <th data-sort="number" :class="serversSortClass(7)" @click="toggleServersSort(7)">Disks</th>
-                    <th data-sort="number" :class="serversSortClass(8)" @click="toggleServersSort(8)">Disk GB</th>
-                    <th data-sort="string" :class="serversSortClass(9)" @click="toggleServersSort(9)">Tags</th>
-                    <th data-sort="string" :class="serversSortClass(10)" @click="toggleServersSort(10)">Status</th>
-                    <th>Act</th>
+                    <th data-sort="string" :class="serversSortClass(0)" @click="toggleServersSort(0)">Cluster ID</th>
+                    <th data-sort="string" :class="serversSortClass(1)" @click="toggleServersSort(1)">Group</th>
+                    <th data-sort="string" :class="serversSortClass(2)" @click="toggleServersSort(2)">Created By</th>
+                    <th data-sort="string" :class="serversSortClass(3)" @click="toggleServersSort(3)">Status</th>
+                    <th data-sort="string" :class="serversSortClass(4)" @click="toggleServersSort(4)">Version</th>
+                    <th data-sort="number" :class="serversSortClass(5)" @click="toggleServersSort(5)">Nodes</th>
+                    <th data-sort="number" :class="serversSortClass(6)" @click="toggleServersSort(6)">CPU / Node</th>
+                    <th data-sort="number" :class="serversSortClass(7)" @click="toggleServersSort(7)">Disk GB</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  <template x-for="s in serversVisibleRows" :key="s.hostname">
+                  <template x-for="s in serversVisibleRows" :key="s.cluster_id">
                     <tr>
-                      <td>
-                        <span class="ip-pill clickable" tabindex="0" role="button" title="View server details"
-                          @click="openServerDetails(s)" @keydown.enter.prevent="openServerDetails(s)"
-                          @keydown.space.prevent="openServerDetails(s)" x-text="s.hostname"></span>
-                      </td>
-                      <td><span x-text="s.ip || '-'"></span></td>
-                      <td><span x-text="s.user_id || '-'"></span></td>
-                      <td><span x-text="s.region || '-'"></span></td>
-                      <td><span x-text="s.zone || '-'"></span></td>
-                      <td><span x-text="s.cpu_count ?? '-'"></span></td>
-                      <td><span x-text="s.mem_gb ?? '-'"></span></td>
-                      <td><span x-text="s.disk_count ?? '-'"></span></td>
-                      <td><span x-text="s.disk_size_gb ?? '-'"></span></td>
-                      <td>
-                        <template x-if="s.tags && typeof s.tags === 'object'">
-                          <span class="service-pill" x-text="serversTagsCompact(s.tags)"></span>
-                        </template>
-                        <template x-if="!s.tags"><span style="color: var(--muted);">-</span></template>
-                      </td>
+                      <td><span class="ip-pill" x-text="s.cluster_id || '-'"></span></td>
+                      <td><span class="service-pill" x-text="s.grp || '-'"></span></td>
+                      <td><span x-text="s.created_by || '-'"></span></td>
                       <td>
                         <span class="status" :class="serversStatusClass(s.status)">
                           <span class="status-dot"></span>
                           <span x-text="String(s.status || 'unknown').toUpperCase()"></span>
                         </span>
                       </td>
-                      <td>
-                        <!-- Decommission when READY -->
-                        <template x-if="String(s.status || '').toLowerCase() === 'ready'">
-                          <button class="icon-btn" title="Decommission server"
-                            @click="openServerActionConfirm(s, 'decommission')">
-                            <!-- power icon -->
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M12 2v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                              <path d="M7 4.5a8 8 0 1 0 10 0" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                            </svg>
-                          </button>
-                        </template>
-
-                        <!-- Delete when DECOMMISSIONED -->
-                        <template x-if="String(s.status || '').toLowerCase() === 'decommissioned'">
-                          <button class="icon-btn" title="Delete server record"
-                            @click="openServerActionConfirm(s, 'delete')">
-                            <!-- trash icon -->
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                              <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-                              <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
-                                stroke-linejoin="round" />
-                              <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                            </svg>
-                          </button>
-                        </template>
-
-                        <template
-                          x-if="String(s.status || '').toLowerCase() !== 'ready' && String(s.status || '').toLowerCase() !== 'decommissioned'">
-                          <span style="color: var(--muted);">-</span>
-                        </template>
-                      </td>
+                      <td><span x-text="s.version || '-'"></span></td>
+                      <td><span x-text="s.node_count ?? '-'"></span></td>
+                      <td><span x-text="s.node_cpus ?? '-'"></span></td>
+                      <td><span x-text="s.disk_size ?? '-'"></span></td>
                     </tr>
                   </template>
 
                   <template x-if="!serversLoading.list && serversVisibleRows.length === 0">
                     <tr>
-                      <td colspan="12" style="padding: 18px; color: var(--muted);">No results.</td>
+                      <td colspan="8" style="padding: 18px; color: var(--muted);">No results.</td>
                     </tr>
                   </template>
                 </tbody>
@@ -450,15 +376,6 @@
             </div>
           </div>
 
-        </section>
-      </main>
-
-      <main class="layout" x-show="view === 'servers' && !canViewAdmin()">
-        <section class="main">
-          <div class="metric" style="max-width: 720px; margin: 40px auto;">
-            <div class="main-title">Not authorized</div>
-            <div class="main-subtitle" x-text="unauthorizedViewMessage('servers')"></div>
-          </div>
         </section>
       </main>
 
@@ -518,8 +435,96 @@
       </div>
 
 
+      <!-- JOBS VIEW -->
+      <main class="layout" x-show="view === 'jobs'">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Jobs</div>
+              <div class="metric-value" x-text="jobs.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="refreshJobs()" :disabled="jobsLoading.list">
+                <span x-show="!jobsLoading.list">Refresh</span>
+                <span x-show="jobsLoading.list">Loading…</span>
+              </button>
+
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="jobsAutoRefreshEnabled" />
+                Auto-refresh (15s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Jobs</div>
+              <div class="main-subtitle">List of visible jobs from the jobs API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by id, type, status, or owner…"
+                x-model="jobsFilterQuery" @input="persistJobsFilter(); applyJobsFilterSort();" />
+
+              <div class="pill">Updated (UTC): <span x-text="jobsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="number" :class="jobsSortClass(0)" @click="toggleJobsSort(0)">Job ID</th>
+                    <th data-sort="string" :class="jobsSortClass(1)" @click="toggleJobsSort(1)">Type</th>
+                    <th data-sort="string" :class="jobsSortClass(2)" @click="toggleJobsSort(2)">Status</th>
+                    <th data-sort="string" :class="jobsSortClass(3)" @click="toggleJobsSort(3)">Created By</th>
+                    <th data-sort="date" :class="jobsSortClass(4)" @click="toggleJobsSort(4)">Created (UTC)</th>
+                    <th data-sort="date" :class="jobsSortClass(5)" @click="toggleJobsSort(5)">Updated (UTC)</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <template x-for="job in jobsVisibleRows" :key="job.job_id">
+                    <tr>
+                      <td><span class="ip-pill" x-text="job.job_id"></span></td>
+                      <td><span class="service-pill" x-text="job.job_type || '-'"></span></td>
+                      <td>
+                        <span class="status" :class="serversStatusClass(job.status)">
+                          <span class="status-dot"></span>
+                          <span x-text="String(job.status || 'unknown').toUpperCase()"></span>
+                        </span>
+                      </td>
+                      <td><span x-text="job.created_by || '-'"></span></td>
+                      <td><span x-text="toUtcStringMaybe(job.created_at)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(job.updated_at)"></span></td>
+                      <td class="events-details-cell"><pre class="events-yaml" x-text="jobsDescriptionText(job)"></pre></td>
+                    </tr>
+                  </template>
+
+                  <template x-if="!jobsLoading.list && jobsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="7" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
       <!-- EVENTS VIEW -->
-      <main class="layout events-layout" x-show="view === 'events' && canViewAdmin()">
+      <main class="layout events-layout" x-show="view === 'events'">
         <aside class="sidebar">
           <div>
             <h2>Summary</h2>
@@ -550,11 +555,11 @@
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Events</div>
-              <div class="main-subtitle">Admin-facing event log with request metadata and YAML-formatted details.</div>
+              <div class="main-subtitle">Visible platform events from the events API.</div>
             </div>
 
             <div class="main-actions">
-              <input type="search" class="search-input" placeholder="Filter by user, action, request id, details…"
+              <input type="search" class="search-input" placeholder="Filter by user, action, or details…"
                 x-model="eventsFilterQuery" @input="persistEventsFilter(); applyEventsFilterSort();" />
 
               <div class="pill">Updated (UTC): <span x-text="eventsLastUpdatedUtc"></span></div>
@@ -570,7 +575,7 @@
                     <th data-sort="string" :class="eventsSortClass(1)" @click="toggleEventsSort(1)">User ID</th>
                     <th data-sort="string" :class="eventsSortClass(2)" @click="toggleEventsSort(2)">Action</th>
                     <th data-sort="string" :class="eventsSortClass(3)" @click="toggleEventsSort(3)">Details</th>
-                    <th data-sort="string" :class="eventsSortClass(4)" @click="toggleEventsSort(4)">Request ID</th>
+                    <th data-sort="string" :class="eventsSortClass(4)" @click="toggleEventsSort(4)">Context</th>
                   </tr>
                 </thead>
 
@@ -603,11 +608,111 @@
         </section>
       </main>
 
-      <main class="layout events-layout" x-show="view === 'events' && !canViewAdmin()">
-        <section class="main events-main">
+      <!-- ADMIN VIEW -->
+      <main class="layout" x-show="view === 'admin' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Admin Section</div>
+              <div class="metric-value">CP_ADMIN</div>
+              <div class="metric-sub">Restricted landing page for the control plane admin views.</div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Quick Links</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="setView('settings')">Settings</button>
+              <button class="btn" @click="setView('api_keys')">API Keys</button>
+              <button class="btn" @click="setView('versions')">Versions</button>
+              <button class="btn" @click="setView('regions')">Regions</button>
+              <button class="btn" @click="setView('playbooks')">Playbooks</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="dashboard-home">
+            <section class="dashboard-hero">
+              <div class="eyebrow">Admin workspace</div>
+              <h2>Admin tools grouped under one operational landing page.</h2>
+              <p>
+                Use this page to move through the restricted control plane subpages without exposing them in the
+                primary top-level navigation.
+              </p>
+            </section>
+
+            <section class="dashboard-grid">
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Settings</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="settings.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Dynamic application settings and effective values.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('settings')">Open Settings</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">API Keys</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="apiKeys.length || 0"></div>
+                </div>
+                <p class="dashboard-card-copy">Role-scoped access keys and one-time secret issuance.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('api_keys')">Open API Keys</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Versions</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="versions.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Configured database versions available to cluster operations.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('versions')">Open Versions</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Regions</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="regions.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Configured cloud, region, and zone deployment targets.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('regions')">Open Regions</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Playbooks</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="playbooks.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Versioned playbook content used by the control plane workflows.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('playbooks')">Open Playbooks</a>
+              </article>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <main class="layout" x-show="view === 'admin' && !canViewAdmin()">
+        <section class="main">
           <div class="metric" style="max-width: 720px; margin: 40px auto;">
             <div class="main-title">Not authorized</div>
-            <div class="main-subtitle" x-text="unauthorizedViewMessage('events')"></div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('admin')"></div>
           </div>
         </section>
       </main>
@@ -863,6 +968,160 @@
           </div>
         </div>
       </div>
+
+      <!-- VERSIONS VIEW -->
+      <main class="layout" x-show="view === 'versions' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Versions</div>
+              <div class="metric-value" x-text="versions.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="refreshVersions()" :disabled="versionsLoading.list">
+                <span x-show="!versionsLoading.list">Refresh</span>
+                <span x-show="versionsLoading.list">Loading…</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Versions</div>
+              <div class="main-subtitle">Configured versions from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by version…"
+                x-model="versionsFilterQuery" @input="persistVersionsFilter(); applyVersionsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="versionsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in versionsVisibleRows" :key="row.version">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.version || '-'"></span></td>
+                    </tr>
+                  </template>
+                  <template x-if="!versionsLoading.list && versionsVisibleRows.length === 0">
+                    <tr>
+                      <td style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main class="layout" x-show="view === 'versions' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('versions')"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- REGIONS VIEW -->
+      <main class="layout" x-show="view === 'regions' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Regions</div>
+              <div class="metric-value" x-text="regions.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="refreshRegions()" :disabled="regionsLoading.list">
+                <span x-show="!regionsLoading.list">Refresh</span>
+                <span x-show="regionsLoading.list">Loading…</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Regions</div>
+              <div class="main-subtitle">Configured deployment regions from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by cloud, region, zone, or image…"
+                x-model="regionsFilterQuery" @input="persistRegionsFilter(); applyRegionsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="regionsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cloud</th>
+                    <th>Region</th>
+                    <th>Zone</th>
+                    <th>VPC ID</th>
+                    <th>Subnet</th>
+                    <th>Image</th>
+                    <th>Security Groups</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in regionsVisibleRows" :key="`${row.cloud}-${row.region}-${row.zone}`">
+                    <tr>
+                      <td><span class="service-pill" x-text="row.cloud || '-'"></span></td>
+                      <td><span x-text="row.region || '-'"></span></td>
+                      <td><span x-text="row.zone || '-'"></span></td>
+                      <td><span class="ip-pill" x-text="row.vpc_id || '-'"></span></td>
+                      <td><span x-text="row.subnet || '-'"></span></td>
+                      <td><span x-text="row.image || '-'"></span></td>
+                      <td><span x-text="Array.isArray(row.security_groups) && row.security_groups.length ? row.security_groups.join(', ') : '-'"></span></td>
+                    </tr>
+                  </template>
+                  <template x-if="!regionsLoading.list && regionsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="7" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main class="layout" x-show="view === 'regions' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('regions')"></div>
+          </div>
+        </section>
+      </main>
 
       <!-- SETTINGS VIEW -->
       <main class="layout" x-show="view === 'settings' && canViewAdmin()">
@@ -1344,7 +1603,7 @@
             </div>
 
             <div class="metric" style="display:grid; gap:8px; border-color: rgba(148, 163, 184, 0.25);">
-              <div class="metric-label">Kloigos Roles</div>
+              <div class="metric-label">CP Roles</div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <template x-for="role in authRoles()" :key="role">
                   <div class="pill" style="margin:0;" x-text="role"></div>

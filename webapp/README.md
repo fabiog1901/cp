@@ -1,4 +1,4 @@
-# 👋 Welcome to the Κλοηγός (Kloigos) Web App!
+# 👋 Welcome to the CP Web App!
 
 This directory is home to the web user interface for the **Κλοηγός API server**. We’ve kept things intentionally simple and "dependency-light."
 

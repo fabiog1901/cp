@@ -52,32 +52,30 @@ class SettingsRepo(BaseRepo):
         self,
         key: SettingKey,
         value,
-        *,
         updated_by: str | None = None,
     ) -> SettingRecord | None:
-        row = fetch_one(
+        return fetch_one(
             """
-                    UPDATE settings
-                    SET
-                        value = %s,
-                        updated_at = CURRENT_TIMESTAMP,
-                        updated_by = %s
-                    WHERE key = %s
-                    RETURNING
-                        key,
-                        value,
-                        default_value,
-                        value_type,
-                        category,
-                        is_secret,
-                        description,
-                        updated_at,
-                        updated_by
-                    """,
+            UPDATE settings
+            SET
+                value = %s,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = %s
+            WHERE key = %s
+            RETURNING
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
+            """,
             (value, updated_by, key),
+            SettingRecord,
         )
-
-        return self._setting_from_row(row) if row is not None else None
 
     def reset_setting(
         self,
