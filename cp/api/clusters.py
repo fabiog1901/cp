@@ -49,14 +49,24 @@ router = APIRouter(
 
 def _raise_http_from_service_error(err: ServiceError) -> None:
     if isinstance(err, ServiceNotFoundError):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err.user_message)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=err.user_message
+        )
     if isinstance(err, ServiceValidationError):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err.user_message)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=err.user_message
+        )
     if isinstance(err, ServiceAuthorizationError):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=err.user_message)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=err.user_message
+        )
     if isinstance(err, ServiceUnavailableError):
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=err.user_message)
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=err.user_message)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=err.user_message
+        )
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=err.user_message
+    )
 
 
 @router.get("/")
@@ -159,7 +169,9 @@ async def get_cluster_options(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Cluster '{cluster_id}' was not found.",
             )
-        return ClusterDialogOptionsResponse(**service.get_cluster_dialog_options(cluster))
+        return ClusterDialogOptionsResponse(
+            **service.get_cluster_dialog_options(cluster)
+        )
     except ServiceError as err:
         _raise_http_from_service_error(err)
 
