@@ -114,6 +114,10 @@ class EventLogYaml(BaseModel):
     event_details_yaml: str
 
 
+class EventCountResponse(BaseModel):
+    total: int
+
+
 # CLUSTER
 
 
@@ -243,6 +247,17 @@ class Task(BaseModel):
     task_desc: Optional[str]
 
 
+class JobDetailsResponse(BaseModel):
+    job: Job
+    description_yaml: str
+    tasks: List[Task]
+    linked_clusters: List[ClusterIDRef]
+
+
+class JobRescheduleResponse(BaseModel):
+    job_id: int
+
+
 # ADMIN
 
 
@@ -327,6 +342,92 @@ class ClusterUsersSnapshot(BaseModel):
 class ClusterBackupsSnapshot(BaseModel):
     cluster: Cluster
     backup_paths: list[BackupPathOption]
+
+
+class ClusterCreateOptionsResponse(BaseModel):
+    versions: list[str]
+    node_counts: list[int]
+    cpus_per_node: list[int]
+    disk_sizes: list[int]
+    regions: list[RegionOption]
+
+
+class ClusterDialogOptionsResponse(BaseModel):
+    node_counts: list[int]
+    cpus_per_node: list[int]
+    disk_sizes: list[int]
+    regions: list[RegionOption]
+    upgrade_versions: list[str]
+
+
+class ClusterCreateApiRequest(BaseModel):
+    name: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
+    regions: list[str]
+    version: str
+    group: str
+    requested_by: str
+
+
+class ClusterDeleteApiRequest(BaseModel):
+    requested_by: str
+
+
+class ClusterUpgradeApiRequest(BaseModel):
+    version: str
+    auto_finalize: bool
+    requested_by: str
+
+
+class ClusterRestoreApiRequest(BaseModel):
+    backup_path: str
+    restore_aost: str | None = None
+    restore_full_cluster: bool
+    object_type: str | None = None
+    object_name: str | None = None
+    backup_into: str | None = None
+    requested_by: str
+
+
+class ClusterRoleRevokeRequest(BaseModel):
+    role: str
+    requested_by: str
+
+
+class ClusterPasswordUpdateRequest(BaseModel):
+    password: str
+    requested_by: str
+
+
+class PlaybookSelectionResponse(BaseModel):
+    playbook_name: str
+    playbook_version: str
+    default_version: str
+    playbook_versions: list[str]
+    original_content: str
+    modified_content: str
+
+
+class PlaybookVersionResponse(BaseModel):
+    playbook_version: str
+    original_content: str
+    modified_content: str
+    playbook_versions: list[str] | None = None
+    default_version: str | None = None
+
+
+class PlaybookSaveRequest(BaseModel):
+    content: str
+
+
+class PlaybookSetDefaultRequest(BaseModel):
+    version: str
+
+
+class PlaybookVersionDeleteRequest(BaseModel):
+    default_version: str
 
 
 # GENERIC / LEGACY

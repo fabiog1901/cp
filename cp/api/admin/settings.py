@@ -1,93 +1,56 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.exceptions import RequestErrorModel
+from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_admin_service
-from ...models import (
-    SettingKey,
-    SettingNotFoundError,
-    SettingRecord,
-    SettingUpdateRequest,
-)
-from ...services.admin import AdminService
+from ...infra import get_settings_service
+from ...models import Setting, SettingUpdateRequest
+from ...services.errors import ServiceError
+from ...services.settings import SettingsService
+from .common import raise_http_from_service_error
 
-router = APIRouter(
-    prefix="/settings",
-    tags=["settings"],
-)
+router = APIRouter(prefix="/settings", tags=["admin"])
 
 
 @router.get("/")
 async def list_settings(
-    service: AdminService = Depends(get_admin_service),
-) -> list[SettingRecord]:
-    return service.list_settings()
-
-
-@router.get(
-    "/{key}",
-    responses={
-        404: {
-            "model": RequestErrorModel,
-            "description": "Setting not found.",
-        },
-    },
-)
-async def get_setting(
-    key: SettingKey,
-    service: AdminService = Depends(get_admin_service),
-) -> SettingRecord:
+    service: SettingsService = Depends(get_settings_service),
+) -> list[Setting]:
     try:
-        return service.get_setting(key)
-    except SettingNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Setting not found.",
-        )
+        return service.list_settings()
+    except ServiceError as err:
+        raise_http_from_service_error(err)
 
 
-@router.patch(
-    "/{key}",
-    responses={
-        404: {
-            "model": RequestErrorModel,
-            "description": "Setting not found.",
-        },
-    },
-)
+@router.get("/{setting_id}")
+async def get_setting(
+    setting_id: str,
+    service: SettingsService = Depends(get_settings_service),
+) -> str:
+    try:
+        return service.get_setting(setting_id)
+    except ServiceError as err:
+        raise_http_from_service_error(err)
+
+
+@router.patch("/{setting_id}")
 async def update_setting(
-    key: SettingKey,
+    setting_id: str,
     request: SettingUpdateRequest,
     actor_id: str = Depends(get_audit_actor),
-    service: AdminService = Depends(get_admin_service),
-) -> SettingRecord:
+    service: SettingsService = Depends(get_settings_service),
+) -> None:
     try:
-        return service.update_setting(actor_id, key, request.value)
-    except SettingNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Setting not found.",
-        )
+        service.update_setting(setting_id, request.value, actor_id)
+    except ServiceError as err:
+        raise_http_from_service_error(err)
 
 
-@router.put(
-    "/{key}",
-    responses={
-        404: {
-            "model": RequestErrorModel,
-            "description": "Setting not found.",
-        },
-    },
-)
+@router.put("/{setting_id}/reset")
 async def reset_setting(
-    key: SettingKey,
+    setting_id: str,
     actor_id: str = Depends(get_audit_actor),
-    service: AdminService = Depends(get_admin_service),
-) -> SettingRecord:
+    service: SettingsService = Depends(get_settings_service),
+) -> None:
     try:
-        return service.reset_setting(actor_id, key)
-    except SettingNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Setting not found.",
-        )
+        service.reset_setting(setting_id, actor_id)
+    except ServiceError as err:
+        raise_http_from_service_error(err)

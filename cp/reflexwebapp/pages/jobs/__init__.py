@@ -1,1 +1,0 @@
-"""Jobs pages package."""

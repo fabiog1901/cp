@@ -3,14 +3,7 @@
 from pydantic import TypeAdapter
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import (
-    Cluster,
-    ClusterOverview,
-    InventoryLB,
-    InventoryRegion,
-    Nodes,
-
-)
+from ...models import Cluster, ClusterOverview, InventoryLB, InventoryRegion, Nodes
 from ..base import BaseRepo
 
 

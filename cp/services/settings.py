@@ -54,3 +54,20 @@ class SettingsService:
                 validation_message=f"Setting '{setting_id}' has an invalid value.",
                 fallback_message=f"Unable to update setting '{setting_id}'.",
             ) from err
+
+    def reset_setting(self, setting_id: str, updated_by: str) -> None:
+        try:
+            self.repo.reset_setting(setting_id, updated_by)
+            self.repo.insert_event_log(
+                updated_by,
+                Event.SETTING_RESET,
+                {"ID": setting_id},
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Settings could not be updated right now.",
+                conflict_message=f"Setting '{setting_id}' could not be reset because of a conflicting change.",
+                validation_message=f"Setting '{setting_id}' could not be reset.",
+                fallback_message=f"Unable to reset setting '{setting_id}'.",
+            ) from err
