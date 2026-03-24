@@ -13,6 +13,7 @@ window.app = function () {
     authSessionCookieName: "cp_session",
     authError: "",
     viewNotice: "",
+    viewNoticeJobId: "",
 
     // Shared UTC timestamps
 
@@ -38,7 +39,7 @@ window.app = function () {
     _serversAutoTimer: null,
     selectedClusterId: "",
     selectedCluster: null,
-    clusterLoading: { details: false },
+    clusterLoading: { details: false, delete: false },
     clusterConnectCopied: false,
 
     // ---------- Jobs state ----------
@@ -60,6 +61,9 @@ window.app = function () {
     jobsAutoRefreshEnabled: true,
     _jobsAutoTimer: null,
     jobsContextClusterId: "",
+    selectedJobId: "",
+    selectedJobDetails: null,
+    jobLoading: { details: false },
 
     // ---------- Events state ----------
     events: [],
@@ -211,6 +215,10 @@ window.app = function () {
         access_key: "",
         owner: "",
       },
+      clusterDeleteConfirm: {
+        open: false,
+        cluster_id: "",
+      },
       apiKeySecret: {
         open: false,
         access_key: "",
@@ -238,6 +246,7 @@ window.app = function () {
       serverActionConfirm: "",
       apiKeyCreate: "",
       apiKeyDeleteConfirm: "",
+      clusterDeleteConfirm: "",
       settingResetConfirm: "",
     },
 
@@ -744,6 +753,7 @@ window.app = function () {
         clusters: "Cluster inventory and status",
         cluster: "Cluster details, access points, and actions",
         jobs: "Queued and completed orchestration work",
+        job: "Job details and task execution history",
         events: "Cluster and platform activity stream",
         admin: "Administrative landing page and tooling",
         api_keys: "Manage API keys and one-time secret issuance",
@@ -768,7 +778,7 @@ window.app = function () {
     },
 
     handleForbiddenView(viewName, { fallback = true } = {}) {
-      this.viewNotice = this.unauthorizedViewMessage(viewName);
+      this.setActionNotice(this.unauthorizedViewMessage(viewName));
       if (!fallback) return;
 
       this.view = "dashboard";
@@ -777,6 +787,12 @@ window.app = function () {
 
     clearViewNotice() {
       this.viewNotice = "";
+      this.viewNoticeJobId = "";
+    },
+
+    setActionNotice(message, jobId = "") {
+      this.viewNotice = String(message || "");
+      this.viewNoticeJobId = String(jobId || "").trim();
     },
 
     userDisplayName() {
@@ -906,6 +922,7 @@ window.app = function () {
       const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
       const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
       const jobsContextClusterId = localStorage.getItem("cp_jobs_context_cluster_id");
+      const selectedJobId = localStorage.getItem("cp_selected_job_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
 
@@ -915,6 +932,7 @@ window.app = function () {
       if (ssFilter !== null) this.serversFilterQuery = ssFilter;
       if (jobsFilter !== null) this.jobsFilterQuery = jobsFilter;
       if (jobsContextClusterId !== null) this.jobsContextClusterId = jobsContextClusterId;
+      if (selectedJobId !== null) this.selectedJobId = selectedJobId;
       if (seFilter !== null) this.eventsFilterQuery = seFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
@@ -940,6 +958,7 @@ window.app = function () {
         sView === "clusters" ||
         sView === "cluster" ||
         sView === "jobs" ||
+        sView === "job" ||
         sView === "admin" ||
         sView === "playbooks" ||
         sView === "events" ||
@@ -1000,6 +1019,7 @@ window.app = function () {
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "jobs") this.ensureJobsView();
+      else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
       else if (this.view === "settings") this.ensureSettingsView();
@@ -1024,6 +1044,7 @@ window.app = function () {
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "jobs") this.ensureJobsView();
+      else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
       else if (this.view === "settings") this.ensureSettingsView();
@@ -1050,6 +1071,24 @@ window.app = function () {
         return;
       }
       this.setView("jobs");
+    },
+
+    openJob(jobId) {
+      const nextId = String(jobId || "").trim();
+      if (!nextId) return;
+      if (this.selectedJobId !== nextId) {
+        this.selectedJobDetails = null;
+      }
+      this.selectedJobId = nextId;
+      localStorage.setItem("cp_selected_job_id", nextId);
+      this.view = "job";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.ensureJobDetailView();
+    },
+
+    backToJobs() {
+      this.openJobsView(this.jobsContextClusterId);
     },
 
     async logout() {
@@ -1143,6 +1182,20 @@ window.app = function () {
       if (this.jobs.length === 0 && !this.jobsLoading.list)
         await this.refreshJobs();
       else this.applyJobsFilterSort();
+    },
+
+    async ensureJobDetailView() {
+      if (!this.selectedJobId) {
+        this.view = "jobs";
+        localStorage.setItem("cp_view", this.view);
+        return;
+      }
+      if (
+        !this.selectedJobDetails ||
+        this.selectedJobDetails?.job?.job_id !== Number(this.selectedJobId)
+      ) {
+        await this.refreshSelectedJobDetails();
+      }
     },
 
     async ensureEventsView() {
@@ -1397,7 +1450,7 @@ window.app = function () {
         document.body.removeChild(el);
       }
       this.clusterConnectCopied = true;
-      this.viewNotice = "Cluster connect command copied to clipboard.";
+      this.setActionNotice("Cluster connect command copied to clipboard.");
     },
 
     openDbConsole() {
@@ -1412,14 +1465,95 @@ window.app = function () {
       this.openJobsView(clusterId);
     },
 
+    openClusterDeleteConfirm() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+      this.modal.clusterDeleteConfirm.cluster_id = clusterId;
+      this.clearModalError("clusterDeleteConfirm");
+      this.modal.clusterDeleteConfirm.open = true;
+    },
+
+    closeClusterDeleteConfirm() {
+      this.modal.clusterDeleteConfirm.open = false;
+      this.modal.clusterDeleteConfirm.cluster_id = "";
+      this.clearModalError("clusterDeleteConfirm");
+    },
+
+    async confirmClusterDelete() {
+      const clusterId = String(
+        this.modal.clusterDeleteConfirm.cluster_id || "",
+      ).trim();
+      if (!clusterId) return;
+
+      this.clusterLoading.delete = true;
+      this.clearModalError("clusterDeleteConfirm");
+      try {
+        const result = await this.apiFetch(`/clusters/${encodeURIComponent(clusterId)}`, {
+          method: "DELETE",
+        });
+        this.closeClusterDeleteConfirm();
+        this.selectedCluster = null;
+        this.selectedClusterId = "";
+        localStorage.removeItem("cp_selected_cluster_id");
+        await this.refreshServers();
+        this.setView("clusters");
+        this.setActionNotice(
+          `Cluster '${clusterId}' delete requested.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterDeleteConfirm",
+          e,
+          "Failed to delete cluster.",
+        );
+      } finally {
+        this.clusterLoading.delete = false;
+      }
+    },
+
     triggerClusterAction(label) {
       const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
-      this.viewNotice = `${label} for cluster '${clusterId}' is not wired in the webapp yet.`;
+      this.setActionNotice(
+        `${label} for cluster '${clusterId}' is not wired in the webapp yet.`,
+      );
     },
 
     jobsDescriptionText(job) {
       return this.toYaml(job?.description ?? null);
+    },
+
+    jobTaskDescriptionText(task) {
+      if (typeof task?.task_desc === "string") return task.task_desc;
+      return this.toYaml(task?.task_desc ?? null);
+    },
+
+    selectedJobPrimaryClusterId() {
+      const linkedClusters = Array.isArray(this.selectedJobDetails?.linked_clusters)
+        ? this.selectedJobDetails.linked_clusters
+        : [];
+      return String(linkedClusters[0]?.cluster_id || "").trim();
+    },
+
+    async refreshSelectedJobDetails() {
+      const jobId = String(this.selectedJobId || "").trim();
+      if (!jobId) return;
+      this.jobLoading.details = true;
+      try {
+        this.selectedJobDetails = await this.apiFetch(
+          `/jobs/${encodeURIComponent(jobId)}/details`,
+          { method: "GET" },
+        );
+      } catch (e) {
+        console.error(e);
+        this.setActionNotice(this.errorMessage(e, "Failed to load job details."));
+        this.selectedJobDetails = null;
+      } finally {
+        this.jobLoading.details = false;
+      }
     },
 
     jobsRowText(job) {

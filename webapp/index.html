@@ -61,7 +61,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
               @click.prevent="openJobsView()">Jobs</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'events' }"
@@ -92,8 +92,12 @@
       </header>
 
       <div x-show="viewNotice"
-        style="margin: 16px 24px 0; padding: 14px 16px; border: 1px solid rgba(251, 191, 36, 0.32); border-radius: 14px; background: rgba(120, 53, 15, 0.18); color: #fde68a;"
-        x-text="viewNotice"></div>
+        style="margin: 16px 24px 0; padding: 14px 16px; border: 1px solid rgba(251, 191, 36, 0.32); border-radius: 14px; background: rgba(120, 53, 15, 0.18); color: #fde68a; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+        <span x-text="viewNotice"></span>
+        <a href="#" class="link-inline" x-show="viewNoticeJobId" @click.prevent="openJob(viewNoticeJobId)">
+          Open Job <span x-text="viewNoticeJobId"></span>
+        </a>
+      </div>
 
       <!-- DASHBOARD VIEW -->
       <main class="layout" x-show="view === 'dashboard'">
@@ -541,7 +545,8 @@
                 <div class="dashboard-stat">8</div>
               </div>
               <div class="cluster-action-grid">
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Delete cluster')">Delete Cluster</button>
+                <button class="btn btn-danger cluster-action-btn" type="button"
+                  @click="openClusterDeleteConfirm()">Delete Cluster</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show backups')">Show Backups</button>
                 <button class="btn cluster-action-btn" type="button" @click="openClusterJobs()">Show Jobs</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Create users')">Create Users</button>
@@ -559,6 +564,42 @@
           </div>
         </section>
       </main>
+
+      <!-- Cluster Delete Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Cluster Delete</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDeleteConfirm"
+              x-text="modalErrors.clusterDeleteConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will request deletion for cluster
+              <span class="ip-pill" x-text="modal.clusterDeleteConfirm.cluster_id"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/clusters/<span
+                    x-text="modal.clusterDeleteConfirm.cluster_id"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterLoading.delete" @click="confirmClusterDelete()">
+              <span x-show="!clusterLoading.delete">YES, DELETE</span>
+              <span x-show="clusterLoading.delete">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Server Action Confirm Modal (Decommission / Delete) -->
       <div class="modal-backdrop" x-show="modal.serverActionConfirm.open" x-transition
@@ -680,7 +721,11 @@
                 <tbody>
                   <template x-for="job in jobsVisibleRows" :key="job.job_id">
                     <tr>
-                      <td><span class="ip-pill" x-text="job.job_id"></span></td>
+                      <td>
+                        <a href="#" class="dashboard-link" @click.prevent="openJob(job.job_id)">
+                          <span class="ip-pill clickable" x-text="job.job_id"></span>
+                        </a>
+                      </td>
                       <td><span class="service-pill" x-text="job.job_type || '-'"></span></td>
                       <td>
                         <span class="status" :class="serversStatusClass(job.status)">
@@ -703,6 +748,177 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- JOB DETAIL VIEW -->
+      <main class="layout" x-show="view === 'job'">
+        <aside class="sidebar">
+          <div>
+            <h2>Job</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Job</div>
+              <div class="metric-value" x-text="selectedJobDetails?.job?.job_id || selectedJobId || '-'"></div>
+              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/jobs/{job_id}/details</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Navigation</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToJobs()">Back to Jobs</button>
+              <button class="btn" @click="refreshSelectedJobDetails()" :disabled="jobLoading.details || !selectedJobId">
+                <span x-show="!jobLoading.details">Refresh</span>
+                <span x-show="jobLoading.details">Loading…</span>
+              </button>
+              <button class="btn btn-secondary" x-show="selectedJobPrimaryClusterId()"
+                @click="openCluster(selectedJobPrimaryClusterId())">Open Cluster</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Job Details</div>
+              <div class="main-subtitle">Job metadata, linked clusters, and execution tasks for the selected job.</div>
+            </div>
+          </div>
+
+          <div class="dashboard-home" x-show="selectedJobDetails">
+            <section class="dashboard-hero">
+              <div class="eyebrow">Execution detail</div>
+              <h2>Job <span x-text="selectedJobDetails?.job?.job_id || selectedJobId || '-'"></span></h2>
+              <p>
+                This page shows the job payload returned by the jobs details endpoint together with the task list
+                recorded for this execution.
+              </p>
+            </section>
+
+            <section class="dashboard-grid">
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Overview</div>
+                    <h3 class="dashboard-card-title">Job Summary</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="selectedJobDetails?.tasks?.length ?? 0"></div>
+                </div>
+                <div class="cluster-facts">
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Status</span>
+                    <span class="status" :class="serversStatusClass(selectedJobDetails?.job?.status)">
+                      <span class="status-dot"></span>
+                      <span x-text="String(selectedJobDetails?.job?.status || 'unknown').toUpperCase()"></span>
+                    </span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Type</span>
+                    <span class="service-pill" x-text="selectedJobDetails?.job?.job_type || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created By</span>
+                    <span x-text="selectedJobDetails?.job?.created_by || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created</span>
+                    <span x-text="toUtcStringMaybe(selectedJobDetails?.job?.created_at)"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Updated</span>
+                    <span x-text="toUtcStringMaybe(selectedJobDetails?.job?.updated_at)"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Linked Clusters</span>
+                    <span x-text="selectedJobDetails?.linked_clusters?.length ?? 0"></span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Context</div>
+                    <h3 class="dashboard-card-title">Linked Clusters</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="selectedJobDetails?.linked_clusters?.length ?? 0"></div>
+                </div>
+                <div class="cluster-list">
+                  <template x-for="linked in (selectedJobDetails?.linked_clusters || [])" :key="linked.cluster_id">
+                    <div class="cluster-list-item">
+                      <div class="cluster-list-title">
+                        <a href="#" class="dashboard-link" @click.prevent="openCluster(linked.cluster_id)">
+                          <span class="ip-pill clickable" x-text="linked.cluster_id || '-'"></span>
+                        </a>
+                      </div>
+                    </div>
+                  </template>
+                  <div class="cluster-list-item"
+                    x-show="!selectedJobDetails?.linked_clusters || selectedJobDetails.linked_clusters.length === 0">
+                    <div class="cluster-list-copy">No linked clusters returned.</div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card" style="grid-column: 1 / -1;">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Description</div>
+                    <h3 class="dashboard-card-title">Job Payload</h3>
+                  </div>
+                  <div class="dashboard-stat">YAML</div>
+                </div>
+                <pre class="cluster-command"
+                  x-text="selectedJobDetails?.description_yaml || jobsDescriptionText(selectedJobDetails?.job || {})"></pre>
+              </article>
+            </section>
+
+            <section class="dashboard-card cluster-actions-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Tasks</div>
+                  <h3 class="dashboard-card-title">Execution Tasks</h3>
+                </div>
+                <div class="dashboard-stat" x-text="selectedJobDetails?.tasks?.length ?? 0"></div>
+              </div>
+              <div class="table-container">
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Task ID</th>
+                        <th>Created (UTC)</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="task in (selectedJobDetails?.tasks || [])"
+                        :key="`${task.job_id}-${task.task_id}`">
+                        <tr>
+                          <td><span class="ip-pill" x-text="task.task_id"></span></td>
+                          <td><span x-text="toUtcStringMaybe(task.created_at)"></span></td>
+                          <td><span x-text="task.task_name || '-'"></span></td>
+                          <td class="events-details-cell"><pre class="events-yaml"
+                              x-text="jobTaskDescriptionText(task)"></pre></td>
+                        </tr>
+                      </template>
+                      <template x-if="!jobLoading.details && (!selectedJobDetails?.tasks || selectedJobDetails.tasks.length === 0)">
+                        <tr>
+                          <td colspan="4" style="padding: 18px; color: var(--muted);">No tasks returned.</td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedJobDetails && !jobLoading.details">
+            <div class="main-title">Job not loaded</div>
+            <div class="main-subtitle">Select a job from the Jobs page to view its details.</div>
           </div>
         </section>
       </main>

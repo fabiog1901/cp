@@ -18,7 +18,27 @@ def delete_cluster(
     cluster_id = cluster.get("cluster_id")
 
     c = repo.get_cluster(cluster_id, [], True)
-    if not c or c.status == ClusterState.DELETED:
+    if not c:
+        repo.update_job(
+            job_id,
+            JobState.FAILED,
+        )
+        repo.insert_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The cluster was not found.",
+        )
+        return
+    
+    repo.insert_mapped_job(
+        cluster_id,
+        job_id,
+        JobState.SCHEDULED,
+    )
+    
+    if c.status == ClusterState.DELETED:
         repo.update_job(
             job_id,
             JobState.FAILED,
@@ -38,11 +58,7 @@ def delete_cluster(
         status=ClusterState.DELETING,
     )
 
-    repo.insert_mapped_job(
-        cluster_id,
-        job_id,
-        JobState.SCHEDULED,
-    )
+    
 
     Thread(
         target=delete_cluster_worker,
