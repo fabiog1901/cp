@@ -1,4 +1,4 @@
-// Kloigos SPA (tabs, no routing) using Alpine + Fetch + Ace for Playbooks editor (no YAML linter yet).
+// cp SPA (tabs, no routing) using Alpine + Fetch + Ace for Playbooks editor (no YAML linter yet).
 
 window.app = function () {
   return {
@@ -10,7 +10,7 @@ window.app = function () {
     authClaims: null,
     authLoginPath: "/api/auth/login",
     authDisplayNameClaim: "preferred_username",
-    authSessionCookieName: "kloigos_session",
+    authSessionCookieName: "cp_session",
     authError: "",
     viewNotice: "",
 
@@ -74,10 +74,10 @@ window.app = function () {
     apiKeysLoading: { list: false, create: false, delete: false },
     apiKeysAutoRefreshEnabled: true,
     _apiKeysAutoTimer: null,
-    availableKloigosRoles: [
-      "KLOIGOS_READONLY",
-      "KLOIGOS_USER",
-      "KLOIGOS_ADMIN",
+    availableCPRoles: [
+      "CP_READONLY",
+      "CP_USER",
+      "CP_ADMIN",
     ],
 
     // ---------- Settings state ----------
@@ -169,7 +169,7 @@ window.app = function () {
       apiKeyCreate: {
         open: false,
         valid_until: "",
-        roles: ["KLOIGOS_ADMIN"],
+        roles: ["CP_ADMIN"],
       },
       apiKeyDeleteConfirm: {
         open: false,
@@ -372,7 +372,7 @@ window.app = function () {
       this.isAuthenticated = false;
       this.authClaims = null;
       this.authDisplayNameClaim = "preferred_username";
-      this.authSessionCookieName = "kloigos_session";
+      this.authSessionCookieName = "cp_session";
       this.authError = String(errorMessage || "Not authenticated.");
       this.stopAutoRefreshTimers();
       if (loginPath) this.authLoginPath = loginPath;
@@ -382,9 +382,9 @@ window.app = function () {
       const meta =
         this.authClaims &&
         typeof this.authClaims === "object" &&
-        this.authClaims._kloigos &&
-        typeof this.authClaims._kloigos === "object"
-          ? this.authClaims._kloigos
+        this.authClaims._cp &&
+        typeof this.authClaims._cp === "object"
+          ? this.authClaims._cp
           : null;
 
       if (
@@ -404,7 +404,7 @@ window.app = function () {
       ) {
         this.authSessionCookieName = meta.session_cookie_name.trim();
       } else {
-        this.authSessionCookieName = "kloigos_session";
+        this.authSessionCookieName = "cp_session";
       }
     },
 
@@ -513,7 +513,7 @@ window.app = function () {
         groups_claim_value: claims ? claims[claimName] ?? null : null,
         normalized_groups: this.authGroups(),
         role_groups: this.authRoleGroups(),
-        kloigos_roles: this.authRoles(),
+        cp_roles: this.authRoles(),
       };
     },
 
@@ -524,7 +524,7 @@ window.app = function () {
       result = false,
       detail = "",
     } = {}) {
-      console.info("[kloigos role check]", {
+      console.info("[cp role check]", {
         checkType,
         viewName: String(viewName || "").trim() || this.view,
         requiredRole: String(requiredRole || "").trim(),
@@ -582,11 +582,11 @@ window.app = function () {
     canManageCompute() {
       return (
         this.authIsUnauthenticatedMode() ||
-        this.hasRole("KLOIGOS_USER", {
+        this.hasRole("CP_USER", {
           viewName: this.view,
           checkType: "canManageCompute",
         }) ||
-        this.hasRole("KLOIGOS_ADMIN", {
+        this.hasRole("CP_ADMIN", {
           viewName: this.view,
           checkType: "canManageCompute",
         })
@@ -596,7 +596,7 @@ window.app = function () {
     canViewAdmin(viewName = this.view) {
       return (
         this.authIsUnauthenticatedMode() ||
-        this.hasRole("KLOIGOS_ADMIN", {
+        this.hasRole("CP_ADMIN", {
           viewName,
           checkType: "canViewAdmin",
         })
@@ -612,7 +612,7 @@ window.app = function () {
         const result = this.canViewAdmin(viewName);
         this.logRoleCheck({
           checkType: "isViewAccessible",
-          requiredRole: "KLOIGOS_ADMIN",
+          requiredRole: "CP_ADMIN",
           viewName,
           result,
           detail: "Checking admin access for restricted view.",
@@ -646,7 +646,7 @@ window.app = function () {
       if (!fallback) return;
 
       this.view = "dashboard";
-      localStorage.setItem("kloigos_view", this.view);
+      localStorage.setItem("cp_view", this.view);
     },
 
     clearViewNotice() {
@@ -757,23 +757,23 @@ window.app = function () {
 
     // ---------- Init ----------
     async init() {
-      const sIdx = localStorage.getItem("kloigos_sort_index");
-      const sDir = localStorage.getItem("kloigos_sort_dir");
-      const sFilter = localStorage.getItem("kloigos_filter");
-      const sFmt = localStorage.getItem("kloigos_inspector_format");
-      const sView = localStorage.getItem("kloigos_view");
-      const ssIdx = localStorage.getItem("kloigos_servers_sort_index");
-      const ssDir = localStorage.getItem("kloigos_servers_sort_dir");
-      const ssFilter = localStorage.getItem("kloigos_servers_filter");
-      const seIdx = localStorage.getItem("kloigos_events_sort_index");
-      const seDir = localStorage.getItem("kloigos_events_sort_dir");
-      const seFilter = localStorage.getItem("kloigos_events_filter");
-      const sakIdx = localStorage.getItem("kloigos_api_keys_sort_index");
-      const sakDir = localStorage.getItem("kloigos_api_keys_sort_dir");
-      const sakFilter = localStorage.getItem("kloigos_api_keys_filter");
-      const setIdx = localStorage.getItem("kloigos_settings_sort_index");
-      const setDir = localStorage.getItem("kloigos_settings_sort_dir");
-      const setFilter = localStorage.getItem("kloigos_settings_filter");
+      const sIdx = localStorage.getItem("cp_sort_index");
+      const sDir = localStorage.getItem("cp_sort_dir");
+      const sFilter = localStorage.getItem("cp_filter");
+      const sFmt = localStorage.getItem("cp_inspector_format");
+      const sView = localStorage.getItem("cp_view");
+      const ssIdx = localStorage.getItem("cp_servers_sort_index");
+      const ssDir = localStorage.getItem("cp_servers_sort_dir");
+      const ssFilter = localStorage.getItem("cp_servers_filter");
+      const seIdx = localStorage.getItem("cp_events_sort_index");
+      const seDir = localStorage.getItem("cp_events_sort_dir");
+      const seFilter = localStorage.getItem("cp_events_filter");
+      const sakIdx = localStorage.getItem("cp_api_keys_sort_index");
+      const sakDir = localStorage.getItem("cp_api_keys_sort_dir");
+      const sakFilter = localStorage.getItem("cp_api_keys_filter");
+      const setIdx = localStorage.getItem("cp_settings_sort_index");
+      const setDir = localStorage.getItem("cp_settings_sort_dir");
+      const setFilter = localStorage.getItem("cp_settings_filter");
 
       if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
       if (sDir === "desc") this.sortDir = "desc";
@@ -815,7 +815,11 @@ window.app = function () {
 
       // Start dashboard timer (only refresh if dashboard tab is active)
       this._autoTimer = setInterval(() => {
-        if (this.autoRefreshEnabled && this.view === "dashboard")
+        if (
+          this.autoRefreshEnabled &&
+          this.view === "dashboard" &&
+          this.computeUnits.length > 0
+        )
           this.refreshDashboard();
       }, 10_000);
 
@@ -858,7 +862,7 @@ window.app = function () {
 
       this.clearViewNotice();
       this.view = next;
-      localStorage.setItem("kloigos_view", this.view);
+      localStorage.setItem("cp_view", this.view);
 
       if (this.view === "playbooks") this.ensurePlaybooksView();
       else if (this.view === "servers") this.ensureServersView();
@@ -1049,10 +1053,10 @@ window.app = function () {
       }
 
       localStorage.setItem(
-        "kloigos_servers_sort_index",
+        "cp_servers_sort_index",
         String(this.serversSortIndex),
       );
-      localStorage.setItem("kloigos_servers_sort_dir", this.serversSortDir);
+      localStorage.setItem("cp_servers_sort_dir", this.serversSortDir);
       this.applyServersFilterSort();
     },
 
@@ -1142,10 +1146,10 @@ window.app = function () {
       }
 
       localStorage.setItem(
-        "kloigos_events_sort_index",
+        "cp_events_sort_index",
         String(this.eventsSortIndex),
       );
-      localStorage.setItem("kloigos_events_sort_dir", this.eventsSortDir);
+      localStorage.setItem("cp_events_sort_dir", this.eventsSortDir);
       this.applyEventsFilterSort();
     },
 
@@ -1236,10 +1240,10 @@ window.app = function () {
       }
 
       localStorage.setItem(
-        "kloigos_api_keys_sort_index",
+        "cp_api_keys_sort_index",
         String(this.apiKeysSortIndex),
       );
-      localStorage.setItem("kloigos_api_keys_sort_dir", this.apiKeysSortDir);
+      localStorage.setItem("cp_api_keys_sort_dir", this.apiKeysSortDir);
       this.applyApiKeysFilterSort();
     },
 
@@ -1268,7 +1272,7 @@ window.app = function () {
 
     persistApiKeysFilter() {
       localStorage.setItem(
-        "kloigos_api_keys_filter",
+        "cp_api_keys_filter",
         this.apiKeysFilterQuery || "",
       );
     },
@@ -1300,7 +1304,7 @@ window.app = function () {
     openApiKeyCreateModal() {
       this.clearModalError("apiKeyCreate");
       this.modal.apiKeyCreate.valid_until = this.defaultApiKeyValidUntilUtc();
-      this.modal.apiKeyCreate.roles = ["KLOIGOS_ADMIN"];
+      this.modal.apiKeyCreate.roles = ["CP_ADMIN"];
       this.modal.apiKeyCreate.open = true;
     },
 
@@ -1447,7 +1451,7 @@ window.app = function () {
         row?.key,
         row?.category,
         row?.value_type,
-        row?.effective_value,
+        row?.value,
         row?.default_value,
         row?.updated_by,
       ]
@@ -1465,7 +1469,7 @@ window.app = function () {
         case 2:
           return row?.value_type || "";
         case 3:
-          return row?.effective_value || "";
+          return row?.value || "";
         case 4:
           return row?.default_value || "";
         case 5:
@@ -1489,10 +1493,10 @@ window.app = function () {
       }
 
       localStorage.setItem(
-        "kloigos_settings_sort_index",
+        "cp_settings_sort_index",
         String(this.settingsSortIndex),
       );
-      localStorage.setItem("kloigos_settings_sort_dir", this.settingsSortDir);
+      localStorage.setItem("cp_settings_sort_dir", this.settingsSortDir);
       this.applySettingsFilterSort();
     },
 
@@ -1520,7 +1524,7 @@ window.app = function () {
     },
 
     persistSettingsFilter() {
-      localStorage.setItem("kloigos_settings_filter", this.settingsFilterQuery || "");
+      localStorage.setItem("cp_settings_filter", this.settingsFilterQuery || "");
     },
 
     settingDraftValue(row) {
@@ -1529,7 +1533,7 @@ window.app = function () {
       if (Object.prototype.hasOwnProperty.call(this.settingsDrafts, key)) {
         return this.settingsDrafts[key];
       }
-      return row?.effective_value || "";
+      return row?.value || "";
     },
 
     setSettingDraft(key, value) {
@@ -1541,7 +1545,7 @@ window.app = function () {
     },
 
     isSettingDirty(row) {
-      return this.settingDraftValue(row) !== String(row?.effective_value || "");
+      return this.settingDraftValue(row) !== String(row?.value || "");
     },
 
     settingValuePreview(row, value) {
@@ -1573,8 +1577,8 @@ window.app = function () {
           this.settings.map((row) => {
             const existing = existingRowsByKey[row.key];
             const existingDraft = this.settingsDrafts[row.key];
-            const existingEffective = String(existing?.effective_value || "");
-            const nextEffective = String(row.effective_value || "");
+            const existingEffective = String(existing?.value || "");
+            const nextEffective = String(row.value || "");
             if (
               existingDraft !== undefined &&
               existingDraft !== existingEffective
@@ -1617,7 +1621,7 @@ window.app = function () {
         this.settings = this.settings.map((entry) =>
           entry.key === updated.key ? updated : entry,
         );
-        this.setSettingDraft(updated.key, updated.effective_value || "");
+        this.setSettingDraft(updated.key, updated.value || "");
         this.settingsLastUpdatedUtc = this.utcNowString();
         this.applySettingsFilterSort();
       } catch (e) {
@@ -1655,7 +1659,7 @@ window.app = function () {
         this.settings = this.settings.map((entry) =>
           entry.key === updated.key ? updated : entry,
         );
-        this.setSettingDraft(updated.key, updated.effective_value || "");
+        this.setSettingDraft(updated.key, updated.value || "");
         this.closeSettingResetConfirm();
         this.settingsLastUpdatedUtc = this.utcNowString();
         this.applySettingsFilterSort();
@@ -1719,28 +1723,27 @@ window.app = function () {
 
     // ---------- Dashboard lifecycle ----------
     async ensureDashboardView() {
-      if (this.computeUnits.length === 0 && !this.loading.list)
-        await this.refreshDashboard();
-      if (typeof this.refreshServers === "function")
-        await this.refreshServers();
-      else this.applyFilterSort();
+      if (this.canViewAdmin() && this.settings.length === 0 && !this.settingsLoading.list) {
+        await this.refreshSettings();
+      }
+      this.applyFilterSort();
     },
 
     persistFilter() {
-      localStorage.setItem("kloigos_filter", this.filterQuery || "");
+      localStorage.setItem("cp_filter", this.filterQuery || "");
     },
 
     persistServersFilter() {
       localStorage.setItem(
-        "kloigos_servers_filter",
+        "cp_servers_filter",
         this.serversFilterQuery || "",
       );
     },
     persistEventsFilter() {
-      localStorage.setItem("kloigos_events_filter", this.eventsFilterQuery || "");
+      localStorage.setItem("cp_events_filter", this.eventsFilterQuery || "");
     },
     persistInspectorFormat() {
-      localStorage.setItem("kloigos_inspector_format", this.inspectorFormat);
+      localStorage.setItem("cp_inspector_format", this.inspectorFormat);
     },
 
     async refreshDashboard() {
@@ -1858,8 +1861,8 @@ window.app = function () {
         this.sortDir = "asc";
       }
 
-      localStorage.setItem("kloigos_sort_index", String(this.sortIndex));
-      localStorage.setItem("kloigos_sort_dir", this.sortDir);
+      localStorage.setItem("cp_sort_index", String(this.sortIndex));
+      localStorage.setItem("cp_sort_dir", this.sortDir);
       this.applyFilterSort();
     },
 
