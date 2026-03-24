@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.exceptions import RequestErrorModel
 
+from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import (
     get_cluster_backups_service,
     get_cluster_jobs_service,
@@ -14,7 +15,6 @@ from ..models import (
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
-    ClusterDeleteApiRequest,
     ClusterDialogOptionsResponse,
     ClusterJobsSnapshot,
     ClusterOverview,
@@ -46,7 +46,6 @@ router = APIRouter(
     tags=["clusters"],
 )
 
-
 def _raise_http_from_service_error(err: ServiceError) -> None:
     if isinstance(err, ServiceNotFoundError):
         raise HTTPException(
@@ -71,10 +70,10 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 
 @router.get("/")
 async def list_clusters(
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterService = Depends(get_cluster_service),
 ) -> list[ClusterOverview]:
+    groups, is_admin = get_access_scope(claims)
     try:
         return service.list_visible_clusters(groups, is_admin)
     except ServiceError as err:
@@ -83,6 +82,7 @@ async def list_clusters(
 
 @router.get("/options", response_model=ClusterCreateOptionsResponse)
 async def get_cluster_create_options(
+    _claims: dict = Depends(require_readonly),
     service: ClusterService = Depends(get_cluster_service),
 ) -> ClusterCreateOptionsResponse:
     try:
@@ -94,6 +94,8 @@ async def get_cluster_create_options(
 @router.post("/", response_model=JobID)
 async def create_cluster(
     request: ClusterCreateApiRequest,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
@@ -105,7 +107,7 @@ async def create_cluster(
             request.regions,
             request.version,
             request.group,
-            request.requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -118,10 +120,10 @@ async def create_cluster(
 )
 async def get_cluster(
     cluster_id: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterService = Depends(get_cluster_service),
 ) -> Cluster:
+    groups, is_admin = get_access_scope(claims)
     try:
         cluster = service.get_cluster_for_user(cluster_id, groups, is_admin)
     except ServiceError as err:
@@ -141,11 +143,12 @@ async def get_cluster(
 )
 async def delete_cluster(
     cluster_id: str,
-    request: ClusterDeleteApiRequest,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
-        job_id = service.request_cluster_deletion(cluster_id, request.requested_by)
+        job_id = service.request_cluster_deletion(cluster_id, actor_id)
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)
@@ -158,10 +161,10 @@ async def delete_cluster(
 )
 async def get_cluster_options(
     cluster_id: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterService = Depends(get_cluster_service),
 ) -> ClusterDialogOptionsResponse:
+    groups, is_admin = get_access_scope(claims)
     try:
         cluster = service.get_cluster_for_user(cluster_id, groups, is_admin)
         if cluster is None:
@@ -180,7 +183,8 @@ async def get_cluster_options(
 async def scale_cluster(
     cluster_id: str,
     request: ClusterScaleRequest,
-    requested_by: str,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
@@ -190,7 +194,7 @@ async def scale_cluster(
             request.disk_size,
             request.node_count,
             request.regions,
-            requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -201,6 +205,8 @@ async def scale_cluster(
 async def upgrade_cluster(
     cluster_id: str,
     request: ClusterUpgradeApiRequest,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
@@ -208,7 +214,7 @@ async def upgrade_cluster(
             cluster_id,
             request.version,
             request.auto_finalize,
-            request.requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -222,10 +228,10 @@ async def upgrade_cluster(
 )
 async def get_cluster_jobs(
     cluster_id: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterJobsService = Depends(get_cluster_jobs_service),
 ) -> ClusterJobsSnapshot:
+    groups, is_admin = get_access_scope(claims)
     try:
         snapshot = service.load_cluster_jobs_snapshot(cluster_id, groups, is_admin)
     except ServiceError as err:
@@ -245,10 +251,10 @@ async def get_cluster_jobs(
 )
 async def get_cluster_backups(
     cluster_id: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterBackupsService = Depends(get_cluster_backups_service),
 ) -> ClusterBackupsSnapshot:
+    groups, is_admin = get_access_scope(claims)
     try:
         snapshot = service.load_cluster_backups_snapshot(cluster_id, groups, is_admin)
     except ServiceError as err:
@@ -265,10 +271,10 @@ async def get_cluster_backups(
 async def get_cluster_backup_details(
     cluster_id: str,
     backup_path: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterBackupsService = Depends(get_cluster_backups_service),
 ) -> list[BackupDetails]:
+    groups, is_admin = get_access_scope(claims)
     try:
         return service.load_backup_details(cluster_id, groups, is_admin, backup_path)
     except ServiceError as err:
@@ -279,10 +285,11 @@ async def get_cluster_backup_details(
 async def restore_cluster(
     cluster_id: str,
     request: ClusterRestoreApiRequest,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterBackupsService = Depends(get_cluster_backups_service),
 ) -> JobID:
+    groups, is_admin = get_access_scope(claims)
     try:
         job_id = service.request_cluster_restore(
             cluster_id,
@@ -294,7 +301,7 @@ async def restore_cluster(
             request.object_type,
             request.object_name,
             request.backup_into,
-            request.requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -308,10 +315,10 @@ async def restore_cluster(
 )
 async def get_cluster_users(
     cluster_id: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> ClusterUsersSnapshot:
+    groups, is_admin = get_access_scope(claims)
     try:
         snapshot = service.load_cluster_users_snapshot(cluster_id, groups, is_admin)
     except ServiceError as err:
@@ -328,11 +335,11 @@ async def get_cluster_users(
 async def create_cluster_user(
     cluster_id: str,
     request: NewDatabaseUserRequest,
-    requested_by: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
+    groups, is_admin = get_access_scope(claims)
     try:
         service.create_database_user(
             cluster_id,
@@ -340,7 +347,7 @@ async def create_cluster_user(
             is_admin,
             request.username,
             request.password,
-            requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -350,18 +357,18 @@ async def create_cluster_user(
 async def delete_cluster_user(
     cluster_id: str,
     username: str,
-    requested_by: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
+    groups, is_admin = get_access_scope(claims)
     try:
         service.remove_database_user(
             cluster_id,
             groups,
             is_admin,
             username,
-            requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -372,10 +379,11 @@ async def revoke_cluster_user_role(
     cluster_id: str,
     username: str,
     request: ClusterRoleRevokeRequest,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
+    groups, is_admin = get_access_scope(claims)
     try:
         service.revoke_database_user_role(
             cluster_id,
@@ -383,7 +391,7 @@ async def revoke_cluster_user_role(
             is_admin,
             username,
             request.role,
-            request.requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -394,10 +402,11 @@ async def update_cluster_user_password(
     cluster_id: str,
     username: str,
     request: ClusterPasswordUpdateRequest,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
+    groups, is_admin = get_access_scope(claims)
     try:
         service.update_database_user_password(
             cluster_id,
@@ -405,7 +414,7 @@ async def update_cluster_user_password(
             is_admin,
             username,
             request.password,
-            request.requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
@@ -421,10 +430,10 @@ async def get_cluster_dashboard(
     start: int = 0,
     end: int = 0,
     interval_secs: int = 10,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: DashboardService = Depends(get_dashboard_service),
 ) -> DashboardSnapshot:
+    groups, is_admin = get_access_scope(claims)
     try:
         snapshot = service.load_dashboard_snapshot(
             cluster_id,

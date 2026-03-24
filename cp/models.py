@@ -346,17 +346,11 @@ class ClusterCreateApiRequest(BaseModel):
     regions: list[str]
     version: str
     group: str
-    requested_by: str
-
-
-class ClusterDeleteApiRequest(BaseModel):
-    requested_by: str
 
 
 class ClusterUpgradeApiRequest(BaseModel):
     version: str
     auto_finalize: bool
-    requested_by: str
 
 
 class ClusterRestoreApiRequest(BaseModel):
@@ -366,17 +360,14 @@ class ClusterRestoreApiRequest(BaseModel):
     object_type: str | None = None
     object_name: str | None = None
     backup_into: str | None = None
-    requested_by: str
 
 
 class ClusterRoleRevokeRequest(BaseModel):
     role: str
-    requested_by: str
 
 
 class ClusterPasswordUpdateRequest(BaseModel):
     password: str
-    requested_by: str
 
 
 class PlaybookSelectionResponse(BaseModel):

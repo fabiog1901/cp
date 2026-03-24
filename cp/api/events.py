@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from ..auth import get_access_scope, require_readonly
 from ..infra import get_events_service
 from ..models import EventCountResponse, EventLog
 from ..services.errors import (
@@ -48,10 +49,10 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 async def list_events(
     limit: int = Query(default=20, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: EventsService = Depends(get_events_service),
 ) -> list[EventLog]:
+    groups, is_admin = get_access_scope(claims)
     try:
         return service.list_visible_events(limit, offset, groups, is_admin)
     except ServiceError as err:

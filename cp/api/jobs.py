@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.exceptions import RequestErrorModel
 
+from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import get_jobs_service
 from ..models import Job, JobDetailsResponse, JobRescheduleResponse
 from ..services.errors import (
@@ -47,10 +48,10 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 
 @router.get("/")
 async def list_jobs(
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: JobsService = Depends(get_jobs_service),
 ) -> list[Job]:
+    groups, is_admin = get_access_scope(claims)
     try:
         return service.list_visible_jobs(groups, is_admin)
     except ServiceError as err:
@@ -68,10 +69,10 @@ async def list_jobs(
 )
 async def get_job(
     job_id: int,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: JobsService = Depends(get_jobs_service),
 ) -> Job:
+    groups, is_admin = get_access_scope(claims)
     try:
         job = service.get_job_for_user(job_id, groups, is_admin)
     except ServiceError as err:
@@ -98,10 +99,10 @@ async def get_job(
 )
 async def get_job_details(
     job_id: int,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_readonly),
     service: JobsService = Depends(get_jobs_service),
 ) -> JobDetailsResponse:
+    groups, is_admin = get_access_scope(claims)
     try:
         details = service.get_job_details_for_user(job_id, groups, is_admin)
     except ServiceError as err:
@@ -128,17 +129,17 @@ async def get_job_details(
 )
 async def reschedule_job(
     job_id: int,
-    requested_by: str,
-    groups: list[str] = Query(default_factory=list),
-    is_admin: bool = False,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: JobsService = Depends(get_jobs_service),
 ) -> JobRescheduleResponse:
+    groups, is_admin = get_access_scope(claims)
     try:
         new_job_id = service.request_job_reschedule(
             job_id,
             groups,
             is_admin,
-            requested_by,
+            actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)

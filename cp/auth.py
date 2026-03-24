@@ -723,7 +723,7 @@ def require_user(
     return oidc.ensure_any_role(claims, CPRole.CP_USER, CPRole.CP_ADMIN)
 
 
-def require_compute_access(
+def require_readonly(
     request: Request,
     claims: dict[str, Any] = Security(require_authenticated),
 ) -> dict[str, Any]:
@@ -743,6 +743,24 @@ def require_admin(
 ) -> dict[str, Any]:
     """Require the admin role."""
     return oidc.ensure_any_role(claims, CPRole.CP_ADMIN)
+
+
+def get_access_scope(claims: dict[str, Any]) -> tuple[list[str], bool]:
+    """Return normalized caller groups plus whether the caller has CP_ADMIN."""
+    groups_claim_name = str(
+        claims.get("_groups_claim_name", oidc.config.groups_claim_name)
+    )
+    groups = sorted(_claims_groups(claims, groups_claim_name))
+
+    effective_roles = (
+        claims.get("_role_groups")
+        if isinstance(claims.get("_role_groups"), dict)
+        else oidc.config.role_groups
+    )
+    admin_role_groups = effective_roles.get(CPRole.CP_ADMIN, set())
+    is_admin = bool(admin_role_groups) and not admin_role_groups.isdisjoint(groups)
+
+    return groups, is_admin
 
 
 def get_audit_actor(
