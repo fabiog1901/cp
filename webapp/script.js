@@ -36,6 +36,10 @@ window.app = function () {
     serversLoading: { list: false, action: false },
     serversAutoRefreshEnabled: true,
     _serversAutoTimer: null,
+    selectedClusterId: "",
+    selectedCluster: null,
+    clusterLoading: { details: false },
+    clusterConnectCopied: false,
 
     // ---------- Jobs state ----------
     jobs: [],
@@ -737,6 +741,7 @@ window.app = function () {
       const subtitles = {
         dashboard: "Infrastructure landing page and operational navigation",
         clusters: "Cluster inventory and status",
+        cluster: "Cluster details, access points, and actions",
         jobs: "Queued and completed orchestration work",
         events: "Cluster and platform activity stream",
         admin: "Administrative landing page and tooling",
@@ -871,6 +876,7 @@ window.app = function () {
       const sFmt = localStorage.getItem("cp_inspector_format");
       const sViewRaw = localStorage.getItem("cp_view");
       const sView = sViewRaw === "servers" ? "clusters" : sViewRaw;
+      const selectedClusterId = localStorage.getItem("cp_selected_cluster_id");
       const ssIdx = localStorage.getItem("cp_servers_sort_index");
       const ssDir = localStorage.getItem("cp_servers_sort_dir");
       const ssFilter = localStorage.getItem("cp_servers_filter");
@@ -899,6 +905,7 @@ window.app = function () {
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
+      if (selectedClusterId !== null) this.selectedClusterId = selectedClusterId;
       if (ssIdx !== null && !Number.isNaN(+ssIdx))
         this.serversSortIndex = +ssIdx;
       if (jobsIdx !== null && !Number.isNaN(+jobsIdx)) this.jobsSortIndex = +jobsIdx;
@@ -916,6 +923,7 @@ window.app = function () {
       if (
         sView === "dashboard" ||
         sView === "clusters" ||
+        sView === "cluster" ||
         sView === "jobs" ||
         sView === "admin" ||
         sView === "playbooks" ||
@@ -975,6 +983,7 @@ window.app = function () {
       // Load the active tab
       if (this.view === "playbooks") this.ensurePlaybooksView();
       else if (this.view === "clusters") this.ensureServersView();
+      else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
@@ -998,6 +1007,7 @@ window.app = function () {
 
       if (this.view === "playbooks") this.ensurePlaybooksView();
       else if (this.view === "clusters") this.ensureServersView();
+      else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "events") this.ensureEventsView();
       else if (this.view === "api_keys") this.ensureApiKeysView();
@@ -1079,6 +1089,20 @@ window.app = function () {
       if (this.servers.length === 0 && !this.serversLoading.list)
         await this.refreshServers();
       else this.applyServersFilterSort();
+    },
+
+    async ensureClusterDetailView() {
+      if (!this.selectedClusterId) {
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        return;
+      }
+      if (
+        !this.selectedCluster ||
+        this.selectedCluster.cluster_id !== this.selectedClusterId
+      ) {
+        await this.refreshSelectedCluster();
+      }
     },
 
     async ensureJobsView() {
@@ -1197,6 +1221,9 @@ window.app = function () {
     serversStatusClass(status) {
       const s = String(status || "").toLowerCase();
       if (s === "ready") return "status-online";
+      if (s === "running") return "status-online";
+      if (s === "creating" || s === "scaling" || s === "upgrading")
+        return "status-pending status-pulse";
       if (s === "decommissioned") return "status-muted";
       if (s.includes("ing")) return "status-pending status-pulse";
       if (!s || s === "unknown") return "status-muted";
@@ -1262,6 +1289,93 @@ window.app = function () {
       } finally {
         this.serversLoading.list = false;
       }
+    },
+
+    openCluster(clusterId) {
+      const nextId = String(clusterId || "").trim();
+      if (!nextId) return;
+      this.selectedClusterId = nextId;
+      localStorage.setItem("cp_selected_cluster_id", nextId);
+      this.clusterConnectCopied = false;
+      this.view = "cluster";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.ensureClusterDetailView();
+    },
+
+    backToClusters() {
+      this.setView("clusters");
+    },
+
+    async refreshSelectedCluster() {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      if (!clusterId) return;
+      this.clusterLoading.details = true;
+      try {
+        this.selectedCluster = await this.apiFetch(
+          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}`),
+          { method: "GET" },
+        );
+      } catch (e) {
+        console.error(e);
+        this.viewNotice = this.errorMessage(e, "Failed to load cluster details.");
+        this.selectedCluster = null;
+      } finally {
+        this.clusterLoading.details = false;
+      }
+    },
+
+    clusterPrimaryDns(cluster = this.selectedCluster) {
+      const lb = Array.isArray(cluster?.lbs_inventory)
+        ? cluster.lbs_inventory.find((entry) => entry?.dns_address)
+        : null;
+      return String(lb?.dns_address || "");
+    },
+
+    clusterDbConsoleUrl(cluster = this.selectedCluster) {
+      const dns = this.clusterPrimaryDns(cluster);
+      return dns ? `https://${dns}:8080` : "";
+    },
+
+    clusterConnectCommand(cluster = this.selectedCluster) {
+      const dns = this.clusterPrimaryDns(cluster);
+      return dns ? `cockroach sql --host=${dns} --port=26257` : "";
+    },
+
+    async copyClusterConnectCommand() {
+      const command = this.clusterConnectCommand();
+      if (!command) return;
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(command);
+      } else if (typeof document !== "undefined") {
+        const el = document.createElement("textarea");
+        el.value = command;
+        el.setAttribute("readonly", "");
+        el.style.position = "absolute";
+        el.style.left = "-9999px";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      this.clusterConnectCopied = true;
+      this.viewNotice = "Cluster connect command copied to clipboard.";
+    },
+
+    openDbConsole() {
+      const url = this.clusterDbConsoleUrl();
+      if (!url || typeof window === "undefined") return;
+      window.open(url, "_blank", "noopener");
+    },
+
+    triggerClusterAction(label) {
+      const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.viewNotice = `${label} for cluster '${clusterId}' is not wired in the webapp yet.`;
     },
 
     jobsDescriptionText(job) {

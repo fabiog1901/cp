@@ -58,7 +58,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' }"
@@ -326,7 +326,11 @@
                 <tbody>
                   <template x-for="s in serversVisibleRows" :key="s.cluster_id">
                     <tr>
-                      <td><span class="ip-pill" x-text="s.cluster_id || '-'"></span></td>
+                      <td>
+                        <a href="#" class="dashboard-link" @click.prevent="openCluster(s.cluster_id)">
+                          <span class="ip-pill clickable" x-text="s.cluster_id || '-'"></span>
+                        </a>
+                      </td>
                       <td><span class="service-pill" x-text="s.grp || '-'"></span></td>
                       <td><span x-text="s.created_by || '-'"></span></td>
                       <td>
@@ -352,6 +356,206 @@
             </div>
           </div>
 
+        </section>
+      </main>
+
+      <!-- CLUSTER DETAIL VIEW -->
+      <main class="layout" x-show="view === 'cluster'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Navigation</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusters()">Back to Clusters</button>
+              <button class="btn" @click="refreshSelectedCluster()" :disabled="clusterLoading.details || !selectedClusterId">
+                <span x-show="!clusterLoading.details">Refresh</span>
+                <span x-show="clusterLoading.details">Loading…</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Cluster</div>
+              <div class="main-subtitle">Details, access points, and operational actions for the selected cluster.</div>
+            </div>
+          </div>
+
+          <div class="dashboard-home" x-show="selectedCluster">
+            <section class="dashboard-hero">
+              <div class="eyebrow">Cluster detail</div>
+              <h2 x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></h2>
+              <p>
+                Visibility is enforced by the API. This page shows the cluster payload returned for the current
+                authenticated user and groups the most common access points and next actions together.
+              </p>
+            </section>
+
+            <section class="dashboard-grid">
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Overview</div>
+                    <h3 class="dashboard-card-title">Cluster Summary</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="selectedCluster?.node_count ?? '-'"></div>
+                </div>
+                <div class="cluster-facts">
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Status</span>
+                    <span class="status" :class="serversStatusClass(selectedCluster?.status)">
+                      <span class="status-dot"></span>
+                      <span x-text="String(selectedCluster?.status || 'unknown').toUpperCase()"></span>
+                    </span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Group</span>
+                    <span class="service-pill" x-text="selectedCluster?.grp || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Version</span>
+                    <span class="ip-pill" x-text="selectedCluster?.version || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">CPU / Node</span>
+                    <span x-text="selectedCluster?.node_cpus ?? '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Disk GB</span>
+                    <span x-text="selectedCluster?.disk_size ?? '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created By</span>
+                    <span x-text="selectedCluster?.created_by || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created</span>
+                    <span x-text="toUtcStringMaybe(selectedCluster?.created_at)"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Updated</span>
+                    <span x-text="toUtcStringMaybe(selectedCluster?.updated_at)"></span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Access</div>
+                    <h3 class="dashboard-card-title">DBConsole and Connect</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterPrimaryDns() ? 'LB' : '--'"></div>
+                </div>
+                <div class="cluster-facts">
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Primary DNS</span>
+                    <span class="ip-pill" x-text="clusterPrimaryDns() || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">DBConsole</span>
+                    <a class="dashboard-link" :class="{ 'is-disabled': !clusterDbConsoleUrl() }"
+                      :href="clusterDbConsoleUrl() || '#'" target="_blank" rel="noopener"
+                      @click.prevent="openDbConsole()">Open DBConsole</a>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Connect</span>
+                    <button class="btn btn-secondary" type="button" @click="copyClusterConnectCommand()"
+                      :disabled="!clusterConnectCommand()">Connect</button>
+                  </div>
+                  <div class="cluster-fact cluster-fact-full">
+                    <span class="cluster-fact-label">Command</span>
+                    <pre class="cluster-command" x-text="clusterConnectCommand() || 'No load balancer DNS address available.'"></pre>
+                    <span class="metric-sub" x-show="clusterConnectCopied">Connection command copied.</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Inventory</div>
+                    <h3 class="dashboard-card-title">Regions and Nodes</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="Array.isArray(selectedCluster?.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0"></div>
+                </div>
+                <div class="cluster-list">
+                  <template x-for="region in (selectedCluster?.cluster_inventory || [])" :key="`${region.cloud}-${region.region}`">
+                    <div class="cluster-list-item">
+                      <div class="cluster-list-title">
+                        <span class="service-pill" x-text="region.cloud || '-'"></span>
+                        <span x-text="region.region || '-'"></span>
+                      </div>
+                      <div class="cluster-list-copy" x-text="Array.isArray(region.nodes) && region.nodes.length ? region.nodes.join(', ') : 'No nodes listed'"></div>
+                    </div>
+                  </template>
+                  <div class="cluster-list-item" x-show="!selectedCluster?.cluster_inventory || selectedCluster.cluster_inventory.length === 0">
+                    <div class="cluster-list-copy">No cluster inventory returned.</div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Load balancers</div>
+                    <h3 class="dashboard-card-title">Endpoints</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="Array.isArray(selectedCluster?.lbs_inventory) ? selectedCluster.lbs_inventory.length : 0"></div>
+                </div>
+                <div class="cluster-list">
+                  <template x-for="lb in (selectedCluster?.lbs_inventory || [])" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
+                    <div class="cluster-list-item">
+                      <div class="cluster-list-title">
+                        <span class="service-pill" x-text="lb.cloud || '-'"></span>
+                        <span x-text="lb.region || '-'"></span>
+                      </div>
+                      <div class="cluster-list-copy">
+                        <span class="ip-pill" x-text="lb.dns_address || '-'"></span>
+                      </div>
+                    </div>
+                  </template>
+                  <div class="cluster-list-item" x-show="!selectedCluster?.lbs_inventory || selectedCluster.lbs_inventory.length === 0">
+                    <div class="cluster-list-copy">No load balancer endpoints returned.</div>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <section class="dashboard-card cluster-actions-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Actions</div>
+                  <h3 class="dashboard-card-title">Cluster Operations</h3>
+                </div>
+                <div class="dashboard-stat">7</div>
+              </div>
+              <div class="cluster-action-grid">
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Delete cluster')">Delete Cluster</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show backups')">Show Backups</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Create users')">Create Users</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Scale cluster')">Scale Cluster</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Upgrade cluster')">Upgrade Cluster</button>
+                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Debug cluster')">Debug Cluster</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedCluster && !clusterLoading.details">
+            <div class="main-title">Cluster not loaded</div>
+            <div class="main-subtitle">Select a cluster from the clusters page to view its details.</div>
+          </div>
         </section>
       </main>
 
