@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
 from ...infra import get_settings_service
-from ...models import Setting, SettingUpdateRequest
+from ...models import SettingRecord, SettingUpdateRequest
 from ...services.errors import ServiceError
 from ...services.settings import SettingsService
 from .common import raise_http_from_service_error
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/settings", tags=["admin"])
 @router.get("/")
 async def list_settings(
     service: SettingsService = Depends(get_settings_service),
-) -> list[Setting]:
+) -> list[SettingRecord]:
     try:
         return service.list_settings()
     except ServiceError as err:

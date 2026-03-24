@@ -1,19 +1,35 @@
 import datetime as dt
-from typing import Any, Dict, List, Optional, Union
+from enum import StrEnum, auto
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
-
-from enum import StrEnum, auto
-
-from pydantic import BaseModel, Field
 
 
 class AutoNameStrEnum(StrEnum):
     def _generate_next_value_(name, start, count, last_values):
         return name
+
+
+# GENERIC / LEGACY
+
+
+class JobID(BaseModel):
+    job_id: int
+
+
+class ClusterIDRef(BaseModel):
+    cluster_id: str
+
+
+class StrID(BaseModel):
+    id: str
+
+
+class IntID(BaseModel):
+    id: int
 
 
 # ENUMS FOR TYPES AND STATES
@@ -292,15 +308,6 @@ class DiskSizeOption(BaseModel):
     size_gb: int
 
 
-class Setting(BaseModel):
-    id: str
-    value: str
-    updated_at: dt.datetime
-    updated_by: str
-    default_value: str
-    description: str
-
-
 class Nodes(BaseModel):
     cluster_id: str
     nodes: list[str]
@@ -430,37 +437,6 @@ class PlaybookVersionDeleteRequest(BaseModel):
     default_version: str
 
 
-# GENERIC / LEGACY
-
-
-class JobID(BaseModel):
-    job_id: int
-
-
-class ClusterIDRef(BaseModel):
-    cluster_id: str
-
-
-class StrID(BaseModel):
-    id: str
-
-
-class IntID(BaseModel):
-    id: int
-
-
-import datetime as dt
-from enum import StrEnum, auto
-from typing import Any, Callable
-
-from pydantic import BaseModel, Field
-
-
-class AutoNameStrEnum(StrEnum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name
-
-
 class NoFreeComputeUnitError(Exception):
     pass
 
@@ -525,9 +501,25 @@ class KloigosRole(AutoNameStrEnum):
 
 
 class SettingKey(AutoNameStrEnum):
-    PORTS_PER_CPU = auto()
-    BASE_PORT = auto()
-    MAX_CPUS_PER_SERVER = auto()
+    cloud_storage_url= auto()
+    default_password= auto()
+    default_username= auto()
+    licence_key= auto()
+    licence_org= auto()
+    playbooks_url= auto()
+    playbooks_url_cache_expiry= auto()
+    prom_url= auto()
+    sso_auth_url= auto()
+    sso_cache_expiry= auto()
+    sso_claim_name= auto()
+    sso_client_id= auto()
+    sso_client_secret= auto()
+    sso_issuer= auto()
+    sso_jwks_url= auto()
+    sso_redirect_uri= auto()
+    sso_token_url= auto()
+    sso_userinfo_url = auto()
+    #
     KLOIGOS_ENTERPRISE_LICENSE_KEY = auto()
     OIDC_ENABLED = auto()
     OIDC_ISSUER_URL = auto()
@@ -557,7 +549,6 @@ class SettingRecord(BaseModel):
     key: SettingKey
     value: str | None = None
     default_value: str
-    effective_value: str
     value_type: str
     category: str
     is_secret: bool = False

@@ -23,9 +23,9 @@ from ..models import (
     Region,
     RegionOption,
     RoleGroupMap,
-    Setting,
     Task,
     Version,
+    SettingRecord
 )
 
 
@@ -53,7 +53,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def list_settings(self) -> list[Setting]:
+    def list_settings(self) -> list[SettingRecord]:
         pass
 
     @abstractmethod

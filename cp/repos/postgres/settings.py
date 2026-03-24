@@ -7,42 +7,25 @@ from ..base import BaseRepo
 
 class SettingsRepo(BaseRepo):
 
-    def _setting_from_row(self, row) -> SettingRecord:
-        value = row[1]
-        default_value = row[2]
-        effective_value = default_value if value is None else value
-        return SettingRecord(
-            key=row[0],
-            value=value,
-            default_value=default_value,
-            effective_value=effective_value,
-            value_type=row[3],
-            category=row[4],
-            is_secret=row[5],
-            description=row[6] or "",
-            updated_at=row[7],
-            updated_by=row[8],
-        )
-
     def list_settings(self) -> list[SettingRecord]:
-        rows = fetch_all(
+        return fetch_all(
             """
-                    SELECT
-                        key,
-                        value,
-                        default_value,
-                        value_type,
-                        category,
-                        is_secret,
-                        description,
-                        updated_at,
-                        updated_by
-                    FROM settings
-                    ORDER BY category, key
-                    """
+            SELECT
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
+            FROM settings
+            ORDER BY category, key
+            """,
+            (),
+            SettingRecord,
         )
-
-        return [self._setting_from_row(row) for row in rows]
 
     def get_setting(self, key: SettingKey) -> SettingRecord | None:
         row = fetch_one(

@@ -1,7 +1,7 @@
 """Business logic for the settings vertical."""
 
 from ..infra.errors import RepositoryError
-from ..models import Event, Setting
+from ..models import Event, SettingRecord
 from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
@@ -10,7 +10,7 @@ class SettingsService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
-    def list_settings(self) -> list[Setting]:
+    def list_settings(self) -> list[SettingRecord]:
         try:
             return self.repo.list_settings()
         except RepositoryError as err:
