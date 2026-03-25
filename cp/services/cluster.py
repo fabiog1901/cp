@@ -12,6 +12,7 @@ from ..models import (
     RestoreRequest,
 )
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
@@ -153,7 +154,8 @@ class ClusterService:
                 payload,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.CREATE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -174,7 +176,8 @@ class ClusterService:
                 {"cluster_id": cluster_id},
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.DELETE_CLUSTER,
                 {"cluster_id": cluster_id, "job_id": msg_id.job_id},
@@ -210,7 +213,8 @@ class ClusterService:
                 payload,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.SCALE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -243,7 +247,8 @@ class ClusterService:
                 payload,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.UPGRADE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},
@@ -284,7 +289,8 @@ class ClusterService:
                 payload,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.RESTORE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},

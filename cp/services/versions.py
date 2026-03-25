@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from ..infra.errors import RepositoryError
 from ..models import Event, Version
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
@@ -30,10 +31,11 @@ class VersionsService:
 
         try:
             self.repo.add_version(model)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 created_by,
                 Event.VERSION_ADD,
-                model.version,
+                {"version": model.version},
             )
             return model
         except RepositoryError as err:
@@ -48,10 +50,11 @@ class VersionsService:
     def delete_version(self, version: str, deleted_by: str) -> None:
         try:
             self.repo.remove_version(version)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 deleted_by,
                 Event.VERSION_REMOVE,
-                version,
+                {"version": version},
             )
         except RepositoryError as err:
             raise from_repository_error(

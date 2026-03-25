@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from ..infra.errors import RepositoryError
 from ..models import Cluster, ClusterUsersSnapshot, Event, NewDatabaseUserRequest
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
@@ -63,7 +64,8 @@ class ClusterUsersService:
                 request.username,
                 request.password,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 Event.DB_USER_ADD,
                 {
@@ -98,7 +100,8 @@ class ClusterUsersService:
                 self._get_primary_dns_address(selected_cluster),
                 username,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 Event.DB_USER_REMOVE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
@@ -130,7 +133,8 @@ class ClusterUsersService:
                 username,
                 role,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 Event.DB_USER_REMOVE_ROLE,
                 {
@@ -169,7 +173,8 @@ class ClusterUsersService:
                 username,
                 password,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 Event.DB_USER_UPDATE,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},

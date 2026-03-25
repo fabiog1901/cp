@@ -1,7 +1,7 @@
 """Business logic for the events vertical."""
 
 from ..infra.errors import RepositoryError
-from ..models import EventLog
+from ..models import LogMsg
 from ..repos.base import BaseRepo
 from .errors import from_repository_error
 
@@ -16,7 +16,7 @@ class EventsService:
         offset: int,
         groups: list[str],
         is_admin: bool,
-    ) -> list[EventLog]:
+    ) -> list[LogMsg]:
         try:
             return self.repo.list_events(limit, offset, groups, is_admin)
         except RepositoryError as err:

@@ -3,6 +3,7 @@
 from ..infra.errors import RepositoryError
 from ..models import Event, SettingRecord
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
@@ -43,7 +44,8 @@ class SettingsService:
         try:
             self.repo.update_setting(setting_id, value, updated_by)
             
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 updated_by,
                 Event.SETTING_UPDATE,
                 {"ID": setting_id, "value": value},
@@ -60,7 +62,8 @@ class SettingsService:
     def reset_setting(self, setting_id: str, updated_by: str) -> None:
         try:
             self.repo.reset_setting(setting_id, updated_by)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 updated_by,
                 Event.SETTING_RESET,
                 {"ID": setting_id},

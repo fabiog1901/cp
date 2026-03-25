@@ -87,20 +87,6 @@ class RoleGroupMap(BaseModel):
     groups: List[str]
 
 
-class EventLog(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details: Dict[str, Union[int, str, List[str]]]
-
-
-class EventLogYaml(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details_yaml: str
-
-
 class EventCountResponse(BaseModel):
     total: int
 
@@ -524,7 +510,7 @@ class SettingUpdateRequest(BaseModel):
 class LogMsg(BaseModel):
     ts: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.timezone.utc))
     user_id: str
-    action: Event
+    action: str
     details: dict[str, Any] | None = None
     request_id: str | None = None
 

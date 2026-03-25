@@ -5,6 +5,7 @@ import yaml
 from ..infra.errors import RepositoryError
 from ..models import Job, JobID, JobType
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceNotFoundError, from_repository_error
 
 
@@ -84,7 +85,8 @@ class JobsService:
                 selected_job.description,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 job_type,
                 selected_job.description | {"job_id": msg_id.job_id},

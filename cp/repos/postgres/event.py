@@ -1,7 +1,7 @@
 """Event repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all, fetch_scalar
-from ...models import EventLog, LogMsg
+from ...models import LogMsg
 from ..base import BaseRepo
 
 
@@ -12,18 +12,18 @@ class EventRepo(BaseRepo):
         offset: int,
         groups: list[str] | None = None,
         is_admin: bool = False,
-    ) -> list[EventLog]:
+    ) -> list[LogMsg]:
         if is_admin:
             return fetch_all(
                 """
                 SELECT *
                 FROM event_log
-                ORDER BY created_at DESC
+                ORDER BY ts DESC
                 LIMIT %s
                 OFFSET %s
                 """,
                 (limit, offset),
-                EventLog,
+                LogMsg,
                 operation="events.list_events",
             )
 
@@ -39,38 +39,18 @@ class EventRepo(BaseRepo):
             operation="events.get_event_count",
         )
 
-    def insert_event_log(
-        self,
-        created_by: str,
-        event_type: str,
-        event_details=None,
-    ) -> None:
+    def log_event(self, log_msg: LogMsg):
         execute_stmt(
             """
-            INSERT INTO event_log (
-                created_by, event_type, event_details)
-            VALUES
-                (%s, %s, %s)
+            INSERT INTO event_log 
+                (ts, user_id, action, details, request_id)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
-                created_by,
-                event_type,
-                event_details,
-            ),
-            operation="events.insert_event_log",
-        )
-
-    def log_event(self, event: LogMsg):
-        execute_stmt(
-            """
-                    INSERT INTO event_log (ts, user_id, action, details, request_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-            (
-                event.ts,
-                event.user_id,
-                event.action,
-                event.details,
-                event.request_id,
+                log_msg.ts,
+                log_msg.user_id,
+                log_msg.action,
+                log_msg.details,
+                log_msg.request_id,
             ),
         )

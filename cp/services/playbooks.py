@@ -5,6 +5,7 @@ import gzip
 from ..infra.errors import RepositoryError
 from ..models import STRFTIME, Event, Playbook, PlaybookOverview
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
@@ -62,7 +63,8 @@ class PlaybooksService:
     def set_default_playbook(self, name: str, version: str, updated_by: str) -> None:
         try:
             self.repo.set_default_playbook(name, version, updated_by)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 updated_by,
                 Event.PLAYBOOK_SET_DEFAULT,
                 {"name": name, "version": version},
@@ -86,7 +88,8 @@ class PlaybooksService:
 
         try:
             self.repo.remove_playbook(name, version)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 deleted_by,
                 Event.PLAYBOOK_REMOVE,
                 {"name": name, "version": version},
@@ -121,7 +124,8 @@ class PlaybooksService:
                 created_by,
             )
             saved_version = saved.version.strftime(STRFTIME)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 created_by,
                 Event.PLAYBOOK_ADD,
                 {"name": name, "version": saved_version},

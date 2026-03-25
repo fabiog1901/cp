@@ -781,13 +781,13 @@ def _log_auth_event(
     details: dict[str, Any] | None = None,
 ) -> None:
     """Persist a login or logout event using the current request id context."""
-    repo.insert_event_log(
-        actor_id,
-        action,
-        {
-            "request_id": request_id_ctx.get(),
-            **(details or {}),
-        },
+    repo.log_event(
+        LogMsg(
+            user_id=actor_id,
+            action=str(action),
+            details=details or {},
+            request_id=request_id_ctx.get(),
+        )
     )
 
 

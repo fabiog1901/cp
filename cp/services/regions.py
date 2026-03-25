@@ -6,6 +6,7 @@ from typing import Any
 from ..infra.errors import RepositoryError
 from ..models import Event, Region
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
@@ -26,7 +27,8 @@ class RegionsService:
     def delete_region(self, region: Region, deleted_by: str) -> None:
         try:
             self.repo.delete_region(region.cloud, region.region, region.zone)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 deleted_by,
                 Event.REGION_REMOVE,
                 {"cloud": region.cloud, "region": region.region, "zone": region.zone},
@@ -72,10 +74,11 @@ class RegionsService:
 
         try:
             self.repo.add_region(new_region)
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 created_by,
                 Event.REGION_ADD,
-                new_region.model_dump_json(),
+                new_region.model_dump(),
             )
         except RepositoryError as err:
             raise from_repository_error(

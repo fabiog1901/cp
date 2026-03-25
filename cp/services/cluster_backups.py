@@ -3,6 +3,7 @@
 from ..infra.errors import RepositoryError
 from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
 from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 
@@ -137,7 +138,8 @@ class ClusterBackupsService:
                 payload,
                 requested_by,
             )
-            self.repo.insert_event_log(
+            log_event(
+                self.repo,
                 requested_by,
                 JobType.RESTORE_CLUSTER,
                 payload | {"job_id": msg_id.job_id},

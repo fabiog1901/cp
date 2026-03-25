@@ -13,7 +13,6 @@ from ..models import (
     CpuCountOption,
     DatabaseUser,
     DiskSizeOption,
-    EventLog,
     Job,
     JobID,
     NodeCountOption,
@@ -25,7 +24,8 @@ from ..models import (
     RoleGroupMap,
     Task,
     Version,
-    SettingRecord
+    SettingRecord,
+    LogMsg,
 )
 
 
@@ -246,29 +246,8 @@ class BaseRepo(ABC):
     ) -> dict[str, Any]:
         pass
 
-    @abstractmethod
-    def list_events(
-        self,
-        limit: int,
-        offset: int,
-        groups: list[str] | None = None,
-        is_admin: bool = False,
-    ) -> list[EventLog]:
-        pass
-
-    @abstractmethod
-    def get_event_count(self) -> int:
-        pass
-
-    @abstractmethod
-    def insert_event_log(
-        self,
-        created_by: str,
-        event_type: str,
-        event_details: Any = None,
-    ) -> None:
-        pass
-
+    
+    
     @abstractmethod
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         pass
@@ -349,4 +328,25 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def remove_playbook(self, name: str, version: str) -> None:
+        pass
+
+    #
+    # EVENTS
+    #
+    @abstractmethod
+    def list_events(
+        self,
+        limit: int,
+        offset: int,
+        groups: list[str] | None = None,
+        is_admin: bool = False,
+    ) -> list[LogMsg]:
+        pass
+
+    @abstractmethod
+    def get_event_count(self) -> int:
+        pass
+
+    @abstractmethod
+    def log_event(self, event: LogMsg) -> None:
         pass
