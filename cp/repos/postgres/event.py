@@ -16,7 +16,7 @@ class EventRepo(BaseRepo):
         if is_admin:
             return fetch_all(
                 """
-                SELECT *
+                SELECT ts, user_id, action, details, request_id::TEXT
                 FROM event_log
                 ORDER BY ts DESC
                 LIMIT %s

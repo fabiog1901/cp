@@ -1772,13 +1772,7 @@ window.app = function () {
           this.visibilityPath("/events/", { limit: 200, offset: 0 }),
           { method: "GET" },
         );
-        this.events = (Array.isArray(data) ? data : []).map((event) => ({
-          ts: event.created_at,
-          user_id: event.created_by,
-          action: event.event_type,
-          details: event.event_details,
-          request_id: "",
-        }));
+        this.events = (Array.isArray(data) ? data : []);
         this.eventsLastUpdatedUtc = this.utcNowString();
         this.applyEventsFilterSort();
       } catch (e) {
