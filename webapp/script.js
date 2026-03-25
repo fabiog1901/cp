@@ -138,7 +138,7 @@ window.app = function () {
     regionsVisibleRows: [],
     regionsFilterQuery: "",
     regionsLastUpdatedUtc: null,
-    regionsLoading: { list: false },
+    regionsLoading: { list: false, create: false, delete: false },
 
     renderedAtUtc: "now",
 
@@ -223,6 +223,23 @@ window.app = function () {
         open: false,
         version: "",
       },
+      regionCreate: {
+        open: false,
+        cloud: "",
+        region: "",
+        zone: "",
+        vpc_id: "",
+        security_groups_text: "",
+        subnet: "",
+        image: "",
+        extras_text: "{}",
+      },
+      regionDeleteConfirm: {
+        open: false,
+        cloud: "",
+        region: "",
+        zone: "",
+      },
       clusterDeleteConfirm: {
         open: false,
         cluster_id: "",
@@ -256,6 +273,8 @@ window.app = function () {
       apiKeyDeleteConfirm: "",
       versionCreate: "",
       versionDeleteConfirm: "",
+      regionCreate: "",
+      regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
       settingResetConfirm: "",
     },
@@ -2452,6 +2471,118 @@ window.app = function () {
 
     persistRegionsFilter() {
       localStorage.setItem("cp_regions_filter", this.regionsFilterQuery || "");
+    },
+
+    openRegionCreateModal() {
+      this.modal.regionCreate.cloud = "";
+      this.modal.regionCreate.region = "";
+      this.modal.regionCreate.zone = "";
+      this.modal.regionCreate.vpc_id = "";
+      this.modal.regionCreate.security_groups_text = "";
+      this.modal.regionCreate.subnet = "";
+      this.modal.regionCreate.image = "";
+      this.modal.regionCreate.extras_text = "{}";
+      this.clearModalError("regionCreate");
+      this.modal.regionCreate.open = true;
+    },
+
+    closeRegionCreateModal() {
+      this.modal.regionCreate.open = false;
+      this.clearModalError("regionCreate");
+    },
+
+    async createRegion() {
+      this.regionsLoading.create = true;
+      this.clearModalError("regionCreate");
+      try {
+        const cloud = String(this.modal.regionCreate.cloud || "").trim();
+        const region = String(this.modal.regionCreate.region || "").trim();
+        const zone = String(this.modal.regionCreate.zone || "").trim();
+        const vpc_id = String(this.modal.regionCreate.vpc_id || "").trim();
+        const subnet = String(this.modal.regionCreate.subnet || "").trim();
+        const image = String(this.modal.regionCreate.image || "").trim();
+
+        if (!cloud || !region || !zone || !vpc_id || !subnet || !image) {
+          throw new Error("cloud, region, zone, vpc_id, subnet, and image are required.");
+        }
+
+        const security_groups = String(
+          this.modal.regionCreate.security_groups_text || "",
+        )
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean);
+
+        const extrasText = String(this.modal.regionCreate.extras_text || "{}").trim() || "{}";
+        const extras = JSON.parse(extrasText);
+        if (!extras || typeof extras !== "object" || Array.isArray(extras)) {
+          throw new Error("extras must be a JSON object.");
+        }
+
+        await this.apiFetch("/admin/regions/", {
+          method: "POST",
+          body: {
+            cloud,
+            region,
+            zone,
+            vpc_id,
+            security_groups,
+            subnet,
+            image,
+            extras,
+          },
+        });
+        this.closeRegionCreateModal();
+        await this.refreshRegions();
+        this.setActionNotice(`Region '${cloud}/${region}/${zone}' created.`);
+      } catch (e) {
+        this.setModalError("regionCreate", e, "Failed to create region.");
+      } finally {
+        this.regionsLoading.create = false;
+      }
+    },
+
+    openRegionDeleteConfirm(row) {
+      this.modal.regionDeleteConfirm.cloud = row?.cloud || "";
+      this.modal.regionDeleteConfirm.region = row?.region || "";
+      this.modal.regionDeleteConfirm.zone = row?.zone || "";
+      this.clearModalError("regionDeleteConfirm");
+      this.modal.regionDeleteConfirm.open = true;
+    },
+
+    closeRegionDeleteConfirm() {
+      this.modal.regionDeleteConfirm.open = false;
+      this.modal.regionDeleteConfirm.cloud = "";
+      this.modal.regionDeleteConfirm.region = "";
+      this.modal.regionDeleteConfirm.zone = "";
+      this.clearModalError("regionDeleteConfirm");
+    },
+
+    async confirmRegionDelete() {
+      const cloud = String(this.modal.regionDeleteConfirm.cloud || "").trim();
+      const region = String(this.modal.regionDeleteConfirm.region || "").trim();
+      const zone = String(this.modal.regionDeleteConfirm.zone || "").trim();
+      if (!cloud || !region || !zone) return;
+
+      this.regionsLoading.delete = true;
+      this.clearModalError("regionDeleteConfirm");
+      try {
+        await this.apiFetch(
+          `/admin/regions/${encodeURIComponent(cloud)}/${encodeURIComponent(region)}/${encodeURIComponent(zone)}`,
+          { method: "DELETE" },
+        );
+        this.closeRegionDeleteConfirm();
+        await this.refreshRegions();
+        this.setActionNotice(`Region '${cloud}/${region}/${zone}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          "regionDeleteConfirm",
+          e,
+          "Failed to delete region.",
+        );
+      } finally {
+        this.regionsLoading.delete = false;
+      }
     },
 
     async refreshRegions() {

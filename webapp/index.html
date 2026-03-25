@@ -1544,10 +1544,11 @@
           <div>
             <h2>Actions</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
-              <button class="btn" @click="refreshRegions()" :disabled="regionsLoading.list">
+              <button type="button" class="btn" @click="refreshRegions()" :disabled="regionsLoading.list">
                 <span x-show="!regionsLoading.list">Refresh</span>
                 <span x-show="regionsLoading.list">Loading…</span>
               </button>
+              <button type="button" class="btn btn-warn" @click="openRegionCreateModal()">Add region…</button>
             </div>
           </div>
         </aside>
@@ -1578,6 +1579,7 @@
                     <th>Subnet</th>
                     <th>Image</th>
                     <th>Security Groups</th>
+                    <th>Act</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1590,11 +1592,24 @@
                       <td><span x-text="row.subnet || '-'"></span></td>
                       <td><span x-text="row.image || '-'"></span></td>
                       <td><span x-text="Array.isArray(row.security_groups) && row.security_groups.length ? row.security_groups.join(', ') : '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete region"
+                          @click="openRegionDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   </template>
                   <template x-if="!regionsLoading.list && regionsVisibleRows.length === 0">
                     <tr>
-                      <td colspan="7" style="padding: 18px; color: var(--muted);">No results.</td>
+                      <td colspan="8" style="padding: 18px; color: var(--muted);">No results.</td>
                     </tr>
                   </template>
                 </tbody>
@@ -1603,6 +1618,114 @@
           </div>
         </section>
       </main>
+
+      <!-- Region Create Modal -->
+      <div class="modal-backdrop" x-show="modal.regionCreate.open" x-transition
+        @keydown.escape.window="closeRegionCreateModal()">
+        <div class="modal" @click.outside="closeRegionCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Region</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeRegionCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.regionCreate" x-text="modalErrors.regionCreate">
+            </div>
+
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">cloud</div>
+                <input class="input" x-model="modal.regionCreate.cloud" placeholder="aws" />
+              </div>
+              <div class="form-row">
+                <div class="label">region</div>
+                <input class="input" x-model="modal.regionCreate.region" placeholder="us-east-1" />
+              </div>
+              <div class="form-row">
+                <div class="label">zone</div>
+                <input class="input" x-model="modal.regionCreate.zone" placeholder="us-east-1a" />
+              </div>
+              <div class="form-row">
+                <div class="label">vpc_id</div>
+                <input class="input" x-model="modal.regionCreate.vpc_id" placeholder="vpc-123456" />
+              </div>
+              <div class="form-row">
+                <div class="label">subnet</div>
+                <input class="input" x-model="modal.regionCreate.subnet" placeholder="subnet-123456" />
+              </div>
+              <div class="form-row">
+                <div class="label">image</div>
+                <input class="input" x-model="modal.regionCreate.image" placeholder="ami-123456" />
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">security_groups</div>
+                <input class="input" x-model="modal.regionCreate.security_groups_text"
+                  placeholder="sg-123456, sg-abcdef" />
+                <div class="hint">Comma-separated security group ids.</div>
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">extras</div>
+                <textarea class="textarea" x-model="modal.regionCreate.extras_text"
+                  placeholder='{"key":"value"}'></textarea>
+                <div class="hint">Enter a JSON object for any provider-specific extras.</div>
+              </div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/regions/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeRegionCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="regionsLoading.create" @click="createRegion()">
+              <span x-show="!regionsLoading.create">CREATE REGION</span>
+              <span x-show="regionsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Region Delete Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.regionDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeRegionDeleteConfirm()">
+        <div class="modal" @click.outside="closeRegionDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Region Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeRegionDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.regionDeleteConfirm"
+              x-text="modalErrors.regionDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove region
+              <span class="ip-pill"
+                x-text="`${modal.regionDeleteConfirm.cloud}/${modal.regionDeleteConfirm.region}/${modal.regionDeleteConfirm.zone}`"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/regions/<span
+                    x-text="modal.regionDeleteConfirm.cloud"></span>/<span
+                    x-text="modal.regionDeleteConfirm.region"></span>/<span
+                    x-text="modal.regionDeleteConfirm.zone"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeRegionDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="regionsLoading.delete" @click="confirmRegionDelete()">
+              <span x-show="!regionsLoading.delete">YES, DELETE</span>
+              <span x-show="regionsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <main class="layout" x-show="view === 'regions' && !canViewAdmin()">
         <section class="main">
