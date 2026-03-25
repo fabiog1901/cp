@@ -131,7 +131,7 @@ window.app = function () {
     versionsVisibleRows: [],
     versionsFilterQuery: "",
     versionsLastUpdatedUtc: null,
-    versionsLoading: { list: false },
+    versionsLoading: { list: false, create: false, delete: false },
 
     // ---------- Regions state ----------
     regions: [],
@@ -215,6 +215,14 @@ window.app = function () {
         access_key: "",
         owner: "",
       },
+      versionCreate: {
+        open: false,
+        version: "",
+      },
+      versionDeleteConfirm: {
+        open: false,
+        version: "",
+      },
       clusterDeleteConfirm: {
         open: false,
         cluster_id: "",
@@ -246,6 +254,8 @@ window.app = function () {
       serverActionConfirm: "",
       apiKeyCreate: "",
       apiKeyDeleteConfirm: "",
+      versionCreate: "",
+      versionDeleteConfirm: "",
       clusterDeleteConfirm: "",
       settingResetConfirm: "",
     },
@@ -2323,6 +2333,82 @@ window.app = function () {
 
     persistVersionsFilter() {
       localStorage.setItem("cp_versions_filter", this.versionsFilterQuery || "");
+    },
+
+    openVersionCreateModal() {
+      this.modal.versionCreate.version = "";
+      this.clearModalError("versionCreate");
+      this.modal.versionCreate.open = true;
+    },
+
+    closeVersionCreateModal() {
+      this.modal.versionCreate.open = false;
+      this.modal.versionCreate.version = "";
+      this.clearModalError("versionCreate");
+    },
+
+    async createVersion() {
+      const version = String(this.modal.versionCreate.version || "").trim();
+      if (!version) {
+        this.setModalError(
+          "versionCreate",
+          new Error("Version is required."),
+          "Version is required.",
+        );
+        return;
+      }
+
+      this.versionsLoading.create = true;
+      this.clearModalError("versionCreate");
+      try {
+        await this.apiFetch("/admin/versions/", {
+          method: "POST",
+          body: { version },
+        });
+        this.closeVersionCreateModal();
+        await this.refreshVersions();
+        this.setActionNotice(`Version '${version}' created.`);
+      } catch (e) {
+        this.setModalError("versionCreate", e, "Failed to create version.");
+      } finally {
+        this.versionsLoading.create = false;
+      }
+    },
+
+    openVersionDeleteConfirm(row) {
+      this.modal.versionDeleteConfirm.version = row?.version || "";
+      this.clearModalError("versionDeleteConfirm");
+      this.modal.versionDeleteConfirm.open = true;
+    },
+
+    closeVersionDeleteConfirm() {
+      this.modal.versionDeleteConfirm.open = false;
+      this.modal.versionDeleteConfirm.version = "";
+      this.clearModalError("versionDeleteConfirm");
+    },
+
+    async confirmVersionDelete() {
+      const version = String(this.modal.versionDeleteConfirm.version || "").trim();
+      if (!version) return;
+
+      this.versionsLoading.delete = true;
+      this.clearModalError("versionDeleteConfirm");
+      try {
+        await this.apiFetch(`/admin/versions/${encodeURIComponent(version)}`, {
+          method: "DELETE",
+        });
+        this.closeVersionDeleteConfirm();
+        await this.refreshVersions();
+        this.setActionNotice(`Version '${version}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          "versionDeleteConfirm",
+          e,
+          "Failed to delete version.",
+        );
+      } finally {
+        this.versionsLoading.delete = false;
+      }
     },
 
     async refreshVersions() {
