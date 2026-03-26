@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from ...auth import get_audit_actor
 from ...infra import get_playbooks_service
 from ...models import (
+    PlaybookName,
     PlaybookSaveRequest,
     PlaybookSelectionResponse,
     PlaybookSetDefaultRequest,
@@ -18,18 +19,18 @@ router = APIRouter(prefix="/playbooks", tags=["admin"])
 
 @router.get("/{name}", response_model=PlaybookSelectionResponse)
 async def get_playbook_selection(
-    name: str,
+    name: PlaybookName,
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookSelectionResponse:
     try:
-        return PlaybookSelectionResponse(**service.load_playbook_selection(name))
+        return service.load_playbook_selection(name)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
 
 @router.get("/{name}/{version}", response_model=PlaybookVersionResponse)
 async def get_playbook_version(
-    name: str,
+    name: PlaybookName,
     version: str,
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
@@ -41,22 +42,20 @@ async def get_playbook_version(
 
 @router.post("/{name}", response_model=PlaybookVersionResponse)
 async def save_playbook(
-    name: str,
+    name: PlaybookName,
     request: PlaybookSaveRequest,
     actor_id: str = Depends(get_audit_actor),
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
     try:
-        return PlaybookVersionResponse(
-            **service.save_playbook_content(name, request.content, actor_id)
-        )
+        return service.save_playbook_content(name, request.content, actor_id)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
 
 @router.put("/{name}/default")
 async def set_default_playbook(
-    name: str,
+    name: PlaybookName,
     request: PlaybookSetDefaultRequest,
     actor_id: str = Depends(get_audit_actor),
     service: PlaybooksService = Depends(get_playbooks_service),
@@ -69,7 +68,7 @@ async def set_default_playbook(
 
 @router.delete("/{name}/{version}", response_model=PlaybookVersionResponse)
 async def delete_playbook_version(
-    name: str,
+    name: PlaybookName,
     version: str,
     request: PlaybookVersionDeleteRequest,
     actor_id: str = Depends(get_audit_actor),

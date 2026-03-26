@@ -15,6 +15,7 @@ from ..models import (
     DiskSizeOption,
     Job,
     JobID,
+    LogMsg,
     NodeCountOption,
     Nodes,
     Playbook,
@@ -22,10 +23,9 @@ from ..models import (
     Region,
     RegionOption,
     RoleGroupMap,
+    SettingRecord,
     Task,
     Version,
-    SettingRecord,
-    LogMsg,
 )
 
 
@@ -246,8 +246,6 @@ class BaseRepo(ABC):
     ) -> dict[str, Any]:
         pass
 
-    
-    
     @abstractmethod
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         pass

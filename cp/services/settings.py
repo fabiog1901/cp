@@ -43,7 +43,7 @@ class SettingsService:
 
         try:
             self.repo.update_setting(setting_id, value, updated_by)
-            
+
             log_event(
                 self.repo,
                 updated_by,

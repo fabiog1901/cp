@@ -99,7 +99,7 @@ class MyRunner:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
             p: Playbook = self.repo.get_default_playbook(playbook_name)
-            if p is None or p.playbook is None:
+            if p is None or p.content is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"
                 )
@@ -111,7 +111,7 @@ class MyRunner:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=yaml.safe_load(gzip.decompress(p.playbook).decode()),
+                playbook=yaml.safe_load(gzip.decompress(p.content).decode()),
                 private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
@@ -182,7 +182,7 @@ class MyRunnerLite:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
             p: Playbook = self.repo.get_default_playbook(playbook_name)
-            if p is None or p.playbook is None:
+            if p is None or p.content is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"
                 )
@@ -193,7 +193,7 @@ class MyRunnerLite:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=gzip.decompress(p.playbook).decode(),
+                playbook=gzip.decompress(p.content).decode(),
                 private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,

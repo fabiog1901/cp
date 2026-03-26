@@ -31,13 +31,13 @@ def delete_cluster(
             "The cluster was not found.",
         )
         return
-    
+
     repo.insert_mapped_job(
         cluster_id,
         job_id,
         JobState.SCHEDULED,
     )
-    
+
     if c.status == ClusterState.DELETED:
         repo.update_job(
             job_id,
@@ -57,8 +57,6 @@ def delete_cluster(
         requested_by,
         status=ClusterState.DELETING,
     )
-
-    
 
     Thread(
         target=delete_cluster_worker,

@@ -45,16 +45,16 @@ class PlaybooksRepo(BaseRepo):
     def add_playbook(
         self,
         name: str,
-        playbook: bytes,
+        content: bytes,
         created_by: str,
     ) -> PlaybookOverview:
         return fetch_one(
             """
-            INSERT INTO playbooks (name, playbook, created_by)
+            INSERT INTO playbooks (name, content, created_by)
             VALUES (%s, %s, %s)
             RETURNING *
             """,
-            (name, playbook, created_by),
+            (name, content, created_by),
             PlaybookOverview,
         )
 

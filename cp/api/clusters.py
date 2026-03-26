@@ -46,6 +46,7 @@ router = APIRouter(
     tags=["clusters"],
 )
 
+
 def _raise_http_from_service_error(err: ServiceError) -> None:
     if isinstance(err, ServiceNotFoundError):
         raise HTTPException(

@@ -1903,13 +1903,23 @@
           <div>
             <h2>Actions</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
-
               <button class="btn" @click="savePlaybook()"
                 :disabled="pbLoading.save || !selectedPlaybook || !pbEditorReady">
                 <span x-show="!pbLoading.save">Save</span>
                 <span x-show="pbLoading.save">Saving…</span>
               </button>
 
+              <button class="btn" @click="setDefaultPlaybookVersion()"
+                :disabled="pbLoading.setDefault || !selectedPlaybook || !pbSelectedVersion || pbSelectedVersion === pbDefaultVersion">
+                <span x-show="!pbLoading.setDefault">Set selected as default</span>
+                <span x-show="pbLoading.setDefault">Updating default…</span>
+              </button>
+
+              <button class="btn btn-danger" @click="openPlaybookVersionDeleteConfirm()"
+                :disabled="pbLoading.delete || !selectedPlaybook || !pbSelectedVersion || pbSelectedVersion === pbDefaultVersion">
+                <span x-show="!pbLoading.delete">Delete selected version…</span>
+                <span x-show="pbLoading.delete">Deleting…</span>
+              </button>
             </div>
           </div>
 
@@ -1940,6 +1950,26 @@
             </div>
           </div>
 
+          <div class="editor-toolbar">
+            <div class="playbook-meta-grid">
+              <div class="playbook-meta-card">
+                <div class="hint">Default version</div>
+                <div class="playbook-meta-value" x-text="pbDefaultVersion || '-'"></div>
+              </div>
+              <div class="playbook-meta-card">
+                <label class="hint" for="playbook-version-select">Available versions</label>
+                <select id="playbook-version-select" class="select playbook-version-select" x-model="pbSelectedVersion"
+                  @change="onSelectPlaybookVersion()" :disabled="pbLoading.load || !selectedPlaybook || !pbVersions.length">
+                  <option value="" disabled>Select version…</option>
+                  <template x-for="version in pbVersions" :key="version">
+                    <option :value="version" x-text="version"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <div class="hint" x-text="pbSelectedVersion === pbDefaultVersion && pbSelectedVersion ? 'Selected version is the current default.' : 'Select a version to inspect, promote, or delete.'"></div>
+          </div>
+
           <div class="editor-shell">
 
             <div style="flex: 1 1 auto; min-height: 0;">
@@ -1962,6 +1992,50 @@
           </div>
         </section>
       </main>
+
+      <div class="modal-backdrop" x-show="modal.playbookVersionDeleteConfirm.open" x-transition
+        @keydown.escape.window="closePlaybookVersionDeleteConfirm()">
+        <div class="modal" @click.outside="closePlaybookVersionDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Delete Playbook Version</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closePlaybookVersionDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.playbookVersionDeleteConfirm"
+              x-text="modalErrors.playbookVersionDeleteConfirm"></div>
+            <p>
+              This will permanently delete
+              <span class="ip-pill" x-text="modal.playbookVersionDeleteConfirm.version"></span>
+              from
+              <span class="service-pill" x-text="selectedPlaybook || '-'"></span>.
+            </p>
+            <p class="hint" x-show="modal.playbookVersionDeleteConfirm.version === pbDefaultVersion">
+              The current default version cannot be deleted until another version is promoted.
+            </p>
+            <div class="kv-grid">
+              <div class="kv-item">
+                <div class="kv-key">Default version</div>
+                <div class="kv-value"><span class="ip-pill" x-text="pbDefaultVersion || '-'"></span></div>
+              </div>
+              <div class="kv-item">
+                <div class="kv-key">Selected version</div>
+                <div class="kv-value"><span class="service-pill"
+                    x-text="modal.playbookVersionDeleteConfirm.version || '-'"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn" @click="closePlaybookVersionDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" @click="confirmPlaybookVersionDelete()"
+              :disabled="pbLoading.delete || !modal.playbookVersionDeleteConfirm.version || modal.playbookVersionDeleteConfirm.version === pbDefaultVersion">
+              <span x-show="!pbLoading.delete">Delete version</span>
+              <span x-show="pbLoading.delete">Deleting…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Allocate Modal -->
       <div class="modal-backdrop" x-show="modal.allocate.open" x-transition

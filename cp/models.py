@@ -13,28 +13,14 @@ class AutoNameStrEnum(StrEnum):
         return name
 
 
-# GENERIC / LEGACY
-
-
-class JobID(BaseModel):
-    job_id: int
-
-
-class ClusterIDRef(BaseModel):
-    cluster_id: str
-
-
-class StrID(BaseModel):
-    id: str
-
-
-class IntID(BaseModel):
-    id: int
-
-
+#
 # ENUMS FOR TYPES AND STATES
-
-
+#
+class PlaybookName(AutoNameStrEnum):
+    CREATE_CLUSTER = auto()
+    DELETE_CLUSTER = auto()
+    HEALTHCHECK_CLUSTER = auto()
+    RESTORE_CLUSTER = auto()
 
 
 class JobType(AutoNameStrEnum):
@@ -47,7 +33,6 @@ class JobType(AutoNameStrEnum):
     RESTORE_CLUSTER = auto()
     HEALTHCHECK_CLUSTERS = auto()
     FAIL_ZOMBIE_JOBS = auto()
-
 
 
 class ClusterState(AutoNameStrEnum):
@@ -73,9 +58,101 @@ class JobState(AutoNameStrEnum):
     COMPLETED = auto()
 
 
+class Event(AutoNameStrEnum):
+    LOGIN = auto()
+    LOGOUT = auto()
+    UPDATE_PLAYBOOK = auto()
+    API_KEY_CREATE = auto()
+    API_KEY_DELETE = auto()
+    SETTING_UPDATE = auto()
+    SETTING_RESET = auto()
+    VERSION_ADD = auto()
+    VERSION_REMOVE = auto()
+    DB_USER_UPDATE = auto()
+    DB_USER_ADD_ROLE = auto()
+    DB_USER_REMOVE_ROLE = auto()
+    DB_USER_ADD = auto()
+    DB_USER_REMOVE = auto()
+    REGION_ADD = auto()
+    REGION_REMOVE = auto()
+    PLAYBOOK_ADD = auto()
+    PLAYBOOK_REMOVE = auto()
+    PLAYBOOK_SET_DEFAULT = auto()
+
+
+class CPRole(AutoNameStrEnum):
+    CP_READONLY = auto()
+    CP_USER = auto()
+    CP_ADMIN = auto()
+
+
+class SettingKey(AutoNameStrEnum):
+    cloud_storage_url = auto()
+    default_password = auto()
+    default_username = auto()
+    licence_key = auto()
+    licence_org = auto()
+    playbooks_url = auto()
+    playbooks_url_cache_expiry = auto()
+    prom_url = auto()
+    sso_auth_url = auto()
+    sso_cache_expiry = auto()
+    sso_claim_name = auto()
+    sso_client_id = auto()
+    sso_client_secret = auto()
+    sso_issuer = auto()
+    sso_jwks_url = auto()
+    sso_redirect_uri = auto()
+    sso_token_url = auto()
+    sso_userinfo_url = auto()
+    #
+    CP_ENTERPRISE_LICENSE_KEY = auto()
+    OIDC_ENABLED = auto()
+    OIDC_ISSUER_URL = auto()
+    OIDC_CLIENT_ID = auto()
+    OIDC_CLIENT_SECRET = auto()
+    OIDC_SCOPES = auto()
+    OIDC_AUDIENCE = auto()
+    OIDC_EXTRA_AUTH_PARAMS = auto()
+    OIDC_REDIRECT_URI = auto()
+    OIDC_LOGIN_PATH = auto()
+    OIDC_SESSION_COOKIE_NAME = auto()
+    OIDC_STATE_COOKIE_NAME = auto()
+    OIDC_NONCE_COOKIE_NAME = auto()
+    OIDC_NEXT_COOKIE_NAME = auto()
+    OIDC_COOKIE_SECURE = auto()
+    OIDC_COOKIE_SAMESITE = auto()
+    OIDC_COOKIE_DOMAIN = auto()
+    OIDC_VERIFY_AUDIENCE = auto()
+    OIDC_UI_USERNAME_CLAIM = auto()
+    OIDC_AUTHZ_READONLY_GROUPS = auto()
+    OIDC_AUTHZ_USER_GROUPS = auto()
+    OIDC_AUTHZ_ADMIN_GROUPS = auto()
+    OIDC_AUTHZ_GROUPS_CLAIM = auto()
+
+
+#
+# GENERIC / LEGACY
+#
+class JobID(BaseModel):
+    job_id: int
+
+
+class ClusterIDRef(BaseModel):
+    cluster_id: str
+
+
+class StrID(BaseModel):
+    id: str
+
+
+class IntID(BaseModel):
+    id: int
+
+
+#
 # AUTH AND LOGGING
-
-
+#
 class WebUser(BaseModel):
     username: str
     roles: List[str]
@@ -91,9 +168,9 @@ class EventCountResponse(BaseModel):
     total: int
 
 
+#
 # CLUSTER
-
-
+#
 class ClusterOverview(BaseModel):
     cluster_id: str
     grp: str
@@ -231,9 +308,9 @@ class JobRescheduleResponse(BaseModel):
     job_id: int
 
 
+#
 # ADMIN
-
-
+#
 class Region(BaseModel):
     cloud: str
     region: str
@@ -270,8 +347,11 @@ class Nodes(BaseModel):
     nodes: list[str]
 
 
+#
+# PLAYBOOK
+#
 class PlaybookOverview(BaseModel):
-    name: str
+    name: PlaybookName
     version: dt.datetime
     default_version: dt.datetime | None = None
     created_at: dt.datetime
@@ -280,7 +360,36 @@ class PlaybookOverview(BaseModel):
 
 
 class Playbook(PlaybookOverview):
-    playbook: bytes | None = None
+    content: bytes | None = None
+
+
+class PlaybookSelectionResponse(BaseModel):
+    name: str
+    playbook_version: str
+    default_version: str
+    playbook_versions: list[str]
+    original_content: str
+    modified_content: str
+
+
+class PlaybookVersionResponse(BaseModel):
+    playbook_version: str
+    original_content: str
+    modified_content: str
+    playbook_versions: list[str] | None = None
+    default_version: str | None = None
+
+
+class PlaybookSaveRequest(BaseModel):
+    content: str
+
+
+class PlaybookSetDefaultRequest(BaseModel):
+    version: str
+
+
+class PlaybookVersionDeleteRequest(BaseModel):
+    default_version: str
 
 
 class DashboardMetrics(BaseModel):
@@ -356,35 +465,6 @@ class ClusterPasswordUpdateRequest(BaseModel):
     password: str
 
 
-class PlaybookSelectionResponse(BaseModel):
-    playbook_name: str
-    playbook_version: str
-    default_version: str
-    playbook_versions: list[str]
-    original_content: str
-    modified_content: str
-
-
-class PlaybookVersionResponse(BaseModel):
-    playbook_version: str
-    original_content: str
-    modified_content: str
-    playbook_versions: list[str] | None = None
-    default_version: str | None = None
-
-
-class PlaybookSaveRequest(BaseModel):
-    content: str
-
-
-class PlaybookSetDefaultRequest(BaseModel):
-    version: str
-
-
-class PlaybookVersionDeleteRequest(BaseModel):
-    default_version: str
-
-
 class NoFreeComputeUnitError(Exception):
     pass
 
@@ -415,80 +495,6 @@ class InvalidApiKeyValidityError(Exception):
 
 class SettingNotFoundError(Exception):
     pass
-
-
-class Event(AutoNameStrEnum):
-    LOGIN = auto()
-    LOGOUT = auto()
-    UPDATE_PLAYBOOK = auto()
-    API_KEY_CREATE = auto()
-    API_KEY_DELETE = auto()
-    SETTING_UPDATE = auto()
-    SETTING_RESET = auto()
-    VERSION_ADD = auto()
-    VERSION_REMOVE = auto()
-    DB_USER_UPDATE = auto()
-    DB_USER_ADD_ROLE = auto()
-    DB_USER_REMOVE_ROLE = auto()
-    DB_USER_ADD = auto()
-    DB_USER_REMOVE = auto()
-    REGION_ADD = auto()
-    REGION_REMOVE = auto()
-    PLAYBOOK_ADD = auto()
-    PLAYBOOK_REMOVE = auto()
-    PLAYBOOK_SET_DEFAULT = auto()
-
-
-
-class CPRole(AutoNameStrEnum):
-    CP_READONLY = auto()
-    CP_USER = auto()
-    CP_ADMIN = auto()
-
-
-class SettingKey(AutoNameStrEnum):
-    cloud_storage_url = auto()
-    default_password = auto()
-    default_username = auto()
-    licence_key = auto()
-    licence_org = auto()
-    playbooks_url = auto()
-    playbooks_url_cache_expiry = auto()
-    prom_url = auto()
-    sso_auth_url = auto()
-    sso_cache_expiry = auto()
-    sso_claim_name = auto()
-    sso_client_id = auto()
-    sso_client_secret = auto()
-    sso_issuer = auto()
-    sso_jwks_url = auto()
-    sso_redirect_uri = auto()
-    sso_token_url = auto()
-    sso_userinfo_url = auto()
-    #
-    CP_ENTERPRISE_LICENSE_KEY = auto()
-    OIDC_ENABLED = auto()
-    OIDC_ISSUER_URL = auto()
-    OIDC_CLIENT_ID = auto()
-    OIDC_CLIENT_SECRET = auto()
-    OIDC_SCOPES = auto()
-    OIDC_AUDIENCE = auto()
-    OIDC_EXTRA_AUTH_PARAMS = auto()
-    OIDC_REDIRECT_URI = auto()
-    OIDC_LOGIN_PATH = auto()
-    OIDC_SESSION_COOKIE_NAME = auto()
-    OIDC_STATE_COOKIE_NAME = auto()
-    OIDC_NONCE_COOKIE_NAME = auto()
-    OIDC_NEXT_COOKIE_NAME = auto()
-    OIDC_COOKIE_SECURE = auto()
-    OIDC_COOKIE_SAMESITE = auto()
-    OIDC_COOKIE_DOMAIN = auto()
-    OIDC_VERIFY_AUDIENCE = auto()
-    OIDC_UI_USERNAME_CLAIM = auto()
-    OIDC_AUTHZ_READONLY_GROUPS = auto()
-    OIDC_AUTHZ_USER_GROUPS = auto()
-    OIDC_AUTHZ_ADMIN_GROUPS = auto()
-    OIDC_AUTHZ_GROUPS_CLAIM = auto()
 
 
 class SettingRecord(BaseModel):
@@ -547,85 +553,3 @@ class DeferredTask(BaseModel):
     fn: Callable[..., None]
     args: tuple | None
     kwargs: dict = {}
-
-
-class Playbook(AutoNameStrEnum):
-    # compute unit level statuses
-    CU_ALLOCATE = auto()
-    CU_DEALLOCATE = auto()
-    SERVER_INIT = auto()
-    SERVER_DECOMM = auto()
-
-
-class ComputeUnitStatus(AutoNameStrEnum):
-    # compute unit level statuses
-    FREE = auto()
-    ALLOCATING = auto()
-    ALLOCATED = auto()
-    ALLOCATION_FAIL = auto()
-    DEALLOCATING = auto()
-    DEALLOCATION_FAIL = auto()
-    UNAVAILABLE = auto()
-
-
-class ServerStatus(AutoNameStrEnum):
-    # Server level statuses
-    INITIALIZING = auto()
-    INIT_FAIL = auto()
-    READY = auto()
-    DECOMMISSIONING = auto()
-    DECOMMISSIONED = auto()
-    DECOMMISSION_FAIL = auto()
-
-
-class ComputeUnitInDB(BaseModel):
-    compute_id: str
-    hostname: str
-    cpu_range: str
-    cpu_count: int
-    cpu_set: str
-    port_range: str
-    cu_user: str
-    status: str
-    started_at: dt.datetime | None = None
-    tags: dict[str, Any] | None = None
-
-
-class ComputeUnitOverview(ComputeUnitInDB):
-    ip: str
-    region: str
-    zone: str
-
-
-class ComputeUnitRequest(BaseModel):
-    compute_id: str | None = None
-    cpu_count: int | None = None
-    region: str | None = None
-    zone: str | None = None
-    tags: dict[str, str | int | list[str]] | None
-    ssh_public_key: str
-
-
-class BaseServer(BaseModel):
-    hostname: str
-    ip: str
-    user_id: str
-    region: str
-    zone: str | None = None
-    cpu_count: int | None = None
-    mem_gb: int | None = None
-    disk_count: int | None = None
-    disk_size_gb: int | None = None
-    tags: dict[str, Any] | None = None
-
-
-class ServerInDB(BaseServer):
-    status: str
-
-
-class ServerInitRequest(BaseServer):
-    cpu_ranges: list[str]
-
-
-class ServerDecommRequest(BaseModel):
-    hostname: str

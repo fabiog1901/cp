@@ -223,6 +223,10 @@ window.app = function () {
         open: false,
         version: "",
       },
+      playbookVersionDeleteConfirm: {
+        open: false,
+        version: "",
+      },
       regionCreate: {
         open: false,
         cloud: "",
@@ -273,6 +277,7 @@ window.app = function () {
       apiKeyDeleteConfirm: "",
       versionCreate: "",
       versionDeleteConfirm: "",
+      playbookVersionDeleteConfirm: "",
       regionCreate: "",
       regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
@@ -280,12 +285,21 @@ window.app = function () {
     },
 
     // ---------- Playbooks state ----------
-    playbooks: ["CU_ALLOCATE", "CU_DEALLOCATE", "SERVER_INIT", "SERVER_DECOMM"],
+    playbooks: ["CREATE_CLUSTER", "DELETE_CLUSTER"],
     selectedPlaybook: "",
     pbEditorReady: false,
-    pbLoading: { list: false, save: false, load: false },
+    pbLoading: {
+      list: false,
+      save: false,
+      load: false,
+      setDefault: false,
+      delete: false,
+    },
     pbToast: { message: "", ok: true },
     pbLastUpdatedUtc: null,
+    pbDefaultVersion: "",
+    pbSelectedVersion: "",
+    pbVersions: [],
 
     // Ace
     _ace: null,
@@ -3127,7 +3141,10 @@ window.app = function () {
         return;
       }
       this.ensureAce();
-      if (this.playbooks.length === 0 && !this.pbLoading.list)
+      if (
+        !this.pbLoading.list &&
+        (this.playbooks.length === 0 || !this.selectedPlaybook || !this.pbVersions.length)
+      )
         await this.reloadPlaybooks();
     },
 
@@ -3190,39 +3207,93 @@ window.app = function () {
         this.pbToast = { ok: false, message: "Editor not ready yet." };
         return;
       }
-      await this.loadPlaybookContent(this.selectedPlaybook);
+      await this.loadPlaybookSelection(this.selectedPlaybook);
     },
 
-    async loadPlaybookContent(name) {
+    extractPlaybookText(payload) {
+      if (typeof payload === "string") {
+        try {
+          return this.b64decode(payload);
+        } catch {
+          return payload;
+        }
+      }
+
+      if (payload && typeof payload === "object") {
+        const content =
+          payload.modified_content ?? payload.original_content ?? "";
+        return typeof content === "string" ? content : String(content ?? "");
+      }
+
+      return String(payload ?? "");
+    },
+
+    applyPlaybookPayload(name, payload, options = {}) {
+      const text = this.extractPlaybookText(payload);
+      const versions = Array.isArray(payload?.playbook_versions)
+        ? payload.playbook_versions.map((item) => String(item))
+        : this.pbVersions;
+      const defaultVersion =
+        payload?.default_version != null
+          ? String(payload.default_version)
+          : this.pbDefaultVersion;
+      const selectedVersion = String(
+        payload?.playbook_version ||
+          options.selectedVersion ||
+          defaultVersion ||
+          versions[versions.length - 1] ||
+          "",
+      );
+
+      this.pbVersions = versions;
+      this.pbDefaultVersion = defaultVersion;
+      this.pbSelectedVersion = selectedVersion;
+      this._ace.setValue(text, -1);
+      this.pbLastUpdatedUtc = this.utcNowString();
+      this.pbToast = {
+        ok: true,
+        message: `${this.utcNowString()} - Loaded "${name}"${
+          selectedVersion ? ` (${selectedVersion})` : ""
+        }.`,
+      };
+    },
+
+    async loadPlaybookSelection(name) {
       this.pbLoading.load = true;
       try {
         const payload = await this.apiFetch(
           `/admin/playbooks/${encodeURIComponent(name)}`,
           { method: "GET" },
         );
-
-        let text = "";
-
-        if (typeof payload === "string") {
-          try {
-            // base64 → UTF-8
-            text = this.b64decode(payload);
-          } catch {
-            // fallback: assume it's already plain text
-            text = payload;
-          }
-        } else {
-          text = String(payload ?? "");
-        }
-
-        this._ace.setValue(text, -1); // -1 keeps cursor at start
-        this.pbLastUpdatedUtc = this.utcNowString();
-        this.pbToast = {
-          ok: true,
-          message: `${this.utcNowString()} - Loaded "${name}".`,
-        };
+        this.applyPlaybookPayload(name, payload);
       } catch (e) {
         this.pbToast = { ok: false, message: `Load failed: ${e.message}` };
+      } finally {
+        this.pbLoading.load = false;
+      }
+    },
+
+    async onSelectPlaybookVersion() {
+      const name = String(this.selectedPlaybook || "").trim();
+      const version = String(this.pbSelectedVersion || "").trim();
+      if (!name || !version) return;
+      if (!this._aceReady || !this._ace) {
+        this.pbToast = { ok: false, message: "Editor not ready yet." };
+        return;
+      }
+
+      this.pbLoading.load = true;
+      try {
+        const payload = await this.apiFetch(
+          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
+          { method: "GET" },
+        );
+        this.applyPlaybookPayload(name, payload, { selectedVersion: version });
+      } catch (e) {
+        this.pbToast = {
+          ok: false,
+          message: `Version load failed: ${e.message}`,
+        };
       } finally {
         this.pbLoading.load = false;
       }
@@ -3253,13 +3324,14 @@ window.app = function () {
       this.pbLoading.save = true;
 
       try {
-        await this.apiFetch(
+        const payload = await this.apiFetch(
           `/admin/playbooks/${encodeURIComponent(this.selectedPlaybook)}`,
           {
-            method: "PATCH",
-            body: this.b64encode(this._ace.getValue()),
+            method: "POST",
+            body: { content: this._ace.getValue() },
           },
         );
+        this.applyPlaybookPayload(this.selectedPlaybook, payload);
 
         this.pbToast = {
           ok: true,
@@ -3269,6 +3341,97 @@ window.app = function () {
         this.pbToast = { ok: false, message: `Save failed: ${e.message}` };
       } finally {
         this.pbLoading.save = false;
+      }
+    },
+
+    async setDefaultPlaybookVersion() {
+      const name = String(this.selectedPlaybook || "").trim();
+      const version = String(this.pbSelectedVersion || "").trim();
+      if (!name || !version) {
+        this.pbToast = {
+          ok: false,
+          message: "Select a playbook and version first.",
+        };
+        return;
+      }
+
+      this.pbLoading.setDefault = true;
+      try {
+        await this.apiFetch(`/admin/playbooks/${encodeURIComponent(name)}/default`, {
+          method: "PUT",
+          body: { version },
+        });
+        this.pbDefaultVersion = version;
+        this.pbToast = {
+          ok: true,
+          message: `${this.utcNowString()} - Set default for "${name}" to ${version}.`,
+        };
+      } catch (e) {
+        this.pbToast = {
+          ok: false,
+          message: `Set default failed: ${e.message}`,
+        };
+      } finally {
+        this.pbLoading.setDefault = false;
+      }
+    },
+
+    openPlaybookVersionDeleteConfirm() {
+      if (
+        this.pbSelectedVersion &&
+        this.pbDefaultVersion &&
+        this.pbSelectedVersion === this.pbDefaultVersion
+      ) {
+        this.pbToast = {
+          ok: false,
+          message: "Promote another version before deleting the current default.",
+        };
+        return;
+      }
+      this.modal.playbookVersionDeleteConfirm.version = String(
+        this.pbSelectedVersion || "",
+      );
+      this.clearModalError("playbookVersionDeleteConfirm");
+      this.modal.playbookVersionDeleteConfirm.open = true;
+    },
+
+    closePlaybookVersionDeleteConfirm() {
+      this.modal.playbookVersionDeleteConfirm.open = false;
+      this.modal.playbookVersionDeleteConfirm.version = "";
+      this.clearModalError("playbookVersionDeleteConfirm");
+    },
+
+    async confirmPlaybookVersionDelete() {
+      const name = String(this.selectedPlaybook || "").trim();
+      const version = String(
+        this.modal.playbookVersionDeleteConfirm.version || "",
+      ).trim();
+      if (!name || !version) return;
+
+      this.pbLoading.delete = true;
+      this.clearModalError("playbookVersionDeleteConfirm");
+      try {
+        const payload = await this.apiFetch(
+          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
+          {
+            method: "DELETE",
+            body: { default_version: this.pbDefaultVersion },
+          },
+        );
+        this.closePlaybookVersionDeleteConfirm();
+        this.applyPlaybookPayload(name, payload);
+        this.pbToast = {
+          ok: true,
+          message: `${this.utcNowString()} - Deleted "${name}" version ${version}.`,
+        };
+      } catch (e) {
+        this.setModalError(
+          "playbookVersionDeleteConfirm",
+          e,
+          "Failed to delete playbook version.",
+        );
+      } finally {
+        this.pbLoading.delete = false;
       }
     },
   };

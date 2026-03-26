@@ -150,7 +150,7 @@ CREATE TABLE playbooks (
     name STRING NOT NULL,
     version TIMESTAMPTZ(0) NOT NULL DEFAULT now(),
     default_version TIMESTAMPTZ NOT NULL,
-    playbook BYTES NULL,
+    content BYTES NULL,
     created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NULL,
     updated_by STRING NULL,

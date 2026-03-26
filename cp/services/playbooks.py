@@ -3,7 +3,14 @@
 import gzip
 
 from ..infra.errors import RepositoryError
-from ..models import STRFTIME, Event, Playbook, PlaybookOverview
+from ..models import (
+    STRFTIME,
+    Event,
+    Playbook,
+    PlaybookOverview,
+    PlaybookSelectionResponse,
+    PlaybookVersionResponse,
+)
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
@@ -13,7 +20,7 @@ class PlaybooksService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
-    def load_playbook_selection(self, name: str) -> dict:
+    def load_playbook_selection(self, name: str) -> PlaybookSelectionResponse:
         try:
             versions = self.repo.list_playbook_versions(name)
         except RepositoryError as err:
@@ -35,14 +42,14 @@ class PlaybooksService:
             ) from err
         content = PlaybooksService._decode_playbook(playbook)
 
-        return {
-            "playbook_name": name,
-            "playbook_version": selected_version,
-            "default_version": selected_version,
-            "playbook_versions": version_strings,
-            "original_content": content,
-            "modified_content": content,
-        }
+        return PlaybookSelectionResponse(
+            name=name,
+            playbook_version=selected_version,
+            default_version=selected_version,
+            playbook_versions=version_strings,
+            original_content=content,
+            modified_content=content,
+        )
 
     def load_playbook_version(self, name: str, version: str) -> dict:
         try:
@@ -116,7 +123,9 @@ class PlaybooksService:
             "modified_content": content,
         }
 
-    def save_playbook_content(self, name: str, content: str, created_by: str) -> dict:
+    def save_playbook_content(
+        self, name: str, content: str, created_by: str
+    ) -> PlaybookVersionResponse:
         try:
             saved = self.repo.add_playbook(
                 name,
@@ -139,14 +148,12 @@ class PlaybooksService:
                 conflict_message=f"A conflicting playbook version already exists for '{name}'.",
                 fallback_message=f"Unable to save playbook '{name}'.",
             ) from err
-        return {
-            "playbook_versions": sorted(
-                [x.version.strftime(STRFTIME) for x in versions]
-            ),
-            "playbook_version": saved_version,
-            "original_content": content,
-            "modified_content": content,
-        }
+        return PlaybookVersionResponse(
+            playbook_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
+            playbook_version=saved_version,
+            original_content=content,
+            modified_content=content,
+        )
 
     @staticmethod
     def _find_default_version(versions: list[PlaybookOverview]) -> str:
@@ -168,6 +175,6 @@ class PlaybooksService:
 
     @staticmethod
     def _decode_playbook(playbook: Playbook) -> str:
-        if playbook.playbook is None:
+        if playbook.content is None:
             return ""
-        return gzip.decompress(playbook.playbook).decode("utf-8")
+        return gzip.decompress(playbook.content).decode("utf-8")

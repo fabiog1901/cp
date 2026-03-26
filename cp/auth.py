@@ -34,7 +34,7 @@ from .infra import (
     safe_next_path,
     validate_api_key_crypto_config,
 )
-from .models import Event, CPRole, LogMsg
+from .models import CPRole, Event, LogMsg
 from .repos.base import BaseRepo
 
 
@@ -518,9 +518,7 @@ class OIDCManager:
         )
         payload["_role_groups"] = _jsonable_role_groups(effective_role_groups)
 
-        existing_meta = (
-            claims.get("_cp") if isinstance(claims.get("_cp"), dict) else {}
-        )
+        existing_meta = claims.get("_cp") if isinstance(claims.get("_cp"), dict) else {}
         payload["_cp"] = {
             **existing_meta,
             "display_name_claim": self.config.ui_username_claim,
