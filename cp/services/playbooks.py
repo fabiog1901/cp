@@ -20,7 +20,7 @@ class PlaybooksService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
-    def load_playbook_selection(self, name: str) -> PlaybookResponse:
+    def get_playbook(self, name: str) -> PlaybookResponse:
         try:
             versions = self.repo.list_playbook_versions(name)
         except RepositoryError as err:
@@ -51,7 +51,7 @@ class PlaybooksService:
             modified_content=content,
         )
 
-    def load_playbook_version(self, name: str, version: str) -> dict:
+    def get_playbook_version(self, name: str, version: str) -> PlaybookVersionResponse:
         try:
             playbook = self.repo.get_playbook(name, version)
         except RepositoryError as err:
@@ -87,9 +87,18 @@ class PlaybooksService:
         self,
         name: str,
         version: str,
-        default_version: str,
         deleted_by: str,
     ) -> PlaybookVersionResponse:
+        try:
+            default_playbook = self.repo.get_default_playbook(name)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Playbook updates are temporarily unavailable.",
+                fallback_message=f"Unable to delete playbook version for '{name}'.",
+            ) from err
+
+        default_version = default_playbook.version.strftime(STRFTIME)
         if version == default_version:
             raise ServiceValidationError("Cannot delete the default version.")
 
@@ -121,7 +130,7 @@ class PlaybooksService:
             modified_content=content,
         )
 
-    def save_playbook_content(
+    def save_playbook(
         self, name: str, content: str, created_by: str
     ) -> PlaybookVersionResponse:
         try:

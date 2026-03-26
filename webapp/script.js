@@ -3230,8 +3230,8 @@ window.app = function () {
 
     applyPlaybookPayload(name, payload, options = {}) {
       const text = this.extractPlaybookText(payload);
-      const versions = Array.isArray(payload?.playbook_versions)
-        ? payload.playbook_versions.map((item) => String(item))
+      const versions = Array.isArray(payload?.available_versions)
+        ? payload.available_versions.map((item) => String(item))
         : this.pbVersions;
       const defaultVersion =
         payload?.default_version != null
@@ -3357,10 +3357,12 @@ window.app = function () {
 
       this.pbLoading.setDefault = true;
       try {
-        await this.apiFetch(`/admin/playbooks/${encodeURIComponent(name)}/default`, {
-          method: "PUT",
-          body: { version },
-        });
+        await this.apiFetch(
+          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
+          {
+            method: "PUT",
+          },
+        );
         this.pbDefaultVersion = version;
         this.pbToast = {
           ok: true,
@@ -3413,10 +3415,7 @@ window.app = function () {
       try {
         const payload = await this.apiFetch(
           `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
-          {
-            method: "DELETE",
-            body: { default_version: this.pbDefaultVersion },
-          },
+          { method: "DELETE" },
         );
         this.closePlaybookVersionDeleteConfirm();
         this.applyPlaybookPayload(name, payload);

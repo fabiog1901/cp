@@ -6,8 +6,6 @@ from ...models import (
     PlaybookName,
     PlaybookSaveRequest,
     PlaybookResponse,
-    PlaybookSetDefaultRequest,
-    PlaybookVersionDeleteRequest,
     PlaybookVersionResponse,
 )
 from ...services.errors import ServiceError
@@ -23,7 +21,7 @@ async def get_playbook(
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookResponse:
     try:
-        return service.load_playbook_selection(name)
+        return service.get_playbook(name)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
@@ -35,7 +33,7 @@ async def get_playbook_version(
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
     try:
-        return PlaybookVersionResponse(**service.load_playbook_version(name, version))
+        return service.get_playbook_version(name, version)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
@@ -48,20 +46,20 @@ async def save_playbook(
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
     try:
-        return service.save_playbook_content(name, request.content, actor_id)
+        return service.save_playbook(name, request.content, actor_id)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
 
-@router.put("/{name}/default")
+@router.put("/{name}/{version}")
 async def set_default_playbook(
     name: PlaybookName,
-    request: PlaybookSetDefaultRequest,
+    version: str,
     actor_id: str = Depends(get_audit_actor),
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> None:
     try:
-        service.set_default_playbook(name, request.version, actor_id)
+        service.set_default_playbook(name, version, actor_id)
     except ServiceError as err:
         raise_http_from_service_error(err)
 
@@ -70,7 +68,6 @@ async def set_default_playbook(
 async def delete_playbook_version(
     name: PlaybookName,
     version: str,
-    request: PlaybookVersionDeleteRequest,
     actor_id: str = Depends(get_audit_actor),
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
@@ -78,7 +75,6 @@ async def delete_playbook_version(
         return service.delete_playbook_version(
             name,
             version,
-            request.default_version,
             actor_id,
         )
     except ServiceError as err:

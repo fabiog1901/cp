@@ -23,7 +23,7 @@ class PlaybooksRepo(BaseRepo):
             SELECT *
             FROM playbooks
             WHERE name = %s
-            ORDER BY default_version DESC
+            ORDER BY default_version DESC NULLS LAST, version DESC
             LIMIT 1
             """,
             (name,),

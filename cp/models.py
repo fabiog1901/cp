@@ -384,14 +384,6 @@ class PlaybookSaveRequest(BaseModel):
     content: str
 
 
-class PlaybookSetDefaultRequest(BaseModel):
-    version: str
-
-
-class PlaybookVersionDeleteRequest(BaseModel):
-    default_version: str
-
-
 class DashboardMetrics(BaseModel):
     current_nodes: list[int]
     chart_data: list[dict[str, Any]]
