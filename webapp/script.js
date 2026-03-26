@@ -39,7 +39,13 @@ window.app = function () {
     _serversAutoTimer: null,
     selectedClusterId: "",
     selectedCluster: null,
-    clusterLoading: { details: false, delete: false, create: false },
+    clusterLoading: {
+      details: false,
+      delete: false,
+      create: false,
+      upgrade: false,
+      scale: false,
+    },
     clusterConnectCopied: false,
     clusterCreateOptions: {
       versions: [],
@@ -265,6 +271,25 @@ window.app = function () {
         version: "",
         owner: "",
       },
+      clusterUpgrade: {
+        open: false,
+        version: "",
+        upgrade_versions: [],
+      },
+      clusterScale: {
+        open: false,
+        node_count: "",
+        node_cpus: "",
+        disk_size: "",
+        regions: [],
+        original: null,
+        options: {
+          node_counts: [],
+          cpus_per_node: [],
+          disk_sizes: [],
+          regions: [],
+        },
+      },
       apiKeySecret: {
         open: false,
         access_key: "",
@@ -299,6 +324,8 @@ window.app = function () {
       regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
       clusterCreate: "",
+      clusterUpgrade: "",
+      clusterScale: "",
       settingResetConfirm: "",
     },
 
@@ -1613,6 +1640,127 @@ window.app = function () {
       return `${size} GB (${this.getHumanSize(size)})`;
     },
 
+    clusterRegionIdsFromCluster(cluster = this.selectedCluster) {
+      const inventory = Array.isArray(cluster?.cluster_inventory)
+        ? cluster.cluster_inventory
+        : [];
+      return [...new Set(
+        inventory
+          .map((entry) => String(entry?.region || "").trim())
+          .filter(Boolean),
+      )];
+    },
+
+    clusterScaleRegionOptions() {
+      return Array.isArray(this.modal.clusterScale.options?.regions)
+        ? this.modal.clusterScale.options.regions
+        : [];
+    },
+
+    clusterScaleSelectedRegions() {
+      return Array.isArray(this.modal.clusterScale.regions)
+        ? this.modal.clusterScale.regions
+        : [];
+    },
+
+    clusterScaleHasRegion(regionId) {
+      return this.clusterScaleSelectedRegions().includes(String(regionId || ""));
+    },
+
+    clusterScaleAvailableRegions() {
+      return this.clusterScaleRegionOptions().filter(
+        (region) => !this.clusterScaleHasRegion(region?.region_id),
+      );
+    },
+
+    addClusterScaleRegion(regionId) {
+      const normalized = String(regionId || "").trim();
+      if (!normalized || this.clusterScaleHasRegion(normalized)) return;
+      this.modal.clusterScale.regions = [
+        ...this.clusterScaleSelectedRegions(),
+        normalized,
+      ];
+    },
+
+    removeClusterScaleRegion(regionId) {
+      const normalized = String(regionId || "").trim();
+      this.modal.clusterScale.regions = this.clusterScaleSelectedRegions().filter(
+        (entry) => entry !== normalized,
+      );
+    },
+
+    clusterScaleOriginalState() {
+      return this.modal.clusterScale.original;
+    },
+
+    clusterScaleResetToOriginal() {
+      const original = this.clusterScaleOriginalState();
+      if (!original) return;
+      this.modal.clusterScale.node_count = String(original.node_count);
+      this.modal.clusterScale.node_cpus = String(original.node_cpus);
+      this.modal.clusterScale.disk_size = String(original.disk_size);
+      this.modal.clusterScale.regions = [...original.regions];
+      this.clearModalError("clusterScale");
+    },
+
+    clusterScaleChanges() {
+      const original = this.clusterScaleOriginalState();
+      if (!original) return [];
+
+      const changes = [];
+      const nodeCount = Number(this.modal.clusterScale.node_count);
+      const nodeCpus = Number(this.modal.clusterScale.node_cpus);
+      const diskSize = Number(this.modal.clusterScale.disk_size);
+      const selectedRegions = this.clusterScaleSelectedRegions();
+      const originalRegions = Array.isArray(original.regions) ? original.regions : [];
+
+      if (nodeCount !== Number(original.node_count)) {
+        changes.push({
+          label: "Node Count",
+          from: String(original.node_count),
+          to: String(nodeCount),
+        });
+      }
+      if (nodeCpus !== Number(original.node_cpus)) {
+        changes.push({
+          label: "Node vCPUs",
+          from: String(original.node_cpus),
+          to: String(nodeCpus),
+        });
+      }
+      if (diskSize !== Number(original.disk_size)) {
+        changes.push({
+          label: "Disk Size",
+          from: this.clusterCreateDiskSizeLabel(original.disk_size),
+          to: this.clusterCreateDiskSizeLabel(diskSize),
+        });
+      }
+
+      const addedRegions = selectedRegions.filter(
+        (region) => !originalRegions.includes(region),
+      );
+      const removedRegions = originalRegions.filter(
+        (region) => !selectedRegions.includes(region),
+      );
+
+      if (addedRegions.length > 0) {
+        changes.push({
+          label: "Regions Added",
+          from: "-",
+          to: addedRegions.join(", "),
+        });
+      }
+      if (removedRegions.length > 0) {
+        changes.push({
+          label: "Regions Removed",
+          from: removedRegions.join(", "),
+          to: "-",
+        });
+      }
+
+      return changes;
+    },
+
     refreshClusterCreateName() {
       this.modal.clusterCreate.name = this.getFunnyName();
     },
@@ -1885,6 +2033,115 @@ window.app = function () {
       this.clearModalError("clusterDeleteConfirm");
     },
 
+    async openClusterUpgradeModal() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+
+      this.clusterLoading.upgrade = true;
+      this.clearModalError("clusterUpgrade");
+      this.modal.clusterUpgrade.open = true;
+      this.modal.clusterUpgrade.version = "";
+      this.modal.clusterUpgrade.upgrade_versions = [];
+
+      try {
+        const options = await this.apiFetch(
+          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/options`),
+          { method: "GET" },
+        );
+        const upgradeVersions = Array.isArray(options?.upgrade_versions)
+          ? options.upgrade_versions
+          : [];
+        this.modal.clusterUpgrade.upgrade_versions = upgradeVersions;
+        this.modal.clusterUpgrade.version = upgradeVersions.length
+          ? String(upgradeVersions[0])
+          : "";
+
+        if (upgradeVersions.length === 0) {
+          this.modalErrors.clusterUpgrade =
+            "No upgrade versions are available for this cluster.";
+        }
+      } catch (e) {
+        this.setModalError(
+          "clusterUpgrade",
+          e,
+          "Failed to load upgrade options.",
+        );
+      } finally {
+        this.clusterLoading.upgrade = false;
+      }
+    },
+
+    closeClusterUpgradeModal() {
+      this.modal.clusterUpgrade.open = false;
+      this.modal.clusterUpgrade.version = "";
+      this.modal.clusterUpgrade.upgrade_versions = [];
+      this.clearModalError("clusterUpgrade");
+    },
+
+    async openClusterScaleModal() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId || !this.selectedCluster) return;
+
+      this.clusterLoading.scale = true;
+      this.clearModalError("clusterScale");
+      this.modal.clusterScale.open = true;
+
+      try {
+        const options = await this.apiFetch(
+          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/options`),
+          { method: "GET" },
+        );
+        const original = {
+          node_count: Number(this.selectedCluster.node_count ?? 0),
+          node_cpus: Number(this.selectedCluster.node_cpus ?? 0),
+          disk_size: Number(this.selectedCluster.disk_size ?? 0),
+          regions: this.clusterRegionIdsFromCluster(this.selectedCluster),
+        };
+
+        this.modal.clusterScale.options = {
+          node_counts: Array.isArray(options?.node_counts) ? options.node_counts : [],
+          cpus_per_node: Array.isArray(options?.cpus_per_node)
+            ? options.cpus_per_node
+            : [],
+          disk_sizes: Array.isArray(options?.disk_sizes) ? options.disk_sizes : [],
+          regions: Array.isArray(options?.regions) ? options.regions : [],
+        };
+        this.modal.clusterScale.original = original;
+        this.modal.clusterScale.node_count = String(original.node_count);
+        this.modal.clusterScale.node_cpus = String(original.node_cpus);
+        this.modal.clusterScale.disk_size = String(original.disk_size);
+        this.modal.clusterScale.regions = [...original.regions];
+      } catch (e) {
+        this.setModalError(
+          "clusterScale",
+          e,
+          "Failed to load scale options.",
+        );
+      } finally {
+        this.clusterLoading.scale = false;
+      }
+    },
+
+    closeClusterScaleModal() {
+      this.modal.clusterScale.open = false;
+      this.modal.clusterScale.node_count = "";
+      this.modal.clusterScale.node_cpus = "";
+      this.modal.clusterScale.disk_size = "";
+      this.modal.clusterScale.regions = [];
+      this.modal.clusterScale.original = null;
+      this.modal.clusterScale.options = {
+        node_counts: [],
+        cpus_per_node: [],
+        disk_sizes: [],
+        regions: [],
+      };
+      this.clearModalError("clusterScale");
+    },
+
     async confirmClusterDelete() {
       const clusterId = String(
         this.modal.clusterDeleteConfirm.cluster_id || "",
@@ -1924,6 +2181,126 @@ window.app = function () {
       this.setActionNotice(
         `${label} for cluster '${clusterId}' is not wired in the webapp yet.`,
       );
+    },
+
+    async confirmClusterUpgrade() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const version = String(this.modal.clusterUpgrade.version || "").trim();
+      if (!clusterId || !version) return;
+
+      this.clusterLoading.upgrade = true;
+      this.clearModalError("clusterUpgrade");
+      try {
+        const result = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/upgrade`,
+          {
+            method: "POST",
+            body: {
+              version,
+              auto_finalize: false,
+            },
+          },
+        );
+        this.closeClusterUpgradeModal();
+        this.setActionNotice(
+          `Cluster '${clusterId}' upgrade requested to ${version}.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterUpgrade",
+          e,
+          "Failed to request cluster upgrade.",
+        );
+      } finally {
+        this.clusterLoading.upgrade = false;
+      }
+    },
+
+    async confirmClusterScale() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const nodeCount = Number(this.modal.clusterScale.node_count);
+      const nodeCpus = Number(this.modal.clusterScale.node_cpus);
+      const diskSize = Number(this.modal.clusterScale.disk_size);
+      const regions = this.clusterScaleSelectedRegions();
+      if (!clusterId) return;
+
+      if (!Number.isFinite(nodeCount) || nodeCount <= 0) {
+        this.setModalError(
+          "clusterScale",
+          new Error("Node count is required."),
+          "Node count is required.",
+        );
+        return;
+      }
+      if (!Number.isFinite(nodeCpus) || nodeCpus <= 0) {
+        this.setModalError(
+          "clusterScale",
+          new Error("Node vCPUs is required."),
+          "Node vCPUs is required.",
+        );
+        return;
+      }
+      if (!Number.isFinite(diskSize) || diskSize <= 0) {
+        this.setModalError(
+          "clusterScale",
+          new Error("Disk size is required."),
+          "Disk size is required.",
+        );
+        return;
+      }
+      if (regions.length === 0) {
+        this.setModalError(
+          "clusterScale",
+          new Error("Select at least one region."),
+          "Select at least one region.",
+        );
+        return;
+      }
+      if (regions.length * nodeCount < 3) {
+        this.setModalError(
+          "clusterScale",
+          new Error(
+            "Selected regions multiplied by node count must be at least 3.",
+          ),
+          "Selected regions multiplied by node count must be at least 3.",
+        );
+        return;
+      }
+
+      this.clusterLoading.scale = true;
+      this.clearModalError("clusterScale");
+      try {
+        const result = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/scale`,
+          {
+            method: "POST",
+            body: {
+              node_count: nodeCount,
+              node_cpus: nodeCpus,
+              disk_size: diskSize,
+              regions,
+            },
+          },
+        );
+        this.closeClusterScaleModal();
+        this.setActionNotice(
+          `Cluster '${clusterId}' scale requested.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterScale",
+          e,
+          "Failed to request cluster scale.",
+        );
+      } finally {
+        this.clusterLoading.scale = false;
+      }
     },
 
     jobsDescriptionText(job) {

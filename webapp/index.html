@@ -685,8 +685,10 @@
                 <button class="btn cluster-action-btn" type="button" @click="openClusterJobs()">Show Jobs</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Create users')">Create Users</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Scale cluster')">Scale Cluster</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Upgrade cluster')">Upgrade Cluster</button>
+                <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
+                  :disabled="clusterLoading.scale">Scale Cluster</button>
+                <button class="btn cluster-action-btn" type="button" @click="openClusterUpgradeModal()"
+                  :disabled="clusterLoading.upgrade">Upgrade Cluster</button>
                 <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Debug cluster')">Debug Cluster</button>
               </div>
             </section>
@@ -698,6 +700,187 @@
           </div>
         </section>
       </main>
+
+      <!-- Cluster Scale Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterScale.open" x-transition
+        @keydown.escape.window="closeClusterScaleModal()">
+        <div class="modal" @click.outside="closeClusterScaleModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Scale Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterScaleModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterScale" x-text="modalErrors.clusterScale"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              Update the cluster footprint and regions, then submit <span class="ip-pill">POST /api/clusters/{cluster_id}/scale</span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:12px;">
+              <div class="form-grid">
+                <div style="display:grid; gap:8px;">
+                  <div class="metric-label">Cluster</div>
+                  <div class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+                </div>
+                <div style="display:grid; gap:8px;">
+                  <div class="metric-label">Original State</div>
+                  <div class="metric-sub"
+                    x-text="clusterScaleOriginalState() ? `${clusterScaleOriginalState().node_count} nodes, ${clusterScaleOriginalState().node_cpus} vCPUs, ${clusterCreateDiskSizeLabel(clusterScaleOriginalState().disk_size)}` : '-'"></div>
+                  <div class="metric-sub"
+                    x-text="clusterScaleOriginalState() ? clusterScaleOriginalState().regions.join(', ') || '-' : '-'"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-secondary" type="button" @click="clusterScaleResetToOriginal()">
+                  Reset To Original
+                </button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Node Count</span>
+                <select class="search-input" x-model="modal.clusterScale.node_count">
+                  <template x-for="count in modal.clusterScale.options.node_counts" :key="`scale-node-count-${count}`">
+                    <option :value="String(count)" x-text="count"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Node vCPUs</span>
+                <select class="search-input" x-model="modal.clusterScale.node_cpus">
+                  <template x-for="cpu in modal.clusterScale.options.cpus_per_node" :key="`scale-node-cpu-${cpu}`">
+                    <option :value="String(cpu)" x-text="cpu"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Disk Size</span>
+                <select class="search-input" x-model="modal.clusterScale.disk_size">
+                  <template x-for="size in modal.clusterScale.options.disk_sizes" :key="`scale-disk-size-${size}`">
+                    <option :value="String(size)" x-text="clusterCreateDiskSizeLabel(size)"></option>
+                  </template>
+                </select>
+              </label>
+
+              <div></div>
+            </div>
+
+            <div class="form-grid">
+              <div class="metric" style="display:grid; gap:10px;">
+                <div class="metric-label">Selected Regions</div>
+                <div class="cluster-region-selected" x-show="clusterScaleSelectedRegions().length > 0">
+                  <template x-for="regionId in clusterScaleSelectedRegions()" :key="`scale-selected-region-${regionId}`">
+                    <button type="button" class="region-pill region-pill-selected"
+                      @click="removeClusterScaleRegion(regionId)">
+                      <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionId"></span>
+                      <span class="region-pill-remove">Remove</span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterScaleSelectedRegions().length === 0">
+                  Click a region from Available to add it here.
+                </div>
+              </div>
+
+              <div class="metric" style="display:grid; gap:10px;">
+                <div class="metric-label">Available Regions</div>
+                <div class="cluster-region-options" x-show="clusterScaleAvailableRegions().length > 0">
+                  <template x-for="region in clusterScaleAvailableRegions()" :key="`scale-region-option-${region.region_id}`">
+                    <button type="button" class="region-pill"
+                      @click="addClusterScaleRegion(region.region_id)">
+                      <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="region.region_id"></span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterScaleAvailableRegions().length === 0">
+                  All available regions are already selected.
+                </div>
+              </div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="metric-label">Delta</div>
+              <div class="metric-sub" x-show="clusterScaleChanges().length === 0">
+                No changes yet.
+              </div>
+              <div class="cluster-delta-list" x-show="clusterScaleChanges().length > 0">
+                <template x-for="change in clusterScaleChanges()" :key="`${change.label}-${change.from}-${change.to}`">
+                  <div class="cluster-delta-item">
+                    <div class="cluster-delta-label" x-text="change.label"></div>
+                    <div class="cluster-delta-values">
+                      <span class="cluster-delta-from" x-text="change.from"></span>
+                      <span class="cluster-delta-arrow">→</span>
+                      <span class="cluster-delta-to" x-text="change.to"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterScaleModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.scale" @click="confirmClusterScale()">
+              <span x-show="!clusterLoading.scale">REQUEST SCALE</span>
+              <span x-show="clusterLoading.scale">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster Upgrade Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterUpgrade.open" x-transition
+        @keydown.escape.window="closeClusterUpgradeModal()">
+        <div class="modal" @click.outside="closeClusterUpgradeModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Upgrade Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUpgradeModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUpgrade" x-text="modalErrors.clusterUpgrade"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              Select the target version returned by <span class="ip-pill">GET /api/clusters/{cluster_id}/options</span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Cluster</div>
+              <div class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Upgrade Version</span>
+              <select class="search-input" x-model="modal.clusterUpgrade.version"
+                :disabled="clusterLoading.upgrade || modal.clusterUpgrade.upgrade_versions.length === 0">
+                <template x-for="version in modal.clusterUpgrade.upgrade_versions" :key="`upgrade-version-${version}`">
+                  <option :value="version" x-text="version"></option>
+                </template>
+              </select>
+            </label>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUpgradeModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.upgrade || !modal.clusterUpgrade.version"
+              @click="confirmClusterUpgrade()">
+              <span x-show="!clusterLoading.upgrade">REQUEST UPGRADE</span>
+              <span x-show="clusterLoading.upgrade">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Cluster Delete Confirm Modal -->
       <div class="modal-backdrop" x-show="modal.clusterDeleteConfirm.open" x-transition

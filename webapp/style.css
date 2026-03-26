@@ -698,6 +698,48 @@ td:first-child {
   text-transform: uppercase;
 }
 
+.cluster-delta-list {
+  display: grid;
+  gap: 10px;
+}
+
+.cluster-delta-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.cluster-delta-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cluster-delta-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cluster-delta-from {
+  color: var(--muted);
+}
+
+.cluster-delta-arrow {
+  color: var(--link);
+}
+
+.cluster-delta-to {
+  color: #e0f2fe;
+  font-weight: 600;
+}
+
 .event-action-pill {
   min-width: 110px;
   justify-content: center;
