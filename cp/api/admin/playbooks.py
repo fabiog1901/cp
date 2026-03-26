@@ -5,7 +5,7 @@ from ...infra import get_playbooks_service
 from ...models import (
     PlaybookName,
     PlaybookSaveRequest,
-    PlaybookSelectionResponse,
+    PlaybookResponse,
     PlaybookSetDefaultRequest,
     PlaybookVersionDeleteRequest,
     PlaybookVersionResponse,
@@ -17,11 +17,11 @@ from .common import raise_http_from_service_error
 router = APIRouter(prefix="/playbooks", tags=["admin"])
 
 
-@router.get("/{name}", response_model=PlaybookSelectionResponse)
-async def get_playbook_selection(
+@router.get("/{name}", response_model=PlaybookResponse)
+async def get_playbook(
     name: PlaybookName,
     service: PlaybooksService = Depends(get_playbooks_service),
-) -> PlaybookSelectionResponse:
+) -> PlaybookResponse:
     try:
         return service.load_playbook_selection(name)
     except ServiceError as err:
@@ -75,13 +75,11 @@ async def delete_playbook_version(
     service: PlaybooksService = Depends(get_playbooks_service),
 ) -> PlaybookVersionResponse:
     try:
-        return PlaybookVersionResponse(
-            **service.delete_playbook_version(
-                name,
-                version,
-                request.default_version,
-                actor_id,
-            )
+        return service.delete_playbook_version(
+            name,
+            version,
+            request.default_version,
+            actor_id,
         )
     except ServiceError as err:
         raise_http_from_service_error(err)

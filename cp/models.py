@@ -363,11 +363,11 @@ class Playbook(PlaybookOverview):
     content: bytes | None = None
 
 
-class PlaybookSelectionResponse(BaseModel):
+class PlaybookResponse(BaseModel):
     name: str
-    playbook_version: str
+    version: str
     default_version: str
-    playbook_versions: list[str]
+    available_versions: list[str]
     original_content: str
     modified_content: str
 

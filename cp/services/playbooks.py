@@ -8,7 +8,7 @@ from ..models import (
     Event,
     Playbook,
     PlaybookOverview,
-    PlaybookSelectionResponse,
+    PlaybookResponse,
     PlaybookVersionResponse,
 )
 from ..repos.base import BaseRepo
@@ -20,7 +20,7 @@ class PlaybooksService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
-    def load_playbook_selection(self, name: str) -> PlaybookSelectionResponse:
+    def load_playbook_selection(self, name: str) -> PlaybookResponse:
         try:
             versions = self.repo.list_playbook_versions(name)
         except RepositoryError as err:
@@ -42,11 +42,11 @@ class PlaybooksService:
             ) from err
         content = PlaybooksService._decode_playbook(playbook)
 
-        return PlaybookSelectionResponse(
+        return PlaybookResponse(
             name=name,
-            playbook_version=selected_version,
+            version=selected_version,
             default_version=selected_version,
-            playbook_versions=version_strings,
+            available_versions=version_strings,
             original_content=content,
             modified_content=content,
         )
@@ -61,11 +61,11 @@ class PlaybooksService:
                 fallback_message=f"Unable to load playbook '{name}'.",
             ) from err
         content = PlaybooksService._decode_playbook(playbook)
-        return {
-            "playbook_version": version,
-            "original_content": content,
-            "modified_content": content,
-        }
+        return PlaybookVersionResponse(
+            playbook_version=version,
+            original_content=content,
+            modified_content=content,
+        )
 
     def set_default_playbook(self, name: str, version: str, updated_by: str) -> None:
         try:
@@ -89,7 +89,7 @@ class PlaybooksService:
         version: str,
         default_version: str,
         deleted_by: str,
-    ) -> dict:
+    ) -> PlaybookVersionResponse:
         if version == default_version:
             raise ServiceValidationError("Cannot delete the default version.")
 
@@ -113,15 +113,13 @@ class PlaybooksService:
                 fallback_message=f"Unable to delete playbook version for '{name}'.",
             ) from err
 
-        return {
-            "playbook_versions": sorted(
-                [x.version.strftime(STRFTIME) for x in versions]
-            ),
-            "playbook_version": selected_version,
-            "default_version": default_version,
-            "original_content": content,
-            "modified_content": content,
-        }
+        return PlaybookVersionResponse(
+            playbook_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
+            playbook_version=selected_version,
+            default_version=default_version,
+            original_content=content,
+            modified_content=content,
+        )
 
     def save_playbook_content(
         self, name: str, content: str, created_by: str
