@@ -517,6 +517,8 @@
                 <span x-show="!clusterLoading.details">Refresh</span>
                 <span x-show="clusterLoading.details">Loading…</span>
               </button>
+              <button class="btn" type="button" @click="openClusterJobs()">Show Jobs</button>
+              <button class="btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
             </div>
           </div>
         </aside>
@@ -544,11 +546,17 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Overview</div>
-                    <h3 class="dashboard-card-title">Cluster Summary</h3>
+                    <h3 class="dashboard-card-title">Cluster Footprint</h3>
                   </div>
-                  <div class="dashboard-stat" x-text="selectedCluster?.node_count ?? '-'"></div>
+                  <div class="dashboard-stat"
+                    x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * (Array.isArray(selectedCluster.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0)) : '-'"></div>
                 </div>
                 <div class="cluster-facts">
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Total Footprint</span>
+                    <span
+                      x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * (Array.isArray(selectedCluster.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0)) : '-'"></span>
+                  </div>
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Status</span>
                     <span class="status" :class="serversStatusClass(selectedCluster?.status)">
@@ -563,6 +571,10 @@
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Version</span>
                     <span class="ip-pill" x-text="selectedCluster?.version || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Node Count</span>
+                    <span x-text="selectedCluster?.node_count ?? '-'"></span>
                   </div>
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">CPU / Node</span>
@@ -631,10 +643,18 @@
                   <template x-for="region in (selectedCluster?.cluster_inventory || [])" :key="`${region.cloud}-${region.region}`">
                     <div class="cluster-list-item">
                       <div class="cluster-list-title">
-                        <span class="service-pill" x-text="region.cloud || '-'"></span>
+                        <img x-show="cloudLogoForCloud(region.cloud)" :src="cloudLogoForCloud(region.cloud)" alt=""
+                          class="cluster-cloud-logo" />
                         <span x-text="region.region || '-'"></span>
                       </div>
-                      <div class="cluster-list-copy" x-text="Array.isArray(region.nodes) && region.nodes.length ? region.nodes.join(', ') : 'No nodes listed'"></div>
+                      <div class="cluster-list-copy cluster-list-pills" x-show="Array.isArray(region.nodes) && region.nodes.length">
+                        <template x-for="node in region.nodes" :key="`${region.region}-${node}`">
+                          <span class="ip-pill" x-text="node"></span>
+                        </template>
+                      </div>
+                      <div class="cluster-list-copy" x-show="!Array.isArray(region.nodes) || region.nodes.length === 0">
+                        No nodes listed
+                      </div>
                     </div>
                   </template>
                   <div class="cluster-list-item" x-show="!selectedCluster?.cluster_inventory || selectedCluster.cluster_inventory.length === 0">
@@ -655,7 +675,8 @@
                   <template x-for="lb in (selectedCluster?.lbs_inventory || [])" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
                     <div class="cluster-list-item">
                       <div class="cluster-list-title">
-                        <span class="service-pill" x-text="lb.cloud || '-'"></span>
+                        <img x-show="cloudLogoForCloud(lb.cloud)" :src="cloudLogoForCloud(lb.cloud)" alt=""
+                          class="cluster-cloud-logo" />
                         <span x-text="lb.region || '-'"></span>
                       </div>
                       <div class="cluster-list-copy">
@@ -676,20 +697,32 @@
                   <div class="dashboard-card-kicker">Actions</div>
                   <h3 class="dashboard-card-title">Cluster Operations</h3>
                 </div>
-                <div class="dashboard-stat">8</div>
+                <div class="dashboard-stat">2</div>
               </div>
-              <div class="cluster-action-grid">
-                <button class="btn btn-danger cluster-action-btn" type="button"
-                  @click="openClusterDeleteConfirm()">Delete Cluster</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show backups')">Show Backups</button>
-                <button class="btn cluster-action-btn" type="button" @click="openClusterJobs()">Show Jobs</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Create users')">Create Users</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
-                <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
-                  :disabled="clusterLoading.scale">Scale Cluster</button>
-                <button class="btn cluster-action-btn" type="button" @click="openClusterUpgradeModal()"
-                  :disabled="clusterLoading.upgrade">Upgrade Cluster</button>
-                <button class="btn cluster-action-btn" type="button" @click="triggerClusterAction('Debug cluster')">Debug Cluster</button>
+              <div class="cluster-action-sections">
+                <div style="display:grid; gap:10px;">
+                  <div class="metric-label">Cluster Actions</div>
+                  <div class="cluster-action-grid">
+                    <button class="btn cluster-action-btn" type="button" @click="openClusterCreateModal()"
+                      :disabled="clusterLoading.create">Create Cluster</button>
+                    <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
+                      :disabled="clusterLoading.scale">Scale Cluster</button>
+                    <button class="btn cluster-action-btn" type="button"
+                      @click="triggerClusterAction('Debug cluster')">Debug Cluster</button>
+                    <button class="btn btn-danger cluster-action-btn" type="button"
+                      @click="openClusterDeleteConfirm()">Delete Cluster</button>
+                  </div>
+                </div>
+
+                <div style="display:grid; gap:10px;">
+                  <div class="metric-label">Database Actions</div>
+                  <div class="cluster-action-grid">
+                    <button class="btn cluster-action-btn" type="button"
+                      @click="triggerClusterAction('User management')">User Management</button>
+                    <button class="btn cluster-action-btn" type="button"
+                      @click="triggerClusterAction('Show backup')">Show Backup</button>
+                  </div>
+                </div>
               </div>
             </section>
           </div>

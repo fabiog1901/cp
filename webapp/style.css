@@ -1670,18 +1670,37 @@ tbody tr:hover {
   flex-wrap: wrap;
 }
 
+.cluster-cloud-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: 0 0 18px;
+}
+
 .cluster-list-copy {
   color: var(--muted);
   line-height: 1.55;
+}
+
+.cluster-list-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .cluster-actions-card {
   min-height: auto;
 }
 
+.cluster-action-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .cluster-action-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -1700,8 +1719,8 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
-  .cluster-action-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .cluster-action-sections {
+    grid-template-columns: 1fr;
   }
 }
 

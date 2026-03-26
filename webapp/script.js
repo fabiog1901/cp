@@ -457,12 +457,25 @@ window.app = function () {
       return String(regionId || "").trim().slice(0, 3).toLowerCase();
     },
 
-    cloudLogoForRegion(regionId) {
-      const cloudKey = this.cloudKeyFromRegion(regionId);
+    cloudKey(value) {
+      const normalized = String(value || "").trim().toLowerCase();
+      if (normalized === "azure") return "azr";
+      if (normalized.startsWith("aws")) return "aws";
+      if (normalized.startsWith("azr")) return "azr";
+      if (normalized.startsWith("gcp")) return "gcp";
+      return normalized.slice(0, 3);
+    },
+
+    cloudLogoForCloud(cloud) {
+      const cloudKey = this.cloudKey(cloud);
       if (["aws", "azr", "gcp"].includes(cloudKey)) {
         return `/static/${cloudKey}.png`;
       }
       return "";
+    },
+
+    cloudLogoForRegion(regionId) {
+      return this.cloudLogoForCloud(this.cloudKeyFromRegion(regionId));
     },
 
     toUtcStringMaybe(value) {
