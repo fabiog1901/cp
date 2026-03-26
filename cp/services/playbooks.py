@@ -123,7 +123,7 @@ class PlaybooksService:
             ) from err
 
         return PlaybookVersionResponse(
-            playbook_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
+            available_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
             playbook_version=selected_version,
             default_version=default_version,
             original_content=content,
@@ -156,7 +156,7 @@ class PlaybooksService:
                 fallback_message=f"Unable to save playbook '{name}'.",
             ) from err
         return PlaybookVersionResponse(
-            playbook_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
+            available_versions=sorted([x.version.strftime(STRFTIME) for x in versions]),
             playbook_version=saved_version,
             original_content=content,
             modified_content=content,
