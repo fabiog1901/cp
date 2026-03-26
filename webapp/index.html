@@ -9,7 +9,6 @@
 
   <link rel="stylesheet" href="/style.css" />
 
-  <script defer src="/util.js"></script>
   <!-- App code must load BEFORE Alpine initializes x-data="app()" -->
   <script defer src="/script.js"></script>
 
@@ -282,6 +281,12 @@
           <div>
             <h2>Actions</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" x-show="canManageCompute()" @click="openClusterCreateModal()"
+                :disabled="clusterLoading.create">
+                <span x-show="!clusterLoading.create">Create Cluster</span>
+                <span x-show="clusterLoading.create">Loading…</span>
+              </button>
+
               <button class="btn" @click="refreshServers()" :disabled="serversLoading.list">
                 <span x-show="!serversLoading.list">Refresh</span>
                 <span x-show="serversLoading.list">Loading…</span>
@@ -306,6 +311,12 @@
             <div class="main-actions">
               <input type="search" class="search-input" placeholder="Filter by cluster id, group, owner, version…"
                 x-model="serversFilterQuery" @input="persistServersFilter(); applyServersFilterSort();" />
+
+              <button class="btn" type="button" x-show="canManageCompute()" @click="openClusterCreateModal()"
+                :disabled="clusterLoading.create">
+                <span x-show="!clusterLoading.create">Create Cluster</span>
+                <span x-show="clusterLoading.create">Loading…</span>
+              </button>
 
               <div class="pill">Updated (UTC): <span x-text="serversLastUpdatedUtc"></span></div>
             </div>
@@ -362,6 +373,129 @@
 
         </section>
       </main>
+
+      <!-- Cluster Create Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterCreate.open" x-transition
+        @keydown.escape.window="closeClusterCreateModal()">
+        <div class="modal" @click.outside="closeClusterCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterCreate" x-text="modalErrors.clusterCreate"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This requests a new cluster through <span class="ip-pill">POST /api/clusters/</span>.
+            </div>
+
+            <label class="field">
+              <span class="field-label">Cluster Name</span>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input class="search-input" type="text" x-model="modal.clusterCreate.name" placeholder="funny-cluster-name" />
+                <button class="btn btn-secondary" type="button" @click="refreshClusterCreateName()">Regenerate</button>
+              </div>
+            </label>
+
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px;">
+              <label class="field">
+                <span class="field-label">Node Count</span>
+                <select class="search-input" x-model="modal.clusterCreate.node_count">
+                  <template x-for="count in clusterCreateOptions.node_counts" :key="`node-count-${count}`">
+                    <option :value="String(count)" x-text="count"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Node vCPUs</span>
+                <select class="search-input" x-model="modal.clusterCreate.node_cpus">
+                  <template x-for="cpu in clusterCreateOptions.cpus_per_node" :key="`node-cpu-${cpu}`">
+                    <option :value="String(cpu)" x-text="cpu"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px;">
+              <label class="field">
+                <span class="field-label">Disk Size</span>
+                <select class="search-input" x-model="modal.clusterCreate.disk_size">
+                  <template x-for="size in clusterCreateOptions.disk_sizes" :key="`disk-size-${size}`">
+                    <option :value="String(size)" x-text="clusterCreateDiskSizeLabel(size)"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Cluster Version</span>
+                <select class="search-input" x-model="modal.clusterCreate.version">
+                  <template x-for="version in clusterCreateOptions.versions" :key="`cluster-version-${version}`">
+                    <option :value="version" x-text="version"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Owner</span>
+              <select class="search-input" x-model="modal.clusterCreate.owner">
+                <template x-for="group in clusterOwnerGroups()" :key="`cluster-owner-${group}`">
+                  <option :value="group" x-text="group"></option>
+                </template>
+              </select>
+            </label>
+
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="metric-label">Regions</div>
+
+              <div class="cluster-region-pane">
+                <div class="cluster-region-pane-title">Selected</div>
+                <div class="cluster-region-selected" x-show="clusterCreateSelectedRegions().length > 0">
+                  <template x-for="regionId in clusterCreateSelectedRegions()" :key="`selected-region-${regionId}`">
+                    <button type="button" class="region-pill region-pill-selected"
+                      @click="removeClusterCreateRegion(regionId)">
+                      <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionId"></span>
+                      <span class="region-pill-remove">Remove</span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterCreateSelectedRegions().length === 0">
+                  Click a region from Available to add it here.
+                </div>
+              </div>
+
+              <div class="cluster-region-pane">
+                <div class="cluster-region-pane-title">Available</div>
+                <div class="cluster-region-options" x-show="clusterCreateAvailableRegions().length > 0">
+                  <template x-for="region in clusterCreateAvailableRegions()" :key="`region-option-${region.region_id}`">
+                    <button type="button" class="region-pill"
+                      @click="addClusterCreateRegion(region.region_id)">
+                      <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="region.region_id"></span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterCreateAvailableRegions().length === 0">
+                  All available regions are already selected.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterCreateModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.create || !modal.clusterCreate.owner" @click="createCluster()">
+              <span x-show="!clusterLoading.create">CREATE CLUSTER</span>
+              <span x-show="clusterLoading.create">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- CLUSTER DETAIL VIEW -->
       <main class="layout" x-show="view === 'cluster'">

@@ -39,8 +39,15 @@ window.app = function () {
     _serversAutoTimer: null,
     selectedClusterId: "",
     selectedCluster: null,
-    clusterLoading: { details: false, delete: false },
+    clusterLoading: { details: false, delete: false, create: false },
     clusterConnectCopied: false,
+    clusterCreateOptions: {
+      versions: [],
+      node_counts: [],
+      cpus_per_node: [],
+      disk_sizes: [],
+      regions: [],
+    },
 
     // ---------- Jobs state ----------
     jobs: [],
@@ -248,6 +255,16 @@ window.app = function () {
         open: false,
         cluster_id: "",
       },
+      clusterCreate: {
+        open: false,
+        name: "",
+        node_count: "",
+        node_cpus: "",
+        disk_size: "",
+        regions: [],
+        version: "",
+        owner: "",
+      },
       apiKeySecret: {
         open: false,
         access_key: "",
@@ -281,6 +298,7 @@ window.app = function () {
       regionCreate: "",
       regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
+      clusterCreate: "",
       settingResetConfirm: "",
     },
 
@@ -306,11 +324,118 @@ window.app = function () {
     _aceReady: false,
 
     // ---------- UTC helpers ----------
+    funnyWords: [
+      "abracadabra",
+      "amazeballs",
+      "arglebargle",
+      "awesomesauce",
+      "balderdash",
+      "bamboozle",
+      "bazinga",
+      "brouhaha",
+      "bubblegum",
+      "buckaroo",
+      "bumfuzzle",
+      "cacophony",
+      "catawampus",
+      "chortle",
+      "codswallop",
+      "collywobbles",
+      "defenestrate",
+      "dillydally",
+      "dingbat",
+      "doohickey",
+      "flabbergasted",
+      "flapdoodle",
+      "flibbertigibbet",
+      "flummox",
+      "folderol",
+      "gadzooks",
+      "gobbledygook",
+      "goofball",
+      "hocuspocus",
+      "hodgepodge",
+      "hootenanny",
+      "hornswoggle",
+      "hullabaloo",
+      "humdinger",
+      "jabberwocky",
+      "jamboree",
+      "kerfuffle",
+      "knickknack",
+      "kookaburra",
+      "lollygag",
+      "malarkey",
+      "mumbojumbo",
+      "nincompoop",
+      "poppycock",
+      "rigmarole",
+      "skedaddle",
+      "thingamabob",
+      "whatchamacallit",
+      "whimsy",
+      "widdershins",
+      "wonky",
+      "yippee",
+      "zoinks",
+    ],
+
     utcNowString() {
       return new Date()
         .toISOString()
         .replace("T", " ")
         .replace(/\.\d{3}Z$/, "");
+    },
+
+    getFunnyName() {
+      const pick = () =>
+        this.funnyWords[Math.floor(Math.random() * this.funnyWords.length)];
+      return `${pick()}-${pick()}`;
+    },
+
+    getHumanSize(valueInGb) {
+      const suffixes = [
+        "kB",
+        "MB",
+        "GB",
+        "TB",
+        "PB",
+        "EB",
+        "ZB",
+        "YB",
+        "RB",
+        "QB",
+      ];
+      const base = 1000;
+      const bytes = Number(valueInGb) * 1_000_000_000;
+
+      if (!Number.isFinite(bytes) || bytes <= 0) {
+        return `0 ${suffixes[0]}`;
+      }
+
+      const exponent = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(base)),
+        suffixes.length - 1,
+      );
+      const scaled = bytes / base ** exponent;
+      const rounded = scaled.toFixed(1);
+
+      if (rounded.endsWith(".0")) {
+        return `${rounded.slice(0, -2)} ${suffixes[exponent]}`;
+      }
+      return `${rounded} ${suffixes[exponent]}`;
+    },
+
+    cloudKeyFromRegion(regionId) {
+      return String(regionId || "").trim().slice(0, 3).toLowerCase();
+    },
+
+    cloudLogoForRegion(regionId) {
+      const cloudKey = this.cloudKeyFromRegion(regionId);
+      if (["aws", "azr", "gcp"].includes(cloudKey)) {
+        return `/static/${cloudKey}.png`;
+      }
+      return "";
     },
 
     toUtcStringMaybe(value) {
@@ -587,6 +712,21 @@ window.app = function () {
       });
 
       return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
+    },
+
+    clusterOwnerGroups() {
+      const userGroups = new Set(this.authGroups());
+      const eligibleGroups = new Set();
+
+      Object.values(this.authRoleGroups()).forEach((groups) => {
+        this.normalizeClaimValues(groups).forEach((group) => {
+          if (userGroups.has(group)) {
+            eligibleGroups.add(group);
+          }
+        });
+      });
+
+      return [...eligibleGroups].sort((a, b) => a.localeCompare(b));
     },
 
     authRoleAnalysis() {
@@ -1418,6 +1558,227 @@ window.app = function () {
         this.serversLastUpdatedUtc = this.utcNowString();
       } finally {
         this.serversLoading.list = false;
+      }
+    },
+
+    clusterCreateRegionOptions() {
+      return Array.isArray(this.clusterCreateOptions?.regions)
+        ? this.clusterCreateOptions.regions
+        : [];
+    },
+
+    clusterCreateAvailableRegions() {
+      return this.clusterCreateRegionOptions().filter(
+        (region) => !this.clusterCreateHasRegion(region?.region_id),
+      );
+    },
+
+    clusterCreateSelectedRegions() {
+      return Array.isArray(this.modal.clusterCreate.regions)
+        ? this.modal.clusterCreate.regions
+        : [];
+    },
+
+    clusterCreateHasRegion(regionId) {
+      return this.clusterCreateSelectedRegions().includes(String(regionId || ""));
+    },
+
+    addClusterCreateRegion(regionId) {
+      const normalized = String(regionId || "").trim();
+      if (!normalized || this.clusterCreateHasRegion(normalized)) return;
+      this.modal.clusterCreate.regions = [
+        ...this.clusterCreateSelectedRegions(),
+        normalized,
+      ];
+    },
+
+    removeClusterCreateRegion(regionId) {
+      const normalized = String(regionId || "").trim();
+      this.modal.clusterCreate.regions = this.clusterCreateSelectedRegions().filter(
+        (entry) => entry !== normalized,
+      );
+    },
+
+    toggleClusterCreateRegion(regionId) {
+      if (this.clusterCreateHasRegion(regionId)) {
+        this.removeClusterCreateRegion(regionId);
+        return;
+      }
+      this.addClusterCreateRegion(regionId);
+    },
+
+    clusterCreateDiskSizeLabel(sizeValue) {
+      const size = Number(sizeValue);
+      if (!Number.isFinite(size) || size <= 0) return "-";
+      return `${size} GB (${this.getHumanSize(size)})`;
+    },
+
+    refreshClusterCreateName() {
+      this.modal.clusterCreate.name = this.getFunnyName();
+    },
+
+    async loadClusterCreateOptions() {
+      this.clusterLoading.create = true;
+      this.clearModalError("clusterCreate");
+      try {
+        const data = await this.apiFetch("/clusters/options", { method: "GET" });
+        this.clusterCreateOptions = {
+          versions: Array.isArray(data?.versions) ? data.versions : [],
+          node_counts: Array.isArray(data?.node_counts) ? data.node_counts : [],
+          cpus_per_node: Array.isArray(data?.cpus_per_node) ? data.cpus_per_node : [],
+          disk_sizes: Array.isArray(data?.disk_sizes) ? data.disk_sizes : [],
+          regions: Array.isArray(data?.regions) ? data.regions : [],
+        };
+      } catch (e) {
+        this.setModalError(
+          "clusterCreate",
+          e,
+          "Failed to load cluster create options.",
+        );
+      } finally {
+        this.clusterLoading.create = false;
+      }
+    },
+
+    async openClusterCreateModal() {
+      this.clearModalError("clusterCreate");
+      this.modal.clusterCreate.open = true;
+      await this.loadClusterCreateOptions();
+
+      const ownerGroups = this.clusterOwnerGroups();
+      const nodeCounts = this.clusterCreateOptions.node_counts || [];
+      const cpuOptions = this.clusterCreateOptions.cpus_per_node || [];
+      const diskSizes = this.clusterCreateOptions.disk_sizes || [];
+      const versionOptions = this.clusterCreateOptions.versions || [];
+      const regionOptions = this.clusterCreateRegionOptions();
+
+      this.refreshClusterCreateName();
+      this.modal.clusterCreate.node_count = nodeCounts.length
+        ? String(nodeCounts[0])
+        : "";
+      this.modal.clusterCreate.node_cpus = cpuOptions.length
+        ? String(cpuOptions[0])
+        : "";
+      this.modal.clusterCreate.disk_size = diskSizes.length
+        ? String(diskSizes[0])
+        : "";
+      this.modal.clusterCreate.version = versionOptions.length
+        ? String(versionOptions[0])
+        : "";
+      this.modal.clusterCreate.regions = [];
+      this.modal.clusterCreate.owner = ownerGroups.length ? ownerGroups[0] : "";
+
+      if (ownerGroups.length === 0 && !this.modalErrors.clusterCreate) {
+        this.modalErrors.clusterCreate =
+          "No eligible owner groups were found in your CP role mappings.";
+      }
+    },
+
+    closeClusterCreateModal() {
+      this.modal.clusterCreate.open = false;
+      this.modal.clusterCreate.name = "";
+      this.modal.clusterCreate.node_count = "";
+      this.modal.clusterCreate.node_cpus = "";
+      this.modal.clusterCreate.disk_size = "";
+      this.modal.clusterCreate.regions = [];
+      this.modal.clusterCreate.version = "";
+      this.modal.clusterCreate.owner = "";
+      this.clearModalError("clusterCreate");
+    },
+
+    async createCluster() {
+      const name = String(this.modal.clusterCreate.name || "").trim();
+      const nodeCount = Number(this.modal.clusterCreate.node_count);
+      const nodeCpus = Number(this.modal.clusterCreate.node_cpus);
+      const diskSize = Number(this.modal.clusterCreate.disk_size);
+      const regions = this.clusterCreateSelectedRegions();
+      const version = String(this.modal.clusterCreate.version || "").trim();
+      const owner = String(this.modal.clusterCreate.owner || "").trim();
+
+      if (!name) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Cluster name is required."),
+          "Cluster name is required.",
+        );
+        return;
+      }
+      if (!Number.isFinite(nodeCount) || nodeCount <= 0) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Node count is required."),
+          "Node count is required.",
+        );
+        return;
+      }
+      if (!Number.isFinite(nodeCpus) || nodeCpus <= 0) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Node vCPUs is required."),
+          "Node vCPUs is required.",
+        );
+        return;
+      }
+      if (!version || !owner) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Complete all cluster fields before submitting."),
+          "Complete all cluster fields before submitting.",
+        );
+        return;
+      }
+      if (regions.length === 0) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Select at least one region."),
+          "Select at least one region.",
+        );
+        return;
+      }
+      if (regions.length * nodeCount < 3) {
+        this.setModalError(
+          "clusterCreate",
+          new Error(
+            "Selected regions multiplied by node count must be at least 3.",
+          ),
+          "Selected regions multiplied by node count must be at least 3.",
+        );
+        return;
+      }
+      if (!Number.isFinite(diskSize) || diskSize <= 0) {
+        this.setModalError(
+          "clusterCreate",
+          new Error("Disk size is required."),
+          "Disk size is required.",
+        );
+        return;
+      }
+
+      this.clusterLoading.create = true;
+      this.clearModalError("clusterCreate");
+      try {
+        const result = await this.apiFetch("/clusters/", {
+          method: "POST",
+          body: {
+            name,
+            node_count: nodeCount,
+            node_cpus: nodeCpus,
+            disk_size: diskSize,
+            regions,
+            version,
+            group: owner,
+          },
+        });
+        this.closeClusterCreateModal();
+        await this.refreshServers();
+        this.setActionNotice(
+          `Cluster '${name}' creation requested.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError("clusterCreate", e, "Failed to create cluster.");
+      } finally {
+        this.clusterLoading.create = false;
       }
     },
 

@@ -23,6 +23,7 @@ from ..models import (
     Region,
     RegionOption,
     RoleGroupMap,
+    SettingKey,
     SettingRecord,
     Task,
     Version,
@@ -57,20 +58,17 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def get_setting(self, setting_id: str) -> str | None:
+    def get_setting(self, setting_key: SettingKey) -> SettingRecord | None:
         pass
 
     @abstractmethod
-    def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
+    def update_setting(self, setting_key: SettingKey, value: str, updated_by: str) -> None:
         pass
 
     @abstractmethod
-    def reset_setting(self, setting_id: str, updated_by: str) -> None:
+    def reset_setting(self, setting_key: SettingKey, updated_by: str) -> None:
         pass
 
-    @abstractmethod
-    def get_secret(self, secret_id: str) -> str | None:
-        pass
 
     @abstractmethod
     def list_role_group_mappings(self) -> list[RoleGroupMap]:

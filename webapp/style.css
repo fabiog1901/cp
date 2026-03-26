@@ -630,6 +630,74 @@ td:first-child {
   font-size: 12px;
 }
 
+.cluster-region-selected,
+.cluster-region-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cluster-region-pane {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.cluster-region-pane-title {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.region-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.82);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease,
+    transform 120ms ease, box-shadow 120ms ease;
+}
+
+.region-pill:hover {
+  border-color: rgba(56, 189, 248, 0.85);
+  background: rgba(30, 41, 59, 0.95);
+  transform: translateY(-1px);
+}
+
+.region-pill-selected {
+  border-color: rgba(45, 212, 191, 0.7);
+  background: linear-gradient(
+    135deg,
+    rgba(13, 148, 136, 0.22),
+    rgba(15, 23, 42, 0.92)
+  );
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.18);
+}
+
+.region-pill-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: 0 0 16px;
+}
+
+.region-pill-remove {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .event-action-pill {
   min-width: 110px;
   justify-content: center;

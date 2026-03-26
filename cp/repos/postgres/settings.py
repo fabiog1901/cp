@@ -28,25 +28,25 @@ class SettingsRepo(BaseRepo):
         )
 
     def get_setting(self, key: SettingKey) -> SettingRecord | None:
-        row = fetch_one(
+        return fetch_one(
             """
-                    SELECT
-                        key,
-                        value,
-                        default_value,
-                        value_type,
-                        category,
-                        is_secret,
-                        description,
-                        updated_at,
-                        updated_by
-                    FROM settings
-                    WHERE key = %s
-                    """,
+            SELECT
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
+            FROM settings
+            WHERE key = %s
+            """,
             (key,),
+            SettingRecord,
         )
 
-        return self._setting_from_row(row) if row is not None else None
 
     def update_setting(
         self,
@@ -83,26 +83,25 @@ class SettingsRepo(BaseRepo):
         *,
         updated_by: str | None = None,
     ) -> SettingRecord | None:
-        row = fetch_one(
+        return fetch_one(
             """
-                    UPDATE settings
-                    SET
-                        value = NULL,
-                        updated_at = CURRENT_TIMESTAMP,
-                        updated_by = %s
-                    WHERE key = %s
-                    RETURNING
-                        key,
-                        value,
-                        default_value,
-                        value_type,
-                        category,
-                        is_secret,
-                        description,
-                        updated_at,
-                        updated_by
-                    """,
+            UPDATE settings
+            SET
+                value = NULL,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = %s
+            WHERE key = %s
+            RETURNING
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
+            """,
             (updated_by, key),
+            SettingRecord
         )
-
-        return self._setting_from_row(row) if row is not None else None

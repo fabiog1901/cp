@@ -10,6 +10,7 @@ from ...models import (
     InventoryRegion,
     JobState,
     Region,
+    SettingKey,
 )
 from ..ansible import MyRunner
 
@@ -173,17 +174,17 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "deployment_id": cluster_request.name,
             "deployment": deployment,
             "cockroachdb_version": cluster_request.version,
-            "cockroachdb_cluster_organization": repo.get_setting("licence_org"),
-            "cockroachdb_enterprise_license": repo.get_setting("licence_key"),
+            "cockroachdb_cluster_organization": repo.get_setting(SettingKey.licence_org).value,
+            "cockroachdb_enterprise_license": repo.get_setting(SettingKey.licence_key).value,
             "dbusers": [
                 {
-                    "name": repo.get_setting("default_username"),
-                    "password": repo.get_setting("default_password"),
+                    "name": repo.get_setting(SettingKey.default_username).value,
+                    "password": repo.get_setting(SettingKey.default_password).value,
                     "is_cert": False,
                     "is_admin": True,
                 }
             ],
-            "cloud_storage_url": repo.get_setting("cloud_storage_url"),
+            "cloud_storage_url": repo.get_setting(SettingKey.cloud_storage_url).value,
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(
