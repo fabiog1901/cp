@@ -37,6 +37,8 @@ window.app = function () {
     serversLoading: { list: false, action: false },
     serversAutoRefreshEnabled: true,
     _serversAutoTimer: null,
+    clusterDetailsAutoRefreshEnabled: true,
+    _clusterDetailsAutoTimer: null,
     selectedClusterId: "",
     selectedCluster: null,
     clusterLoading: {
@@ -143,6 +145,8 @@ window.app = function () {
     versionsFilterQuery: "",
     versionsLastUpdatedUtc: null,
     versionsLoading: { list: false, create: false, delete: false },
+    versionsAutoRefreshEnabled: true,
+    _versionsAutoTimer: null,
 
     // ---------- Regions state ----------
     regions: [],
@@ -150,6 +154,8 @@ window.app = function () {
     regionsFilterQuery: "",
     regionsLastUpdatedUtc: null,
     regionsLoading: { list: false, create: false, delete: false },
+    regionsAutoRefreshEnabled: true,
+    _regionsAutoTimer: null,
 
     renderedAtUtc: "now",
 
@@ -621,6 +627,10 @@ window.app = function () {
         clearInterval(this._serversAutoTimer);
         this._serversAutoTimer = null;
       }
+      if (this._clusterDetailsAutoTimer) {
+        clearInterval(this._clusterDetailsAutoTimer);
+        this._clusterDetailsAutoTimer = null;
+      }
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
@@ -632,6 +642,14 @@ window.app = function () {
       if (this._jobDetailsAutoTimer) {
         clearInterval(this._jobDetailsAutoTimer);
         this._jobDetailsAutoTimer = null;
+      }
+      if (this._versionsAutoTimer) {
+        clearInterval(this._versionsAutoTimer);
+        this._versionsAutoTimer = null;
+      }
+      if (this._regionsAutoTimer) {
+        clearInterval(this._regionsAutoTimer);
+        this._regionsAutoTimer = null;
       }
       if (this._apiKeysAutoTimer) {
         clearInterval(this._apiKeysAutoTimer);
@@ -1253,6 +1271,15 @@ window.app = function () {
           this.refreshServers();
       }, 15_000);
 
+      this._clusterDetailsAutoTimer = setInterval(() => {
+        if (
+          this.clusterDetailsAutoRefreshEnabled &&
+          this.view === "cluster" &&
+          this.selectedClusterId
+        )
+          this.refreshSelectedCluster();
+      }, 5_000);
+
       this._jobsAutoTimer = setInterval(() => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
@@ -1275,6 +1302,16 @@ window.app = function () {
       this._apiKeysAutoTimer = setInterval(() => {
         if (this.apiKeysAutoRefreshEnabled && this.view === "api_keys")
           this.refreshApiKeys();
+      }, 20_000);
+
+      this._versionsAutoTimer = setInterval(() => {
+        if (this.versionsAutoRefreshEnabled && this.view === "versions")
+          this.refreshVersions();
+      }, 20_000);
+
+      this._regionsAutoTimer = setInterval(() => {
+        if (this.regionsAutoRefreshEnabled && this.view === "regions")
+          this.refreshRegions();
       }, 20_000);
 
       this._settingsAutoTimer = setInterval(() => {

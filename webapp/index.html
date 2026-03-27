@@ -517,6 +517,11 @@
                 <span x-show="!clusterLoading.details">Refresh</span>
                 <span x-show="clusterLoading.details">Loading…</span>
               </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDetailsAutoRefreshEnabled" />
+                Auto-refresh (5s)
+              </label>
               <button class="btn" type="button" @click="openClusterJobs()">Show Jobs</button>
               <button class="btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
             </div>
@@ -674,12 +679,14 @@
                   <div class="dashboard-card-kicker">Actions</div>
                   <h3 class="dashboard-card-title">Cluster Operations</h3>
                 </div>
-                <div class="dashboard-stat">2</div>
+                <div class="dashboard-stat">3</div>
               </div>
               <div class="cluster-action-sections">
                 <div style="display:grid; gap:10px;">
                   <div class="metric-label">Cluster Actions</div>
                   <div class="cluster-action-grid">
+                    <button class="btn cluster-action-btn" type="button" @click="openClusterUpgradeModal()"
+                      :disabled="clusterLoading.upgrade">Upgrade Cluster</button>
                     <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
                       :disabled="clusterLoading.scale">Scale Cluster</button>
                     <button class="btn cluster-action-btn" type="button"
@@ -1718,6 +1725,11 @@
                 <span x-show="!versionsLoading.list">Refresh</span>
                 <span x-show="versionsLoading.list">Loading…</span>
               </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="versionsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
               <button type="button" class="btn btn-warn"
                 @click="modal.versionCreate.version = ''; clearModalError('versionCreate'); modal.versionCreate.open = true">
                 Add version…
@@ -1879,6 +1891,11 @@
                 <span x-show="!regionsLoading.list">Refresh</span>
                 <span x-show="regionsLoading.list">Loading…</span>
               </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="regionsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
               <button type="button" class="btn btn-warn" @click="openRegionCreateModal()">Add region…</button>
             </div>
           </div>
