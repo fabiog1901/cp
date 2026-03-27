@@ -254,6 +254,8 @@ class BackupDetails(BaseModel):
     parent_schema_name: str | None
     object_name: str
     object_type: str
+    backup_type: str
+    start_time: dt.datetime | None
     end_time: dt.datetime
 
 
@@ -263,8 +265,8 @@ class BackupPathOption(BaseModel):
 
 class DatabaseUser(BaseModel):
     username: str
-    options: str | None
-    member_of: list[str | None]
+    options: list[str] | None
+    member_of: list[str] | None
 
 
 class NewDatabaseUserRequest(BaseModel):

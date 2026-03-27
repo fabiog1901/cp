@@ -59,7 +59,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' || view === 'cluster_backups' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
@@ -704,7 +704,7 @@
                     <button class="btn cluster-action-btn" type="button"
                       @click="openClusterUsers()">User Management</button>
                     <button class="btn cluster-action-btn" type="button"
-                      @click="triggerClusterAction('Backup management')">Backup Management</button>
+                      @click="openClusterBackups()">Backup Management</button>
                     <button class="btn cluster-action-btn" type="button"
                       @click="triggerClusterAction('Databases management')">Databases Management</button>
                   </div>
@@ -716,6 +716,129 @@
           <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedCluster && !clusterLoading.details">
             <div class="main-title">Cluster not loaded</div>
             <div class="main-subtitle">Select a cluster from the clusters page to view its details.</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- CLUSTER BACKUPS VIEW -->
+      <main class="layout" x-show="view === 'cluster_backups'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/backups</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterBackups()" :disabled="clusterBackupsLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterBackupsLoading.snapshot">Refresh</span>
+                <span x-show="clusterBackupsLoading.snapshot">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterBackupsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Backup Management</div>
+              <div class="main-subtitle">Select a backup path to inspect the objects stored within it.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterBackupsLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="dashboard-home">
+            <section class="dashboard-card cluster-actions-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Backups</div>
+                  <h3 class="dashboard-card-title">Available Backups</h3>
+                </div>
+                <div class="dashboard-stat" x-text="clusterBackups.length || 0"></div>
+              </div>
+              <div class="cluster-list cluster-backup-list">
+                <template x-for="backup in clusterBackups" :key="backup.path">
+                  <button type="button" class="cluster-list-item cluster-backup-item"
+                    style="width:100%; text-align:left; color:inherit; cursor:pointer;"
+                    :style="selectedClusterBackupPath === (backup.path || '') ? 'border-color: rgba(56, 189, 248, 0.75); box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);' : ''"
+                    @click="selectClusterBackup(backup.path)">
+                    <div class="cluster-list-title">
+                      <span class="ip-pill" x-text="backup.path || '-'"></span>
+                    </div>
+                  </button>
+                </template>
+                <div class="cluster-list-item" x-show="!clusterBackupsLoading.snapshot && clusterBackups.length === 0">
+                  <div class="cluster-list-copy">No backups returned.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="dashboard-card cluster-actions-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Details</div>
+                  <h3 class="dashboard-card-title">Backup Contents</h3>
+                </div>
+                <div class="dashboard-stat" x-text="clusterBackupDetails.length || 0"></div>
+              </div>
+              <div class="metric-sub" x-show="selectedClusterBackupPath">
+                Showing details for <span class="ip-pill" x-text="selectedClusterBackupPath"></span>
+              </div>
+              <div class="table-container">
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Database</th>
+                        <th>Schema</th>
+                        <th>Object</th>
+                        <th>Type</th>
+                        <th>Backup Type</th>
+                        <th>Start Time (UTC)</th>
+                        <th>End Time (UTC)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="row in clusterBackupDetails" :key="`${row.database_name || '-'}-${row.parent_schema_name || '-'}-${row.object_name}-${row.object_type}-${row.backup_type}-${row.start_time}-${row.end_time}`">
+                        <tr>
+                          <td><span x-text="row.database_name || '-'"></span></td>
+                          <td><span x-text="row.parent_schema_name || '-'"></span></td>
+                          <td><span x-text="row.object_name || '-'"></span></td>
+                          <td><span class="service-pill" x-text="row.object_type || '-'"></span></td>
+                          <td><span class="service-pill" x-text="row.backup_type || '-'"></span></td>
+                          <td><span x-text="toUtcStringMaybe(row.start_time)"></span></td>
+                          <td><span x-text="toUtcStringMaybe(row.end_time)"></span></td>
+                        </tr>
+                      </template>
+                      <template x-if="selectedClusterBackupPath && !clusterBackupsLoading.details && clusterBackupDetails.length === 0">
+                        <tr>
+                          <td colspan="7" style="padding: 18px; color: var(--muted);">No backup details returned.</td>
+                        </tr>
+                      </template>
+                      <template x-if="!selectedClusterBackupPath">
+                        <tr>
+                          <td colspan="7" style="padding: 18px; color: var(--muted);">Select a backup path to load its details.</td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
       </main>

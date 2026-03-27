@@ -1692,6 +1692,20 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.cluster-backup-list {
+  max-height: 270px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.cluster-backup-item {
+  color: #f8fafc;
+}
+
+.cluster-backup-item .ip-pill {
+  color: #f8fafc;
+}
+
 .cluster-actions-card {
   min-height: auto;
 }

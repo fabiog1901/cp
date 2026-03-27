@@ -71,6 +71,16 @@ window.app = function () {
       password: false,
       revokeRole: false,
     },
+    clusterBackups: [],
+    clusterBackupDetails: [],
+    selectedClusterBackupPath: "",
+    clusterBackupsLastUpdatedUtc: null,
+    clusterBackupsAutoRefreshEnabled: true,
+    _clusterBackupsAutoTimer: null,
+    clusterBackupsLoading: {
+      snapshot: false,
+      details: false,
+    },
     clusterConnectCopiedFor: "",
     clusterCreateOptions: {
       versions: [],
@@ -709,6 +719,10 @@ window.app = function () {
         clearInterval(this._clusterUsersAutoTimer);
         this._clusterUsersAutoTimer = null;
       }
+      if (this._clusterBackupsAutoTimer) {
+        clearInterval(this._clusterBackupsAutoTimer);
+        this._clusterBackupsAutoTimer = null;
+      }
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
@@ -1104,6 +1118,7 @@ window.app = function () {
         cluster: "Cluster details, access points, and actions",
         cluster_dashboard: "Cluster dashboard and live time-series metrics",
         cluster_users: "Cluster database users and role management",
+        cluster_backups: "Cluster backups and backup object details",
         jobs: "Queued and completed orchestration work",
         job: "Job details and task execution history",
         events: "Cluster and platform activity stream",
@@ -1320,6 +1335,7 @@ window.app = function () {
         sView === "cluster" ||
         sView === "cluster_dashboard" ||
         sView === "cluster_users" ||
+        sView === "cluster_backups" ||
         sView === "jobs" ||
         sView === "job" ||
         sView === "admin" ||
@@ -1384,6 +1400,15 @@ window.app = function () {
           this.refreshClusterUsers();
       }, 10_000);
 
+      this._clusterBackupsAutoTimer = setInterval(() => {
+        if (
+          this.clusterBackupsAutoRefreshEnabled &&
+          this.view === "cluster_backups" &&
+          this.selectedClusterId
+        )
+          this.refreshClusterBackups();
+      }, 20_000);
+
       this._jobsAutoTimer = setInterval(() => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
@@ -1429,6 +1454,7 @@ window.app = function () {
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
       else if (this.view === "cluster_users") this.ensureClusterUsersView();
+      else if (this.view === "cluster_backups") this.ensureClusterBackupsView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1456,6 +1482,7 @@ window.app = function () {
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
       else if (this.view === "cluster_users") this.ensureClusterUsersView();
+      else if (this.view === "cluster_backups") this.ensureClusterBackupsView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1623,6 +1650,29 @@ window.app = function () {
         await this.refreshClusterUsers();
       } else {
         this.applyClusterUsersFilter();
+      }
+    },
+
+    async ensureClusterBackupsView() {
+      if (!this.selectedClusterId) {
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        return;
+      }
+      if (
+        !this.selectedCluster ||
+        this.selectedCluster.cluster_id !== this.selectedClusterId
+      ) {
+        await this.refreshSelectedCluster();
+      }
+      if (this.clusterBackups.length === 0 && !this.clusterBackupsLoading.snapshot) {
+        await this.refreshClusterBackups();
+      } else if (
+        this.selectedClusterBackupPath &&
+        this.clusterBackupDetails.length === 0 &&
+        !this.clusterBackupsLoading.details
+      ) {
+        await this.refreshSelectedBackupDetails();
       }
     },
 
@@ -2363,6 +2413,18 @@ window.app = function () {
       this.ensureClusterUsersView();
     },
 
+    openClusterBackups() {
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.selectedClusterId = String(clusterId).trim();
+      localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.view = "cluster_backups";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.ensureClusterBackupsView();
+    },
+
     openClusterDeleteConfirm() {
       const clusterId = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
@@ -3017,6 +3079,83 @@ window.app = function () {
         );
       } finally {
         this.clusterUsersLoading.revokeRole = false;
+      }
+    },
+
+    async refreshClusterBackups() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+      this.clusterBackupsLoading.snapshot = true;
+      try {
+        const snapshot = await this.apiFetch(
+          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/backups`),
+          { method: "GET" },
+        );
+        this.clusterBackups = Array.isArray(snapshot?.backup_paths)
+          ? snapshot.backup_paths
+          : [];
+        if (snapshot?.cluster) {
+          this.selectedCluster = snapshot.cluster;
+        }
+
+        const selectedStillExists = this.clusterBackups.some(
+          (entry) => String(entry?.path || "").trim() === this.selectedClusterBackupPath,
+        );
+        if (!selectedStillExists) {
+          this.selectedClusterBackupPath = String(
+            this.clusterBackups[0]?.path || "",
+          ).trim();
+          this.clusterBackupDetails = [];
+        }
+
+        this.clusterBackupsLastUpdatedUtc = this.utcNowString();
+        if (this.selectedClusterBackupPath) {
+          await this.refreshSelectedBackupDetails();
+        }
+      } catch (e) {
+        console.error(e);
+        this.clusterBackupsLastUpdatedUtc = this.utcNowString();
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load cluster backups."),
+        );
+      } finally {
+        this.clusterBackupsLoading.snapshot = false;
+      }
+    },
+
+    async selectClusterBackup(path) {
+      const normalizedPath = String(path || "").trim();
+      if (!normalizedPath) return;
+      this.selectedClusterBackupPath = normalizedPath;
+      await this.refreshSelectedBackupDetails();
+    },
+
+    async refreshSelectedBackupDetails() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const backupPath = String(this.selectedClusterBackupPath || "").trim();
+      if (!clusterId || !backupPath) return;
+      this.clusterBackupsLoading.details = true;
+      try {
+        const details = await this.apiFetch(
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/backups/details`,
+            { backup_path: backupPath },
+          ),
+          { method: "GET" },
+        );
+        this.clusterBackupDetails = Array.isArray(details) ? details : [];
+      } catch (e) {
+        console.error(e);
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load backup details."),
+        );
+        this.clusterBackupDetails = [];
+      } finally {
+        this.clusterBackupsLoading.details = false;
       }
     },
 

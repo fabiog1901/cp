@@ -47,13 +47,14 @@ class ClusterBackupsRepo(BaseRepo):
     ) -> list[BackupDetails]:
         query = sql.SQL(
             """
-            SELECT database_name, parent_schema_name, object_name, object_type, end_time
+            SELECT database_name, parent_schema_name, object_name, 
+                object_type, backup_type, start_time, end_time
             FROM [SHOW BACKUP {} IN 'external://backup']
             WHERE (
                 database_name NOT IN ('system', 'postgres')
-                OR object_name NOT IN ('system', 'postgres')
+                and object_name NOT IN ('system', 'postgres')
             )
-            AND object_type = 'database';
+            
             """
         ).format(sql.Literal(backup_path))
 
