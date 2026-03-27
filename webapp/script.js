@@ -58,6 +58,19 @@ window.app = function () {
       upgrade: false,
       scale: false,
     },
+    clusterUsers: [],
+    clusterUsersVisibleRows: [],
+    clusterUsersFilterQuery: "",
+    clusterUsersLastUpdatedUtc: null,
+    clusterUsersAutoRefreshEnabled: true,
+    _clusterUsersAutoTimer: null,
+    clusterUsersLoading: {
+      snapshot: false,
+      create: false,
+      delete: false,
+      password: false,
+      revokeRole: false,
+    },
     clusterConnectCopiedFor: "",
     clusterCreateOptions: {
       versions: [],
@@ -304,6 +317,26 @@ window.app = function () {
           regions: [],
         },
       },
+      clusterUserCreate: {
+        open: false,
+        username: "",
+        password: "",
+      },
+      clusterUserDeleteConfirm: {
+        open: false,
+        username: "",
+      },
+      clusterUserPassword: {
+        open: false,
+        username: "",
+        password: "",
+      },
+      clusterUserRoles: {
+        open: false,
+        username: "",
+        roles: [],
+        grantRole: "",
+      },
       apiKeySecret: {
         open: false,
         access_key: "",
@@ -340,6 +373,10 @@ window.app = function () {
       clusterCreate: "",
       clusterUpgrade: "",
       clusterScale: "",
+      clusterUserCreate: "",
+      clusterUserDeleteConfirm: "",
+      clusterUserPassword: "",
+      clusterUserRoles: "",
       settingResetConfirm: "",
     },
 
@@ -667,6 +704,10 @@ window.app = function () {
       if (this._clusterDashboardAutoTimer) {
         clearInterval(this._clusterDashboardAutoTimer);
         this._clusterDashboardAutoTimer = null;
+      }
+      if (this._clusterUsersAutoTimer) {
+        clearInterval(this._clusterUsersAutoTimer);
+        this._clusterUsersAutoTimer = null;
       }
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
@@ -1062,6 +1103,7 @@ window.app = function () {
         clusters: "Cluster inventory and status",
         cluster: "Cluster details, access points, and actions",
         cluster_dashboard: "Cluster dashboard and live time-series metrics",
+        cluster_users: "Cluster database users and role management",
         jobs: "Queued and completed orchestration work",
         job: "Job details and task execution history",
         events: "Cluster and platform activity stream",
@@ -1237,6 +1279,7 @@ window.app = function () {
       const selectedJobId = localStorage.getItem("cp_selected_job_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
+      const clusterUsersFilter = localStorage.getItem("cp_cluster_users_filter");
 
       if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
       if (sDir === "desc") this.sortDir = "desc";
@@ -1251,6 +1294,8 @@ window.app = function () {
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
+      if (clusterUsersFilter !== null)
+        this.clusterUsersFilterQuery = clusterUsersFilter;
       if (selectedClusterId !== null)
         this.selectedClusterId = selectedClusterId;
       if (ssIdx !== null && !Number.isNaN(+ssIdx))
@@ -1274,6 +1319,7 @@ window.app = function () {
         sView === "clusters" ||
         sView === "cluster" ||
         sView === "cluster_dashboard" ||
+        sView === "cluster_users" ||
         sView === "jobs" ||
         sView === "job" ||
         sView === "admin" ||
@@ -1329,6 +1375,15 @@ window.app = function () {
           this.refreshClusterDashboard();
       }, 10_000);
 
+      this._clusterUsersAutoTimer = setInterval(() => {
+        if (
+          this.clusterUsersAutoRefreshEnabled &&
+          this.view === "cluster_users" &&
+          this.selectedClusterId
+        )
+          this.refreshClusterUsers();
+      }, 10_000);
+
       this._jobsAutoTimer = setInterval(() => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
@@ -1373,6 +1428,7 @@ window.app = function () {
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
+      else if (this.view === "cluster_users") this.ensureClusterUsersView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1399,6 +1455,7 @@ window.app = function () {
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
+      else if (this.view === "cluster_users") this.ensureClusterUsersView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1548,6 +1605,25 @@ window.app = function () {
         return;
       }
       this.renderClusterDashboardCharts();
+    },
+
+    async ensureClusterUsersView() {
+      if (!this.selectedClusterId) {
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        return;
+      }
+      if (
+        !this.selectedCluster ||
+        this.selectedCluster.cluster_id !== this.selectedClusterId
+      ) {
+        await this.refreshSelectedCluster();
+      }
+      if (this.clusterUsers.length === 0 && !this.clusterUsersLoading.snapshot) {
+        await this.refreshClusterUsers();
+      } else {
+        this.applyClusterUsersFilter();
+      }
     },
 
     async ensureJobsView() {
@@ -2275,6 +2351,18 @@ window.app = function () {
       this.ensureClusterDetailView();
     },
 
+    openClusterUsers() {
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.selectedClusterId = String(clusterId).trim();
+      localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.view = "cluster_users";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.ensureClusterUsersView();
+    },
+
     openClusterDeleteConfirm() {
       const clusterId = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
@@ -2679,6 +2767,256 @@ window.app = function () {
         );
       } finally {
         this.clusterDashboardLoading.snapshot = false;
+      }
+    },
+
+    persistClusterUsersFilter() {
+      localStorage.setItem(
+        "cp_cluster_users_filter",
+        this.clusterUsersFilterQuery || "",
+      );
+    },
+
+    clusterUsersRowText(row) {
+      return [
+        row?.username,
+        row?.options,
+        ...(Array.isArray(row?.member_of) ? row.member_of : []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    applyClusterUsersFilter() {
+      const q = String(this.clusterUsersFilterQuery || "").trim().toLowerCase();
+      let rows = Array.isArray(this.clusterUsers) ? [...this.clusterUsers] : [];
+      if (q) {
+        rows = rows.filter((row) => this.clusterUsersRowText(row).includes(q));
+      }
+      rows.sort((a, b) =>
+        String(a?.username || "").localeCompare(String(b?.username || "")),
+      );
+      this.clusterUsersVisibleRows = rows;
+    },
+
+    async refreshClusterUsers() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+      this.clusterUsersLoading.snapshot = true;
+      try {
+        const snapshot = await this.apiFetch(
+          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/users`),
+          { method: "GET" },
+        );
+        this.clusterUsers = Array.isArray(snapshot?.database_users)
+          ? snapshot.database_users
+          : [];
+        if (snapshot?.cluster) {
+          this.selectedCluster = snapshot.cluster;
+        }
+        this.clusterUsersLastUpdatedUtc = this.utcNowString();
+        this.applyClusterUsersFilter();
+      } catch (e) {
+        console.error(e);
+        this.clusterUsersLastUpdatedUtc = this.utcNowString();
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load cluster users."),
+        );
+      } finally {
+        this.clusterUsersLoading.snapshot = false;
+      }
+    },
+
+    openClusterUserCreateModal() {
+      this.modal.clusterUserCreate.open = true;
+      this.modal.clusterUserCreate.username = "";
+      this.modal.clusterUserCreate.password = "";
+      this.clearModalError("clusterUserCreate");
+    },
+
+    closeClusterUserCreateModal() {
+      this.modal.clusterUserCreate.open = false;
+      this.modal.clusterUserCreate.username = "";
+      this.modal.clusterUserCreate.password = "";
+      this.clearModalError("clusterUserCreate");
+    },
+
+    async createClusterUser() {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      const username = String(this.modal.clusterUserCreate.username || "").trim();
+      const password = String(this.modal.clusterUserCreate.password || "").trim();
+      if (!clusterId || !username || !password) {
+        this.setModalError(
+          "clusterUserCreate",
+          new Error("Username and password are required."),
+          "Username and password are required.",
+        );
+        return;
+      }
+      this.clusterUsersLoading.create = true;
+      this.clearModalError("clusterUserCreate");
+      try {
+        await this.apiFetch(`/clusters/${encodeURIComponent(clusterId)}/users`, {
+          method: "POST",
+          body: { username, password },
+        });
+        this.closeClusterUserCreateModal();
+        await this.refreshClusterUsers();
+        this.setActionNotice(`Database user '${username}' created.`);
+      } catch (e) {
+        this.setModalError(
+          "clusterUserCreate",
+          e,
+          "Failed to create database user.",
+        );
+      } finally {
+        this.clusterUsersLoading.create = false;
+      }
+    },
+
+    openClusterUserDeleteConfirm(row) {
+      this.modal.clusterUserDeleteConfirm.open = true;
+      this.modal.clusterUserDeleteConfirm.username = String(
+        row?.username || "",
+      ).trim();
+      this.clearModalError("clusterUserDeleteConfirm");
+    },
+
+    closeClusterUserDeleteConfirm() {
+      this.modal.clusterUserDeleteConfirm.open = false;
+      this.modal.clusterUserDeleteConfirm.username = "";
+      this.clearModalError("clusterUserDeleteConfirm");
+    },
+
+    async confirmClusterUserDelete() {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      const username = String(
+        this.modal.clusterUserDeleteConfirm.username || "",
+      ).trim();
+      if (!clusterId || !username) return;
+      this.clusterUsersLoading.delete = true;
+      this.clearModalError("clusterUserDeleteConfirm");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}`,
+          { method: "DELETE" },
+        );
+        this.closeClusterUserDeleteConfirm();
+        await this.refreshClusterUsers();
+        this.setActionNotice(`Database user '${username}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          "clusterUserDeleteConfirm",
+          e,
+          "Failed to delete database user.",
+        );
+      } finally {
+        this.clusterUsersLoading.delete = false;
+      }
+    },
+
+    openClusterUserPasswordModal(row) {
+      this.modal.clusterUserPassword.open = true;
+      this.modal.clusterUserPassword.username = String(
+        row?.username || "",
+      ).trim();
+      this.modal.clusterUserPassword.password = "";
+      this.clearModalError("clusterUserPassword");
+    },
+
+    closeClusterUserPasswordModal() {
+      this.modal.clusterUserPassword.open = false;
+      this.modal.clusterUserPassword.username = "";
+      this.modal.clusterUserPassword.password = "";
+      this.clearModalError("clusterUserPassword");
+    },
+
+    async updateClusterUserPassword() {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      const username = String(this.modal.clusterUserPassword.username || "").trim();
+      const password = String(this.modal.clusterUserPassword.password || "").trim();
+      if (!clusterId || !username || !password) {
+        this.setModalError(
+          "clusterUserPassword",
+          new Error("A new password is required."),
+          "A new password is required.",
+        );
+        return;
+      }
+      this.clusterUsersLoading.password = true;
+      this.clearModalError("clusterUserPassword");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/password`,
+          {
+            method: "POST",
+            body: { password },
+          },
+        );
+        this.closeClusterUserPasswordModal();
+        this.setActionNotice(`Password updated for '${username}'.`);
+      } catch (e) {
+        this.setModalError(
+          "clusterUserPassword",
+          e,
+          "Failed to update password.",
+        );
+      } finally {
+        this.clusterUsersLoading.password = false;
+      }
+    },
+
+    openClusterUserRolesModal(row) {
+      this.modal.clusterUserRoles.open = true;
+      this.modal.clusterUserRoles.username = String(row?.username || "").trim();
+      this.modal.clusterUserRoles.roles = Array.isArray(row?.member_of)
+        ? row.member_of.filter(Boolean)
+        : [];
+      this.modal.clusterUserRoles.grantRole = "";
+      this.clearModalError("clusterUserRoles");
+    },
+
+    closeClusterUserRolesModal() {
+      this.modal.clusterUserRoles.open = false;
+      this.modal.clusterUserRoles.username = "";
+      this.modal.clusterUserRoles.roles = [];
+      this.modal.clusterUserRoles.grantRole = "";
+      this.clearModalError("clusterUserRoles");
+    },
+
+    async revokeClusterUserRole(role) {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      const username = String(this.modal.clusterUserRoles.username || "").trim();
+      const normalizedRole = String(role || "").trim();
+      if (!clusterId || !username || !normalizedRole) return;
+      this.clusterUsersLoading.revokeRole = true;
+      this.clearModalError("clusterUserRoles");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/revoke-role`,
+          {
+            method: "POST",
+            body: { role: normalizedRole },
+          },
+        );
+        this.modal.clusterUserRoles.roles = this.modal.clusterUserRoles.roles.filter(
+          (entry) => entry !== normalizedRole,
+        );
+        await this.refreshClusterUsers();
+        this.setActionNotice(
+          `Role '${normalizedRole}' revoked from '${username}'.`,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterUserRoles",
+          e,
+          "Failed to revoke role.",
+        );
+      } finally {
+        this.clusterUsersLoading.revokeRole = false;
       }
     },
 

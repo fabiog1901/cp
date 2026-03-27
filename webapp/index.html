@@ -59,7 +59,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
@@ -702,7 +702,7 @@
                   <div class="metric-label">Database Actions</div>
                   <div class="cluster-action-grid">
                     <button class="btn cluster-action-btn" type="button"
-                      @click="triggerClusterAction('User management')">User Management</button>
+                      @click="openClusterUsers()">User Management</button>
                     <button class="btn cluster-action-btn" type="button"
                       @click="triggerClusterAction('Backup management')">Backup Management</button>
                     <button class="btn cluster-action-btn" type="button"
@@ -716,6 +716,96 @@
           <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedCluster && !clusterLoading.details">
             <div class="main-title">Cluster not loaded</div>
             <div class="main-subtitle">Select a cluster from the clusters page to view its details.</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- CLUSTER USERS VIEW -->
+      <main class="layout" x-show="view === 'cluster_users'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/users</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterUsers()" :disabled="clusterUsersLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterUsersLoading.snapshot">Refresh</span>
+                <span x-show="clusterUsersLoading.snapshot">Loading…</span>
+              </button>
+              <button class="btn btn-warn" @click="openClusterUserCreateModal()">Create User…</button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterUsersAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">User Management</div>
+              <div class="main-subtitle">List database users, create new ones, update passwords, revoke roles, and delete users for the selected cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by username, option, or role…"
+                x-model="clusterUsersFilterQuery" @input="persistClusterUsersFilter(); applyClusterUsersFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="clusterUsersLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Options</th>
+                    <th>Member Of</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in clusterUsersVisibleRows" :key="row.username">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.username || '-'"></span></td>
+                      <td><span x-text="row.options || '-'"></span></td>
+                      <td>
+                        <div class="roles-wrap" x-show="Array.isArray(row.member_of) && row.member_of.filter(Boolean).length > 0">
+                          <template x-for="role in (row.member_of || []).filter(Boolean)" :key="`${row.username}-${role}`">
+                            <span class="service-pill" x-text="role"></span>
+                          </template>
+                        </div>
+                        <span x-show="!Array.isArray(row.member_of) || row.member_of.filter(Boolean).length === 0"
+                          style="color: var(--muted);">-</span>
+                      </td>
+                      <td>
+                        <div class="cluster-list-pills">
+                          <button class="btn btn-secondary" type="button" @click="openClusterUserPasswordModal(row)">Password</button>
+                          <button class="btn btn-secondary" type="button" @click="openClusterUserRolesModal(row)">Roles</button>
+                          <button class="btn btn-danger" type="button" @click="openClusterUserDeleteConfirm(row)">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!clusterUsersLoading.snapshot && clusterUsersVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="4" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </main>
@@ -2326,6 +2416,147 @@
           </div>
         </section>
       </main>
+
+      <!-- Cluster User Create Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterUserCreate.open" x-transition
+        @keydown.escape.window="closeClusterUserCreateModal()">
+        <div class="modal" @click.outside="closeClusterUserCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database User</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserCreate" x-text="modalErrors.clusterUserCreate"></div>
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">username</div>
+                <input class="input" x-model="modal.clusterUserCreate.username" placeholder="app_user" />
+              </div>
+              <div class="form-row">
+                <div class="label">password</div>
+                <input class="input" type="password" x-model="modal.clusterUserCreate.password" placeholder="strong password" />
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserCreateModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterUsersLoading.create" @click="createClusterUser()">
+              <span x-show="!clusterUsersLoading.create">CREATE USER</span>
+              <span x-show="clusterUsersLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster User Delete Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterUserDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterUserDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterUserDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Delete Database User</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserDeleteConfirm" x-text="modalErrors.clusterUserDeleteConfirm"></div>
+            <p>
+              This will permanently remove
+              <span class="ip-pill" x-text="modal.clusterUserDeleteConfirm.username || '-'"></span>
+              from the selected cluster.
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterUsersLoading.delete" @click="confirmClusterUserDelete()">
+              <span x-show="!clusterUsersLoading.delete">DELETE USER</span>
+              <span x-show="clusterUsersLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster User Password Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterUserPassword.open" x-transition
+        @keydown.escape.window="closeClusterUserPasswordModal()">
+        <div class="modal" @click.outside="closeClusterUserPasswordModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Update User Password</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserPasswordModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserPassword" x-text="modalErrors.clusterUserPassword"></div>
+            <div class="metric" style="display:grid; gap:8px; margin-bottom: 14px;">
+              <div class="metric-label">User</div>
+              <div><span class="ip-pill" x-text="modal.clusterUserPassword.username || '-'"></span></div>
+            </div>
+            <div class="form-row">
+              <div class="label">new password</div>
+              <input class="input" type="password" x-model="modal.clusterUserPassword.password" placeholder="new strong password" />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserPasswordModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterUsersLoading.password" @click="updateClusterUserPassword()">
+              <span x-show="!clusterUsersLoading.password">UPDATE PASSWORD</span>
+              <span x-show="clusterUsersLoading.password">UPDATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster User Roles Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterUserRoles.open" x-transition
+        @keydown.escape.window="closeClusterUserRolesModal()">
+        <div class="modal" @click.outside="closeClusterUserRolesModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Manage User Roles</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserRolesModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserRoles" x-text="modalErrors.clusterUserRoles"></div>
+            <div class="metric" style="display:grid; gap:8px; margin-bottom: 14px;">
+              <div class="metric-label">User</div>
+              <div><span class="ip-pill" x-text="modal.clusterUserRoles.username || '-'"></span></div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="metric-label">Current Roles</div>
+              <div class="cluster-list-pills" x-show="modal.clusterUserRoles.roles.length > 0">
+                <template x-for="role in modal.clusterUserRoles.roles" :key="`${modal.clusterUserRoles.username}-${role}`">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="service-pill" x-text="role"></span>
+                    <button class="icon-btn" title="Revoke role" @click="revokeClusterUserRole(role)" :disabled="clusterUsersLoading.revokeRole">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+              </div>
+              <div class="cluster-list-copy" x-show="modal.clusterUserRoles.roles.length === 0">
+                No roles returned for this user.
+              </div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px; margin-top: 14px;">
+              <div class="metric-label">Grant Role</div>
+              <input class="input" x-model="modal.clusterUserRoles.grantRole" placeholder="role_name" disabled />
+              <div class="metric-sub">Granting roles is not wired yet because this API currently exposes revoke-role but not an add-role or grant-role endpoint.</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserRolesModal()">DONE</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Setting Reset Confirm Modal -->
       <div class="modal-backdrop" x-show="modal.settingResetConfirm.open" x-transition
