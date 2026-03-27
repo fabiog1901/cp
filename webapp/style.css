@@ -1538,6 +1538,10 @@ tbody tr:hover {
   gap: 18px;
 }
 
+.job-details-grid {
+  align-items: start;
+}
+
 .dashboard-card {
   display: grid;
   gap: 14px;
@@ -1716,6 +1720,10 @@ tbody tr:hover {
 
 @media (max-width: 1100px) {
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .job-details-grid {
     grid-template-columns: 1fr;
   }
 

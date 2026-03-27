@@ -747,7 +747,7 @@
             <div class="modal-error-banner" x-show="modalErrors.clusterScale" x-text="modalErrors.clusterScale"></div>
 
             <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
-              Update the cluster footprint and regions, then submit <span class="ip-pill">POST /api/clusters/{cluster_id}/scale</span>.
+              Update the cluster footprint and regions, then submit <span class="ip-pill">POST /api/clusters/scale</span>.
             </div>
 
             <div class="metric" style="display:grid; gap:12px;">
@@ -1122,6 +1122,25 @@
                 <span x-show="!jobLoading.details">Refresh</span>
                 <span x-show="jobLoading.details">Loading…</span>
               </button>
+              <button class="btn btn-secondary" @click="rescheduleSelectedJob()"
+                :disabled="jobLoading.reschedule || !selectedJobId">
+                <span x-show="!jobLoading.reschedule">Reschedule Job</span>
+                <span x-show="jobLoading.reschedule">Rescheduling…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="jobDetailsAutoRefreshEnabled" />
+                Auto-refresh (15s)
+              </label>
+            </div>
+          </div>
+
+          <div x-show="selectedJobPrimaryClusterLabel() !== '-'">
+            <h2>Linked Cluster</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <div class="metric-label">Cluster Name</div>
+              <div class="metric-value" style="font-size: 20px;" x-text="selectedJobPrimaryClusterLabel()"></div>
+              <div class="metric-sub" x-text="selectedJobLinkedClusterMeta()"></div>
               <button class="btn btn-secondary" x-show="selectedJobPrimaryClusterId()"
                 @click="openCluster(selectedJobPrimaryClusterId())">Open Cluster</button>
             </div>
@@ -1146,7 +1165,7 @@
               </p>
             </section>
 
-            <section class="dashboard-grid">
+            <section class="dashboard-grid job-details-grid">
               <article class="dashboard-card">
                 <div class="dashboard-card-head">
                   <div>
@@ -1184,34 +1203,19 @@
                     <span x-text="selectedJobDetails?.linked_clusters?.length ?? 0"></span>
                   </div>
                 </div>
+                <div class="cluster-list-copy" x-show="selectedJobPrimaryClusterId()">
+                  Primary linked cluster:
+                  <a href="#" class="dashboard-link" style="margin-left: 6px;"
+                    @click.prevent="openCluster(selectedJobPrimaryClusterId())">
+                    <span class="ip-pill clickable" x-text="selectedJobPrimaryClusterLabel()"></span>
+                  </a>
+                </div>
+                <div class="cluster-list-copy" x-show="!selectedJobPrimaryClusterId()">
+                  No linked clusters returned for this job.
+                </div>
               </article>
 
               <article class="dashboard-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Context</div>
-                    <h3 class="dashboard-card-title">Linked Clusters</h3>
-                  </div>
-                  <div class="dashboard-stat" x-text="selectedJobDetails?.linked_clusters?.length ?? 0"></div>
-                </div>
-                <div class="cluster-list">
-                  <template x-for="linked in (selectedJobDetails?.linked_clusters || [])" :key="linked.cluster_id">
-                    <div class="cluster-list-item">
-                      <div class="cluster-list-title">
-                        <a href="#" class="dashboard-link" @click.prevent="openCluster(linked.cluster_id)">
-                          <span class="ip-pill clickable" x-text="linked.cluster_id || '-'"></span>
-                        </a>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="cluster-list-item"
-                    x-show="!selectedJobDetails?.linked_clusters || selectedJobDetails.linked_clusters.length === 0">
-                    <div class="cluster-list-copy">No linked clusters returned.</div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="dashboard-card" style="grid-column: 1 / -1;">
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Description</div>

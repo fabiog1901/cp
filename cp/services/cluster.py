@@ -192,20 +192,10 @@ class ClusterService:
 
     def request_cluster_scale(
         self,
-        cluster_id: str,
-        selected_cpus_per_node: int,
-        selected_disk_size: int,
-        selected_node_count: int,
-        selected_regions: list[str],
+        request: ClusterScaleRequest,
         requested_by: str,
     ) -> int:
-        payload = ClusterScaleRequest(
-            name=cluster_id,
-            node_cpus=selected_cpus_per_node,
-            disk_size=selected_disk_size,
-            node_count=selected_node_count,
-            regions=list(selected_regions),
-        ).model_dump()
+        payload = request.model_dump()
 
         try:
             msg_id: JobID = self.repo.insert_into_mq(
@@ -230,16 +220,10 @@ class ClusterService:
 
     def request_cluster_upgrade(
         self,
-        cluster_id: str,
-        selected_version: str,
-        auto_finalize: bool,
+        request: ClusterUpgradeRequest,
         requested_by: str,
     ) -> int:
-        payload = ClusterUpgradeRequest(
-            name=cluster_id,
-            version=selected_version,
-            auto_finalize=auto_finalize,
-        ).model_dump()
+        payload = request.model_dump()
 
         try:
             msg_id: JobID = self.repo.insert_into_mq(

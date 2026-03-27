@@ -73,10 +73,12 @@ window.app = function () {
     jobsLoading: { list: false },
     jobsAutoRefreshEnabled: true,
     _jobsAutoTimer: null,
+    jobDetailsAutoRefreshEnabled: true,
+    _jobDetailsAutoTimer: null,
     jobsContextClusterId: "",
     selectedJobId: "",
     selectedJobDetails: null,
-    jobLoading: { details: false },
+    jobLoading: { details: false, reschedule: false },
 
     // ---------- Events state ----------
     events: [],
@@ -112,11 +114,7 @@ window.app = function () {
     apiKeysLoading: { list: false, create: false, delete: false },
     apiKeysAutoRefreshEnabled: true,
     _apiKeysAutoTimer: null,
-    availableCPRoles: [
-      "CP_READONLY",
-      "CP_USER",
-      "CP_ADMIN",
-    ],
+    availableCPRoles: ["CP_READONLY", "CP_USER", "CP_ADMIN"],
 
     // ---------- Settings state ----------
     settings: [],
@@ -330,7 +328,17 @@ window.app = function () {
     },
 
     // ---------- Playbooks state ----------
-    playbooks: ["CREATE_CLUSTER", "DELETE_CLUSTER"],
+    playbooks: [
+      "CREATE_CLUSTER",
+      "DELETE_CLUSTER",
+      "SCALE_CLUSTER_IN",
+      "SCALE_CLUSTER_OUT",
+      "SCALE_DISK_SIZE",
+      "SCALE_NODE_CPUS",
+      "UPGRADE_CLUSTER",
+      "HEALTHCHECK_CLUSTER",
+      "RESTORE_CLUSTER",
+    ],
     selectedPlaybook: "",
     pbEditorReady: false,
     pbLoading: {
@@ -454,11 +462,16 @@ window.app = function () {
     },
 
     cloudKeyFromRegion(regionId) {
-      return String(regionId || "").trim().slice(0, 3).toLowerCase();
+      return String(regionId || "")
+        .trim()
+        .slice(0, 3)
+        .toLowerCase();
     },
 
     cloudKey(value) {
-      const normalized = String(value || "").trim().toLowerCase();
+      const normalized = String(value || "")
+        .trim()
+        .toLowerCase();
       if (normalized === "azure") return "azr";
       if (normalized.startsWith("aws")) return "aws";
       if (normalized.startsWith("azr")) return "azr";
@@ -489,7 +502,9 @@ window.app = function () {
     },
 
     actionPillStyle(action) {
-      const name = String(action || "").trim().toUpperCase();
+      const name = String(action || "")
+        .trim()
+        .toUpperCase();
       const palette = [
         {
           background: "rgba(30, 64, 175, 0.92)",
@@ -609,6 +624,14 @@ window.app = function () {
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
+      }
+      if (this._jobsAutoTimer) {
+        clearInterval(this._jobsAutoTimer);
+        this._jobsAutoTimer = null;
+      }
+      if (this._jobDetailsAutoTimer) {
+        clearInterval(this._jobDetailsAutoTimer);
+        this._jobDetailsAutoTimer = null;
       }
       if (this._apiKeysAutoTimer) {
         clearInterval(this._apiKeysAutoTimer);
@@ -751,7 +774,9 @@ window.app = function () {
         }
       });
 
-      return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
+      return [
+        ...new Set(values.map((value) => String(value).trim()).filter(Boolean)),
+      ];
     },
 
     clusterOwnerGroups() {
@@ -777,7 +802,7 @@ window.app = function () {
           : null;
       return {
         groups_claim_name: claimName,
-        groups_claim_value: claims ? claims[claimName] ?? null : null,
+        groups_claim_value: claims ? (claims[claimName] ?? null) : null,
         normalized_groups: this.authGroups(),
         role_groups: this.authRoleGroups(),
         cp_roles: this.authRoles(),
@@ -930,9 +955,14 @@ window.app = function () {
 
     isViewAccessible(viewName) {
       if (
-        ["admin", "playbooks", "api_keys", "settings", "versions", "regions"].includes(
-          viewName,
-        )
+        [
+          "admin",
+          "playbooks",
+          "api_keys",
+          "settings",
+          "versions",
+          "regions",
+        ].includes(viewName)
       ) {
         const result = this.canViewAdmin(viewName);
         this.logRoleCheck({
@@ -1144,7 +1174,9 @@ window.app = function () {
       const jobsFilter = localStorage.getItem("cp_jobs_filter");
       const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
       const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
-      const jobsContextClusterId = localStorage.getItem("cp_jobs_context_cluster_id");
+      const jobsContextClusterId = localStorage.getItem(
+        "cp_jobs_context_cluster_id",
+      );
       const selectedJobId = localStorage.getItem("cp_selected_job_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
@@ -1154,18 +1186,22 @@ window.app = function () {
       if (sFilter !== null) this.filterQuery = sFilter;
       if (ssFilter !== null) this.serversFilterQuery = ssFilter;
       if (jobsFilter !== null) this.jobsFilterQuery = jobsFilter;
-      if (jobsContextClusterId !== null) this.jobsContextClusterId = jobsContextClusterId;
+      if (jobsContextClusterId !== null)
+        this.jobsContextClusterId = jobsContextClusterId;
       if (selectedJobId !== null) this.selectedJobId = selectedJobId;
       if (seFilter !== null) this.eventsFilterQuery = seFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
-      if (selectedClusterId !== null) this.selectedClusterId = selectedClusterId;
+      if (selectedClusterId !== null)
+        this.selectedClusterId = selectedClusterId;
       if (ssIdx !== null && !Number.isNaN(+ssIdx))
         this.serversSortIndex = +ssIdx;
-      if (jobsIdx !== null && !Number.isNaN(+jobsIdx)) this.jobsSortIndex = +jobsIdx;
-      if (seIdx !== null && !Number.isNaN(+seIdx)) this.eventsSortIndex = +seIdx;
+      if (jobsIdx !== null && !Number.isNaN(+jobsIdx))
+        this.jobsSortIndex = +jobsIdx;
+      if (seIdx !== null && !Number.isNaN(+seIdx))
+        this.eventsSortIndex = +seIdx;
       if (sakIdx !== null && !Number.isNaN(+sakIdx))
         this.apiKeysSortIndex = +sakIdx;
       if (setIdx !== null && !Number.isNaN(+setIdx))
@@ -1220,6 +1256,15 @@ window.app = function () {
       this._jobsAutoTimer = setInterval(() => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
+      }, 15_000);
+
+      this._jobDetailsAutoTimer = setInterval(() => {
+        if (
+          this.jobDetailsAutoRefreshEnabled &&
+          this.view === "job" &&
+          this.selectedJobId
+        )
+          this.refreshSelectedJobDetails();
       }, 15_000);
 
       this._eventsAutoTimer = setInterval(() => {
@@ -1620,7 +1665,9 @@ window.app = function () {
     },
 
     clusterCreateHasRegion(regionId) {
-      return this.clusterCreateSelectedRegions().includes(String(regionId || ""));
+      return this.clusterCreateSelectedRegions().includes(
+        String(regionId || ""),
+      );
     },
 
     addClusterCreateRegion(regionId) {
@@ -1634,9 +1681,10 @@ window.app = function () {
 
     removeClusterCreateRegion(regionId) {
       const normalized = String(regionId || "").trim();
-      this.modal.clusterCreate.regions = this.clusterCreateSelectedRegions().filter(
-        (entry) => entry !== normalized,
-      );
+      this.modal.clusterCreate.regions =
+        this.clusterCreateSelectedRegions().filter(
+          (entry) => entry !== normalized,
+        );
     },
 
     toggleClusterCreateRegion(regionId) {
@@ -1653,15 +1701,53 @@ window.app = function () {
       return `${size} GB (${this.getHumanSize(size)})`;
     },
 
+    fullRegionId(cloud, region) {
+      const normalizedCloud = String(cloud || "").trim();
+      const normalizedRegion = String(region || "").trim();
+      if (!normalizedRegion) return "";
+      if (normalizedRegion.includes(":")) return normalizedRegion;
+      return normalizedCloud
+        ? `${normalizedCloud}:${normalizedRegion}`
+        : normalizedRegion;
+    },
+
+    normalizeRegionIds(regionIds, regionOptions = []) {
+      const optionMap = new Map(
+        (Array.isArray(regionOptions) ? regionOptions : [])
+          .map((entry) => String(entry?.region_id || "").trim())
+          .filter(Boolean)
+          .flatMap((regionId) => {
+            const shortRegion = regionId.includes(":")
+              ? regionId.split(":").slice(1).join(":")
+              : regionId;
+            return [
+              [regionId, regionId],
+              [shortRegion, regionId],
+            ];
+          }),
+      );
+
+      return [
+        ...new Set(
+          (Array.isArray(regionIds) ? regionIds : [])
+            .map((regionId) => String(regionId || "").trim())
+            .filter(Boolean)
+            .map((regionId) => optionMap.get(regionId) || regionId),
+        ),
+      ];
+    },
+
     clusterRegionIdsFromCluster(cluster = this.selectedCluster) {
       const inventory = Array.isArray(cluster?.cluster_inventory)
         ? cluster.cluster_inventory
         : [];
-      return [...new Set(
-        inventory
-          .map((entry) => String(entry?.region || "").trim())
-          .filter(Boolean),
-      )];
+      return [
+        ...new Set(
+          inventory
+            .map((entry) => this.fullRegionId(entry?.cloud, entry?.region))
+            .filter(Boolean),
+        ),
+      ];
     },
 
     clusterScaleRegionOptions() {
@@ -1677,7 +1763,9 @@ window.app = function () {
     },
 
     clusterScaleHasRegion(regionId) {
-      return this.clusterScaleSelectedRegions().includes(String(regionId || ""));
+      return this.clusterScaleSelectedRegions().includes(
+        String(regionId || ""),
+      );
     },
 
     clusterScaleAvailableRegions() {
@@ -1697,9 +1785,10 @@ window.app = function () {
 
     removeClusterScaleRegion(regionId) {
       const normalized = String(regionId || "").trim();
-      this.modal.clusterScale.regions = this.clusterScaleSelectedRegions().filter(
-        (entry) => entry !== normalized,
-      );
+      this.modal.clusterScale.regions =
+        this.clusterScaleSelectedRegions().filter(
+          (entry) => entry !== normalized,
+        );
     },
 
     clusterScaleOriginalState() {
@@ -1725,7 +1814,9 @@ window.app = function () {
       const nodeCpus = Number(this.modal.clusterScale.node_cpus);
       const diskSize = Number(this.modal.clusterScale.disk_size);
       const selectedRegions = this.clusterScaleSelectedRegions();
-      const originalRegions = Array.isArray(original.regions) ? original.regions : [];
+      const originalRegions = Array.isArray(original.regions)
+        ? original.regions
+        : [];
 
       if (nodeCount !== Number(original.node_count)) {
         changes.push({
@@ -1782,11 +1873,15 @@ window.app = function () {
       this.clusterLoading.create = true;
       this.clearModalError("clusterCreate");
       try {
-        const data = await this.apiFetch("/clusters/options", { method: "GET" });
+        const data = await this.apiFetch("/clusters/options", {
+          method: "GET",
+        });
         this.clusterCreateOptions = {
           versions: Array.isArray(data?.versions) ? data.versions : [],
           node_counts: Array.isArray(data?.node_counts) ? data.node_counts : [],
-          cpus_per_node: Array.isArray(data?.cpus_per_node) ? data.cpus_per_node : [],
+          cpus_per_node: Array.isArray(data?.cpus_per_node)
+            ? data.cpus_per_node
+            : [],
           disk_sizes: Array.isArray(data?.disk_sizes) ? data.disk_sizes : [],
           regions: Array.isArray(data?.regions) ? data.regions : [],
         };
@@ -1852,7 +1947,10 @@ window.app = function () {
       const nodeCount = Number(this.modal.clusterCreate.node_count);
       const nodeCpus = Number(this.modal.clusterCreate.node_cpus);
       const diskSize = Number(this.modal.clusterCreate.disk_size);
-      const regions = this.clusterCreateSelectedRegions();
+      const regions = this.normalizeRegionIds(
+        this.clusterCreateSelectedRegions(),
+        this.clusterCreateRegionOptions(),
+      );
       const version = String(this.modal.clusterCreate.version || "").trim();
       const owner = String(this.modal.clusterCreate.owner || "").trim();
 
@@ -1970,7 +2068,10 @@ window.app = function () {
         );
       } catch (e) {
         console.error(e);
-        this.viewNotice = this.errorMessage(e, "Failed to load cluster details.");
+        this.viewNotice = this.errorMessage(
+          e,
+          "Failed to load cluster details.",
+        );
         this.selectedCluster = null;
       } finally {
         this.clusterLoading.details = false;
@@ -2025,7 +2126,8 @@ window.app = function () {
     },
 
     openClusterJobs() {
-      const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
       this.openJobsView(clusterId);
     },
@@ -2060,7 +2162,9 @@ window.app = function () {
 
       try {
         const options = await this.apiFetch(
-          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/options`),
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/options`,
+          ),
           { method: "GET" },
         );
         const upgradeVersions = Array.isArray(options?.upgrade_versions)
@@ -2105,7 +2209,9 @@ window.app = function () {
 
       try {
         const options = await this.apiFetch(
-          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/options`),
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/options`,
+          ),
           { method: "GET" },
         );
         const original = {
@@ -2116,11 +2222,15 @@ window.app = function () {
         };
 
         this.modal.clusterScale.options = {
-          node_counts: Array.isArray(options?.node_counts) ? options.node_counts : [],
+          node_counts: Array.isArray(options?.node_counts)
+            ? options.node_counts
+            : [],
           cpus_per_node: Array.isArray(options?.cpus_per_node)
             ? options.cpus_per_node
             : [],
-          disk_sizes: Array.isArray(options?.disk_sizes) ? options.disk_sizes : [],
+          disk_sizes: Array.isArray(options?.disk_sizes)
+            ? options.disk_sizes
+            : [],
           regions: Array.isArray(options?.regions) ? options.regions : [],
         };
         this.modal.clusterScale.original = original;
@@ -2129,11 +2239,7 @@ window.app = function () {
         this.modal.clusterScale.disk_size = String(original.disk_size);
         this.modal.clusterScale.regions = [...original.regions];
       } catch (e) {
-        this.setModalError(
-          "clusterScale",
-          e,
-          "Failed to load scale options.",
-        );
+        this.setModalError("clusterScale", e, "Failed to load scale options.");
       } finally {
         this.clusterLoading.scale = false;
       }
@@ -2164,9 +2270,12 @@ window.app = function () {
       this.clusterLoading.delete = true;
       this.clearModalError("clusterDeleteConfirm");
       try {
-        const result = await this.apiFetch(`/clusters/${encodeURIComponent(clusterId)}`, {
-          method: "DELETE",
-        });
+        const result = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}`,
+          {
+            method: "DELETE",
+          },
+        );
         this.closeClusterDeleteConfirm();
         this.selectedCluster = null;
         this.selectedClusterId = "";
@@ -2189,7 +2298,8 @@ window.app = function () {
     },
 
     triggerClusterAction(label) {
-      const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
       this.setActionNotice(
         `${label} for cluster '${clusterId}' is not wired in the webapp yet.`,
@@ -2197,28 +2307,26 @@ window.app = function () {
     },
 
     async confirmClusterUpgrade() {
-      const clusterId = String(
+      const clusterName = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
       ).trim();
       const version = String(this.modal.clusterUpgrade.version || "").trim();
-      if (!clusterId || !version) return;
+      if (!clusterName || !version) return;
 
       this.clusterLoading.upgrade = true;
       this.clearModalError("clusterUpgrade");
       try {
-        const result = await this.apiFetch(
-          `/clusters/${encodeURIComponent(clusterId)}/upgrade`,
-          {
-            method: "POST",
-            body: {
-              version,
-              auto_finalize: false,
-            },
+        const result = await this.apiFetch(`/clusters/upgrade`, {
+          method: "POST",
+          body: {
+            name: clusterName,
+            version,
+            auto_finalize: false,
           },
-        );
+        });
         this.closeClusterUpgradeModal();
         this.setActionNotice(
-          `Cluster '${clusterId}' upgrade requested to ${version}.`,
+          `Cluster '${clusterName}' upgrade requested to ${version}.`,
           result?.job_id,
         );
       } catch (e) {
@@ -2233,14 +2341,17 @@ window.app = function () {
     },
 
     async confirmClusterScale() {
-      const clusterId = String(
+      const clusterName = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
       ).trim();
       const nodeCount = Number(this.modal.clusterScale.node_count);
       const nodeCpus = Number(this.modal.clusterScale.node_cpus);
       const diskSize = Number(this.modal.clusterScale.disk_size);
-      const regions = this.clusterScaleSelectedRegions();
-      if (!clusterId) return;
+      const regions = this.normalizeRegionIds(
+        this.clusterScaleSelectedRegions(),
+        this.clusterScaleRegionOptions(),
+      );
+      if (!clusterName) return;
 
       if (!Number.isFinite(nodeCount) || nodeCount <= 0) {
         this.setModalError(
@@ -2288,21 +2399,19 @@ window.app = function () {
       this.clusterLoading.scale = true;
       this.clearModalError("clusterScale");
       try {
-        const result = await this.apiFetch(
-          `/clusters/${encodeURIComponent(clusterId)}/scale`,
-          {
-            method: "POST",
-            body: {
-              node_count: nodeCount,
-              node_cpus: nodeCpus,
-              disk_size: diskSize,
-              regions,
-            },
+        const result = await this.apiFetch(`/clusters/scale`, {
+          method: "POST",
+          body: {
+            name: clusterName,
+            node_count: nodeCount,
+            node_cpus: nodeCpus,
+            disk_size: diskSize,
+            regions,
           },
-        );
+        });
         this.closeClusterScaleModal();
         this.setActionNotice(
-          `Cluster '${clusterId}' scale requested.`,
+          `Cluster '${clusterName}' scale requested.`,
           result?.job_id,
         );
       } catch (e) {
@@ -2326,10 +2435,76 @@ window.app = function () {
     },
 
     selectedJobPrimaryClusterId() {
-      const linkedClusters = Array.isArray(this.selectedJobDetails?.linked_clusters)
+      const linkedClusters = Array.isArray(
+        this.selectedJobDetails?.linked_clusters,
+      )
         ? this.selectedJobDetails.linked_clusters
         : [];
       return String(linkedClusters[0]?.cluster_id || "").trim();
+    },
+
+    selectedJobDescriptionClusterName() {
+      const description = this.selectedJobDetails?.job?.description;
+      if (!description || typeof description !== "object") return "";
+
+      const directName = String(
+        description.cluster_name ||
+          description.name ||
+          description.cluster_id ||
+          "",
+      ).trim();
+      if (directName) return directName;
+
+      const deployment = Array.isArray(description.deployment)
+        ? description.deployment
+        : [];
+      return String(deployment[0]?.cluster_name || "").trim();
+    },
+
+    selectedJobPrimaryClusterLabel() {
+      return (
+        this.selectedJobDescriptionClusterName() ||
+        this.selectedJobPrimaryClusterId() ||
+        "-"
+      );
+    },
+
+    selectedJobLinkedClusterMeta() {
+      const linkedClusters = Array.isArray(
+        this.selectedJobDetails?.linked_clusters,
+      )
+        ? this.selectedJobDetails.linked_clusters
+        : [];
+      if (linkedClusters.length === 0) {
+        return this.selectedJobDescriptionClusterName()
+          ? "Cluster name found in the job payload. The linked cluster record is not available yet."
+          : "No linked cluster has been recorded for this job yet.";
+      }
+      if (linkedClusters.length <= 1) {
+        return "Open the linked cluster details page.";
+      }
+      return `${linkedClusters.length} linked clusters returned. Opening the first linked cluster.`;
+    },
+
+    async rescheduleSelectedJob() {
+      const jobId = String(this.selectedJobId || "").trim();
+      if (!jobId) return;
+      this.jobLoading.reschedule = true;
+      try {
+        const result = await this.apiFetch(
+          `/jobs/${encodeURIComponent(jobId)}/reschedule`,
+          { method: "POST" },
+        );
+        this.setActionNotice(`Job '${jobId}' rescheduled.`, result?.job_id);
+        if (this.jobs.length > 0) {
+          await this.refreshJobs();
+        }
+      } catch (e) {
+        console.error(e);
+        this.setActionNotice(this.errorMessage(e, "Failed to reschedule job."));
+      } finally {
+        this.jobLoading.reschedule = false;
+      }
     },
 
     async refreshSelectedJobDetails() {
@@ -2343,7 +2518,9 @@ window.app = function () {
         );
       } catch (e) {
         console.error(e);
-        this.setActionNotice(this.errorMessage(e, "Failed to load job details."));
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load job details."),
+        );
         this.selectedJobDetails = null;
       } finally {
         this.jobLoading.details = false;
@@ -2530,10 +2707,12 @@ window.app = function () {
     applyEventsFilterSort() {
       const q = (this.eventsFilterQuery || "").toLowerCase().trim();
       let rows = this.events.slice();
-      if (q) rows = rows.filter((event) => this.eventsRowText(event).includes(q));
+      if (q)
+        rows = rows.filter((event) => this.eventsRowText(event).includes(q));
 
       if (this.eventsSortIndex !== null) {
-        const type = this.eventsSortTypeByIndex[this.eventsSortIndex] || "string";
+        const type =
+          this.eventsSortTypeByIndex[this.eventsSortIndex] || "string";
         const idx = this.eventsSortIndex;
         const dir = this.eventsSortDir;
 
@@ -2556,7 +2735,7 @@ window.app = function () {
           this.visibilityPath("/events/", { limit: 200, offset: 0 }),
           { method: "GET" },
         );
-        this.events = (Array.isArray(data) ? data : []);
+        this.events = Array.isArray(data) ? data : [];
         this.eventsLastUpdatedUtc = this.utcNowString();
         this.applyEventsFilterSort();
       } catch (e) {
@@ -2645,10 +2824,7 @@ window.app = function () {
     },
 
     persistApiKeysFilter() {
-      localStorage.setItem(
-        "cp_api_keys_filter",
-        this.apiKeysFilterQuery || "",
-      );
+      localStorage.setItem("cp_api_keys_filter", this.apiKeysFilterQuery || "");
     },
 
     async refreshApiKeys() {
@@ -2750,7 +2926,9 @@ window.app = function () {
       this.apiKeysLoading.create = true;
       this.clearModalError("apiKeyCreate");
       try {
-        const validUntil = String(this.modal.apiKeyCreate.valid_until || "").trim();
+        const validUntil = String(
+          this.modal.apiKeyCreate.valid_until || "",
+        ).trim();
         if (!validUntil) throw new Error("valid_until is required.");
         if (!validUntil.endsWith("Z")) {
           throw new Error("valid_until must be a UTC timestamp ending in Z.");
@@ -2804,9 +2982,12 @@ window.app = function () {
       this.apiKeysLoading.delete = true;
       this.clearModalError("apiKeyDeleteConfirm");
       try {
-        await this.apiFetch(`/admin/api_keys/${encodeURIComponent(accessKey)}`, {
-          method: "DELETE",
-        });
+        await this.apiFetch(
+          `/admin/api_keys/${encodeURIComponent(accessKey)}`,
+          {
+            method: "DELETE",
+          },
+        );
         this.closeApiKeyDeleteConfirm();
         await this.refreshApiKeys();
       } catch (e) {
@@ -2898,7 +3079,10 @@ window.app = function () {
     },
 
     persistSettingsFilter() {
-      localStorage.setItem("cp_settings_filter", this.settingsFilterQuery || "");
+      localStorage.setItem(
+        "cp_settings_filter",
+        this.settingsFilterQuery || "",
+      );
     },
 
     settingDraftValue(row) {
@@ -2928,7 +3112,9 @@ window.app = function () {
     },
 
     settingSourceLabel(row) {
-      return row?.value === null || row?.value === undefined ? "Default" : "Override";
+      return row?.value === null || row?.value === undefined
+        ? "Default"
+        : "Override";
     },
 
     async refreshSettings() {
@@ -2968,10 +3154,7 @@ window.app = function () {
         if (e?.forbidden) {
           this.handleForbiddenView("settings", { fallback: false });
         }
-        this.settingsError = this.errorMessage(
-          e,
-          "Failed to load settings.",
-        );
+        this.settingsError = this.errorMessage(e, "Failed to load settings.");
         console.error(e);
         this.settingsLastUpdatedUtc = this.utcNowString();
       } finally {
@@ -3110,7 +3293,10 @@ window.app = function () {
     },
 
     persistVersionsFilter() {
-      localStorage.setItem("cp_versions_filter", this.versionsFilterQuery || "");
+      localStorage.setItem(
+        "cp_versions_filter",
+        this.versionsFilterQuery || "",
+      );
     },
 
     openVersionCreateModal() {
@@ -3166,7 +3352,9 @@ window.app = function () {
     },
 
     async confirmVersionDelete() {
-      const version = String(this.modal.versionDeleteConfirm.version || "").trim();
+      const version = String(
+        this.modal.versionDeleteConfirm.version || "",
+      ).trim();
       if (!version) return;
 
       this.versionsLoading.delete = true;
@@ -3213,7 +3401,9 @@ window.app = function () {
         row?.region,
         row?.zone,
         row?.vpc_id,
-        Array.isArray(row?.security_groups) ? row.security_groups.join(" ") : "",
+        Array.isArray(row?.security_groups)
+          ? row.security_groups.join(" ")
+          : "",
         row?.subnet,
         row?.image,
       ]
@@ -3268,7 +3458,9 @@ window.app = function () {
         const image = String(this.modal.regionCreate.image || "").trim();
 
         if (!cloud || !region || !zone || !vpc_id || !subnet || !image) {
-          throw new Error("cloud, region, zone, vpc_id, subnet, and image are required.");
+          throw new Error(
+            "cloud, region, zone, vpc_id, subnet, and image are required.",
+          );
         }
 
         const security_groups = String(
@@ -3278,7 +3470,8 @@ window.app = function () {
           .map((value) => value.trim())
           .filter(Boolean);
 
-        const extrasText = String(this.modal.regionCreate.extras_text || "{}").trim() || "{}";
+        const extrasText =
+          String(this.modal.regionCreate.extras_text || "{}").trim() || "{}";
         const extras = JSON.parse(extrasText);
         if (!extras || typeof extras !== "object" || Array.isArray(extras)) {
           throw new Error("extras must be a JSON object.");
@@ -3370,7 +3563,11 @@ window.app = function () {
 
     // ---------- Dashboard lifecycle ----------
     async ensureDashboardView() {
-      if (this.canViewAdmin() && this.settings.length === 0 && !this.settingsLoading.list) {
+      if (
+        this.canViewAdmin() &&
+        this.settings.length === 0 &&
+        !this.settingsLoading.list
+      ) {
         await this.refreshSettings();
       }
       this.applyFilterSort();
@@ -3381,10 +3578,7 @@ window.app = function () {
     },
 
     persistServersFilter() {
-      localStorage.setItem(
-        "cp_servers_filter",
-        this.serversFilterQuery || "",
-      );
+      localStorage.setItem("cp_servers_filter", this.serversFilterQuery || "");
     },
     persistEventsFilter() {
       localStorage.setItem("cp_events_filter", this.eventsFilterQuery || "");
@@ -3894,7 +4088,9 @@ window.app = function () {
       this.ensureAce();
       if (
         !this.pbLoading.list &&
-        (this.playbooks.length === 0 || !this.selectedPlaybook || !this.pbVersions.length)
+        (this.playbooks.length === 0 ||
+          !this.selectedPlaybook ||
+          !this.pbVersions.length)
       )
         await this.reloadPlaybooks();
     },
@@ -4137,7 +4333,8 @@ window.app = function () {
       ) {
         this.pbToast = {
           ok: false,
-          message: "Promote another version before deleting the current default.",
+          message:
+            "Promote another version before deleting the current default.",
         };
         return;
       }

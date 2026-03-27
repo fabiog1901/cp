@@ -19,6 +19,11 @@ class AutoNameStrEnum(StrEnum):
 class PlaybookName(AutoNameStrEnum):
     CREATE_CLUSTER = auto()
     DELETE_CLUSTER = auto()
+    SCALE_CLUSTER_IN = auto()
+    SCALE_CLUSTER_OUT = auto()
+    SCALE_DISK_SIZE = auto()
+    SCALE_NODE_CPUS = auto()
+    UPGRADE_CLUSTER = auto()
     HEALTHCHECK_CLUSTER = auto()
     RESTORE_CLUSTER = auto()
 
@@ -435,7 +440,8 @@ class ClusterCreateApiRequest(BaseModel):
     group: str
 
 
-class ClusterUpgradeApiRequest(BaseModel):
+class ClusterUpgradeRequest(BaseModel):
+    name: str
     version: str
     auto_finalize: bool
 

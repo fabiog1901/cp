@@ -22,7 +22,7 @@ from ..models import (
     ClusterRestoreApiRequest,
     ClusterRoleRevokeRequest,
     ClusterScaleRequest,
-    ClusterUpgradeApiRequest,
+    ClusterUpgradeRequest,
     ClusterUsersSnapshot,
     DashboardSnapshot,
     JobID,
@@ -180,9 +180,8 @@ async def get_cluster_options(
         _raise_http_from_service_error(err)
 
 
-@router.post("/{cluster_id}/scale", response_model=JobID)
+@router.post("/scale", response_model=JobID)
 async def scale_cluster(
-    cluster_id: str,
     request: ClusterScaleRequest,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
@@ -190,11 +189,7 @@ async def scale_cluster(
 ) -> JobID:
     try:
         job_id = service.request_cluster_scale(
-            cluster_id,
-            request.node_cpus,
-            request.disk_size,
-            request.node_count,
-            request.regions,
+            request,
             actor_id,
         )
     except ServiceError as err:
@@ -202,19 +197,16 @@ async def scale_cluster(
     return JobID(job_id=job_id)
 
 
-@router.post("/{cluster_id}/upgrade", response_model=JobID)
+@router.post("/upgrade", response_model=JobID)
 async def upgrade_cluster(
-    cluster_id: str,
-    request: ClusterUpgradeApiRequest,
+    request: ClusterUpgradeRequest,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
         job_id = service.request_cluster_upgrade(
-            cluster_id,
-            request.version,
-            request.auto_finalize,
+            request,
             actor_id,
         )
     except ServiceError as err:
