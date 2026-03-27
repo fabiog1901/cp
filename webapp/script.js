@@ -51,6 +51,8 @@ window.app = function () {
     clusterDashboardCurrentNodes: [],
     clusterDashboardSnapshot: null,
     _clusterDashboardCharts: {},
+    _suppressNextHashChange: false,
+    _hashChangeHandlerRegistered: false,
     clusterLoading: {
       details: false,
       delete: false,
@@ -1064,6 +1066,274 @@ window.app = function () {
       });
     },
 
+    routeHash(path, params = {}) {
+      return `#${this.buildPath(path, params)}`;
+    },
+
+    currentRouteHash() {
+      if (typeof window === "undefined") return "";
+      return String(window.location.hash || "").trim();
+    },
+
+    parseCurrentHashRoute() {
+      if (typeof window === "undefined") {
+        return { hasHash: false, parts: [], query: {}, path: "/" };
+      }
+
+      const rawHash = String(window.location.hash || "").trim();
+      if (!rawHash) {
+        return { hasHash: false, parts: [], query: {}, path: "/" };
+      }
+
+      const fragment = rawHash.startsWith("#") ? rawHash.slice(1) : rawHash;
+      const normalized = fragment.startsWith("/") ? fragment : `/${fragment}`;
+      const [pathPart, queryString = ""] = normalized.split("?");
+      const parts = pathPart
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => {
+          try {
+            return decodeURIComponent(segment);
+          } catch (_e) {
+            return segment;
+          }
+        });
+      const query = {};
+      const params = new URLSearchParams(queryString);
+      params.forEach((value, key) => {
+        query[key] = value;
+      });
+
+      return {
+        hasHash: true,
+        path: pathPart || "/",
+        parts,
+        query,
+      };
+    },
+
+    routeHashForState() {
+      switch (this.view) {
+        case "dashboard":
+          return this.routeHash("/dashboard");
+        case "clusters":
+          return this.routeHash("/clusters");
+        case "cluster":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}`,
+              )
+            : this.routeHash("/clusters");
+        case "cluster_dashboard":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}/dashboard`,
+                {
+                  period: this.clusterDashboardPeriodMins,
+                  step: this.clusterDashboardIntervalSecs,
+                },
+              )
+            : this.routeHash("/clusters");
+        case "cluster_users":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}/users`,
+              )
+            : this.routeHash("/clusters");
+        case "cluster_backups":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}/backups`,
+                { path: this.selectedClusterBackupPath },
+              )
+            : this.routeHash("/clusters");
+        case "jobs":
+          return this.routeHash("/jobs", {
+            cluster: this.jobsContextClusterId,
+          });
+        case "job":
+          return this.selectedJobId
+            ? this.routeHash(`/jobs/${encodeURIComponent(this.selectedJobId)}`)
+            : this.routeHash("/jobs");
+        case "events":
+          return this.routeHash("/events");
+        case "admin":
+          return this.routeHash("/admin");
+        case "api_keys":
+          return this.routeHash("/admin/api-keys");
+        case "settings":
+          return this.routeHash("/admin/settings");
+        case "versions":
+          return this.routeHash("/admin/versions");
+        case "regions":
+          return this.routeHash("/admin/regions");
+        case "playbooks":
+          return this.routeHash("/admin/playbooks");
+        default:
+          return this.routeHash("/dashboard");
+      }
+    },
+
+    syncHashFromState(replace = false) {
+      if (typeof window === "undefined") return;
+
+      const nextHash = this.routeHashForState();
+      const currentHash = this.currentRouteHash();
+      if (!nextHash || currentHash === nextHash) return;
+
+      if (replace) {
+        const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+        window.history.replaceState(null, "", nextUrl);
+        return;
+      }
+
+      this._suppressNextHashChange = true;
+      window.location.hash = nextHash.slice(1);
+    },
+
+    async ensureCurrentView() {
+      if (this.view === "playbooks") await this.ensurePlaybooksView();
+      else if (this.view === "clusters") await this.ensureServersView();
+      else if (this.view === "cluster") await this.ensureClusterDetailView();
+      else if (this.view === "cluster_dashboard")
+        await this.ensureClusterDashboardView();
+      else if (this.view === "cluster_users") await this.ensureClusterUsersView();
+      else if (this.view === "cluster_backups")
+        await this.ensureClusterBackupsView();
+      else if (this.view === "jobs") await this.ensureJobsView();
+      else if (this.view === "job") await this.ensureJobDetailView();
+      else if (this.view === "events") await this.ensureEventsView();
+      else if (this.view === "api_keys") await this.ensureApiKeysView();
+      else if (this.view === "settings") await this.ensureSettingsView();
+      else if (this.view === "versions") await this.ensureVersionsView();
+      else if (this.view === "regions") await this.ensureRegionsView();
+      else if (this.view === "admin") await this.ensureAdminView();
+      else await this.ensureDashboardView();
+    },
+
+    async applyHashRoute() {
+      const route = this.parseCurrentHashRoute();
+      if (!route.hasHash) return false;
+
+      const parts = route.parts;
+      const query = route.query || {};
+      const previousJobsContext = String(this.jobsContextClusterId || "").trim();
+
+      let nextView = "dashboard";
+      let nextClusterId = "";
+      let nextJobId = "";
+
+      if (parts.length === 0 || parts[0] === "dashboard") {
+        nextView = "dashboard";
+      } else if (parts[0] === "clusters") {
+        if (parts.length === 1) {
+          nextView = "clusters";
+        } else if (parts.length >= 2) {
+          nextClusterId = String(parts[1] || "").trim();
+          if (parts[2] === "dashboard") nextView = "cluster_dashboard";
+          else if (parts[2] === "users") nextView = "cluster_users";
+          else if (parts[2] === "backups") nextView = "cluster_backups";
+          else nextView = "cluster";
+        }
+      } else if (parts[0] === "jobs") {
+        if (parts.length >= 2) {
+          nextView = "job";
+          nextJobId = String(parts[1] || "").trim();
+        } else {
+          nextView = "jobs";
+          this.jobsContextClusterId = String(query.cluster || "").trim();
+          localStorage.setItem(
+            "cp_jobs_context_cluster_id",
+            this.jobsContextClusterId,
+          );
+          if (this.jobsContextClusterId) {
+            this.jobsFilterQuery = this.jobsContextClusterId;
+            this.persistJobsFilter();
+          } else if (
+            previousJobsContext &&
+            String(this.jobsFilterQuery || "").trim() === previousJobsContext
+          ) {
+            this.jobsFilterQuery = "";
+            this.persistJobsFilter();
+          }
+        }
+      } else if (parts[0] === "events") {
+        nextView = "events";
+      } else if (parts[0] === "admin") {
+        if (parts[1] === "api-keys") nextView = "api_keys";
+        else if (parts[1] === "settings") nextView = "settings";
+        else if (parts[1] === "versions") nextView = "versions";
+        else if (parts[1] === "regions") nextView = "regions";
+        else if (parts[1] === "playbooks") nextView = "playbooks";
+        else nextView = "admin";
+      } else {
+        nextView = "dashboard";
+      }
+
+      if (nextClusterId) {
+        const clusterChanged =
+          String(this.selectedClusterId || "").trim() !== nextClusterId;
+        this.selectedClusterId = nextClusterId;
+        localStorage.setItem("cp_selected_cluster_id", nextClusterId);
+        this.clusterConnectCopiedFor = "";
+        if (clusterChanged) {
+          this.selectedCluster = null;
+          this.clusterUsers = [];
+          this.clusterUsersVisibleRows = [];
+          this.clusterBackups = [];
+          this.clusterBackupDetails = [];
+          this.clusterDashboardSnapshot = null;
+          this.clusterDashboardChartData = [];
+          this.clusterDashboardCurrentNodes = [];
+        }
+      }
+
+      if (nextJobId) {
+        const changedJob = String(this.selectedJobId || "").trim() !== nextJobId;
+        this.selectedJobId = nextJobId;
+        localStorage.setItem("cp_selected_job_id", nextJobId);
+        if (changedJob) this.selectedJobDetails = null;
+      }
+
+      if (nextView === "cluster_backups") {
+        this.selectedClusterBackupPath = String(query.path || "").trim();
+      } else {
+        this.selectedClusterBackupPath = "";
+      }
+
+      if (nextView === "cluster_dashboard") {
+        const period = Number.parseInt(query.period, 10);
+        const step = Number.parseInt(query.step, 10);
+        if (Number.isFinite(period) && period > 0) {
+          this.clusterDashboardPeriodMins = period;
+        }
+        if (Number.isFinite(step) && step > 0) {
+          this.clusterDashboardIntervalSecs = step;
+        }
+      }
+
+      this.view = nextView;
+      localStorage.setItem("cp_view", this.view);
+
+      if (!this.isViewAccessible(this.view)) {
+        this.handleForbiddenView(this.view);
+        this.syncHashFromState(true);
+        return true;
+      }
+
+      this.clearViewNotice();
+      await this.ensureCurrentView();
+      return true;
+    },
+
+    async handleHashChange() {
+      if (this._suppressNextHashChange) {
+        this._suppressNextHashChange = false;
+        return;
+      }
+      await this.applyHashRoute();
+    },
+
     isViewAccessible(viewName) {
       if (
         [
@@ -1150,6 +1420,7 @@ window.app = function () {
 
       this.view = "dashboard";
       localStorage.setItem("cp_view", this.view);
+      this.syncHashFromState(true);
     },
 
     clearViewNotice() {
@@ -1353,6 +1624,23 @@ window.app = function () {
       const hasSession = await this.checkAuthSession();
       if (!hasSession) return;
 
+      if (typeof window !== "undefined" && !this._hashChangeHandlerRegistered) {
+        window.addEventListener("hashchange", () => {
+          this.handleHashChange();
+        });
+        this._hashChangeHandlerRegistered = true;
+      }
+
+      const hasHashRoute = this.parseCurrentHashRoute().hasHash;
+      let routeHandled = false;
+      if (hasHashRoute) {
+        routeHandled = await this.applyHashRoute();
+      } else if (!this.isViewAccessible(this.view)) {
+        this.handleForbiddenView(this.view);
+      } else {
+        this.syncHashFromState(true);
+      }
+
       if (!this.isViewAccessible(this.view)) {
         this.handleForbiddenView(this.view);
       }
@@ -1448,22 +1736,9 @@ window.app = function () {
           this.refreshSettings();
       }, 20_000);
 
-      // Load the active tab
-      if (this.view === "playbooks") this.ensurePlaybooksView();
-      else if (this.view === "clusters") this.ensureServersView();
-      else if (this.view === "cluster") this.ensureClusterDetailView();
-      else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
-      else if (this.view === "cluster_users") this.ensureClusterUsersView();
-      else if (this.view === "cluster_backups") this.ensureClusterBackupsView();
-      else if (this.view === "jobs") this.ensureJobsView();
-      else if (this.view === "job") this.ensureJobDetailView();
-      else if (this.view === "events") this.ensureEventsView();
-      else if (this.view === "api_keys") this.ensureApiKeysView();
-      else if (this.view === "settings") this.ensureSettingsView();
-      else if (this.view === "versions") this.ensureVersionsView();
-      else if (this.view === "regions") this.ensureRegionsView();
-      else if (this.view === "admin") this.ensureAdminView();
-      else this.ensureDashboardView();
+      if (!routeHandled) {
+        await this.ensureCurrentView();
+      }
     },
 
     setView(next) {
@@ -1476,37 +1751,31 @@ window.app = function () {
       this.clearViewNotice();
       this.view = next;
       localStorage.setItem("cp_view", this.view);
-
-      if (this.view === "playbooks") this.ensurePlaybooksView();
-      else if (this.view === "clusters") this.ensureServersView();
-      else if (this.view === "cluster") this.ensureClusterDetailView();
-      else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
-      else if (this.view === "cluster_users") this.ensureClusterUsersView();
-      else if (this.view === "cluster_backups") this.ensureClusterBackupsView();
-      else if (this.view === "jobs") this.ensureJobsView();
-      else if (this.view === "job") this.ensureJobDetailView();
-      else if (this.view === "events") this.ensureEventsView();
-      else if (this.view === "api_keys") this.ensureApiKeysView();
-      else if (this.view === "settings") this.ensureSettingsView();
-      else if (this.view === "versions") this.ensureVersionsView();
-      else if (this.view === "regions") this.ensureRegionsView();
-      else if (this.view === "admin") this.ensureAdminView();
-      else this.ensureDashboardView();
+      this.syncHashFromState();
+      this.ensureCurrentView();
     },
 
     openJobsView(clusterId = "") {
       const nextClusterId = String(clusterId || "").trim();
       const contextChanged = this.jobsContextClusterId !== nextClusterId;
+      const previousClusterId = this.jobsContextClusterId;
       this.jobsContextClusterId = nextClusterId;
       localStorage.setItem("cp_jobs_context_cluster_id", nextClusterId);
       if (nextClusterId) {
         this.jobsFilterQuery = nextClusterId;
+        this.persistJobsFilter();
+      } else if (
+        previousClusterId &&
+        String(this.jobsFilterQuery || "").trim() === previousClusterId
+      ) {
+        this.jobsFilterQuery = "";
         this.persistJobsFilter();
       }
       if (contextChanged) {
         this.jobs = [];
       }
       if (this.view === "jobs") {
+        this.syncHashFromState();
         this.ensureJobsView();
         return;
       }
@@ -1524,6 +1793,7 @@ window.app = function () {
       this.view = "job";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
+      this.syncHashFromState();
       this.ensureJobDetailView();
     },
 
@@ -1608,6 +1878,7 @@ window.app = function () {
       if (!this.selectedClusterId) {
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
         return;
       }
       if (
@@ -1622,6 +1893,7 @@ window.app = function () {
       if (!this.selectedClusterId) {
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
         return;
       }
       if (
@@ -1638,6 +1910,7 @@ window.app = function () {
       if (!this.selectedClusterId) {
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
         return;
       }
       if (
@@ -1657,6 +1930,7 @@ window.app = function () {
       if (!this.selectedClusterId) {
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
         return;
       }
       if (
@@ -1686,6 +1960,7 @@ window.app = function () {
       if (!this.selectedJobId) {
         this.view = "jobs";
         localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
         return;
       }
       if (
@@ -2280,6 +2555,7 @@ window.app = function () {
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
+      this.syncHashFromState();
       this.ensureClusterDetailView();
     },
 
@@ -2388,6 +2664,7 @@ window.app = function () {
       this.view = "cluster_dashboard";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
+      this.syncHashFromState();
       this.ensureClusterDashboardView();
     },
 
@@ -2398,6 +2675,7 @@ window.app = function () {
       }
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
+      this.syncHashFromState();
       this.ensureClusterDetailView();
     },
 
@@ -2410,6 +2688,7 @@ window.app = function () {
       this.view = "cluster_users";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
+      this.syncHashFromState();
       this.ensureClusterUsersView();
     },
 
@@ -2422,6 +2701,7 @@ window.app = function () {
       this.view = "cluster_backups";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
+      this.syncHashFromState();
       this.ensureClusterBackupsView();
     },
 
@@ -3100,6 +3380,7 @@ window.app = function () {
           this.selectedCluster = snapshot.cluster;
         }
 
+        const previousSelectedBackupPath = this.selectedClusterBackupPath;
         const selectedStillExists = this.clusterBackups.some(
           (entry) => String(entry?.path || "").trim() === this.selectedClusterBackupPath,
         );
@@ -3111,6 +3392,12 @@ window.app = function () {
         }
 
         this.clusterBackupsLastUpdatedUtc = this.utcNowString();
+        if (
+          this.view === "cluster_backups" &&
+          previousSelectedBackupPath !== this.selectedClusterBackupPath
+        ) {
+          this.syncHashFromState(true);
+        }
         if (this.selectedClusterBackupPath) {
           await this.refreshSelectedBackupDetails();
         }
@@ -3129,6 +3416,7 @@ window.app = function () {
       const normalizedPath = String(path || "").trim();
       if (!normalizedPath) return;
       this.selectedClusterBackupPath = normalizedPath;
+      this.syncHashFromState();
       await this.refreshSelectedBackupDetails();
     },
 
@@ -3464,6 +3752,7 @@ window.app = function () {
       if (!query && this.jobsContextClusterId) {
         this.jobsContextClusterId = "";
         localStorage.setItem("cp_jobs_context_cluster_id", "");
+        this.syncHashFromState();
         this.jobs = [];
         await this.refreshJobs();
         return;
