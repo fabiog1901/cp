@@ -46,7 +46,7 @@ window.app = function () {
       upgrade: false,
       scale: false,
     },
-    clusterConnectCopied: false,
+    clusterConnectCopiedFor: "",
     clusterCreateOptions: {
       versions: [],
       node_counts: [],
@@ -2046,7 +2046,7 @@ window.app = function () {
       if (!nextId) return;
       this.selectedClusterId = nextId;
       localStorage.setItem("cp_selected_cluster_id", nextId);
-      this.clusterConnectCopied = false;
+      this.clusterConnectCopiedFor = "";
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -2085,18 +2085,31 @@ window.app = function () {
       return String(lb?.dns_address || "");
     },
 
-    clusterDbConsoleUrl(cluster = this.selectedCluster) {
-      const dns = this.clusterPrimaryDns(cluster);
+    clusterLbEndpoints(cluster = this.selectedCluster) {
+      return Array.isArray(cluster?.lbs_inventory)
+        ? cluster.lbs_inventory.filter((entry) => entry?.dns_address)
+        : [];
+    },
+
+    clusterDbConsoleUrl(lbOrCluster = this.selectedCluster) {
+      const dns = lbOrCluster?.dns_address
+        ? String(lbOrCluster.dns_address || "").trim()
+        : this.clusterPrimaryDns(lbOrCluster);
       return dns ? `https://${dns}:8080` : "";
     },
 
-    clusterConnectCommand(cluster = this.selectedCluster) {
-      const dns = this.clusterPrimaryDns(cluster);
+    clusterConnectCommand(lbOrCluster = this.selectedCluster) {
+      const dns = lbOrCluster?.dns_address
+        ? String(lbOrCluster.dns_address || "").trim()
+        : this.clusterPrimaryDns(lbOrCluster);
       return dns ? `cockroach sql --host=${dns} --port=26257` : "";
     },
 
-    async copyClusterConnectCommand() {
-      const command = this.clusterConnectCommand();
+    async copyClusterConnectCommand(lbOrCluster = this.selectedCluster) {
+      const command = this.clusterConnectCommand(lbOrCluster);
+      const dns = lbOrCluster?.dns_address
+        ? String(lbOrCluster.dns_address || "").trim()
+        : this.clusterPrimaryDns(lbOrCluster);
       if (!command) return;
       if (
         typeof navigator !== "undefined" &&
@@ -2115,12 +2128,16 @@ window.app = function () {
         document.execCommand("copy");
         document.body.removeChild(el);
       }
-      this.clusterConnectCopied = true;
-      this.setActionNotice("Cluster connect command copied to clipboard.");
+      this.clusterConnectCopiedFor = dns;
+      this.setActionNotice(
+        dns
+          ? `Cluster connect command copied for '${dns}'.`
+          : "Cluster connect command copied to clipboard.",
+      );
     },
 
-    openDbConsole() {
-      const url = this.clusterDbConsoleUrl();
+    openDbConsole(lbOrCluster = this.selectedCluster) {
+      const url = this.clusterDbConsoleUrl(lbOrCluster);
       if (!url || typeof window === "undefined") return;
       window.open(url, "_blank", "noopener");
     },

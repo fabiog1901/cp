@@ -605,29 +605,32 @@
                     <div class="dashboard-card-kicker">Access</div>
                     <h3 class="dashboard-card-title">DBConsole and Connect</h3>
                   </div>
-                  <div class="dashboard-stat" x-text="clusterPrimaryDns() ? 'LB' : '--'"></div>
+                  <div class="dashboard-stat" x-text="clusterLbEndpoints().length || '--'"></div>
                 </div>
-                <div class="cluster-facts">
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Primary DNS</span>
-                    <span class="ip-pill" x-text="clusterPrimaryDns() || '-'"></span>
-                  </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">DBConsole</span>
-                    <a class="dashboard-link" :class="{ 'is-disabled': !clusterDbConsoleUrl() }"
-                      :href="clusterDbConsoleUrl() || '#'" target="_blank" rel="noopener"
-                      @click.prevent="openDbConsole()">Open DBConsole</a>
-                  </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Connect</span>
-                    <button class="btn btn-secondary" type="button" @click="copyClusterConnectCommand()"
-                      :disabled="!clusterConnectCommand()">Connect</button>
-                  </div>
-                  <div class="cluster-fact cluster-fact-full">
-                    <span class="cluster-fact-label">Command</span>
-                    <pre class="cluster-command" x-text="clusterConnectCommand() || 'No load balancer DNS address available.'"></pre>
-                    <span class="metric-sub" x-show="clusterConnectCopied">Connection command copied.</span>
-                  </div>
+                <div class="cluster-list" x-show="clusterLbEndpoints().length > 0">
+                  <template x-for="lb in clusterLbEndpoints()" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
+                    <div class="cluster-list-item">
+                      <div class="cluster-list-title">
+                        <img x-show="cloudLogoForCloud(lb.cloud)" :src="cloudLogoForCloud(lb.cloud)" alt=""
+                          class="cluster-cloud-logo" />
+                        <span x-text="`${lb.cloud || '-'}:${lb.region || '-'}`"></span>
+                        <span class="ip-pill" x-text="lb.dns_address || '-'"></span>
+                      </div>
+                      <div class="cluster-list-pills">
+                        <a class="dashboard-link" :class="{ 'is-disabled': !clusterDbConsoleUrl(lb) }"
+                          :href="clusterDbConsoleUrl(lb) || '#'" target="_blank" rel="noopener"
+                          @click.prevent="openDbConsole(lb)">Open DBConsole</a>
+                        <button class="btn btn-secondary" type="button" @click="copyClusterConnectCommand(lb)"
+                          :disabled="!clusterConnectCommand(lb)">Connect</button>
+                      </div>
+                      <pre class="cluster-command"
+                        x-text="clusterConnectCommand(lb) || 'No load balancer DNS address available.'"></pre>
+                      <span class="metric-sub" x-show="clusterConnectCopiedFor === (lb.dns_address || '')">Connection command copied.</span>
+                    </div>
+                  </template>
+                </div>
+                <div class="cluster-list-copy" x-show="clusterLbEndpoints().length === 0">
+                  No load balancer endpoints returned.
                 </div>
               </article>
 
@@ -663,32 +666,6 @@
                 </div>
               </article>
 
-              <article class="dashboard-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Load balancers</div>
-                    <h3 class="dashboard-card-title">Endpoints</h3>
-                  </div>
-                  <div class="dashboard-stat" x-text="Array.isArray(selectedCluster?.lbs_inventory) ? selectedCluster.lbs_inventory.length : 0"></div>
-                </div>
-                <div class="cluster-list">
-                  <template x-for="lb in (selectedCluster?.lbs_inventory || [])" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
-                    <div class="cluster-list-item">
-                      <div class="cluster-list-title">
-                        <img x-show="cloudLogoForCloud(lb.cloud)" :src="cloudLogoForCloud(lb.cloud)" alt=""
-                          class="cluster-cloud-logo" />
-                        <span x-text="lb.region || '-'"></span>
-                      </div>
-                      <div class="cluster-list-copy">
-                        <span class="ip-pill" x-text="lb.dns_address || '-'"></span>
-                      </div>
-                    </div>
-                  </template>
-                  <div class="cluster-list-item" x-show="!selectedCluster?.lbs_inventory || selectedCluster.lbs_inventory.length === 0">
-                    <div class="cluster-list-copy">No load balancer endpoints returned.</div>
-                  </div>
-                </div>
-              </article>
             </section>
 
             <section class="dashboard-card cluster-actions-card">
@@ -703,8 +680,6 @@
                 <div style="display:grid; gap:10px;">
                   <div class="metric-label">Cluster Actions</div>
                   <div class="cluster-action-grid">
-                    <button class="btn cluster-action-btn" type="button" @click="openClusterCreateModal()"
-                      :disabled="clusterLoading.create">Create Cluster</button>
                     <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
                       :disabled="clusterLoading.scale">Scale Cluster</button>
                     <button class="btn cluster-action-btn" type="button"
@@ -720,7 +695,9 @@
                     <button class="btn cluster-action-btn" type="button"
                       @click="triggerClusterAction('User management')">User Management</button>
                     <button class="btn cluster-action-btn" type="button"
-                      @click="triggerClusterAction('Show backup')">Show Backup</button>
+                      @click="triggerClusterAction('Backup management')">Backup Management</button>
+                    <button class="btn cluster-action-btn" type="button"
+                      @click="triggerClusterAction('Databases management')">Databases Management</button>
                   </div>
                 </div>
               </div>
