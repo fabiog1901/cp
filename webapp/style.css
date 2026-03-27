@@ -1696,6 +1696,34 @@ tbody tr:hover {
   min-height: auto;
 }
 
+.cluster-dashboard-card {
+  min-height: auto;
+}
+
+.cluster-dashboard-chart {
+  width: 100%;
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.cluster-dashboard-chart .uplot {
+  color: #e5e7eb;
+  font-family: inherit;
+}
+
+.cluster-dashboard-chart .u-title {
+  color: #fff7ed;
+  font-size: 16px;
+}
+
+.cluster-dashboard-chart .u-legend {
+  background: transparent;
+}
+
+.cluster-dashboard-chart table {
+  color: #cbd5e1;
+}
+
 .cluster-action-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

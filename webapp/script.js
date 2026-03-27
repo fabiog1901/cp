@@ -39,8 +39,18 @@ window.app = function () {
     _serversAutoTimer: null,
     clusterDetailsAutoRefreshEnabled: true,
     _clusterDetailsAutoTimer: null,
+    clusterDashboardAutoRefreshEnabled: true,
+    _clusterDashboardAutoTimer: null,
     selectedClusterId: "",
     selectedCluster: null,
+    clusterDashboardLastUpdatedUtc: null,
+    clusterDashboardLoading: { snapshot: false },
+    clusterDashboardPeriodMins: 30,
+    clusterDashboardIntervalSecs: 10,
+    clusterDashboardChartData: [],
+    clusterDashboardCurrentNodes: [],
+    clusterDashboardSnapshot: null,
+    _clusterDashboardCharts: {},
     clusterLoading: {
       details: false,
       delete: false,
@@ -364,6 +374,29 @@ window.app = function () {
     _ace: null,
     _aceReady: false,
 
+    clusterDashboardPalette: [
+      "#1f77b4",
+      "#ff7f0e",
+      "#2ca02c",
+      "#d62728",
+      "#9467bd",
+      "#8c564b",
+      "#e377c2",
+      "#7f7f7f",
+      "#bcbd22",
+      "#17becf",
+      "#393b79",
+      "#637939",
+      "#8c6d31",
+      "#843c39",
+      "#7b4173",
+      "#3182bd",
+      "#31a354",
+      "#756bb1",
+      "#636363",
+      "#969696",
+    ],
+
     // ---------- UTC helpers ----------
     funnyWords: [
       "abracadabra",
@@ -631,6 +664,10 @@ window.app = function () {
         clearInterval(this._clusterDetailsAutoTimer);
         this._clusterDetailsAutoTimer = null;
       }
+      if (this._clusterDashboardAutoTimer) {
+        clearInterval(this._clusterDashboardAutoTimer);
+        this._clusterDashboardAutoTimer = null;
+      }
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
@@ -659,6 +696,7 @@ window.app = function () {
         clearInterval(this._settingsAutoTimer);
         this._settingsAutoTimer = null;
       }
+      this.destroyClusterDashboardCharts();
     },
 
     setAuthRequired(loginPath, errorMessage = "Not authenticated.") {
@@ -1023,6 +1061,7 @@ window.app = function () {
         dashboard: "Infrastructure landing page and operational navigation",
         clusters: "Cluster inventory and status",
         cluster: "Cluster details, access points, and actions",
+        cluster_dashboard: "Cluster dashboard and live time-series metrics",
         jobs: "Queued and completed orchestration work",
         job: "Job details and task execution history",
         events: "Cluster and platform activity stream",
@@ -1234,6 +1273,7 @@ window.app = function () {
         sView === "dashboard" ||
         sView === "clusters" ||
         sView === "cluster" ||
+        sView === "cluster_dashboard" ||
         sView === "jobs" ||
         sView === "job" ||
         sView === "admin" ||
@@ -1280,6 +1320,15 @@ window.app = function () {
           this.refreshSelectedCluster();
       }, 5_000);
 
+      this._clusterDashboardAutoTimer = setInterval(() => {
+        if (
+          this.clusterDashboardAutoRefreshEnabled &&
+          this.view === "cluster_dashboard" &&
+          this.selectedClusterId
+        )
+          this.refreshClusterDashboard();
+      }, 10_000);
+
       this._jobsAutoTimer = setInterval(() => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
@@ -1323,6 +1372,7 @@ window.app = function () {
       if (this.view === "playbooks") this.ensurePlaybooksView();
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
+      else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1348,6 +1398,7 @@ window.app = function () {
       if (this.view === "playbooks") this.ensurePlaybooksView();
       else if (this.view === "clusters") this.ensureServersView();
       else if (this.view === "cluster") this.ensureClusterDetailView();
+      else if (this.view === "cluster_dashboard") this.ensureClusterDashboardView();
       else if (this.view === "jobs") this.ensureJobsView();
       else if (this.view === "job") this.ensureJobDetailView();
       else if (this.view === "events") this.ensureEventsView();
@@ -1481,6 +1532,22 @@ window.app = function () {
       ) {
         await this.refreshSelectedCluster();
       }
+    },
+
+    async ensureClusterDashboardView() {
+      if (!this.selectedClusterId) {
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        return;
+      }
+      if (
+        !this.clusterDashboardSnapshot ||
+        this.clusterDashboardSnapshot?.cluster?.cluster_id !== this.selectedClusterId
+      ) {
+        await this.refreshClusterDashboard();
+        return;
+      }
+      this.renderClusterDashboardCharts();
     },
 
     async ensureJobsView() {
@@ -2186,6 +2253,28 @@ window.app = function () {
       this.openJobsView(clusterId);
     },
 
+    openClusterDashboard() {
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.selectedClusterId = String(clusterId).trim();
+      localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.view = "cluster_dashboard";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.ensureClusterDashboardView();
+    },
+
+    backToClusterDetail() {
+      if (!this.selectedClusterId) {
+        this.setView("clusters");
+        return;
+      }
+      this.view = "cluster";
+      localStorage.setItem("cp_view", this.view);
+      this.ensureClusterDetailView();
+    },
+
     openClusterDeleteConfirm() {
       const clusterId = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
@@ -2358,6 +2447,239 @@ window.app = function () {
       this.setActionNotice(
         `${label} for cluster '${clusterId}' is not wired in the webapp yet.`,
       );
+    },
+
+    clusterDashboardNodeColor(nodeId) {
+      const index = Number(nodeId);
+      if (!Number.isFinite(index)) return this.clusterDashboardPalette[0];
+      return this.clusterDashboardPalette[
+        index % this.clusterDashboardPalette.length
+      ];
+    },
+
+    clusterDashboardChartRows() {
+      return Array.isArray(this.clusterDashboardChartData)
+        ? this.clusterDashboardChartData
+        : [];
+    },
+
+    clusterDashboardHasData() {
+      return this.clusterDashboardChartRows().length > 0;
+    },
+
+    clusterDashboardTsToMs(tsValue) {
+      const normalized = String(tsValue || "").trim();
+      if (!normalized) return null;
+      const parsed = Date.parse(`${normalized.replace(" ", "T")}Z`);
+      return Number.isFinite(parsed) ? parsed : null;
+    },
+
+    clusterDashboardXAxisValue(tsValue) {
+      const date = new Date(tsValue);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toISOString().slice(11, 19);
+    },
+
+    clusterDashboardChartWidth(containerId) {
+      if (typeof document === "undefined") return 960;
+      const el = document.getElementById(containerId);
+      const width = Number(el?.clientWidth || el?.offsetWidth || 0);
+      return Math.max(width || 960, 320);
+    },
+
+    clusterDashboardAlignedData(seriesKeys) {
+      const rows = this.clusterDashboardChartRows();
+      const rawX = rows.map((row) => this.clusterDashboardTsToMs(row?.ts));
+      const indices = rawX
+        .map((value, index) => (value === null ? -1 : index))
+        .filter((index) => index >= 0);
+
+      return [
+        indices.map((index) => rawX[index]),
+        ...seriesKeys.map((key) =>
+          indices.map((index) => {
+            const value = rows[index]?.[key];
+            return Number.isFinite(Number(value)) ? Number(value) : null;
+          }),
+        ),
+      ];
+    },
+
+    clusterDashboardChartOptions({ title, yLabel, containerId, series }) {
+      return {
+        title,
+        width: this.clusterDashboardChartWidth(containerId),
+        height: 320,
+        legend: { show: true },
+        cursor: { drag: { x: true, y: false } },
+        scales: { x: { time: false } },
+        axes: [
+          {
+            stroke: "#94a3b8",
+            grid: { stroke: "rgba(148, 163, 184, 0.12)" },
+            values: (_u, splits) =>
+              splits.map((value) => this.clusterDashboardXAxisValue(value)),
+          },
+          {
+            stroke: "#94a3b8",
+            grid: { stroke: "rgba(148, 163, 184, 0.12)" },
+            label: yLabel,
+            size: 74,
+          },
+        ],
+        series: [
+          {},
+          ...series.map((entry) => ({
+            label: entry.label,
+            stroke: entry.stroke,
+            width: 2,
+            points: { show: false },
+            spanGaps: true,
+          })),
+        ],
+      };
+    },
+
+    destroyClusterDashboardCharts() {
+      const charts = this._clusterDashboardCharts || {};
+      Object.values(charts).forEach((chart) => {
+        if (chart && typeof chart.destroy === "function") {
+          chart.destroy();
+        }
+      });
+      this._clusterDashboardCharts = {};
+    },
+
+    renderClusterDashboardCharts() {
+      if (
+        typeof window === "undefined" ||
+        typeof window.uPlot !== "function" ||
+        !this.clusterDashboardHasData()
+      ) {
+        this.destroyClusterDashboardCharts();
+        return;
+      }
+
+      const chartConfigs = [
+        {
+          id: "clusterDashboardCpuChart",
+          key: "cpu",
+          title: "CPU Util",
+          yLabel: "CPU Util (%)",
+          series: this.clusterDashboardCurrentNodes.map((nodeId) => ({
+            label: `n${nodeId}`,
+            key: `cpu_n${nodeId}`,
+            stroke: this.clusterDashboardNodeColor(nodeId),
+          })),
+        },
+        {
+          id: "clusterDashboardQueriesChart",
+          key: "queries",
+          title: "SQL Queries per Second",
+          yLabel: "queries",
+          series: [
+            { label: "selects", key: "s", stroke: "#495eff" },
+            { label: "updates", key: "u", stroke: "#CE8943" },
+            { label: "deletes", key: "d", stroke: "#d20f0f" },
+            { label: "inserts", key: "i", stroke: "#F68EFF" },
+            { label: "total", key: "t", stroke: "#FFFFFF" },
+          ],
+        },
+        {
+          id: "clusterDashboardLatencyChart",
+          key: "latency",
+          title: "Service Latency p99",
+          yLabel: "latency (ms)",
+          series: this.clusterDashboardCurrentNodes.map((nodeId) => ({
+            label: `n${nodeId}`,
+            key: `p99_n${nodeId}`,
+            stroke: this.clusterDashboardNodeColor(nodeId),
+          })),
+        },
+      ];
+
+      this.destroyClusterDashboardCharts();
+
+      chartConfigs.forEach((config) => {
+        const el =
+          typeof document !== "undefined"
+            ? document.getElementById(config.id)
+            : null;
+        if (!el || config.series.length === 0) return;
+
+        const data = this.clusterDashboardAlignedData(
+          config.series.map((entry) => entry.key),
+        );
+        if (!Array.isArray(data[0]) || data[0].length === 0) return;
+
+        this._clusterDashboardCharts[config.key] = new window.uPlot(
+          this.clusterDashboardChartOptions({
+            title: config.title,
+            yLabel: config.yLabel,
+            containerId: config.id,
+            series: config.series,
+          }),
+          data,
+          el,
+        );
+      });
+    },
+
+    async refreshClusterDashboard() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+
+      this.clusterDashboardLoading.snapshot = true;
+      try {
+        const end = Math.floor(Date.now() / 1000);
+        const start = end - this.clusterDashboardPeriodMins * 60;
+        const snapshot = await this.apiFetch(
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/dashboard`,
+            {
+              start,
+              end,
+              interval_secs: this.clusterDashboardIntervalSecs,
+            },
+          ),
+          { method: "GET" },
+        );
+
+        this.clusterDashboardSnapshot = snapshot || null;
+        this.clusterDashboardChartData = Array.isArray(
+          snapshot?.metrics?.chart_data,
+        )
+          ? snapshot.metrics.chart_data
+          : [];
+        this.clusterDashboardCurrentNodes = Array.isArray(
+          snapshot?.metrics?.current_nodes,
+        )
+          ? snapshot.metrics.current_nodes
+          : [];
+        this.clusterDashboardLastUpdatedUtc = this.utcNowString();
+
+        if (snapshot?.cluster) {
+          this.selectedCluster = snapshot.cluster;
+          this.selectedClusterId = String(
+            snapshot.cluster.cluster_id || clusterId,
+          );
+          localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        }
+
+        if (typeof window !== "undefined") {
+          window.requestAnimationFrame(() => this.renderClusterDashboardCharts());
+        }
+      } catch (e) {
+        console.error(e);
+        this.clusterDashboardLastUpdatedUtc = this.utcNowString();
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load cluster dashboard."),
+        );
+      } finally {
+        this.clusterDashboardLoading.snapshot = false;
+      }
     },
 
     async confirmClusterUpgrade() {

@@ -4,7 +4,7 @@ import time
 from typing import Any
 
 from ..infra.errors import RepositoryError
-from ..models import DashboardMetrics, DashboardSnapshot
+from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, SettingRecord
 from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
@@ -14,7 +14,7 @@ class DashboardService:
         self.repo = repo
 
     def get_prometheus_url(self) -> str:
-        prom_url = self.repo.get_setting("prom_url").strip()
+        prom_url = self.repo.get_setting(SettingKey.prom_url).value.strip()
         if not prom_url:
             raise ServiceValidationError("Missing Prometheus URL in settings.")
         return prom_url

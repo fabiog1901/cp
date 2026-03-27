@@ -8,9 +8,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
 
   <!-- App code must load BEFORE Alpine initializes x-data="app()" -->
   <script defer src="/script.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
 
   <!-- Alpine last -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -57,7 +59,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
@@ -523,7 +525,7 @@
                 Auto-refresh (5s)
               </label>
               <button class="btn" type="button" @click="openClusterJobs()">Show Jobs</button>
-              <button class="btn" type="button" @click="triggerClusterAction('Show dashboard')">Show Dashboard</button>
+              <button class="btn" type="button" @click="openClusterDashboard()">Show Dashboard</button>
             </div>
           </div>
         </aside>
@@ -714,6 +716,130 @@
           <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedCluster && !clusterLoading.details">
             <div class="main-title">Cluster not loaded</div>
             <div class="main-subtitle">Select a cluster from the clusters page to view its details.</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- CLUSTER DASHBOARD VIEW -->
+      <main class="layout" x-show="view === 'cluster_dashboard'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="clusterDashboardSnapshot?.cluster?.cluster_id || selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/dashboard</span></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Navigation</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterDashboard()" :disabled="clusterDashboardLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterDashboardLoading.snapshot">Refresh</span>
+                <span x-show="clusterDashboardLoading.snapshot">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDashboardAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h2>Query Window</h2>
+            <div class="metric" style="display:grid; gap:10px;">
+              <div>
+                <div class="metric-label">Period</div>
+                <div class="metric-value" x-text="`${clusterDashboardPeriodMins}m`"></div>
+              </div>
+              <div>
+                <div class="metric-label">Prometheus Step</div>
+                <div class="metric-value" x-text="`${clusterDashboardIntervalSecs}s`"></div>
+              </div>
+              <div class="metric-sub">Charts refresh from the cluster dashboard endpoint and keep the last 30 minutes in view.</div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Cluster Dashboard</div>
+              <div class="main-subtitle">Live Prometheus-backed charts for CPU utilization, SQL query throughput, and p99 latency.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterDashboardLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="dashboard-home" x-show="clusterDashboardSnapshot">
+            <section class="dashboard-hero">
+              <div class="eyebrow">Time-series metrics</div>
+              <h2 x-text="clusterDashboardSnapshot?.cluster?.cluster_id || selectedClusterId || '-'"></h2>
+              <p>
+                This dashboard queries <span class="ip-pill">/api/clusters/{cluster_id}/dashboard</span> and renders
+                three chart types from Prometheus-backed metrics: gauge, counter, and histogram.
+              </p>
+            </section>
+
+            <section class="dashboard-grid">
+              <article class="dashboard-card cluster-dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Gauge</div>
+                    <h3 class="dashboard-card-title">CPU Util</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterDashboardCurrentNodes.length || '--'"></div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardCpuChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No CPU data returned for the selected time window.
+                </div>
+                <div class="cluster-list-copy" x-show="clusterDashboardHasData() && clusterDashboardCurrentNodes.length === 0">
+                  No node CPU series returned.
+                </div>
+              </article>
+
+              <article class="dashboard-card cluster-dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Counter</div>
+                    <h3 class="dashboard-card-title">SQL Queries per Second</h3>
+                  </div>
+                  <div class="dashboard-stat">5</div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardQueriesChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No query throughput data returned for the selected time window.
+                </div>
+              </article>
+
+              <article class="dashboard-card cluster-dashboard-card" style="grid-column: 1 / -1;">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Histogram</div>
+                    <h3 class="dashboard-card-title">Service Latency p99</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterDashboardCurrentNodes.length || '--'"></div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardLatencyChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No latency data returned for the selected time window.
+                </div>
+                <div class="cluster-list-copy" x-show="clusterDashboardHasData() && clusterDashboardCurrentNodes.length === 0">
+                  No node latency series returned.
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!clusterDashboardSnapshot && !clusterDashboardLoading.snapshot">
+            <div class="main-title">Dashboard not loaded</div>
+            <div class="main-subtitle">Select a cluster and open its dashboard to view time-series charts.</div>
           </div>
         </section>
       </main>
