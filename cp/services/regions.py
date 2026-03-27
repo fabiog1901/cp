@@ -4,17 +4,19 @@ import json
 from typing import Any
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Region
-from ..repos.postgres.event import EventRepo
-from ..repos.postgres.regions import RegionsRepo
+from ..models import Event, Region
+from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
 class RegionsService:
-    @staticmethod
-    def list_regions() -> list[Region]:
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def list_regions(self) -> list[Region]:
         try:
-            return RegionsRepo.list_regions()
+            return self.repo.list_regions()
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -22,13 +24,13 @@ class RegionsService:
                 fallback_message="Unable to load RegionsRepo.",
             ) from err
 
-    @staticmethod
-    def delete_region(region: Region, deleted_by: str) -> None:
+    def delete_region(self, region: Region, deleted_by: str) -> None:
         try:
-            RegionsRepo.delete_region(region.cloud, region.region, region.zone)
-            EventRepo.insert_event_log(
+            self.repo.delete_region(region.cloud, region.region, region.zone)
+            log_event(
+                self.repo,
                 deleted_by,
-                EventType.REGION_REMOVE,
+                Event.REGION_REMOVE,
                 {"cloud": region.cloud, "region": region.region, "zone": region.zone},
             )
         except RepositoryError as err:
@@ -38,8 +40,8 @@ class RegionsService:
                 fallback_message=f"Unable to delete region '{region.cloud}:{region.region}:{region.zone}'.",
             ) from err
 
-    @staticmethod
     def create_region(
+        self,
         *,
         cloud: str,
         region: str,
@@ -51,7 +53,9 @@ class RegionsService:
         extras_text: str,
         created_by: str,
     ) -> Region:
-        security_groups = [s.strip() for s in security_groups_text.split(",") if s.strip()]
+        security_groups = [
+            s.strip() for s in security_groups_text.split(",") if s.strip()
+        ]
         try:
             extras = RegionsService._parse_extras(extras_text)
         except ValueError as err:
@@ -69,11 +73,12 @@ class RegionsService:
         )
 
         try:
-            RegionsRepo.add_region(new_region)
-            EventRepo.insert_event_log(
+            self.repo.add_region(new_region)
+            log_event(
+                self.repo,
                 created_by,
-                EventType.REGION_ADD,
-                new_region.model_dump_json(),
+                Event.REGION_ADD,
+                new_region.model_dump(),
             )
         except RepositoryError as err:
             raise from_repository_error(

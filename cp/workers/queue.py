@@ -5,10 +5,9 @@ import random
 
 from psycopg.rows import class_row
 
-from ..infra.db import pool
+from ..infra import get_repo
+from ..infra.db import get_pool
 from ..models import JobState, JobType, Msg, Nodes
-from ..repos.postgres.jobs import JobsRepo
-from ..repos.postgres.cluster import ClusterRepo
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def fail_zombie_jobs():
-    JobsRepo.fail_zombie_jobs()
+    get_repo().fail_zombie_jobs()
 
 
 def get_nodes():
@@ -28,7 +27,7 @@ def get_nodes():
     rs: list[Nodes] = []
 
     try:
-        rs = ClusterRepo.get_nodes()
+        rs = get_repo().get_nodes()
     except Exception as e:
         print("Error", str(e))
 
@@ -43,7 +42,7 @@ async def pull_from_mq():
         while True:
             await asyncio.sleep(5 * random.uniform(0.7, 1.3))
             try:
-                with pool.connection() as conn:
+                with get_pool().connection() as conn:
                     with conn.cursor(row_factory=class_row(Msg)) as cur:
                         with conn.transaction():
                             msg = cur.execute(
@@ -64,6 +63,7 @@ async def pull_from_mq():
                                 msg.msg_id,
                                 msg.msg_type,
                             )
+                            repo = get_repo()
 
                             try:
                                 match msg.msg_type:
@@ -114,14 +114,14 @@ async def pull_from_mq():
                                     msg.msg_id,
                                 )
                                 try:
-                                    JobsRepo.update_job(msg.msg_id, JobState.FAILED)
+                                    repo.update_job(msg.msg_id, JobState.FAILED)
                                 except Exception:
                                     logger.exception(
                                         "Unable to mark job %s as failed",
                                         msg.msg_id,
                                     )
                                 try:
-                                    JobsRepo.insert_task(
+                                    repo.insert_task(
                                         msg.msg_id,
                                         0,
                                         dt.datetime.now(dt.timezone.utc),

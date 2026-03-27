@@ -2,11 +2,12 @@
 
 from ...infra.db import fetch_all, fetch_scalar
 from ...models import RoleGroupMap
+from ..base import BaseRepo
 
 
-class AuthRepo:
-    @staticmethod
-    def get_secret(secret_id: str) -> str:
+class AuthRepo(BaseRepo):
+
+    def get_secret(self, secret_id: str) -> str:
         return fetch_scalar(
             """
             SELECT data AS id
@@ -17,8 +18,7 @@ class AuthRepo:
             operation="auth.get_secret",
         )
 
-    @staticmethod
-    def list_role_group_mappings() -> list[RoleGroupMap]:
+    def list_role_group_mappings(self) -> list[RoleGroupMap]:
         return fetch_all(
             """
             SELECT role, groups

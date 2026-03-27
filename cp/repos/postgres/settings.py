@@ -1,44 +1,107 @@
 """Settings repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_scalar
-from ...models import Setting
+from ...infra.db import execute_stmt, fetch_all, fetch_one, fetch_scalar
+from ...models import SettingKey, SettingRecord
+from ..base import BaseRepo
 
 
-class SettingsRepo:
-    @staticmethod
-    def list_settings() -> list[Setting]:
+class SettingsRepo(BaseRepo):
+
+    def list_settings(self) -> list[SettingRecord]:
         return fetch_all(
             """
-            SELECT *
+            SELECT
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
             FROM settings
+            ORDER BY category, key
             """,
             (),
-            Setting,
-            operation="settings.list_settings",
+            SettingRecord,
         )
 
-    @staticmethod
-    def get_setting(setting_id: str) -> str:
-        value = fetch_scalar(
+    def get_setting(self, key: SettingKey) -> SettingRecord | None:
+        return fetch_one(
             """
-            SELECT value AS id
+            SELECT
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
             FROM settings
-            WHERE id = %s
+            WHERE key = %s
             """,
-            (setting_id,),
-            operation="settings.get_setting",
+            (key,),
+            SettingRecord,
         )
-        return value
 
-    @staticmethod
-    def update_setting(setting_id: str, value: str, updated_by: str) -> None:
-        execute_stmt(
+
+    def update_setting(
+        self,
+        key: SettingKey,
+        value,
+        updated_by: str | None = None,
+    ) -> SettingRecord | None:
+        return fetch_one(
             """
             UPDATE settings
-            SET value = %s,
-            updated_by = %s
-            WHERE id = %s
+            SET
+                value = %s,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = %s
+            WHERE key = %s
+            RETURNING
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
             """,
-            (value, updated_by, setting_id),
-            operation="settings.update_setting",
+            (value, updated_by, key),
+            SettingRecord,
+        )
+
+    def reset_setting(
+        self,
+        key: SettingKey,
+        *,
+        updated_by: str | None = None,
+    ) -> SettingRecord | None:
+        return fetch_one(
+            """
+            UPDATE settings
+            SET
+                value = NULL,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = %s
+            WHERE key = %s
+            RETURNING
+                key,
+                value,
+                default_value,
+                value_type,
+                category,
+                is_secret,
+                description,
+                updated_at,
+                updated_by
+            """,
+            (updated_by, key),
+            SettingRecord
         )

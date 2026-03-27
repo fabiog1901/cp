@@ -3,17 +3,19 @@
 from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
-from ..models import EventType, Version
-from ..repos.postgres.event import EventRepo
-from ..repos.postgres.versions import VersionsRepo
+from ..models import Event, Version
+from ..repos.base import BaseRepo
+from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
 class VersionsService:
-    @staticmethod
-    def list_versions() -> list[Version]:
+    def __init__(self, repo: BaseRepo) -> None:
+        self.repo = repo
+
+    def list_versions(self) -> list[Version]:
         try:
-            return VersionsRepo.list_versions()
+            return self.repo.list_versions()
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -21,19 +23,19 @@ class VersionsService:
                 fallback_message="Unable to load VersionsRepo.",
             ) from err
 
-    @staticmethod
-    def create_version(version: str, created_by: str) -> Version:
+    def create_version(self, version: str, created_by: str) -> Version:
         try:
             model = Version(version=version)
         except ValidationError as err:
             raise ServiceValidationError("Version format is invalid.") from err
 
         try:
-            VersionsRepo.add_version(model)
-            EventRepo.insert_event_log(
+            self.repo.add_version(model)
+            log_event(
+                self.repo,
                 created_by,
-                EventType.VERSION_ADD,
-                model.version,
+                Event.VERSION_ADD,
+                {"version": model.version},
             )
             return model
         except RepositoryError as err:
@@ -45,14 +47,14 @@ class VersionsService:
                 fallback_message=f"Unable to create version '{model.version}'.",
             ) from err
 
-    @staticmethod
-    def delete_version(version: str, deleted_by: str) -> None:
+    def delete_version(self, version: str, deleted_by: str) -> None:
         try:
-            VersionsRepo.remove_version(version)
-            EventRepo.insert_event_log(
+            self.repo.remove_version(version)
+            log_event(
+                self.repo,
                 deleted_by,
-                EventType.VERSION_REMOVE,
-                version,
+                Event.VERSION_REMOVE,
+                {"version": version},
             )
         except RepositoryError as err:
             raise from_repository_error(

@@ -1,14 +1,13 @@
 """Regions repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all
-from ...models import Region
-from ...models import RegionOption
+from ...models import Region, RegionOption
+from ..base import BaseRepo
 from .common import convert_model_to_sql
 
 
-class RegionsRepo:
-    @staticmethod
-    def list_regions() -> list[Region]:
+class RegionsRepo(BaseRepo):
+    def list_regions(self) -> list[Region]:
         return fetch_all(
             """
             SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
@@ -18,8 +17,7 @@ class RegionsRepo:
             Region,
         )
 
-    @staticmethod
-    def list_region_options() -> list[RegionOption]:
+    def list_region_options(self) -> list[RegionOption]:
         return fetch_all(
             """
             SELECT DISTINCT cloud || ':' || region AS region_id
@@ -30,8 +28,7 @@ class RegionsRepo:
             RegionOption,
         )
 
-    @staticmethod
-    def get_region_config(cloud: str, region: str) -> list[Region]:
+    def get_region_config(self, cloud: str, region: str) -> list[Region]:
         return fetch_all(
             """
             SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
@@ -42,13 +39,11 @@ class RegionsRepo:
             Region,
         )
 
-    @staticmethod
-    def add_region(region: Region) -> None:
+    def add_region(self, region: Region) -> None:
         stmt, vals = convert_model_to_sql("regions", region)
         execute_stmt(stmt, vals)
 
-    @staticmethod
-    def delete_region(cloud: str, region: str, zone: str) -> None:
+    def delete_region(self, cloud: str, region: str, zone: str) -> None:
         execute_stmt(
             """
             DELETE FROM regions

@@ -1,12 +1,11 @@
 import datetime as dt
-from typing import Any, Dict, List, Optional, Union
+from enum import StrEnum, auto
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
-
-from enum import StrEnum, auto
 
 
 class AutoNameStrEnum(StrEnum):
@@ -14,25 +13,19 @@ class AutoNameStrEnum(StrEnum):
         return name
 
 
+#
 # ENUMS FOR TYPES AND STATES
-
-
-class EventType(AutoNameStrEnum):
-    LOGIN = auto()
-    LOGOUT = auto()
-    UPDATE_SETTING = auto()
-    VERSION_ADD = auto()
-    VERSION_REMOVE = auto()
-    DB_USER_UPDATE = auto()
-    DB_USER_ADD_ROLE = auto()
-    DB_USER_REMOVE_ROLE = auto()
-    DB_USER_ADD = auto()
-    DB_USER_REMOVE = auto()
-    REGION_ADD = auto()
-    REGION_REMOVE = auto()
-    PLAYBOOK_ADD = auto()
-    PLAYBOOK_REMOVE = auto()
-    PLAYBOOK_SET_DEFAULT = auto()
+#
+class PlaybookName(AutoNameStrEnum):
+    CREATE_CLUSTER = auto()
+    DELETE_CLUSTER = auto()
+    SCALE_CLUSTER_IN = auto()
+    SCALE_CLUSTER_OUT = auto()
+    SCALE_DISK_SIZE = auto()
+    SCALE_NODE_CPUS = auto()
+    UPGRADE_CLUSTER = auto()
+    HEALTHCHECK_CLUSTER = auto()
+    RESTORE_CLUSTER = auto()
 
 
 class JobType(AutoNameStrEnum):
@@ -70,9 +63,101 @@ class JobState(AutoNameStrEnum):
     COMPLETED = auto()
 
 
+class Event(AutoNameStrEnum):
+    LOGIN = auto()
+    LOGOUT = auto()
+    UPDATE_PLAYBOOK = auto()
+    API_KEY_CREATE = auto()
+    API_KEY_DELETE = auto()
+    SETTING_UPDATE = auto()
+    SETTING_RESET = auto()
+    VERSION_ADD = auto()
+    VERSION_REMOVE = auto()
+    DB_USER_UPDATE = auto()
+    DB_USER_ADD_ROLE = auto()
+    DB_USER_REMOVE_ROLE = auto()
+    DB_USER_ADD = auto()
+    DB_USER_REMOVE = auto()
+    REGION_ADD = auto()
+    REGION_REMOVE = auto()
+    PLAYBOOK_ADD = auto()
+    PLAYBOOK_REMOVE = auto()
+    PLAYBOOK_SET_DEFAULT = auto()
+
+
+class CPRole(AutoNameStrEnum):
+    CP_READONLY = auto()
+    CP_USER = auto()
+    CP_ADMIN = auto()
+
+
+class SettingKey(AutoNameStrEnum):
+    cloud_storage_url = auto()
+    default_password = auto()
+    default_username = auto()
+    licence_key = auto()
+    licence_org = auto()
+    playbooks_url = auto()
+    playbooks_url_cache_expiry = auto()
+    prom_url = auto()
+    sso_auth_url = auto()
+    sso_cache_expiry = auto()
+    sso_claim_name = auto()
+    sso_client_id = auto()
+    sso_client_secret = auto()
+    sso_issuer = auto()
+    sso_jwks_url = auto()
+    sso_redirect_uri = auto()
+    sso_token_url = auto()
+    sso_userinfo_url = auto()
+    #
+    CP_ENTERPRISE_LICENSE_KEY = auto()
+    OIDC_ENABLED = auto()
+    OIDC_ISSUER_URL = auto()
+    OIDC_CLIENT_ID = auto()
+    OIDC_CLIENT_SECRET = auto()
+    OIDC_SCOPES = auto()
+    OIDC_AUDIENCE = auto()
+    OIDC_EXTRA_AUTH_PARAMS = auto()
+    OIDC_REDIRECT_URI = auto()
+    OIDC_LOGIN_PATH = auto()
+    OIDC_SESSION_COOKIE_NAME = auto()
+    OIDC_STATE_COOKIE_NAME = auto()
+    OIDC_NONCE_COOKIE_NAME = auto()
+    OIDC_NEXT_COOKIE_NAME = auto()
+    OIDC_COOKIE_SECURE = auto()
+    OIDC_COOKIE_SAMESITE = auto()
+    OIDC_COOKIE_DOMAIN = auto()
+    OIDC_VERIFY_AUDIENCE = auto()
+    OIDC_UI_USERNAME_CLAIM = auto()
+    OIDC_AUTHZ_READONLY_GROUPS = auto()
+    OIDC_AUTHZ_USER_GROUPS = auto()
+    OIDC_AUTHZ_ADMIN_GROUPS = auto()
+    OIDC_AUTHZ_GROUPS_CLAIM = auto()
+
+
+#
+# GENERIC / LEGACY
+#
+class JobID(BaseModel):
+    job_id: int
+
+
+class ClusterIDRef(BaseModel):
+    cluster_id: str
+
+
+class StrID(BaseModel):
+    id: str
+
+
+class IntID(BaseModel):
+    id: int
+
+
+#
 # AUTH AND LOGGING
-
-
+#
 class WebUser(BaseModel):
     username: str
     roles: List[str]
@@ -84,23 +169,13 @@ class RoleGroupMap(BaseModel):
     groups: List[str]
 
 
-class EventLog(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details: Dict[str, Union[int, str, List[str]]]
+class EventCountResponse(BaseModel):
+    total: int
 
 
-class EventLogYaml(BaseModel):
-    created_at: dt.datetime
-    created_by: str
-    event_type: str
-    event_details_yaml: str
-
-
+#
 # CLUSTER
-
-
+#
 class ClusterOverview(BaseModel):
     cluster_id: str
     grp: str
@@ -227,9 +302,20 @@ class Task(BaseModel):
     task_desc: Optional[str]
 
 
+class JobDetailsResponse(BaseModel):
+    job: Job
+    description_yaml: str
+    tasks: List[Task]
+    linked_clusters: List[ClusterIDRef]
+
+
+class JobRescheduleResponse(BaseModel):
+    job_id: int
+
+
+#
 # ADMIN
-
-
+#
 class Region(BaseModel):
     cloud: str
     region: str
@@ -261,22 +347,16 @@ class DiskSizeOption(BaseModel):
     size_gb: int
 
 
-class Setting(BaseModel):
-    id: str
-    value: str
-    updated_at: dt.datetime
-    updated_by: str
-    default_value: str
-    description: str
-
-
 class Nodes(BaseModel):
     cluster_id: str
     nodes: list[str]
 
 
+#
+# PLAYBOOK
+#
 class PlaybookOverview(BaseModel):
-    name: str
+    name: PlaybookName
     version: dt.datetime
     default_version: dt.datetime | None = None
     created_at: dt.datetime
@@ -285,7 +365,28 @@ class PlaybookOverview(BaseModel):
 
 
 class Playbook(PlaybookOverview):
-    playbook: bytes | None = None
+    content: bytes | None = None
+
+
+class PlaybookResponse(BaseModel):
+    name: str
+    version: str
+    default_version: str
+    available_versions: list[str]
+    original_content: str
+    modified_content: str
+
+
+class PlaybookVersionResponse(BaseModel):
+    playbook_version: str
+    original_content: str
+    modified_content: str
+    available_versions: list[str] | None = None
+    default_version: str | None = None
+
+
+class PlaybookSaveRequest(BaseModel):
+    content: str
 
 
 class DashboardMetrics(BaseModel):
@@ -313,20 +414,140 @@ class ClusterBackupsSnapshot(BaseModel):
     backup_paths: list[BackupPathOption]
 
 
-# GENERIC / LEGACY
+class ClusterCreateOptionsResponse(BaseModel):
+    versions: list[str]
+    node_counts: list[int]
+    cpus_per_node: list[int]
+    disk_sizes: list[int]
+    regions: list[RegionOption]
 
 
-class JobID(BaseModel):
-    job_id: int
+class ClusterDialogOptionsResponse(BaseModel):
+    node_counts: list[int]
+    cpus_per_node: list[int]
+    disk_sizes: list[int]
+    regions: list[RegionOption]
+    upgrade_versions: list[str]
 
 
-class ClusterIDRef(BaseModel):
-    cluster_id: str
+class ClusterCreateApiRequest(BaseModel):
+    name: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
+    regions: list[str]
+    version: str
+    group: str
 
 
-class StrID(BaseModel):
-    id: str
+class ClusterUpgradeRequest(BaseModel):
+    name: str
+    version: str
+    auto_finalize: bool
 
 
-class IntID(BaseModel):
-    id: int
+class ClusterRestoreApiRequest(BaseModel):
+    backup_path: str
+    restore_aost: str | None = None
+    restore_full_cluster: bool
+    object_type: str | None = None
+    object_name: str | None = None
+    backup_into: str | None = None
+
+
+class ClusterRoleRevokeRequest(BaseModel):
+    role: str
+
+
+class ClusterPasswordUpdateRequest(BaseModel):
+    password: str
+
+
+class NoFreeComputeUnitError(Exception):
+    pass
+
+
+class ComputeUnitNotFoundError(Exception):
+    pass
+
+
+class ComputeUnitStateError(Exception):
+    pass
+
+
+class ComputeUnitOperationError(Exception):
+    pass
+
+
+class AllocatePlaybookError(Exception):
+    pass
+
+
+class ApiKeyNotFoundError(Exception):
+    pass
+
+
+class InvalidApiKeyValidityError(Exception):
+    pass
+
+
+class SettingNotFoundError(Exception):
+    pass
+
+
+class SettingRecord(BaseModel):
+    key: SettingKey
+    value: str | None = None
+    default_value: str
+    value_type: str
+    category: str
+    is_secret: bool = False
+    description: str = ""
+    updated_at: dt.datetime
+    updated_by: str | None = None
+
+
+class SettingUpdateRequest(BaseModel):
+    value: str
+
+
+class LogMsg(BaseModel):
+    ts: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.timezone.utc))
+    user_id: str
+    action: str
+    details: dict[str, Any] | None = None
+    request_id: str | None = None
+
+
+class ApiKeyRecord(BaseModel):
+    access_key: str
+    encrypted_secret_access_key: bytes
+    owner: str
+    valid_until: dt.datetime
+    roles: list[CPRole] | None = None
+
+
+class ApiKeySummary(BaseModel):
+    access_key: str
+    owner: str
+    valid_until: dt.datetime
+    roles: list[CPRole] | None = None
+
+
+class ApiKeyCreateRequest(BaseModel):
+    valid_until: dt.datetime
+    roles: list[CPRole] | None = None
+
+
+class ApiKeyCreateRequestInDB(ApiKeyCreateRequest):
+    access_key: str
+
+
+class ApiKeyCreateResponse(ApiKeySummary):
+    secret_access_key: str
+
+
+class DeferredTask(BaseModel):
+    fn: Callable[..., None]
+    args: tuple | None
+    kwargs: dict = {}

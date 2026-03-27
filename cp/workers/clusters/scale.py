@@ -2,6 +2,7 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from ...infra import get_repo
 from ...models import (
     Cluster,
     ClusterScaleRequest,
@@ -11,8 +12,6 @@ from ...models import (
     JobState,
     Region,
 )
-from ...repos.postgres.jobs import JobsRepo
-from ...repos.postgres.cluster import ClusterRepo
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -40,17 +39,18 @@ def scale_cluster(
     data: dict,
     requested_by: str,
 ) -> None:
+    repo = get_repo()
     cluster_scale_request = ClusterScaleRequest(**data)
 
-    current_cluster = ClusterRepo.get_cluster(cluster_scale_request.name, [], True)
+    current_cluster = repo.get_cluster(cluster_scale_request.name, [], True)
 
-    ClusterRepo.update_cluster(
+    repo.update_cluster(
         cluster_scale_request.name,
         requested_by,
         status=ClusterState.SCALING,
     )
 
-    JobsRepo.insert_mapped_job(
+    repo.insert_mapped_job(
         cluster_scale_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -73,19 +73,20 @@ def scale_cluster_worker_entry(
     current_cluster: Cluster,
     requested_by: str,
 ):
+    repo = get_repo()
     try:
         scale_cluster_worker(job_id, csr, current_cluster, requested_by)
     except Exception as err:
         logger.exception("Unhandled error while scaling cluster '%s'", csr.name)
-        JobsRepo.update_job(job_id, JobState.FAILED)
-        JobsRepo.insert_task(
+        repo.update_job(job_id, JobState.FAILED)
+        repo.insert_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
             "FAILURE",
             str(err),
         )
-        ClusterRepo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+        repo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
 
 
 # TODO refactor this method and use it in create_cluster.py
@@ -125,6 +126,7 @@ def scale_cluster_worker(
     current_cluster: Cluster,
     requested_by: str,
 ):
+    repo = get_repo()
     deployment = []
     task_id_counter = 0
     current_regions = [
@@ -146,14 +148,14 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_DISK_SIZE", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(
+            repo.update_cluster(
                 csr.name,
                 requested_by,
                 status=ClusterState.SCALE_FAILED,
             )
             return
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -175,10 +177,12 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_NODE_CPUS", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name, requested_by, status=ClusterState.SCALING, node_cpus=csr.node_cpus
         )
     #
@@ -190,7 +194,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = ClusterRepo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -283,12 +287,14 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -306,7 +312,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = ClusterRepo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -393,12 +399,12 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            repo.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name,
             requested_by,
             node_count=csr.node_count,
@@ -419,7 +425,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions + new_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = ClusterRepo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -513,12 +519,14 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(csr.name, requested_by, status=ClusterState.SCALE_FAILED)
+            repo.update_cluster(
+                csr.name, requested_by, status=ClusterState.SCALE_FAILED
+            )
             return
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -540,7 +548,7 @@ def scale_cluster_worker(
         for cloud_region in csr.regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = ClusterRepo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.get_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -627,7 +635,7 @@ def scale_cluster_worker(
         ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
 
         if job_status != "successful":
-            ClusterRepo.update_cluster(
+            repo.update_cluster(
                 csr.name,
                 requested_by,
                 status=ClusterState.SCALE_FAILED,
@@ -636,7 +644,7 @@ def scale_cluster_worker(
 
         current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
 
-        ClusterRepo.update_cluster(
+        repo.update_cluster(
             csr.name,
             requested_by,
             status=ClusterState.SCALING,
@@ -644,7 +652,7 @@ def scale_cluster_worker(
             lbs_inventory=current_cluster.lbs_inventory,
         )
 
-    ClusterRepo.update_cluster(
+    repo.update_cluster(
         csr.name,
         requested_by,
         status=ClusterState.RUNNING,

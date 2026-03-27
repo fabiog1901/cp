@@ -3,28 +3,13 @@
 from pydantic import TypeAdapter
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import (
-    Cluster,
-    ClusterOverview,
-    CpuCountOption,
-    DiskSizeOption,
-    InventoryLB,
-    InventoryRegion,
-    Job,
-    NodeCountOption,
-    Nodes,
-    Region,
-    RegionOption,
-    Version,
-)
-from .cluster_jobs import ClusterJobsRepo
-from .regions import RegionsRepo
-from .versions import VersionsRepo
+from ...models import Cluster, ClusterOverview, InventoryLB, InventoryRegion, Nodes
+from ..base import BaseRepo
 
 
-class ClusterRepo:
-    @staticmethod
+class ClusterRepo(BaseRepo):
     def list_clusters(
+        self,
         groups: list[str],
         is_admin: bool = False,
     ) -> list[ClusterOverview]:
@@ -58,8 +43,8 @@ class ClusterRepo:
             operation="cluster.list_clusters",
         )
 
-    @staticmethod
     def get_cluster(
+        self,
         cluster_id: str,
         groups: list[str],
         is_admin: bool = False,
@@ -88,8 +73,7 @@ class ClusterRepo:
             operation="cluster.get_cluster",
         )
 
-    @staticmethod
-    def get_running_clusters() -> list[Cluster]:
+    def get_running_clusters(self) -> list[Cluster]:
         return fetch_all(
             """
             SELECT *
@@ -102,8 +86,8 @@ class ClusterRepo:
             operation="cluster.get_running_clusters",
         )
 
-    @staticmethod
     def create_or_update_cluster(
+        self,
         cluster_id: str,
         status: str,
         created_by: str,
@@ -137,8 +121,8 @@ class ClusterRepo:
             operation="cluster.create_or_update_cluster",
         )
 
-    @staticmethod
     def update_cluster(
+        self,
         cluster_id: str,
         updated_by: str,
         cluster_inventory: list[InventoryRegion] | None = None,
@@ -179,8 +163,7 @@ class ClusterRepo:
             operation="cluster.update_cluster",
         )
 
-    @staticmethod
-    def delete_cluster(cluster_id: str) -> None:
+    def delete_cluster(self, cluster_id: str) -> None:
         execute_stmt(
             """
             DELETE FROM clusters
@@ -190,40 +173,7 @@ class ClusterRepo:
             operation="cluster.delete_cluster",
         )
 
-    @staticmethod
-    def list_cluster_jobs(cluster_id: str) -> list[Job]:
-        return ClusterJobsRepo.list_cluster_jobs(cluster_id)
-
-    @staticmethod
-    def list_regions() -> list[RegionOption]:
-        return RegionsRepo.list_region_options()
-
-    @staticmethod
-    def get_region_config(cloud: str, region: str) -> list[Region]:
-        return RegionsRepo.get_region_config(cloud, region)
-
-    @staticmethod
-    def list_versions() -> list[Version]:
-        return VersionsRepo.list_versions()
-
-    @staticmethod
-    def list_upgrade_versions(major_version: str) -> list[Version]:
-        return VersionsRepo.list_upgrade_versions(major_version)
-
-    @staticmethod
-    def list_node_counts() -> list[NodeCountOption]:
-        return VersionsRepo.list_node_counts()
-
-    @staticmethod
-    def list_cpus_per_node() -> list[CpuCountOption]:
-        return VersionsRepo.list_cpus_per_node()
-
-    @staticmethod
-    def list_disk_sizes() -> list[DiskSizeOption]:
-        return VersionsRepo.list_disk_sizes()
-
-    @staticmethod
-    def get_nodes() -> list[Nodes]:
+    def get_nodes(self) -> list[Nodes]:
         return fetch_all(
             """
             WITH

@@ -9,9 +9,8 @@ import time
 import ansible_runner
 import yaml
 
+from ..infra import get_repo
 from ..models import JobState, Playbook
-from ..repos.postgres.jobs import JobsRepo
-from ..repos.postgres.playbooks import PlaybooksRepo
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ class MyRunner:
         self.data = {}
         self.job_id = job_id
         self.counter = counter
+        self.repo = get_repo()
 
     def my_status_handler(self, status, runner_config):
         return
@@ -83,7 +83,7 @@ class MyRunner:
             task_type = e["event"]
             task_data = json.dumps(e)
 
-        JobsRepo.insert_task(
+        self.repo.insert_task(
             self.job_id,
             self.counter,
             e["created"],
@@ -98,28 +98,28 @@ class MyRunner:
     ) -> tuple[str, dict, int]:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
-            p: Playbook = PlaybooksRepo.get_default_playbook(playbook_name)
-            if p is None or p.playbook is None:
+            p: Playbook = self.repo.get_default_playbook(playbook_name)
+            if p is None or p.content is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"
                 )
 
             shutil.rmtree(job_dir, ignore_errors=True)
             os.makedirs(job_dir, exist_ok=True)
-            JobsRepo.update_job(self.job_id, JobState.RUNNING)
+            self.repo.update_job(self.job_id, JobState.RUNNING)
 
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=yaml.safe_load(gzip.decompress(p.playbook).decode()),
+                playbook=yaml.safe_load(gzip.decompress(p.content).decode()),
                 private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,
                 status_handler=self.my_status_handler,
             )
         except Exception as err:
-            JobsRepo.update_job(self.job_id, JobState.FAILED)
-            JobsRepo.insert_task(
+            self.repo.update_job(self.job_id, JobState.FAILED)
+            self.repo.insert_task(
                 self.job_id,
                 self.counter,
                 dt.datetime.now(dt.timezone.utc),
@@ -138,17 +138,17 @@ class MyRunner:
         try:
             while thread.is_alive():
                 if time.time() > heartbeat_ts:
-                    JobsRepo.update_job(self.job_id, JobState.RUNNING)
+                    self.repo.update_job(self.job_id, JobState.RUNNING)
                     heartbeat_ts = time.time() + 60
 
                 time.sleep(1)
 
             if runner.status == "successful":
-                JobsRepo.update_job(self.job_id, JobState.COMPLETED)
+                self.repo.update_job(self.job_id, JobState.COMPLETED)
             else:
-                JobsRepo.update_job(self.job_id, JobState.FAILED)
+                self.repo.update_job(self.job_id, JobState.FAILED)
         except Exception:
-            JobsRepo.update_job(self.job_id, JobState.FAILED)
+            self.repo.update_job(self.job_id, JobState.FAILED)
             logger.exception(
                 "Error while monitoring playbook '%s' for job %s",
                 playbook_name,
@@ -168,6 +168,7 @@ class MyRunnerLite:
     ):
         self.data = {}
         self.job_id = job_id
+        self.repo = get_repo()
 
     def my_status_handler(self, status, runner_config):
         return
@@ -180,8 +181,8 @@ class MyRunnerLite:
     def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
-            p: Playbook = PlaybooksRepo.get_default_playbook(playbook_name)
-            if p is None or p.playbook is None:
+            p: Playbook = self.repo.get_default_playbook(playbook_name)
+            if p is None or p.content is None:
                 raise RuntimeError(
                     f"Default playbook '{playbook_name}' is not configured"
                 )
@@ -192,7 +193,7 @@ class MyRunnerLite:
             thread, runner = ansible_runner.run_async(
                 quiet=False,
                 verbosity=1,
-                playbook=gzip.decompress(p.playbook).decode(),
+                playbook=gzip.decompress(p.content).decode(),
                 private_data_dir=job_dir,
                 extravars=extra_vars,
                 event_handler=self.my_event_handler,

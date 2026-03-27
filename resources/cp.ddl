@@ -102,13 +102,16 @@ CREATE TABLE secrets (
     SETTINGS
 */
 CREATE TABLE settings (
-    id STRING NOT NULL,
-    value STRING NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
-    updated_by STRING NOT NULL,
-    default_value STRING NOT NULL,
-    description STRING NOT NULL,
-    CONSTRAINT pk PRIMARY KEY (id ASC)
+    key STRING NOT NULL,
+    value STRING NULL,
+    default_value STRING NULL,
+    value_type STRING NULL,
+    category STRING NULL,
+    is_secret BOOL NULL DEFAULT false,
+    description STRING NULL DEFAULT '':::STRING,
+    updated_at TIMESTAMPTZ NULL,
+    updated_by STRING NULL,
+    CONSTRAINT pk_settings PRIMARY KEY (key ASC)
 );
 
 CREATE TABLE regions (
@@ -147,7 +150,7 @@ CREATE TABLE playbooks (
     name STRING NOT NULL,
     version TIMESTAMPTZ(0) NOT NULL DEFAULT now(),
     default_version TIMESTAMPTZ NOT NULL,
-    playbook BYTES NULL,
+    content BYTES NULL,
     created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NULL,
     updated_by STRING NULL,

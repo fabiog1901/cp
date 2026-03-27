@@ -1,14 +1,13 @@
 """Versions repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all
-from ...models import CpuCountOption, DiskSizeOption, NodeCountOption
-from ...models import Version
+from ...models import CpuCountOption, DiskSizeOption, NodeCountOption, Version
+from ..base import BaseRepo
 from .common import convert_model_to_sql
 
 
-class VersionsRepo:
-    @staticmethod
-    def list_versions() -> list[Version]:
+class VersionsRepo(BaseRepo):
+    def list_versions(self) -> list[Version]:
         return fetch_all(
             """
             SELECT version
@@ -19,13 +18,11 @@ class VersionsRepo:
             Version,
         )
 
-    @staticmethod
-    def add_version(version: Version) -> None:
+    def add_version(self, version: Version) -> None:
         stmt, vals = convert_model_to_sql("versions", version)
         execute_stmt(stmt, vals)
 
-    @staticmethod
-    def remove_version(version: str) -> None:
+    def remove_version(self, version: str) -> None:
         execute_stmt(
             """
             DELETE
@@ -35,8 +32,7 @@ class VersionsRepo:
             (version,),
         )
 
-    @staticmethod
-    def list_upgrade_versions(major_version: str) -> list[Version]:
+    def list_upgrade_versions(self, major_version: str) -> list[Version]:
         return fetch_all(
             """
             SELECT version
@@ -48,8 +44,7 @@ class VersionsRepo:
             Version,
         )
 
-    @staticmethod
-    def list_node_counts() -> list[NodeCountOption]:
+    def list_node_counts(self) -> list[NodeCountOption]:
         return fetch_all(
             """
             SELECT nodes AS node_count
@@ -60,8 +55,7 @@ class VersionsRepo:
             NodeCountOption,
         )
 
-    @staticmethod
-    def list_cpus_per_node() -> list[CpuCountOption]:
+    def list_cpus_per_node(self) -> list[CpuCountOption]:
         return fetch_all(
             """
             SELECT cpus AS cpu_count
@@ -72,8 +66,7 @@ class VersionsRepo:
             CpuCountOption,
         )
 
-    @staticmethod
-    def list_disk_sizes() -> list[DiskSizeOption]:
+    def list_disk_sizes(self) -> list[DiskSizeOption]:
         return fetch_all(
             """
             SELECT size_gb
