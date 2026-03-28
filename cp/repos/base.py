@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from ..models import (
-    ApiKeyCreateRequest,
+    ApiKeyCreateRequestInDB,
     ApiKeyRecord,
     ApiKeySummary,
     BackupDetails,
@@ -42,7 +42,7 @@ class BaseRepo(ABC):
     @abstractmethod
     def create_api_key(
         self,
-        api_key: ApiKeyCreateRequest,
+        api_key: ApiKeyCreateRequestInDB,
         *,
         owner: str,
         encrypted_secret_access_key: bytes,

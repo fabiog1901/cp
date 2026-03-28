@@ -16,6 +16,7 @@ from .dependencies import (
     get_regions_service,
     get_settings_service,
     get_versions_service,
+    get_api_keys_service,
 )
 from .util import (
     RequestIDFilter,
@@ -49,6 +50,7 @@ __all__ = [
     "get_regions_service",
     "get_settings_service",
     "get_versions_service",
+    "get_api_keys_service",
     "RequestIDFilter",
     "ShorthandFormatter",
     "as_bool",

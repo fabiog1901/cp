@@ -1,11 +1,12 @@
 from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import ApiKeyCreateRequest, ApiKeyRecord, ApiKeySummary
+from ...models import ApiKeyCreateRequestInDB, ApiKeyRecord, ApiKeySummary
+from ..base import BaseRepo
 
 
-class ApiKeysRepo:
+class ApiKeysRepo(BaseRepo):
 
     def get_api_key(self, access_key: str) -> ApiKeyRecord | None:
-        fetch_one(
+        return fetch_one(
             """
                     SELECT access_key, encrypted_secret_access_key, owner, valid_until, roles
                     FROM api_keys
@@ -13,6 +14,7 @@ class ApiKeysRepo:
                     """,
             (access_key,),
             ApiKeyRecord,
+            operation="api_keys.get",
         )
 
     def list_api_keys(self, access_key: str | None = None) -> list[ApiKeySummary]:
@@ -28,11 +30,11 @@ class ApiKeysRepo:
 
         sql += " ORDER BY access_key"
 
-        return fetch_all(sql, params, ApiKeySummary)
+        return fetch_all(sql, tuple(params), ApiKeySummary, operation="api_keys.list")
 
     def create_api_key(
         self,
-        api_key: ApiKeyCreateRequest,
+        api_key: ApiKeyCreateRequestInDB,
         *,
         owner: str,
         encrypted_secret_access_key: bytes,
@@ -57,6 +59,7 @@ class ApiKeysRepo:
                 api_key.roles,
             ),
             ApiKeySummary,
+            operation="api_keys.create",
         )
 
     def delete_api_key(self, access_key: str) -> None:
@@ -67,4 +70,5 @@ class ApiKeysRepo:
                 WHERE access_key = %s
                 """,
             (access_key,),
+            operation="api_keys.delete",
         )

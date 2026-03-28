@@ -13,6 +13,7 @@ from ..services.playbooks import PlaybooksService
 from ..services.regions import RegionsService
 from ..services.settings import SettingsService
 from ..services.versions import VersionsService
+from ..services.api_keys import ApiKeysService
 from .db import get_repo as _get_repo
 
 __all__ = [
@@ -30,6 +31,7 @@ __all__ = [
     "get_regions_service",
     "get_settings_service",
     "get_versions_service",
+    "get_api_keys_service",
     "get_admin_service",
 ]
 
@@ -62,6 +64,7 @@ get_playbooks_service = _build_service(PlaybooksService)
 get_regions_service = _build_service(RegionsService)
 get_settings_service = _build_service(SettingsService)
 get_versions_service = _build_service(VersionsService)
+get_api_keys_service = _build_service(ApiKeysService)
 
 
 # Backward-compatible alias for the legacy admin API slice on this branch.

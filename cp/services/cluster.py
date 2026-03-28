@@ -215,7 +215,7 @@ class ClusterService:
                 err,
                 unavailable_message="Cluster scaling could not be requested right now.",
                 validation_message="The cluster scale request contains invalid data.",
-                fallback_message=f"Unable to request scaling for cluster '{cluster_id}'.",
+                fallback_message=f"Unable to request scaling for cluster '{request.name}'.",
             ) from err
 
     def request_cluster_upgrade(
@@ -243,7 +243,7 @@ class ClusterService:
                 err,
                 unavailable_message="Cluster upgrade could not be requested right now.",
                 validation_message="The cluster upgrade request contains invalid data.",
-                fallback_message=f"Unable to request upgrade for cluster '{cluster_id}'.",
+                fallback_message=f"Unable to request upgrade for cluster '{request.name}'.",
             ) from err
 
     def request_cluster_restore(
