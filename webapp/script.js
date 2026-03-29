@@ -1197,7 +1197,8 @@ window.app = function () {
       else if (this.view === "cluster") await this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard")
         await this.ensureClusterDashboardView();
-      else if (this.view === "cluster_users") await this.ensureClusterUsersView();
+      else if (this.view === "cluster_users")
+        await this.ensureClusterUsersView();
       else if (this.view === "cluster_backups")
         await this.ensureClusterBackupsView();
       else if (this.view === "jobs") await this.ensureJobsView();
@@ -1217,7 +1218,9 @@ window.app = function () {
 
       const parts = route.parts;
       const query = route.query || {};
-      const previousJobsContext = String(this.jobsContextClusterId || "").trim();
+      const previousJobsContext = String(
+        this.jobsContextClusterId || "",
+      ).trim();
 
       let nextView = "dashboard";
       let nextClusterId = "";
@@ -1289,7 +1292,8 @@ window.app = function () {
       }
 
       if (nextJobId) {
-        const changedJob = String(this.selectedJobId || "").trim() !== nextJobId;
+        const changedJob =
+          String(this.selectedJobId || "").trim() !== nextJobId;
         this.selectedJobId = nextJobId;
         localStorage.setItem("cp_selected_job_id", nextJobId);
         if (changedJob) this.selectedJobDetails = null;
@@ -1565,7 +1569,9 @@ window.app = function () {
       const selectedJobId = localStorage.getItem("cp_selected_job_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
-      const clusterUsersFilter = localStorage.getItem("cp_cluster_users_filter");
+      const clusterUsersFilter = localStorage.getItem(
+        "cp_cluster_users_filter",
+      );
 
       if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
       if (sDir === "desc") this.sortDir = "desc";
@@ -1898,7 +1904,8 @@ window.app = function () {
       }
       if (
         !this.clusterDashboardSnapshot ||
-        this.clusterDashboardSnapshot?.cluster?.cluster_id !== this.selectedClusterId
+        this.clusterDashboardSnapshot?.cluster?.cluster_id !==
+          this.selectedClusterId
       ) {
         await this.refreshClusterDashboard();
         return;
@@ -1919,7 +1926,10 @@ window.app = function () {
       ) {
         await this.refreshSelectedCluster();
       }
-      if (this.clusterUsers.length === 0 && !this.clusterUsersLoading.snapshot) {
+      if (
+        this.clusterUsers.length === 0 &&
+        !this.clusterUsersLoading.snapshot
+      ) {
         await this.refreshClusterUsers();
       } else {
         this.applyClusterUsersFilter();
@@ -1939,7 +1949,10 @@ window.app = function () {
       ) {
         await this.refreshSelectedCluster();
       }
-      if (this.clusterBackups.length === 0 && !this.clusterBackupsLoading.snapshot) {
+      if (
+        this.clusterBackups.length === 0 &&
+        !this.clusterBackupsLoading.snapshot
+      ) {
         await this.refreshClusterBackups();
       } else if (
         this.selectedClusterBackupPath &&
@@ -2092,13 +2105,9 @@ window.app = function () {
       // Cluster states
       if (s === "ready" || s === "active") return "status-online";
       if (
-        [
-          "creating",
-          "scaling",
-          "upgrading",
-          "restoring",
-          "deleting",
-        ].includes(s)
+        ["creating", "scaling", "upgrading", "restoring", "deleting"].includes(
+          s,
+        )
       )
         return "status-pending status-pulse";
       if (s === "decommissioned" || s === "deleted") return "status-muted";
@@ -3125,11 +3134,16 @@ window.app = function () {
           this.selectedClusterId = String(
             snapshot.cluster.cluster_id || clusterId,
           );
-          localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+          localStorage.setItem(
+            "cp_selected_cluster_id",
+            this.selectedClusterId,
+          );
         }
 
         if (typeof window !== "undefined") {
-          window.requestAnimationFrame(() => this.renderClusterDashboardCharts());
+          window.requestAnimationFrame(() =>
+            this.renderClusterDashboardCharts(),
+          );
         }
       } catch (e) {
         console.error(e);
@@ -3161,7 +3175,9 @@ window.app = function () {
     },
 
     applyClusterUsersFilter() {
-      const q = String(this.clusterUsersFilterQuery || "").trim().toLowerCase();
+      const q = String(this.clusterUsersFilterQuery || "")
+        .trim()
+        .toLowerCase();
       let rows = Array.isArray(this.clusterUsers) ? [...this.clusterUsers] : [];
       if (q) {
         rows = rows.filter((row) => this.clusterUsersRowText(row).includes(q));
@@ -3180,7 +3196,9 @@ window.app = function () {
       this.clusterUsersLoading.snapshot = true;
       try {
         const snapshot = await this.apiFetch(
-          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/users`),
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/users`,
+          ),
           { method: "GET" },
         );
         this.clusterUsers = Array.isArray(snapshot?.database_users)
@@ -3218,8 +3236,12 @@ window.app = function () {
 
     async createClusterUser() {
       const clusterId = String(this.selectedClusterId || "").trim();
-      const username = String(this.modal.clusterUserCreate.username || "").trim();
-      const password = String(this.modal.clusterUserCreate.password || "").trim();
+      const username = String(
+        this.modal.clusterUserCreate.username || "",
+      ).trim();
+      const password = String(
+        this.modal.clusterUserCreate.password || "",
+      ).trim();
       if (!clusterId || !username || !password) {
         this.setModalError(
           "clusterUserCreate",
@@ -3231,10 +3253,13 @@ window.app = function () {
       this.clusterUsersLoading.create = true;
       this.clearModalError("clusterUserCreate");
       try {
-        await this.apiFetch(`/clusters/${encodeURIComponent(clusterId)}/users`, {
-          method: "POST",
-          body: { username, password },
-        });
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/users`,
+          {
+            method: "POST",
+            body: { username, password },
+          },
+        );
         this.closeClusterUserCreateModal();
         await this.refreshClusterUsers();
         this.setActionNotice(`Database user '${username}' created.`);
@@ -3308,8 +3333,12 @@ window.app = function () {
 
     async updateClusterUserPassword() {
       const clusterId = String(this.selectedClusterId || "").trim();
-      const username = String(this.modal.clusterUserPassword.username || "").trim();
-      const password = String(this.modal.clusterUserPassword.password || "").trim();
+      const username = String(
+        this.modal.clusterUserPassword.username || "",
+      ).trim();
+      const password = String(
+        this.modal.clusterUserPassword.password || "",
+      ).trim();
       if (!clusterId || !username || !password) {
         this.setModalError(
           "clusterUserPassword",
@@ -3361,7 +3390,9 @@ window.app = function () {
 
     async revokeClusterUserRole(role) {
       const clusterId = String(this.selectedClusterId || "").trim();
-      const username = String(this.modal.clusterUserRoles.username || "").trim();
+      const username = String(
+        this.modal.clusterUserRoles.username || "",
+      ).trim();
       const normalizedRole = String(role || "").trim();
       if (!clusterId || !username || !normalizedRole) return;
       this.clusterUsersLoading.revokeRole = true;
@@ -3374,19 +3405,16 @@ window.app = function () {
             body: { role: normalizedRole },
           },
         );
-        this.modal.clusterUserRoles.roles = this.modal.clusterUserRoles.roles.filter(
-          (entry) => entry !== normalizedRole,
-        );
+        this.modal.clusterUserRoles.roles =
+          this.modal.clusterUserRoles.roles.filter(
+            (entry) => entry !== normalizedRole,
+          );
         await this.refreshClusterUsers();
         this.setActionNotice(
           `Role '${normalizedRole}' revoked from '${username}'.`,
         );
       } catch (e) {
-        this.setModalError(
-          "clusterUserRoles",
-          e,
-          "Failed to revoke role.",
-        );
+        this.setModalError("clusterUserRoles", e, "Failed to revoke role.");
       } finally {
         this.clusterUsersLoading.revokeRole = false;
       }
@@ -3400,7 +3428,9 @@ window.app = function () {
       this.clusterBackupsLoading.snapshot = true;
       try {
         const snapshot = await this.apiFetch(
-          this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}/backups`),
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/backups`,
+          ),
           { method: "GET" },
         );
         this.clusterBackups = Array.isArray(snapshot?.backup_paths)
@@ -3412,7 +3442,8 @@ window.app = function () {
 
         const previousSelectedBackupPath = this.selectedClusterBackupPath;
         const selectedStillExists = this.clusterBackups.some(
-          (entry) => String(entry?.path || "").trim() === this.selectedClusterBackupPath,
+          (entry) =>
+            String(entry?.path || "").trim() === this.selectedClusterBackupPath,
         );
         if (!selectedStillExists) {
           this.selectedClusterBackupPath = String(
