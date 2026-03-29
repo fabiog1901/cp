@@ -5,8 +5,8 @@ from threading import Thread
 from ...infra import get_repo
 from ...models import (
     ClusterRequest,
-    CreateClusterCommand,
     ClusterState,
+    CreateClusterCommand,
     InventoryLB,
     InventoryRegion,
     JobState,

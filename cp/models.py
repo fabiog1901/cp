@@ -1,6 +1,6 @@
 import datetime as dt
 from enum import StrEnum, auto
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 

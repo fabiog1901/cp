@@ -4,8 +4,8 @@ import gzip
 
 from ...infra.errors import RepositoryError
 from ...models import (
-    AuditEvent,
     STRFTIME,
+    AuditEvent,
     Playbook,
     PlaybookOverview,
     PlaybookResponse,

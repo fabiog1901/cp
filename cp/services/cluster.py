@@ -6,9 +6,9 @@ from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,
     Cluster,
-    CommandType,
     ClusterScaleRequest,
     ClusterUpgradeRequest,
+    CommandType,
     CreateClusterCommand,
     DeleteClusterCommand,
     JobID,

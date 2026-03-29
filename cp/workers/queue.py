@@ -12,10 +12,9 @@ from ..models import (
     CommandModel,
     CommandType,
     FailZombieJobsCommand,
-    HealthcheckClustersCommand,
+    JobState,
     Msg,
     Nodes,
-    JobState,
     parse_command_payload,
 )
 from .clusters.create import create_cluster

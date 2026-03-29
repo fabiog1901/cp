@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 from ...infra.errors import RepositoryError
 from ...infra.util import encrypt_api_key_secret
 from ...models import (
-    AuditEvent,
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
     ApiKeyCreateResponse,
     ApiKeySummary,
+    AuditEvent,
 )
 from ...repos.base import BaseRepo
 from ..base import log_event
