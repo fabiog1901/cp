@@ -1,12 +1,12 @@
-"""Versions repository backed by CockroachDB/Postgres."""
+"""Admin versions repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt, fetch_all
-from ...models import CpuCountOption, DiskSizeOption, NodeCountOption, Version
-from ..base import BaseRepo
-from .common import convert_model_to_sql
+from ....infra.db import execute_stmt, fetch_all
+from ....models import CpuCountOption, DiskSizeOption, NodeCountOption, Version
+from ..common import convert_model_to_sql
+from .base import AdminPostgresRepo
 
 
-class VersionsRepo(BaseRepo):
+class VersionsRepo(AdminPostgresRepo):
     def list_versions(self) -> list[Version]:
         return fetch_all(
             """
@@ -18,11 +18,11 @@ class VersionsRepo(BaseRepo):
             Version,
         )
 
-    def add_version(self, version: Version) -> None:
+    def create_version(self, version: Version) -> None:
         stmt, vals = convert_model_to_sql("versions", version)
         execute_stmt(stmt, vals)
 
-    def remove_version(self, version: str) -> None:
+    def delete_version(self, version: str) -> None:
         execute_stmt(
             """
             DELETE

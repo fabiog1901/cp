@@ -82,7 +82,7 @@ class ClusterUsersService:
                 fallback_message=f"Unable to create database user '{request.username}'.",
             ) from err
 
-    def remove_database_user(
+    def delete_database_user(
         self,
         cluster_id: str,
         groups: list[str],
@@ -96,7 +96,7 @@ class ClusterUsersService:
             is_admin,
         )
         try:
-            self.repo.remove_database_user(
+            self.repo.delete_database_user(
                 self._get_primary_dns_address(selected_cluster),
                 username,
             )

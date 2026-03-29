@@ -1,6 +1,11 @@
 from fastapi import Depends
 
 from ..repos.base import BaseRepo
+from ..services.admin.api_keys import ApiKeysService
+from ..services.admin.playbooks import PlaybooksService
+from ..services.admin.regions import RegionsService
+from ..services.admin.settings import SettingsService
+from ..services.admin.versions import VersionsService
 from ..services.auth import AuthService
 from ..services.cluster import ClusterService
 from ..services.cluster_backups import ClusterBackupsService
@@ -9,11 +14,6 @@ from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
 from ..services.events import EventsService
 from ..services.jobs import JobsService
-from ..services.playbooks import PlaybooksService
-from ..services.regions import RegionsService
-from ..services.settings import SettingsService
-from ..services.versions import VersionsService
-from ..services.api_keys import ApiKeysService
 from .db import get_repo as _get_repo
 
 __all__ = [

@@ -31,7 +31,7 @@ def upgrade_cluster(
         )
         return
 
-    repo.insert_mapped_job(
+    repo.link_job_to_cluster(
         cur.name,
         job_id,
         JobState.SCHEDULED,
@@ -99,7 +99,7 @@ def upgrade_cluster_worker(
     except Exception as err:
         logger.exception("Unhandled error while upgrading cluster '%s'", cur.name)
         repo.update_job(job_id, JobState.FAILED)
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

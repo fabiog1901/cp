@@ -50,7 +50,7 @@ def scale_cluster(
         status=ClusterState.SCALING,
     )
 
-    repo.insert_mapped_job(
+    repo.link_job_to_cluster(
         cluster_scale_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -79,7 +79,7 @@ def scale_cluster_worker_entry(
     except Exception as err:
         logger.exception("Unhandled error while scaling cluster '%s'", csr.name)
         repo.update_job(job_id, JobState.FAILED)
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -194,7 +194,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = repo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.list_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -312,7 +312,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = repo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.list_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -425,7 +425,7 @@ def scale_cluster_worker(
         for cloud_region in current_regions + new_regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = repo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.list_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(
@@ -548,7 +548,7 @@ def scale_cluster_worker(
         for cloud_region in csr.regions:
             cloud, region = cloud_region.split(":")
 
-            region_details: list[Region] = repo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.list_region_config(cloud, region)
 
             # add 1 HAProxy per region
             deployment.append(

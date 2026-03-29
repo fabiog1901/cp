@@ -6,7 +6,7 @@ from ..base import BaseRepo
 
 
 class MqRepo(BaseRepo):
-    def insert_into_mq(
+    def enqueue_job(
         self,
         msg_type: str,
         msg_data: dict,
@@ -36,5 +36,5 @@ class MqRepo(BaseRepo):
                 created_by,
             ),
             JobID,
-            operation="mq.insert_into_mq",
+            operation="mq.enqueue_job",
         )

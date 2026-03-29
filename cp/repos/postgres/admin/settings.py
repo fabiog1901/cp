@@ -1,12 +1,11 @@
-"""Settings repository backed by CockroachDB/Postgres."""
+"""Admin settings repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_one, fetch_scalar
-from ...models import SettingKey, SettingRecord
-from ..base import BaseRepo
+from ....infra.db import fetch_all, fetch_one
+from ....models import SettingKey, SettingRecord
+from .base import AdminPostgresRepo
 
 
-class SettingsRepo(BaseRepo):
-
+class SettingsRepo(AdminPostgresRepo):
     def list_settings(self) -> list[SettingRecord]:
         return fetch_all(
             """
@@ -47,7 +46,6 @@ class SettingsRepo(BaseRepo):
             SettingRecord,
         )
 
-
     def update_setting(
         self,
         key: SettingKey,
@@ -80,7 +78,6 @@ class SettingsRepo(BaseRepo):
     def reset_setting(
         self,
         key: SettingKey,
-        *,
         updated_by: str | None = None,
     ) -> SettingRecord | None:
         return fetch_one(
@@ -103,5 +100,5 @@ class SettingsRepo(BaseRepo):
                 updated_by
             """,
             (updated_by, key),
-            SettingRecord
+            SettingRecord,
         )

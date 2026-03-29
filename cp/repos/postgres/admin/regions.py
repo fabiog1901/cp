@@ -1,12 +1,12 @@
-"""Regions repository backed by CockroachDB/Postgres."""
+"""Admin regions repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt, fetch_all
-from ...models import Region, RegionOption
-from ..base import BaseRepo
-from .common import convert_model_to_sql
+from ....infra.db import execute_stmt, fetch_all
+from ....models import Region, RegionOption
+from ..common import convert_model_to_sql
+from .base import AdminPostgresRepo
 
 
-class RegionsRepo(BaseRepo):
+class RegionsRepo(AdminPostgresRepo):
     def list_regions(self) -> list[Region]:
         return fetch_all(
             """
@@ -28,7 +28,7 @@ class RegionsRepo(BaseRepo):
             RegionOption,
         )
 
-    def get_region_config(self, cloud: str, region: str) -> list[Region]:
+    def list_region_config(self, cloud: str, region: str) -> list[Region]:
         return fetch_all(
             """
             SELECT cloud, region, zone, vpc_id, security_groups, subnet, image, extras
@@ -39,7 +39,7 @@ class RegionsRepo(BaseRepo):
             Region,
         )
 
-    def add_region(self, region: Region) -> None:
+    def create_region(self, region: Region) -> None:
         stmt, vals = convert_model_to_sql("regions", region)
         execute_stmt(stmt, vals)
 

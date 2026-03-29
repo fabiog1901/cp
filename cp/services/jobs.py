@@ -62,7 +62,7 @@ class JobsService:
                 fallback_message=f"Unable to load tasks for job '{job_id}'.",
             ) from err
 
-    def request_job_reschedule(
+    def enqueue_job_reschedule(
         self,
         job_id: int,
         groups: list[str],
@@ -80,7 +80,7 @@ class JobsService:
         )
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 job_type,
                 selected_job.description,
                 requested_by,

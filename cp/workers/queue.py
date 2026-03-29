@@ -27,7 +27,7 @@ def get_nodes():
     rs: list[Nodes] = []
 
     try:
-        rs = get_repo().get_nodes()
+        rs = get_repo().list_cluster_nodes()
     except Exception as e:
         print("Error", str(e))
 
@@ -121,7 +121,7 @@ async def pull_from_mq():
                                         msg.msg_id,
                                     )
                                 try:
-                                    repo.insert_task(
+                                    repo.create_task(
                                         msg.msg_id,
                                         0,
                                         dt.datetime.now(dt.timezone.utc),

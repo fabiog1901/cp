@@ -73,7 +73,7 @@ class ClusterRepo(BaseRepo):
             operation="cluster.get_cluster",
         )
 
-    def get_running_clusters(self) -> list[Cluster]:
+    def list_running_clusters(self) -> list[Cluster]:
         return fetch_all(
             """
             SELECT *
@@ -83,10 +83,10 @@ class ClusterRepo(BaseRepo):
             """,
             (),
             Cluster,
-            operation="cluster.get_running_clusters",
+            operation="cluster.list_running_clusters",
         )
 
-    def create_or_update_cluster(
+    def upsert_cluster(
         self,
         cluster_id: str,
         status: str,
@@ -118,7 +118,7 @@ class ClusterRepo(BaseRepo):
                 node_count,
                 disk_size,
             ),
-            operation="cluster.create_or_update_cluster",
+            operation="cluster.upsert_cluster",
         )
 
     def update_cluster(
@@ -173,7 +173,7 @@ class ClusterRepo(BaseRepo):
             operation="cluster.delete_cluster",
         )
 
-    def get_nodes(self) -> list[Nodes]:
+    def list_cluster_nodes(self) -> list[Nodes]:
         return fetch_all(
             """
             WITH
@@ -192,5 +192,5 @@ class ClusterRepo(BaseRepo):
             """,
             (),
             Nodes,
-            operation="cluster.get_nodes",
+            operation="cluster.list_cluster_nodes",
         )

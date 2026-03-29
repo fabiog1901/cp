@@ -102,7 +102,7 @@ class JobsRepo(BaseRepo):
             ClusterIDRef,
         )
 
-    def insert_mapped_job(self, cluster_id: str, job_id: int, status: str) -> None:
+    def link_job_to_cluster(self, cluster_id: str, job_id: int, status: str) -> None:
         execute_stmt(
             """
             WITH
@@ -148,7 +148,7 @@ class JobsRepo(BaseRepo):
             IntID,
         )
 
-    def insert_task(
+    def create_task(
         self,
         job_id: int,
         task_id: int,

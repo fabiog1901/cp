@@ -59,7 +59,7 @@ class ClusterBackupsService:
                 fallback_message=f"Unable to load backup details for cluster '{cluster_id}'.",
             ) from err
 
-    def request_cluster_restore(
+    def enqueue_cluster_restore(
         self,
         cluster_id: str,
         groups: list[str],
@@ -87,7 +87,7 @@ class ClusterBackupsService:
             backup_into=backup_into,
         )
 
-        return self._request_cluster_restore(
+        return self._enqueue_cluster_restore(
             cluster_id=selected_cluster.cluster_id,
             backup_path=restore_request["backup_path"],
             restore_aost=restore_request["restore_aost"],
@@ -109,7 +109,7 @@ class ClusterBackupsService:
             raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
         return selected_cluster
 
-    def _request_cluster_restore(
+    def _enqueue_cluster_restore(
         self,
         cluster_id: str,
         backup_path: str,
@@ -133,7 +133,7 @@ class ClusterBackupsService:
         ).model_dump()
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.RESTORE_CLUSTER,
                 payload,
                 requested_by,

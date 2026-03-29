@@ -58,7 +58,7 @@ class ClusterUsersRepo(BaseRepo):
                 err, "cluster_users.create_database_user"
             ) from err
 
-    def remove_database_user(self, dns_address: str, username: str) -> None:
+    def delete_database_user(self, dns_address: str, username: str) -> None:
         try:
             with self._connect(dns_address) as conn:
                 with conn.cursor() as cur:
@@ -67,10 +67,10 @@ class ClusterUsersRepo(BaseRepo):
                     )
         except Exception as err:
             logger.debug(
-                "Cluster user query failed [operation=cluster_users.remove_database_user]"
+                "Cluster user query failed [operation=cluster_users.delete_database_user]"
             )
             raise translate_database_error(
-                err, "cluster_users.remove_database_user"
+                err, "cluster_users.delete_database_user"
             ) from err
 
     def revoke_database_user_role(

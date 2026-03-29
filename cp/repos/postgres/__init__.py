@@ -2,7 +2,7 @@
 
 from psycopg_pool import ConnectionPool
 
-from .api_keys import ApiKeysRepo
+from .admin import ApiKeysRepo, PlaybooksRepo, RegionsRepo, SettingsRepo, VersionsRepo
 from .auth import AuthRepo
 from .cluster import ClusterRepo
 from .cluster_backups import ClusterBackupsRepo
@@ -12,10 +12,6 @@ from .dashboard import DashboardRepo
 from .event import EventRepo
 from .jobs import JobsRepo
 from .mq import MqRepo
-from .playbooks import PlaybooksRepo
-from .regions import RegionsRepo
-from .settings import SettingsRepo
-from .versions import VersionsRepo
 
 
 class PostgresRepo(

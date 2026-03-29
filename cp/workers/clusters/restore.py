@@ -28,7 +28,7 @@ def restore_cluster(
             job_id,
             JobState.FAILED,
         )
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -43,7 +43,7 @@ def restore_cluster(
         status=ClusterState.RESTORING,
     )
 
-    repo.insert_mapped_job(
+    repo.link_job_to_cluster(
         rr.name,
         job_id,
         JobState.SCHEDULED,
@@ -95,7 +95,7 @@ def restore_cluster_worker(
     except Exception as err:
         logger.exception("Unhandled error while restoring cluster '%s'", rr.name)
         repo.update_job(job_id, JobState.FAILED)
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

@@ -1,15 +1,16 @@
-"""Business logic for the settings vertical."""
+"""Business logic for the admin settings vertical."""
 
-from ..infra.errors import RepositoryError
-from ..models import Event, SettingRecord
-from ..repos.base import BaseRepo
-from .base import log_event
-from .errors import ServiceValidationError, from_repository_error
+from ...infra.errors import RepositoryError
+from ...models import Event, SettingRecord
+from ...repos.base import BaseRepo
+from ..base import log_event
+from ..errors import ServiceValidationError, from_repository_error
+from .base import AdminService
 
 
-class SettingsService:
+class SettingsService(AdminService):
     def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+        super().__init__(repo)
 
     def list_settings(self) -> list[SettingRecord]:
         try:
@@ -40,7 +41,6 @@ class SettingsService:
         return value
 
     def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
-
         try:
             self.repo.update_setting(setting_id, value, updated_by)
 

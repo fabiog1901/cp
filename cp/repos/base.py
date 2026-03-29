@@ -92,11 +92,11 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def get_running_clusters(self) -> list[Cluster]:
+    def list_running_clusters(self) -> list[Cluster]:
         pass
 
     @abstractmethod
-    def create_or_update_cluster(
+    def upsert_cluster(
         self,
         cluster_id: str,
         status: str,
@@ -142,11 +142,11 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def get_region_config(self, cloud: str, region: str) -> list[Region]:
+    def list_region_config(self, cloud: str, region: str) -> list[Region]:
         pass
 
     @abstractmethod
-    def add_region(self, region: Region) -> None:
+    def create_region(self, region: Region) -> None:
         pass
 
     @abstractmethod
@@ -158,11 +158,11 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def add_version(self, version: Version) -> None:
+    def create_version(self, version: Version) -> None:
         pass
 
     @abstractmethod
-    def remove_version(self, version: str) -> None:
+    def delete_version(self, version: str) -> None:
         pass
 
     @abstractmethod
@@ -182,7 +182,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def get_nodes(self) -> list[Nodes]:
+    def list_cluster_nodes(self) -> list[Nodes]:
         pass
 
     @abstractmethod
@@ -211,7 +211,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def remove_database_user(self, dns_address: str, username: str) -> None:
+    def delete_database_user(self, dns_address: str, username: str) -> None:
         pass
 
     @abstractmethod
@@ -266,7 +266,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def insert_mapped_job(self, cluster_id: str, job_id: int, status: str) -> None:
+    def link_job_to_cluster(self, cluster_id: str, job_id: int, status: str) -> None:
         pass
 
     @abstractmethod
@@ -278,7 +278,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def insert_task(
+    def create_task(
         self,
         job_id: int,
         task_id: int,
@@ -289,7 +289,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def insert_into_mq(
+    def enqueue_job(
         self,
         msg_type: str,
         msg_data: dict,
@@ -310,7 +310,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def add_playbook(
+    def create_playbook(
         self,
         name: str,
         playbook: bytes,
@@ -323,7 +323,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def remove_playbook(self, name: str, version: str) -> None:
+    def delete_playbook(self, name: str, version: str) -> None:
         pass
 
     #

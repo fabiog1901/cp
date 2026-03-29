@@ -1,18 +1,19 @@
-"""Business logic for the regions vertical."""
+"""Business logic for the admin regions vertical."""
 
 import json
 from typing import Any
 
-from ..infra.errors import RepositoryError
-from ..models import Event, Region
-from ..repos.base import BaseRepo
-from .base import log_event
-from .errors import ServiceValidationError, from_repository_error
+from ...infra.errors import RepositoryError
+from ...models import Event, Region
+from ...repos.base import BaseRepo
+from ..base import log_event
+from ..errors import ServiceValidationError, from_repository_error
+from .base import AdminService
 
 
-class RegionsService:
+class RegionsService(AdminService):
     def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+        super().__init__(repo)
 
     def list_regions(self) -> list[Region]:
         try:
@@ -73,7 +74,7 @@ class RegionsService:
         )
 
         try:
-            self.repo.add_region(new_region)
+            self.repo.create_region(new_region)
             log_event(
                 self.repo,
                 created_by,

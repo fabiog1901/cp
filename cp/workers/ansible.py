@@ -83,7 +83,7 @@ class MyRunner:
             task_type = e["event"]
             task_data = json.dumps(e)
 
-        self.repo.insert_task(
+        self.repo.create_task(
             self.job_id,
             self.counter,
             e["created"],
@@ -119,7 +119,7 @@ class MyRunner:
             )
         except Exception as err:
             self.repo.update_job(self.job_id, JobState.FAILED)
-            self.repo.insert_task(
+            self.repo.create_task(
                 self.job_id,
                 self.counter,
                 dt.datetime.now(dt.timezone.utc),

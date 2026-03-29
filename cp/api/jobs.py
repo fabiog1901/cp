@@ -135,7 +135,7 @@ async def reschedule_job(
 ) -> JobRescheduleResponse:
     groups, is_admin = get_access_scope(claims)
     try:
-        new_job_id = service.request_job_reschedule(
+        new_job_id = service.enqueue_job_reschedule(
             job_id,
             groups,
             is_admin,

@@ -1,9 +1,9 @@
-"""Business logic for the playbooks vertical."""
+"""Business logic for the admin playbooks vertical."""
 
 import gzip
 
-from ..infra.errors import RepositoryError
-from ..models import (
+from ...infra.errors import RepositoryError
+from ...models import (
     STRFTIME,
     Event,
     Playbook,
@@ -11,14 +11,15 @@ from ..models import (
     PlaybookResponse,
     PlaybookVersionResponse,
 )
-from ..repos.base import BaseRepo
-from .base import log_event
-from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+from ...repos.base import BaseRepo
+from ..base import log_event
+from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+from .base import AdminService
 
 
-class PlaybooksService:
+class PlaybooksService(AdminService):
     def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+        super().__init__(repo)
 
     def get_playbook(self, name: str) -> PlaybookResponse:
         try:
@@ -103,7 +104,7 @@ class PlaybooksService:
             raise ServiceValidationError("Cannot delete the default version.")
 
         try:
-            self.repo.remove_playbook(name, version)
+            self.repo.delete_playbook(name, version)
             log_event(
                 self.repo,
                 deleted_by,
@@ -134,7 +135,7 @@ class PlaybooksService:
         self, name: str, content: str, created_by: str
     ) -> PlaybookVersionResponse:
         try:
-            saved = self.repo.add_playbook(
+            saved = self.repo.create_playbook(
                 name,
                 gzip.compress(content.encode("utf-8")),
                 created_by,

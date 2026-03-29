@@ -9,7 +9,7 @@ from ...models import (
     PlaybookVersionResponse,
 )
 from ...services.errors import ServiceError
-from ...services.playbooks import PlaybooksService
+from ...services.admin.playbooks import PlaybooksService
 from .common import raise_http_from_service_error
 
 router = APIRouter(prefix="/playbooks", tags=["admin"])

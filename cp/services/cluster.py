@@ -128,7 +128,7 @@ class ClusterService:
             [x.lower() for x in name if x.lower() in "-abcdefghijklmnopqrstuvwxyz"]
         )
 
-    def request_cluster_creation(
+    def enqueue_cluster_creation(
         self,
         form_data: dict,
         selected_cpus_per_node: int,
@@ -149,7 +149,7 @@ class ClusterService:
         payload["name"] = self._normalize_cluster_name(payload["name"])
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.CREATE_CLUSTER,
                 payload,
                 requested_by,
@@ -169,9 +169,9 @@ class ClusterService:
                 fallback_message="Unable to request cluster creation.",
             ) from err
 
-    def request_cluster_deletion(self, cluster_id: str, requested_by: str) -> int:
+    def enqueue_cluster_deletion(self, cluster_id: str, requested_by: str) -> int:
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.DELETE_CLUSTER,
                 {"cluster_id": cluster_id},
                 requested_by,
@@ -190,7 +190,7 @@ class ClusterService:
                 fallback_message=f"Unable to request deletion of cluster '{cluster_id}'.",
             ) from err
 
-    def request_cluster_scale(
+    def enqueue_cluster_scale(
         self,
         request: ClusterScaleRequest,
         requested_by: str,
@@ -198,7 +198,7 @@ class ClusterService:
         payload = request.model_dump()
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.SCALE_CLUSTER,
                 payload,
                 requested_by,
@@ -218,7 +218,7 @@ class ClusterService:
                 fallback_message=f"Unable to request scaling for cluster '{request.name}'.",
             ) from err
 
-    def request_cluster_upgrade(
+    def enqueue_cluster_upgrade(
         self,
         request: ClusterUpgradeRequest,
         requested_by: str,
@@ -226,7 +226,7 @@ class ClusterService:
         payload = request.model_dump()
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.UPGRADE_CLUSTER,
                 payload,
                 requested_by,
@@ -246,7 +246,7 @@ class ClusterService:
                 fallback_message=f"Unable to request upgrade for cluster '{request.name}'.",
             ) from err
 
-    def request_cluster_restore(
+    def enqueue_cluster_restore(
         self,
         cluster_id: str,
         backup_path: str,
@@ -268,7 +268,7 @@ class ClusterService:
         ).model_dump()
 
         try:
-            msg_id: JobID = self.repo.insert_into_mq(
+            msg_id: JobID = self.repo.enqueue_job(
                 JobType.RESTORE_CLUSTER,
                 payload,
                 requested_by,

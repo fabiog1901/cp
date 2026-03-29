@@ -100,7 +100,7 @@ async def create_cluster(
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
-        job_id = service.request_cluster_creation(
+        job_id = service.enqueue_cluster_creation(
             {"name": request.name},
             request.node_cpus,
             request.disk_size,
@@ -149,7 +149,7 @@ async def delete_cluster(
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
-        job_id = service.request_cluster_deletion(cluster_id, actor_id)
+        job_id = service.enqueue_cluster_deletion(cluster_id, actor_id)
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)
@@ -188,7 +188,7 @@ async def scale_cluster(
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
-        job_id = service.request_cluster_scale(
+        job_id = service.enqueue_cluster_scale(
             request,
             actor_id,
         )
@@ -205,7 +205,7 @@ async def upgrade_cluster(
     service: ClusterService = Depends(get_cluster_service),
 ) -> JobID:
     try:
-        job_id = service.request_cluster_upgrade(
+        job_id = service.enqueue_cluster_upgrade(
             request,
             actor_id,
         )
@@ -284,7 +284,7 @@ async def restore_cluster(
 ) -> JobID:
     groups, is_admin = get_access_scope(claims)
     try:
-        job_id = service.request_cluster_restore(
+        job_id = service.enqueue_cluster_restore(
             cluster_id,
             groups,
             is_admin,
@@ -356,7 +356,7 @@ async def delete_cluster_user(
 ) -> None:
     groups, is_admin = get_access_scope(claims)
     try:
-        service.remove_database_user(
+        service.delete_database_user(
             cluster_id,
             groups,
             is_admin,

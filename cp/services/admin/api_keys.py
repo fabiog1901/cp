@@ -1,23 +1,24 @@
 import secrets
 from datetime import datetime, timezone
 
-from ..infra.errors import RepositoryError
-from ..models import (
+from ...infra.errors import RepositoryError
+from ...infra.util import encrypt_api_key_secret
+from ...models import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
     ApiKeyCreateResponse,
     ApiKeySummary,
     Event,
 )
-from ..infra.util import encrypt_api_key_secret
-from ..repos.base import BaseRepo
-from .base import log_event
-from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+from ...repos.base import BaseRepo
+from ..base import log_event
+from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+from .base import AdminService
 
 
-class ApiKeysService:
+class ApiKeysService(AdminService):
     def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+        super().__init__(repo)
 
     def list_api_keys(self, access_key: str | None = None) -> list[ApiKeySummary]:
         try:
@@ -34,14 +35,12 @@ class ApiKeysService:
         actor_id: str,
         request: ApiKeyCreateRequest,
     ) -> ApiKeyCreateResponse:
-
         valid_until = self._normalize_valid_until(request.valid_until)
 
         if valid_until <= datetime.now(timezone.utc):
             raise ServiceValidationError("valid_until must be in the future.")
 
         secret_access_key = secrets.token_urlsafe(32)
-
         access_key = "cp-" + secrets.token_urlsafe(16)
 
         try:

@@ -8,7 +8,7 @@ from ..ansible import MyRunnerLite
 
 def healthcheck_clusters(job_id: int) -> None:
     repo = get_repo()
-    running_clusters = repo.get_running_clusters()
+    running_clusters = repo.list_running_clusters()
 
     for cluster in running_clusters:
         ssh_key_name = cluster.description["ssh_key"]

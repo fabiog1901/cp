@@ -51,7 +51,7 @@ def create_cluster(
             job_id,
             JobState.FAILED,
         )
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),
@@ -60,7 +60,7 @@ def create_cluster(
         )
         return
 
-    repo.create_or_update_cluster(
+    repo.upsert_cluster(
         cluster_request.name,
         ClusterState.PROVISIONING,
         created_by,
@@ -71,7 +71,7 @@ def create_cluster(
         cluster_request.disk_size,
     )
 
-    repo.insert_mapped_job(
+    repo.link_job_to_cluster(
         cluster_request.name,
         job_id,
         JobState.SCHEDULED,
@@ -94,7 +94,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         for cloud_region in cluster_request.regions:
             cloud, region = cloud_region.split(":")
-            region_details: list[Region] = repo.get_region_config(cloud, region)
+            region_details: list[Region] = repo.list_region_config(cloud, region)
             if not region_details:
                 raise ValueError(f"No region configuration found for {cloud_region}")
 
@@ -233,7 +233,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "Unhandled error while creating cluster '%s'", cluster_request.name
         )
         repo.update_job(job_id, JobState.FAILED)
-        repo.insert_task(
+        repo.create_task(
             job_id,
             0,
             dt.datetime.now(dt.timezone.utc),

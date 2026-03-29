@@ -1,17 +1,18 @@
-"""Business logic for the versions vertical."""
+"""Business logic for the admin versions vertical."""
 
 from pydantic import ValidationError
 
-from ..infra.errors import RepositoryError
-from ..models import Event, Version
-from ..repos.base import BaseRepo
-from .base import log_event
-from .errors import ServiceValidationError, from_repository_error
+from ...infra.errors import RepositoryError
+from ...models import Event, Version
+from ...repos.base import BaseRepo
+from ..base import log_event
+from ..errors import ServiceValidationError, from_repository_error
+from .base import AdminService
 
 
-class VersionsService:
+class VersionsService(AdminService):
     def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+        super().__init__(repo)
 
     def list_versions(self) -> list[Version]:
         try:
@@ -30,7 +31,7 @@ class VersionsService:
             raise ServiceValidationError("Version format is invalid.") from err
 
         try:
-            self.repo.add_version(model)
+            self.repo.create_version(model)
             log_event(
                 self.repo,
                 created_by,
@@ -49,7 +50,7 @@ class VersionsService:
 
     def delete_version(self, version: str, deleted_by: str) -> None:
         try:
-            self.repo.remove_version(version)
+            self.repo.delete_version(version)
             log_event(
                 self.repo,
                 deleted_by,
