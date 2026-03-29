@@ -3,7 +3,7 @@
 import yaml
 
 from ..infra.errors import RepositoryError
-from ..models import CommandType, Job, JobID, parse_command_payload
+from ..models import AuditEvent, CommandType, Job, JobID, parse_command_payload
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, from_repository_error
@@ -89,7 +89,7 @@ class JobsService:
             log_event(
                 self.repo,
                 requested_by,
-                command_type,
+                AuditEvent.JOB_RESCHEDULE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id

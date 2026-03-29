@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from ...infra.errors import RepositoryError
-from ...models import Event, Region
+from ...models import AuditEvent, Region
 from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceValidationError, from_repository_error
@@ -31,7 +31,7 @@ class RegionsService(AdminService):
             log_event(
                 self.repo,
                 deleted_by,
-                Event.REGION_REMOVE,
+                AuditEvent.REGION_DELETED,
                 {"cloud": region.cloud, "region": region.region, "zone": region.zone},
             )
         except RepositoryError as err:
@@ -78,7 +78,7 @@ class RegionsService(AdminService):
             log_event(
                 self.repo,
                 created_by,
-                Event.REGION_ADD,
+                AuditEvent.REGION_CREATED,
                 new_region.model_dump(),
             )
         except RepositoryError as err:

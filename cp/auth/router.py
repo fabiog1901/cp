@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, Securi
 from fastapi.responses import RedirectResponse
 
 from ..infra import get_repo, request_id_ctx, safe_next_path
-from ..models import Event, LogMsg
+from ..models import AuditEvent, LogMsg
 from ..repos.base import BaseRepo
 from .dependencies import get_audit_actor, require_authenticated
 from .oidc import oidc
@@ -27,7 +27,7 @@ def oidc_cookie_kwargs() -> dict[str, Any]:
 def log_auth_event(
     repo: BaseRepo,
     actor_id: str,
-    action: Event,
+    action: AuditEvent,
     details: dict[str, Any] | None = None,
 ) -> None:
     """Persist a login or logout event using the current request id context."""
@@ -113,7 +113,7 @@ def oidc_callback(
     )
     oidc.ensure_authorized(claims)
     actor_id = str(claims.get(oidc.config.ui_username_claim) or claims.get("sub"))
-    log_auth_event(repo, actor_id, Event.LOGIN, {"auth_type": "oidc"})
+    log_auth_event(repo, actor_id, AuditEvent.LOGIN_SUCCEEDED, {"auth_type": "oidc"})
 
     resp = RedirectResponse(next_path, status_code=302)
     cookie_kwargs = oidc_cookie_kwargs()
@@ -142,7 +142,7 @@ def oidc_logout(
     log_auth_event(
         repo,
         actor_id,
-        Event.LOGOUT,
+        AuditEvent.LOGOUT_SUCCEEDED,
         {"auth_type": str(claims.get("auth_type") or "oidc")},
     )
     resp = Response(status_code=204)

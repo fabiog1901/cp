@@ -3,7 +3,7 @@
 from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
-from ..models import Cluster, ClusterUsersSnapshot, Event, NewDatabaseUserRequest
+from ..models import AuditEvent, Cluster, ClusterUsersSnapshot, NewDatabaseUserRequest
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
@@ -67,7 +67,7 @@ class ClusterUsersService:
             log_event(
                 self.repo,
                 requested_by,
-                Event.DB_USER_ADD,
+                AuditEvent.DB_USER_CREATED,
                 {
                     "cluster_id": selected_cluster.cluster_id,
                     "db_user": request.username,
@@ -103,7 +103,7 @@ class ClusterUsersService:
             log_event(
                 self.repo,
                 requested_by,
-                Event.DB_USER_REMOVE,
+                AuditEvent.DB_USER_DELETED,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
             )
         except RepositoryError as err:
@@ -136,7 +136,7 @@ class ClusterUsersService:
             log_event(
                 self.repo,
                 requested_by,
-                Event.DB_USER_REMOVE_ROLE,
+                AuditEvent.DB_USER_ROLE_REVOKED,
                 {
                     "cluster_id": selected_cluster.cluster_id,
                     "db_user": username,
@@ -176,7 +176,7 @@ class ClusterUsersService:
             log_event(
                 self.repo,
                 requested_by,
-                Event.DB_USER_UPDATE,
+                AuditEvent.DB_USER_PASSWORD_UPDATED,
                 {"cluster_id": selected_cluster.cluster_id, "db_user": username},
             )
         except RepositoryError as err:

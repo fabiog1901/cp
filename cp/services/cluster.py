@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from ..infra.errors import RepositoryError
 from ..models import (
+    AuditEvent,
     Cluster,
     CommandType,
     ClusterScaleRequest,
@@ -160,7 +161,7 @@ class ClusterService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.CREATE_CLUSTER,
+                AuditEvent.CLUSTER_CREATE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
@@ -182,7 +183,7 @@ class ClusterService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.DELETE_CLUSTER,
+                AuditEvent.CLUSTER_DELETE_REQUESTED,
                 {"cluster_id": cluster_id, "job_id": msg_id.job_id},
             )
             return msg_id.job_id
@@ -209,7 +210,7 @@ class ClusterService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.SCALE_CLUSTER,
+                AuditEvent.CLUSTER_SCALE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
@@ -237,7 +238,7 @@ class ClusterService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.UPGRADE_CLUSTER,
+                AuditEvent.CLUSTER_UPGRADE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
@@ -279,7 +280,7 @@ class ClusterService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.RESTORE_CLUSTER,
+                AuditEvent.CLUSTER_RESTORE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id

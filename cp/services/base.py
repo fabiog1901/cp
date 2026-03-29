@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from ..models import LogMsg
+from ..models import AuditEvent, LogMsg
 from ..repos.base import BaseRepo
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def log_event(
     repo: BaseRepo,
     actor_id: str,
-    action: Any,
+    action: AuditEvent | str,
     details: dict[str, Any] | None = None,
 ) -> None:
     """Best-effort audit logging for service-layer actions."""

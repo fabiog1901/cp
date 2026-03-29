@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 from ...infra.errors import RepositoryError
 from ...infra.util import encrypt_api_key_secret
 from ...models import (
+    AuditEvent,
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
     ApiKeyCreateResponse,
     ApiKeySummary,
-    Event,
 )
 from ...repos.base import BaseRepo
 from ..base import log_event
@@ -65,7 +65,7 @@ class ApiKeysService(AdminService):
         log_event(
             self.repo,
             actor_id,
-            action=Event.API_KEY_CREATE,
+            action=AuditEvent.API_KEY_CREATED,
             details={
                 "access_key": created.access_key,
                 "valid_until": created.valid_until.isoformat(),
@@ -106,7 +106,7 @@ class ApiKeysService(AdminService):
         log_event(
             self.repo,
             actor_id,
-            action=Event.API_KEY_DELETE,
+            action=AuditEvent.API_KEY_DELETED,
             details={
                 "access_key": existing_key.access_key,
                 "owner": existing_key.owner,

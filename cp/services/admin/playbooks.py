@@ -4,8 +4,8 @@ import gzip
 
 from ...infra.errors import RepositoryError
 from ...models import (
+    AuditEvent,
     STRFTIME,
-    Event,
     Playbook,
     PlaybookOverview,
     PlaybookResponse,
@@ -74,7 +74,7 @@ class PlaybooksService(AdminService):
             log_event(
                 self.repo,
                 updated_by,
-                Event.PLAYBOOK_SET_DEFAULT,
+                AuditEvent.PLAYBOOK_DEFAULT_SET,
                 {"name": name, "version": version},
             )
         except RepositoryError as err:
@@ -108,7 +108,7 @@ class PlaybooksService(AdminService):
             log_event(
                 self.repo,
                 deleted_by,
-                Event.PLAYBOOK_REMOVE,
+                AuditEvent.PLAYBOOK_VERSION_DELETED,
                 {"name": name, "version": version},
             )
 
@@ -144,7 +144,7 @@ class PlaybooksService(AdminService):
             log_event(
                 self.repo,
                 created_by,
-                Event.PLAYBOOK_ADD,
+                AuditEvent.PLAYBOOK_VERSION_CREATED,
                 {"name": name, "version": saved_version},
             )
 

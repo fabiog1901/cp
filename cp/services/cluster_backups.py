@@ -120,7 +120,7 @@ class ClusterBackupsService:
         backup_into: str | None,
         requested_by: str,
     ) -> int:
-        from ..models import CommandType, JobID, RestoreRequest
+        from ..models import AuditEvent, CommandType, JobID, RestoreRequest
 
         payload = RestoreRequest(
             name=cluster_id,
@@ -141,7 +141,7 @@ class ClusterBackupsService:
             log_event(
                 self.repo,
                 requested_by,
-                CommandType.RESTORE_CLUSTER,
+                AuditEvent.CLUSTER_RESTORE_REQUESTED,
                 payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id

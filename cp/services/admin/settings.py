@@ -1,7 +1,7 @@
 """Business logic for the admin settings vertical."""
 
 from ...infra.errors import RepositoryError
-from ...models import Event, SettingRecord
+from ...models import AuditEvent, SettingRecord
 from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceValidationError, from_repository_error
@@ -47,7 +47,7 @@ class SettingsService(AdminService):
             log_event(
                 self.repo,
                 updated_by,
-                Event.SETTING_UPDATE,
+                AuditEvent.SETTING_UPDATED,
                 {"ID": setting_id, "value": value},
             )
         except RepositoryError as err:
@@ -65,7 +65,7 @@ class SettingsService(AdminService):
             log_event(
                 self.repo,
                 updated_by,
-                Event.SETTING_RESET,
+                AuditEvent.SETTING_RESET,
                 {"ID": setting_id},
             )
         except RepositoryError as err:
