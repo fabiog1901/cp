@@ -24,7 +24,7 @@ class SettingsService(AdminService):
 
     def get_setting(self, setting_id: str) -> str:
         try:
-            value = self.repo.get_setting(setting_id)
+            setting_record = self.repo.get_setting(setting_id)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -32,13 +32,13 @@ class SettingsService(AdminService):
                 fallback_message=f"Unable to load setting '{setting_id}'.",
             ) from err
 
-        if value is None:
+        if setting_record is None:
             raise ServiceValidationError(
                 f"Required setting '{setting_id}' is not configured.",
                 title="Missing Configuration",
             )
 
-        return value
+        return setting_record.value
 
     def update_setting(self, setting_id: str, value: str, updated_by: str) -> None:
         try:
