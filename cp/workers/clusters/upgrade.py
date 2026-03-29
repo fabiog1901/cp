@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, ClusterUpgradeRequest, JobState
+from ...models import ClusterState, ClusterUpgradeRequest, JobState, PlaybookName
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,12 @@ def upgrade_cluster(
     repo.link_job_to_cluster(
         cur.name,
         job_id,
-        JobState.SCHEDULED,
+        JobState.QUEUED,
     )
     if c.status in [
         ClusterState.DELETED,
         ClusterState.DELETING,
-        ClusterState.PROVISIONING,
+        ClusterState.CREATING,
         ClusterState.UPGRADING,
         ClusterState.SCALING,
     ]:
@@ -80,7 +80,9 @@ def upgrade_cluster_worker(
             "cockroachdb_autofinalize": cur.auto_finalize,
         }
 
-        job_status, _, _ = MyRunner(job_id).launch_runner("UPGRADE_CLUSTER", extra_vars)
+        job_status, _, _ = MyRunner(job_id).launch_runner(
+            PlaybookName.UPGRADE_CLUSTER, extra_vars
+        )
 
         if job_status != "successful":
             repo.update_cluster(
@@ -93,7 +95,7 @@ def upgrade_cluster_worker(
         repo.update_cluster(
             cur.name,
             requested_by,
-            status=ClusterState.RUNNING,
+            status=ClusterState.ACTIVE,
             version=cur.version,
         )
     except Exception as err:

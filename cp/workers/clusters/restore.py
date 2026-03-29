@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, JobState, RestoreRequest
+from ...models import ClusterState, JobState, PlaybookName, RestoreRequest
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def restore_cluster(
     c = repo.get_cluster(rr.name, [], True)
 
     # TODO verify what states are appropriate for running a restore job
-    if c is None or c.status != ClusterState.RUNNING:
+    if c is None or c.status != ClusterState.ACTIVE:
         repo.update_job(
             job_id,
             JobState.FAILED,
@@ -33,7 +33,7 @@ def restore_cluster(
             0,
             dt.datetime.now(dt.timezone.utc),
             "FAILURE",
-            "The cluster must exist and be in a RUNNING state for a Full Cluster Restore",
+            "The cluster must exist and be in an ACTIVE state for a full cluster restore.",
         )
         return
 
@@ -46,7 +46,7 @@ def restore_cluster(
     repo.link_job_to_cluster(
         rr.name,
         job_id,
-        JobState.SCHEDULED,
+        JobState.QUEUED,
     )
 
     Thread(
@@ -77,7 +77,9 @@ def restore_cluster_worker(
             "cloud_storage_url": repo.get_setting("cloud_storage_url"),
         }
 
-        job_status, _, _ = MyRunner(job_id).launch_runner("RESTORE_CLUSTER", extra_vars)
+        job_status, _, _ = MyRunner(job_id).launch_runner(
+            PlaybookName.RESTORE_CLUSTER, extra_vars
+        )
 
         if job_status != "successful":
             repo.update_cluster(
@@ -90,7 +92,7 @@ def restore_cluster_worker(
         repo.update_cluster(
             rr.name,
             requested_by,
-            status=ClusterState.RUNNING,
+            status=ClusterState.ACTIVE,
         )
     except Exception as err:
         logger.exception("Unhandled error while restoring cluster '%s'", rr.name)

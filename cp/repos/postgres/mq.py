@@ -31,7 +31,7 @@ class MqRepo(BaseRepo):
                 payload.model_dump(),
                 created_by,
                 command_type.value,
-                JobState.SCHEDULED.value,
+                JobState.QUEUED.value,
                 payload.model_dump(),
                 created_by,
             ),

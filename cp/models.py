@@ -41,10 +41,10 @@ class CommandType(AutoNameStrEnum):
 
 
 class ClusterState(AutoNameStrEnum):
-    PROVISIONING = auto()
-    RUNNING = auto()
+    CREATING = auto()
+    ACTIVE = auto()
     UNHEALTHY = auto()
-    FAILED = auto()
+    CREATE_FAILED = auto()
     SCALING = auto()
     SCALE_FAILED = auto()
     RESTORING = auto()
@@ -59,7 +59,7 @@ class ClusterState(AutoNameStrEnum):
 class JobState(AutoNameStrEnum):
     RUNNING = auto()
     FAILED = auto()
-    SCHEDULED = auto()
+    QUEUED = auto()
     COMPLETED = auto()
 
 

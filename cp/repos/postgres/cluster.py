@@ -3,7 +3,14 @@
 from pydantic import TypeAdapter
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import Cluster, ClusterOverview, InventoryLB, InventoryRegion, Nodes
+from ...models import (
+    Cluster,
+    ClusterOverview,
+    ClusterState,
+    InventoryLB,
+    InventoryRegion,
+    Nodes,
+)
 from ..base import BaseRepo
 
 
@@ -73,17 +80,17 @@ class ClusterRepo(BaseRepo):
             operation="cluster.get_cluster",
         )
 
-    def list_running_clusters(self) -> list[Cluster]:
+    def list_active_clusters(self) -> list[Cluster]:
         return fetch_all(
             """
             SELECT *
             FROM clusters
-            WHERE status = 'RUNNING'
+            WHERE status = %s
             ORDER BY created_at ASC
             """,
-            (),
+            (ClusterState.ACTIVE.value,),
             Cluster,
-            operation="cluster.list_running_clusters",
+            operation="cluster.list_active_clusters",
         )
 
     def upsert_cluster(

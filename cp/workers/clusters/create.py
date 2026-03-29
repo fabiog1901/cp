@@ -48,7 +48,7 @@ def create_cluster(
 
     repo.upsert_cluster(
         cluster_request.name,
-        ClusterState.PROVISIONING,
+        ClusterState.CREATING,
         created_by,
         cluster_request.group,
         cluster_request.version,
@@ -60,7 +60,7 @@ def create_cluster(
     repo.link_job_to_cluster(
         cluster_request.name,
         job_id,
-        JobState.SCHEDULED,
+        JobState.QUEUED,
     )
 
     Thread(
@@ -183,7 +183,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
 
         if job_status != "successful":
             repo.update_cluster(
-                cluster_request.name, created_by, status=ClusterState.FAILED
+                cluster_request.name, created_by, status=ClusterState.CREATE_FAILED
             )
             return
 
@@ -214,7 +214,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         repo.update_cluster(
             cluster_request.name,
             created_by,
-            status=ClusterState.RUNNING,
+            status=ClusterState.ACTIVE,
             cluster_inventory=cluster_inventory,
             lbs_inventory=lbs_inventory,
         )
@@ -231,5 +231,5 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             str(err),
         )
         repo.update_cluster(
-            cluster_request.name, created_by, status=ClusterState.FAILED
+            cluster_request.name, created_by, status=ClusterState.CREATE_FAILED
         )

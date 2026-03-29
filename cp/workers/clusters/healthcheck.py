@@ -2,7 +2,7 @@ import os
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, CommandType, HealthcheckClustersCommand
+from ...models import ClusterState, HealthcheckClustersCommand, PlaybookName
 from ..ansible import MyRunnerLite
 
 
@@ -12,9 +12,9 @@ def healthcheck_clusters(
     _requested_by: str,
 ) -> None:
     repo = get_repo()
-    running_clusters = repo.list_running_clusters()
+    active_clusters = repo.list_active_clusters()
 
-    for cluster in running_clusters:
+    for cluster in active_clusters:
         ssh_key_name = cluster.description["ssh_key"]
 
         if not os.path.exists(f"/tmp/{ssh_key_name}"):
@@ -52,7 +52,7 @@ def healthcheck_clusters_worker(
     }
 
     job_status, data = MyRunnerLite(job_id).launch_runner(
-        CommandType.HEALTHCHECK_CLUSTERS, extra_vars
+        PlaybookName.HEALTHCHECK_CLUSTER, extra_vars
     )
 
     if not data or job_status != "successful":

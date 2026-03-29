@@ -10,6 +10,7 @@ from ...models import (
     InventoryLB,
     InventoryRegion,
     JobState,
+    PlaybookName,
     Region,
 )
 from ..ansible import MyRunner
@@ -37,7 +38,7 @@ def scale_cluster(
     repo.link_job_to_cluster(
         cluster_scale_request.name,
         job_id,
-        JobState.SCHEDULED,
+        JobState.QUEUED,
     )
 
     Thread(
@@ -129,7 +130,7 @@ def scale_cluster_worker(
         job_status, _, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_DISK_SIZE", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_DISK_SIZE, extra_vars)
 
         if job_status != "successful":
             repo.update_cluster(
@@ -158,7 +159,7 @@ def scale_cluster_worker(
         job_status, _, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_NODE_CPUS", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_NODE_CPUS, extra_vars)
 
         if job_status != "successful":
             repo.update_cluster(
@@ -268,7 +269,7 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
 
         if job_status != "successful":
             repo.update_cluster(
@@ -380,10 +381,14 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
 
         if job_status != "successful":
-            repo.update_cluster(csr.name, requested_by, status="SCALE_FAILED")
+            repo.update_cluster(
+                csr.name,
+                requested_by,
+                status=ClusterState.SCALE_FAILED,
+            )
             return
 
         current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
@@ -392,7 +397,7 @@ def scale_cluster_worker(
             csr.name,
             requested_by,
             node_count=csr.node_count,
-            status="SCALING",
+            status=ClusterState.SCALING,
             cluster_inventory=current_cluster.cluster_inventory,
             lbs_inventory=current_cluster.lbs_inventory,
         )
@@ -500,7 +505,7 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER_OUT", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
 
         if job_status != "successful":
             repo.update_cluster(
@@ -616,7 +621,7 @@ def scale_cluster_worker(
         job_status, raw_data, task_id_counter = MyRunner(
             job_id,
             task_id_counter,
-        ).launch_runner("SCALE_CLUSTER_IN", extra_vars)
+        ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
 
         if job_status != "successful":
             repo.update_cluster(
@@ -639,5 +644,5 @@ def scale_cluster_worker(
     repo.update_cluster(
         csr.name,
         requested_by,
-        status=ClusterState.RUNNING,
+        status=ClusterState.ACTIVE,
     )

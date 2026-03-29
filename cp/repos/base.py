@@ -95,7 +95,7 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def list_running_clusters(self) -> list[Cluster]:
+    def list_active_clusters(self) -> list[Cluster]:
         pass
 
     @abstractmethod

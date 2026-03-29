@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, DeleteClusterCommand, JobState
+from ...models import ClusterState, DeleteClusterCommand, JobState, PlaybookName
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def delete_cluster(
     repo.link_job_to_cluster(
         cluster_id,
         job_id,
-        JobState.SCHEDULED,
+        JobState.QUEUED,
     )
 
     if c.status == ClusterState.DELETED:
@@ -79,7 +79,9 @@ def delete_cluster_worker(
             "deployment_id": cluster_id,
         }
 
-        job_status, _, _ = MyRunner(job_id).launch_runner("DELETE_CLUSTER", extra_vars)
+        job_status, _, _ = MyRunner(job_id).launch_runner(
+            PlaybookName.DELETE_CLUSTER, extra_vars
+        )
 
         if job_status == "successful":
             repo.update_cluster(
