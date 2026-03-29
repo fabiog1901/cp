@@ -442,12 +442,6 @@ class ClusterCreateApiRequest(BaseModel):
     group: str
 
 
-class ClusterUpgradeRequest(BaseModel):
-    name: str
-    version: str
-    auto_finalize: bool
-
-
 class ClusterRestoreApiRequest(BaseModel):
     backup_path: str
     restore_aost: str | None = None

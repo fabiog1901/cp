@@ -105,7 +105,9 @@ def build_api_key_signature_payload(
     )
 
 
-def api_key_signature(secret_key: bytes, request: Request, timestamp: str, body: bytes) -> str:
+def api_key_signature(
+    secret_key: bytes, request: Request, timestamp: str, body: bytes
+) -> str:
     """Return the expected HMAC signature for an API-key-authenticated request."""
     return hmac_new(
         secret_key,

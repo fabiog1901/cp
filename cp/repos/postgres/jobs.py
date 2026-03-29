@@ -1,7 +1,5 @@
 """Jobs repository backed by CockroachDB/Postgres."""
 
-import datetime as dt
-
 from ...infra.db import execute_stmt, fetch_all, fetch_one
 from ...models import ClusterIDRef, IntID, Job, Task
 from ..base import BaseRepo

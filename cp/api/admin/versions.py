@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends
 from ...auth import get_audit_actor
 from ...infra import get_versions_service
 from ...models import Version
-from ...services.errors import ServiceError
 from ...services.admin.versions import VersionsService
+from ...services.errors import ServiceError
 from .common import raise_http_from_service_error
 
 router = APIRouter(prefix="/versions", tags=["admin"])

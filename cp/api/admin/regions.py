@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends
 from ...auth import get_audit_actor
 from ...infra import get_regions_service
 from ...models import Region
-from ...services.errors import ServiceError
 from ...services.admin.regions import RegionsService
+from ...services.errors import ServiceError
 from .common import raise_http_from_service_error
 
 router = APIRouter(prefix="/regions", tags=["admin"])

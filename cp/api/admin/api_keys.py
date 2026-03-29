@@ -4,8 +4,8 @@ from fastapi.exceptions import RequestErrorModel
 from ...auth import get_audit_actor
 from ...infra import get_api_keys_service
 from ...models import ApiKeyCreateRequest, ApiKeyCreateResponse, ApiKeySummary
-from ...services.errors import ServiceError
 from ...services.admin.api_keys import ApiKeysService
+from ...services.errors import ServiceError
 from .common import raise_http_from_service_error
 
 router = APIRouter(prefix="/api_keys", tags=["admin"])

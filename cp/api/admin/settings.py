@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends
 from ...auth import get_audit_actor
 from ...infra import get_settings_service
 from ...models import SettingRecord, SettingUpdateRequest
-from ...services.errors import ServiceError
 from ...services.admin.settings import SettingsService
+from ...services.errors import ServiceError
 from .common import raise_http_from_service_error
 
 router = APIRouter(prefix="/settings", tags=["admin"])

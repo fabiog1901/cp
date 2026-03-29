@@ -153,7 +153,10 @@ def initialize_postgres(db_url: str | None = None) -> None:
 
     from ..repos.postgres import PostgresRepo
 
-    repo_factory = lambda: PostgresRepo(get_pool())
+    def get_pg_repo():
+        return PostgresRepo(get_pool())
+
+    repo_factory = get_pg_repo  # lambda: PostgresRepo(get_pool())
 
 
 def get_pool() -> ConnectionPool:

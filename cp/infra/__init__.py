@@ -3,6 +3,7 @@
 from .db import close_db, get_pool, get_repo, initialize_postgres
 from .dependencies import (
     get_admin_service,
+    get_api_keys_service,
     get_auth_service,
     get_cluster_backups_service,
     get_cluster_jobs_service,
@@ -16,7 +17,6 @@ from .dependencies import (
     get_regions_service,
     get_settings_service,
     get_versions_service,
-    get_api_keys_service,
 )
 from .util import (
     RequestIDFilter,

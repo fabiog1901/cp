@@ -1,7 +1,6 @@
 """Business logic for auth-related shared operations."""
 
 from ..infra.errors import RepositoryError
-from ..models import Event
 from ..repos.base import BaseRepo
 from .errors import from_repository_error
 

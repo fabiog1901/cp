@@ -4,7 +4,7 @@ import time
 from typing import Any
 
 from ..infra.errors import RepositoryError
-from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, SettingRecord
+from ..models import DashboardMetrics, DashboardSnapshot, SettingKey
 from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 

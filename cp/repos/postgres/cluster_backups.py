@@ -8,6 +8,7 @@ from psycopg.rows import class_row
 
 from ...infra.db import translate_database_error
 from ...models import BackupDetails, BackupPathOption
+from ..base import BaseRepo
 
 CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257
@@ -15,8 +16,6 @@ CLUSTER_DB_NAME = "defaultdb"
 CLUSTER_DB_USERNAME = "cockroach"
 CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
-
-from ..base import BaseRepo
 
 
 class ClusterBackupsRepo(BaseRepo):

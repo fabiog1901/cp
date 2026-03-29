@@ -6,11 +6,10 @@ from typing import Any
 import requests
 
 from ...infra.errors import RepositoryError, RepositoryUnavailableError
+from ..base import BaseRepo
 
 PROMETHEUS_TIMEOUT_SECS = 10
 logger = logging.getLogger(__name__)
-
-from ..base import BaseRepo
 
 
 class DashboardRepo(BaseRepo):

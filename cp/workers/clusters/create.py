@@ -13,25 +13,9 @@ from ...models import (
     SettingKey,
 )
 from ..ansible import MyRunner
+from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)
-
-
-def get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]:
-    # make a list with the same size as the count of zones
-    # zone = 3, nodes = 8 ==> [3, 3, 2]
-
-    l = [0] * zone_count
-    i = 0
-
-    # distribute node to each zone
-    for _ in range(node_count):
-        l[i] += 1
-        i += 1
-        if i == zone_count:
-            i = 0
-
-    return l
 
 
 def create_cluster(
@@ -174,8 +158,12 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "deployment_id": cluster_request.name,
             "deployment": deployment,
             "cockroachdb_version": cluster_request.version,
-            "cockroachdb_cluster_organization": repo.get_setting(SettingKey.licence_org).value,
-            "cockroachdb_enterprise_license": repo.get_setting(SettingKey.licence_key).value,
+            "cockroachdb_cluster_organization": repo.get_setting(
+                SettingKey.licence_org
+            ).value,
+            "cockroachdb_enterprise_license": repo.get_setting(
+                SettingKey.licence_key
+            ).value,
             "dbusers": [
                 {
                     "name": repo.get_setting(SettingKey.default_username).value,

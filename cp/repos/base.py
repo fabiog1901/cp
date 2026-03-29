@@ -62,13 +62,14 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def update_setting(self, setting_key: SettingKey, value: str, updated_by: str) -> None:
+    def update_setting(
+        self, setting_key: SettingKey, value: str, updated_by: str
+    ) -> None:
         pass
 
     @abstractmethod
     def reset_setting(self, setting_key: SettingKey, updated_by: str) -> None:
         pass
-
 
     @abstractmethod
     def list_role_group_mappings(self) -> list[RoleGroupMap]:

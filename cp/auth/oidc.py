@@ -11,6 +11,7 @@ import jwt
 from fastapi import HTTPException, Request, status
 
 from ..infra import decrypt_api_key_secret, validate_api_key_crypto_config
+from ..models import CPRole
 from ..repos.base import BaseRepo
 from .common import (
     OIDCConfig,
@@ -20,7 +21,6 @@ from .common import (
     jsonable_role_groups,
     parse_api_key_timestamp,
 )
-from ..models import CPRole
 
 
 class OIDCManager:
