@@ -2080,14 +2080,44 @@ window.app = function () {
 
     serversStatusClass(status) {
       const s = String(status || "").toLowerCase();
-      if (s === "ready") return "status-online";
-      if (s === "running") return "status-online";
-      if (s === "creating" || s === "scaling" || s === "upgrading")
-        return "status-pending status-pulse";
-      if (s === "decommissioned") return "status-muted";
-      if (s.includes("ing")) return "status-pending status-pulse";
+
       if (!s || s === "unknown") return "status-muted";
-      return "status-offline";
+
+      // Job states
+      if (s === "completed") return "status-online";
+      if (s === "running") return "status-warning";
+      if (s === "queued") return "status-pending status-pulse";
+      if (s === "failed") return "status-offline";
+
+      // Cluster states
+      if (s === "ready" || s === "active") return "status-online";
+      if (
+        [
+          "creating",
+          "scaling",
+          "upgrading",
+          "restoring",
+          "deleting",
+        ].includes(s)
+      )
+        return "status-pending status-pulse";
+      if (s === "decommissioned" || s === "deleted") return "status-muted";
+      if (
+        [
+          "unhealthy",
+          "create_failed",
+          "scale_failed",
+          "restore_failed",
+          "delete_failed",
+          "upgrade_failed",
+        ].includes(s)
+      )
+        return "status-offline";
+
+      // Fallback heuristic
+      if (s.includes("ing")) return "status-pending status-pulse";
+
+      return "status-default";
     },
 
     serversSortClass(index) {
