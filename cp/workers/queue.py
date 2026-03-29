@@ -2,12 +2,22 @@ import asyncio
 import datetime as dt
 import logging
 import random
+from typing import Callable
 
 from psycopg.rows import class_row
 
 from ..infra import get_repo
 from ..infra.db import get_pool
-from ..models import JobState, JobType, Msg, Nodes
+from ..models import (
+    CommandModel,
+    CommandType,
+    FailZombieJobsCommand,
+    HealthcheckClustersCommand,
+    Msg,
+    Nodes,
+    JobState,
+    parse_command_payload,
+)
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters
@@ -18,8 +28,28 @@ from .clusters.upgrade import upgrade_cluster
 logger = logging.getLogger(__name__)
 
 
-def fail_zombie_jobs():
+def fail_zombie_jobs(
+    _job_id: int,
+    _command: FailZombieJobsCommand,
+    _requested_by: str,
+):
     get_repo().fail_zombie_jobs()
+
+
+CommandHandler = Callable[[int, CommandModel, str], None]
+
+COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
+    CommandType.CREATE_CLUSTER: create_cluster,
+    CommandType.RECREATE_CLUSTER: lambda job_id, command, requested_by: create_cluster(
+        job_id, command, requested_by, True
+    ),
+    CommandType.DELETE_CLUSTER: delete_cluster,
+    CommandType.SCALE_CLUSTER: scale_cluster,
+    CommandType.UPGRADE_CLUSTER: upgrade_cluster,
+    CommandType.RESTORE_CLUSTER: restore_cluster,
+    CommandType.FAIL_ZOMBIE_JOBS: fail_zombie_jobs,
+    CommandType.HEALTHCHECK_CLUSTERS: healthcheck_clusters,
+}
 
 
 def get_nodes():
@@ -66,48 +96,26 @@ async def pull_from_mq():
                             repo = get_repo()
 
                             try:
-                                match msg.msg_type:
-                                    case JobType.CREATE_CLUSTER:
-                                        create_cluster(
-                                            msg.msg_id, msg.msg_data, msg.created_by
-                                        )
-                                    case JobType.RECREATE_CLUSTER:
-                                        create_cluster(
-                                            msg.msg_id,
-                                            msg.msg_data,
-                                            msg.created_by,
-                                            True,
-                                        )
-                                    case JobType.DELETE_CLUSTER:
-                                        delete_cluster(
-                                            msg.msg_id, msg.msg_data, msg.created_by
-                                        )
-                                    case JobType.SCALE_CLUSTER:
-                                        scale_cluster(
-                                            msg.msg_id, msg.msg_data, msg.created_by
-                                        )
-                                    case JobType.UPGRADE_CLUSTER:
-                                        upgrade_cluster(
-                                            msg.msg_id, msg.msg_data, msg.created_by
-                                        )
-                                    case JobType.RESTORE_CLUSTER:
-                                        restore_cluster(
-                                            msg.msg_id, msg.msg_data, msg.created_by
-                                        )
-                                    case JobType.FAIL_ZOMBIE_JOBS:
-                                        fail_zombie_jobs()
-                                    case JobType.HEALTHCHECK_CLUSTERS:
-                                        healthcheck_clusters(msg.msg_id)
-                                        cur.execute(
-                                            """
-                                            INSERT INTO mq (msg_type, start_after) 
-                                            VALUES ('HEALTHCHECK_CLUSTERS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
-                                            """
-                                        )
-                                    case _:
-                                        raise ValueError(
-                                            f"Unknown task type requested: {msg.msg_type}"
-                                        )
+                                handler = COMMAND_HANDLERS.get(msg.msg_type)
+                                if handler is None:
+                                    raise ValueError(
+                                        f"Unknown task type requested: {msg.msg_type}"
+                                    )
+
+                                command = parse_command_payload(
+                                    msg.msg_type,
+                                    msg.msg_data,
+                                )
+                                handler(msg.msg_id, command, msg.created_by)
+
+                                if msg.msg_type == CommandType.HEALTHCHECK_CLUSTERS:
+                                    cur.execute(
+                                        """
+                                        INSERT INTO mq (msg_type, start_after) 
+                                        VALUES (%s, now() + INTERVAL '60s' + (random()*10)::INTERVAL)
+                                        """,
+                                        (CommandType.HEALTHCHECK_CLUSTERS.value,),
+                                    )
                             except Exception as err:
                                 logger.exception(
                                     "MQ message %s failed during dispatch",

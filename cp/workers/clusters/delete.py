@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, JobState
+from ...models import ClusterState, DeleteClusterCommand, JobState
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 def delete_cluster(
     job_id: int,
-    cluster: dict,
+    command: DeleteClusterCommand,
     requested_by: str,
 ) -> None:
     repo = get_repo()
-    cluster_id = cluster.get("cluster_id")
+    cluster_id = command.cluster_id
 
     c = repo.get_cluster(cluster_id, [], True)
     if not c:

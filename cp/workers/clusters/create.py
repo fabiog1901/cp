@@ -5,10 +5,12 @@ from threading import Thread
 from ...infra import get_repo
 from ...models import (
     ClusterRequest,
+    CreateClusterCommand,
     ClusterState,
     InventoryLB,
     InventoryRegion,
     JobState,
+    PlaybookName,
     Region,
     SettingKey,
 )
@@ -20,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 def create_cluster(
     job_id: int,
-    data: dict,
+    command: CreateClusterCommand,
     created_by: str,
     recreate: bool = False,
 ) -> None:
     repo = get_repo()
-    cluster_request = ClusterRequest(**data)
+    cluster_request = ClusterRequest.model_validate(command.model_dump())
 
     # check if cluster with same cluster_id exists
     c = repo.get_cluster(cluster_request.name, [], True)
@@ -176,7 +178,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(
-            "CREATE_CLUSTER", extra_vars
+            PlaybookName.CREATE_CLUSTER, extra_vars
         )
 
         if job_status != "successful":

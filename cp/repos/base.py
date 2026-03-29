@@ -10,6 +10,8 @@ from ..models import (
     Cluster,
     ClusterIDRef,
     ClusterOverview,
+    CommandModel,
+    CommandType,
     CpuCountOption,
     DatabaseUser,
     DiskSizeOption,
@@ -290,10 +292,10 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def enqueue_job(
+    def enqueue_command(
         self,
-        msg_type: str,
-        msg_data: dict,
+        command_type: CommandType,
+        payload: CommandModel,
         created_by: str,
     ) -> JobID:
         pass

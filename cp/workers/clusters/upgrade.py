@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 def upgrade_cluster(
     job_id: int,
-    data: dict,
+    command: ClusterUpgradeRequest,
     requested_by: str,
 ) -> None:
     repo = get_repo()
-    cur = ClusterUpgradeRequest(**data)
+    cur = command
 
     # TODO check user permissions
 

@@ -5,10 +5,12 @@ from pydantic import ValidationError
 from ..infra.errors import RepositoryError
 from ..models import (
     Cluster,
+    CommandType,
     ClusterScaleRequest,
     ClusterUpgradeRequest,
+    CreateClusterCommand,
+    DeleteClusterCommand,
     JobID,
-    JobType,
     RestoreRequest,
 )
 from ..repos.base import BaseRepo
@@ -139,26 +141,27 @@ class ClusterService:
         selected_group: str,
         requested_by: str,
     ) -> int:
-        payload = dict(form_data)
-        payload["node_cpus"] = selected_cpus_per_node
-        payload["disk_size"] = selected_disk_size
-        payload["node_count"] = selected_node_count
-        payload["regions"] = list(selected_regions)
-        payload["version"] = selected_version
-        payload["group"] = selected_group
-        payload["name"] = self._normalize_cluster_name(payload["name"])
+        payload = CreateClusterCommand(
+            name=self._normalize_cluster_name(form_data["name"]),
+            node_cpus=selected_cpus_per_node,
+            disk_size=selected_disk_size,
+            node_count=selected_node_count,
+            regions=list(selected_regions),
+            version=selected_version,
+            group=selected_group,
+        )
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.CREATE_CLUSTER,
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.CREATE_CLUSTER,
                 payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.CREATE_CLUSTER,
-                payload | {"job_id": msg_id.job_id},
+                CommandType.CREATE_CLUSTER,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:
@@ -171,15 +174,15 @@ class ClusterService:
 
     def enqueue_cluster_deletion(self, cluster_id: str, requested_by: str) -> int:
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.DELETE_CLUSTER,
-                {"cluster_id": cluster_id},
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.DELETE_CLUSTER,
+                DeleteClusterCommand(cluster_id=cluster_id),
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.DELETE_CLUSTER,
+                CommandType.DELETE_CLUSTER,
                 {"cluster_id": cluster_id, "job_id": msg_id.job_id},
             )
             return msg_id.job_id
@@ -195,19 +198,19 @@ class ClusterService:
         request: ClusterScaleRequest,
         requested_by: str,
     ) -> int:
-        payload = request.model_dump()
+        payload = request
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.SCALE_CLUSTER,
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.SCALE_CLUSTER,
                 payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.SCALE_CLUSTER,
-                payload | {"job_id": msg_id.job_id},
+                CommandType.SCALE_CLUSTER,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:
@@ -223,19 +226,19 @@ class ClusterService:
         request: ClusterUpgradeRequest,
         requested_by: str,
     ) -> int:
-        payload = request.model_dump()
+        payload = request
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.UPGRADE_CLUSTER,
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.UPGRADE_CLUSTER,
                 payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.UPGRADE_CLUSTER,
-                payload | {"job_id": msg_id.job_id},
+                CommandType.UPGRADE_CLUSTER,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:
@@ -265,19 +268,19 @@ class ClusterService:
             object_type=object_type,
             object_name=object_name,
             backup_into=backup_into,
-        ).model_dump()
+        )
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.RESTORE_CLUSTER,
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.RESTORE_CLUSTER,
                 payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.RESTORE_CLUSTER,
-                payload | {"job_id": msg_id.job_id},
+                CommandType.RESTORE_CLUSTER,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:

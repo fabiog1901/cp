@@ -2,7 +2,7 @@ import datetime as dt
 from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
@@ -28,7 +28,7 @@ class PlaybookName(AutoNameStrEnum):
     RESTORE_CLUSTER = auto()
 
 
-class JobType(AutoNameStrEnum):
+class CommandType(AutoNameStrEnum):
     CREATE_CLUSTER = auto()
     RECREATE_CLUSTER = auto()
     DELETE_CLUSTER = auto()
@@ -225,13 +225,35 @@ class ClusterRequest(BaseModel):
     group: str
 
 
-class ClusterUpgradeRequest(BaseModel):
+class CommandModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CreateClusterCommand(CommandModel):
+    name: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
+    regions: list[str]
+    version: str
+    group: str
+
+
+class ClusterUpgradeRequest(CommandModel):
     name: str
     version: str
     auto_finalize: bool
 
 
-class RestoreRequest(BaseModel):
+class DeleteClusterCommand(CommandModel):
+    cluster_id: str
+
+
+class DebugClusterCommand(CommandModel):
+    pass
+
+
+class RestoreRequest(CommandModel):
     name: str
     backup_path: str
     restore_aost: str | None
@@ -241,12 +263,44 @@ class RestoreRequest(BaseModel):
     backup_into: str | None
 
 
-class ClusterScaleRequest(BaseModel):
+class ClusterScaleRequest(CommandModel):
     name: str
     node_count: int
     node_cpus: int
     disk_size: int
     regions: List[str]
+
+
+class HealthcheckClustersCommand(CommandModel):
+    pass
+
+
+class FailZombieJobsCommand(CommandModel):
+    pass
+
+
+COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
+    CommandType.CREATE_CLUSTER: CreateClusterCommand,
+    CommandType.RECREATE_CLUSTER: CreateClusterCommand,
+    CommandType.DELETE_CLUSTER: DeleteClusterCommand,
+    CommandType.SCALE_CLUSTER: ClusterScaleRequest,
+    CommandType.UPGRADE_CLUSTER: ClusterUpgradeRequest,
+    CommandType.DEBUG_CLUSTER: DebugClusterCommand,
+    CommandType.RESTORE_CLUSTER: RestoreRequest,
+    CommandType.HEALTHCHECK_CLUSTERS: HealthcheckClustersCommand,
+    CommandType.FAIL_ZOMBIE_JOBS: FailZombieJobsCommand,
+}
+
+
+def command_model_for_type(command_type: CommandType) -> type[CommandModel]:
+    return COMMAND_MODELS[command_type]
+
+
+def parse_command_payload(
+    command_type: CommandType,
+    payload: dict[str, Any] | None,
+) -> CommandModel:
+    return command_model_for_type(command_type).model_validate(payload or {})
 
 
 class BackupDetails(BaseModel):
@@ -280,7 +334,7 @@ class NewDatabaseUserRequest(BaseModel):
 class Msg(BaseModel):
     msg_id: int
     start_after: dt.datetime
-    msg_type: str
+    msg_type: CommandType
     msg_data: Dict[str, Any]
     created_at: dt.datetime
     created_by: str
@@ -288,9 +342,9 @@ class Msg(BaseModel):
 
 class Job(BaseModel):
     job_id: int
-    job_type: str
+    job_type: CommandType
     status: str
-    description: Dict[str, Union[int, str, List[str], None]]
+    description: Dict[str, Any]
     created_at: dt.datetime
     created_by: str
     updated_at: dt.datetime

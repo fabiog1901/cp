@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 def restore_cluster(
     job_id: int,
-    data: dict,
+    command: RestoreRequest,
     requested_by: str,
 ) -> None:
     repo = get_repo()
 
-    rr = RestoreRequest(**data)
+    rr = command
     # TODO check user permissions
 
     # check if cluster with same cluster_id exists

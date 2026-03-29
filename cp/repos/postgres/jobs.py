@@ -1,7 +1,7 @@
 """Jobs repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import ClusterIDRef, IntID, Job, Task
+from ...models import ClusterIDRef, CommandType, IntID, Job, Task
 from ..base import BaseRepo
 
 
@@ -133,7 +133,7 @@ class JobsRepo(BaseRepo):
             WITH
             fail_zombie_jobs AS (
                 INSERT INTO mq (msg_type, start_after)
-                VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '60s' + (random()*10)::INTERVAL)
+                VALUES (%s, now() + INTERVAL '60s' + (random()*10)::INTERVAL)
                 RETURNING 1
             )
             UPDATE jobs
@@ -142,7 +142,7 @@ class JobsRepo(BaseRepo):
                 AND now() > updated_at + INTERVAL '120s'
             RETURNING job_id
             """,
-            (),
+            (CommandType.FAIL_ZOMBIE_JOBS.value,),
             IntID,
         )
 

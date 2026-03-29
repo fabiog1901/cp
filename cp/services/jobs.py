@@ -3,7 +3,7 @@
 import yaml
 
 from ..infra.errors import RepositoryError
-from ..models import Job, JobID, JobType
+from ..models import CommandType, Job, JobID, parse_command_payload
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, from_repository_error
@@ -73,23 +73,24 @@ class JobsService:
         if selected_job is None:
             raise ServiceNotFoundError(f"Job '{job_id}' was not found.")
 
-        job_type = (
-            JobType.RECREATE_CLUSTER
-            if selected_job.job_type == JobType.CREATE_CLUSTER
+        command_type = (
+            CommandType.RECREATE_CLUSTER
+            if selected_job.job_type == CommandType.CREATE_CLUSTER
             else selected_job.job_type
         )
+        payload = parse_command_payload(command_type, selected_job.description)
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                job_type,
-                selected_job.description,
+            msg_id: JobID = self.repo.enqueue_command(
+                command_type,
+                payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                job_type,
-                selected_job.description | {"job_id": msg_id.job_id},
+                command_type,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:

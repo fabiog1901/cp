@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 def scale_cluster(
     job_id: int,
-    data: dict,
+    command: ClusterScaleRequest,
     requested_by: str,
 ) -> None:
     repo = get_repo()
-    cluster_scale_request = ClusterScaleRequest(**data)
+    cluster_scale_request = command
 
     current_cluster = repo.get_cluster(cluster_scale_request.name, [], True)
 

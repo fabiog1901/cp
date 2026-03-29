@@ -2,11 +2,15 @@ import os
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, JobType
+from ...models import ClusterState, CommandType, HealthcheckClustersCommand
 from ..ansible import MyRunnerLite
 
 
-def healthcheck_clusters(job_id: int) -> None:
+def healthcheck_clusters(
+    job_id: int,
+    _command: HealthcheckClustersCommand,
+    _requested_by: str,
+) -> None:
     repo = get_repo()
     running_clusters = repo.list_running_clusters()
 
@@ -48,7 +52,7 @@ def healthcheck_clusters_worker(
     }
 
     job_status, data = MyRunnerLite(job_id).launch_runner(
-        JobType.HEALTHCHECK_CLUSTERS, extra_vars
+        CommandType.HEALTHCHECK_CLUSTERS, extra_vars
     )
 
     if not data or job_status != "successful":

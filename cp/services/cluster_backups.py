@@ -120,7 +120,7 @@ class ClusterBackupsService:
         backup_into: str | None,
         requested_by: str,
     ) -> int:
-        from ..models import JobID, JobType, RestoreRequest
+        from ..models import CommandType, JobID, RestoreRequest
 
         payload = RestoreRequest(
             name=cluster_id,
@@ -130,19 +130,19 @@ class ClusterBackupsService:
             object_type=object_type,
             object_name=object_name,
             backup_into=backup_into,
-        ).model_dump()
+        )
 
         try:
-            msg_id: JobID = self.repo.enqueue_job(
-                JobType.RESTORE_CLUSTER,
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.RESTORE_CLUSTER,
                 payload,
                 requested_by,
             )
             log_event(
                 self.repo,
                 requested_by,
-                JobType.RESTORE_CLUSTER,
-                payload | {"job_id": msg_id.job_id},
+                CommandType.RESTORE_CLUSTER,
+                payload.model_dump() | {"job_id": msg_id.job_id},
             )
             return msg_id.job_id
         except RepositoryError as err:

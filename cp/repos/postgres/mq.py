@@ -1,15 +1,15 @@
 """Message queue repository backed by CockroachDB/Postgres."""
 
 from ...infra.db import fetch_one
-from ...models import JobID
+from ...models import CommandModel, CommandType, JobID, JobState
 from ..base import BaseRepo
 
 
 class MqRepo(BaseRepo):
-    def enqueue_job(
+    def enqueue_command(
         self,
-        msg_type: str,
-        msg_data: dict,
+        command_type: CommandType,
+        payload: CommandModel,
         created_by: str,
     ) -> JobID:
         return fetch_one(
@@ -27,14 +27,14 @@ class MqRepo(BaseRepo):
             RETURNING job_id AS job_id
             """,
             (
-                msg_type,
-                msg_data,
+                command_type.value,
+                payload.model_dump(),
                 created_by,
-                msg_type,
-                "QUEUED",
-                msg_data,
+                command_type.value,
+                JobState.SCHEDULED.value,
+                payload.model_dump(),
                 created_by,
             ),
             JobID,
-            operation="mq.enqueue_job",
+            operation="mq.enqueue_command",
         )
