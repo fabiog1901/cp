@@ -5,15 +5,12 @@ from ..models import (
     ApiKeyCreateRequestInDB,
     ApiKeyRecord,
     ApiKeySummary,
-    BackupDetails,
-    BackupPathOption,
     Cluster,
     ClusterIDRef,
     ClusterOverview,
     CommandModel,
     CommandType,
     CpuCountOption,
-    DatabaseUser,
     DiskSizeOption,
     Job,
     JobID,
@@ -186,53 +183,6 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def list_cluster_nodes(self) -> list[Nodes]:
-        pass
-
-    @abstractmethod
-    def list_backup_paths(self, dns_address: str) -> list[BackupPathOption]:
-        pass
-
-    @abstractmethod
-    def list_backup_details(
-        self,
-        dns_address: str,
-        backup_path: str,
-    ) -> list[BackupDetails]:
-        pass
-
-    @abstractmethod
-    def list_database_users(self, dns_address: str) -> list[DatabaseUser]:
-        pass
-
-    @abstractmethod
-    def create_database_user(
-        self,
-        dns_address: str,
-        username: str,
-        password: str,
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def delete_database_user(self, dns_address: str, username: str) -> None:
-        pass
-
-    @abstractmethod
-    def revoke_database_user_role(
-        self,
-        dns_address: str,
-        username: str,
-        role: str,
-    ) -> None:
-        pass
-
-    @abstractmethod
-    def update_database_user_password(
-        self,
-        dns_address: str,
-        username: str,
-        password: str,
-    ) -> None:
         pass
 
     @abstractmethod

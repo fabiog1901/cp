@@ -1,10 +1,24 @@
 """Business logic for the cluster backups vertical."""
 
+import logging
+
+import psycopg
+from psycopg import sql
+from psycopg.rows import class_row
+
+from ..infra.db import translate_database_error
 from ..infra.errors import RepositoryError
-from ..models import BackupDetails, Cluster, ClusterBackupsSnapshot
+from ..models import BackupDetails, BackupPathOption, Cluster, ClusterBackupsSnapshot
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+
+CONNECT_TIMEOUT_SECS = 2
+CLUSTER_DB_PORT = 26257
+CLUSTER_DB_NAME = "defaultdb"
+CLUSTER_DB_USERNAME = "cockroach"
+CLUSTER_DB_PASSWORD = "cockroach"
+logger = logging.getLogger(__name__)
 
 
 class ClusterBackupsService:
@@ -24,7 +38,7 @@ class ClusterBackupsService:
         try:
             return ClusterBackupsSnapshot(
                 cluster=selected_cluster,
-                backup_paths=self.repo.list_backup_paths(
+                backup_paths=self._list_backup_paths(
                     self._get_primary_dns_address(selected_cluster)
                 ),
             )
@@ -48,7 +62,7 @@ class ClusterBackupsService:
             is_admin,
         )
         try:
-            return self.repo.list_backup_details(
+            return self._list_backup_details(
                 self._get_primary_dns_address(selected_cluster),
                 backup_path,
             )
@@ -175,3 +189,64 @@ class ClusterBackupsService:
                 f"Cluster '{cluster.cluster_id}' has no load balancer endpoint."
             )
         return cluster.lbs_inventory[0].dns_address
+
+    def _list_backup_paths(self, dns_address: str) -> list[BackupPathOption]:
+        try:
+            with self._connect(dns_address) as conn:
+                with conn.cursor() as cur:
+                    rows = cur.execute(
+                        "SHOW BACKUPS IN 'external://backup';"
+                    ).fetchall()
+        except Exception as err:
+            logger.debug(
+                "Cluster backup query failed [operation=cluster_backups.list_backup_paths]"
+            )
+            raise translate_database_error(
+                err, "cluster_backups.list_backup_paths"
+            ) from err
+
+        paths = sorted((str(row[0]) for row in rows), reverse=True)
+        return [BackupPathOption(path="LATEST")] + [
+            BackupPathOption(path=path) for path in paths
+        ]
+
+    def _list_backup_details(
+        self,
+        dns_address: str,
+        backup_path: str,
+    ) -> list[BackupDetails]:
+        query = sql.SQL(
+            """
+            SELECT database_name, parent_schema_name, object_name,
+                object_type, backup_type, start_time, end_time
+            FROM [SHOW BACKUP {} IN 'external://backup']
+            WHERE (
+                database_name NOT IN ('system', 'postgres')
+                and object_name NOT IN ('system', 'postgres')
+            )
+
+            """
+        ).format(sql.Literal(backup_path))
+
+        try:
+            with self._connect(dns_address) as conn:
+                with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
+                    return cur.execute(query).fetchall()
+        except Exception as err:
+            logger.debug(
+                "Cluster backup query failed [operation=cluster_backups.list_backup_details]"
+            )
+            raise translate_database_error(
+                err, "cluster_backups.list_backup_details"
+            ) from err
+
+    @staticmethod
+    def _connect(dns_address: str) -> psycopg.Connection:
+        return psycopg.connect(
+            (
+                f"postgres://{CLUSTER_DB_USERNAME}:{CLUSTER_DB_PASSWORD}"
+                f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
+            ),
+            autocommit=True,
+            connect_timeout=CONNECT_TIMEOUT_SECS,
+        )

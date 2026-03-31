@@ -5,9 +5,7 @@ from psycopg_pool import ConnectionPool
 from .admin import ApiKeysRepo, PlaybooksRepo, RegionsRepo, SettingsRepo, VersionsRepo
 from .auth import AuthRepo
 from .cluster import ClusterRepo
-from .cluster_backups import ClusterBackupsRepo
 from .cluster_jobs import ClusterJobsRepo
-from .cluster_users import ClusterUsersRepo
 from .dashboard import DashboardRepo
 from .event import EventRepo
 from .jobs import JobsRepo
@@ -22,8 +20,6 @@ class PostgresRepo(
     SettingsRepo,
     PlaybooksRepo,
     AuthRepo,
-    ClusterBackupsRepo,
-    ClusterUsersRepo,
     ClusterRepo,
     DashboardRepo,
     EventRepo,
