@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timezone
 
 from ...infra.errors import RepositoryError
-from ...infra.util import encrypt_api_key_secret
+from ...infra.util import encrypt_secret
 from ...models import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
@@ -51,7 +51,7 @@ class ApiKeysService(AdminService):
                     roles=request.roles,
                 ),
                 owner=actor_id,
-                encrypted_secret_access_key=encrypt_api_key_secret(secret_access_key),
+                encrypted_secret_access_key=encrypt_secret(secret_access_key),
             )
         except RepositoryError as err:
             raise from_repository_error(

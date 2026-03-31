@@ -8,6 +8,7 @@ from psycopg import sql
 from psycopg.rows import class_row
 
 from ..infra.db import translate_database_error
+from ..infra.util import decrypt_secret
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,
@@ -24,7 +25,6 @@ CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257
 CLUSTER_DB_NAME = "defaultdb"
 CLUSTER_DB_USERNAME = "cockroach"
-CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +46,8 @@ class ClusterUsersService:
             return ClusterUsersSnapshot(
                 cluster=selected_cluster,
                 database_users=self._list_database_users(
-                    self._get_primary_dns_address(selected_cluster)
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
                 ),
             )
         except RepositoryError as err:
@@ -80,6 +81,7 @@ class ClusterUsersService:
         try:
             self._create_database_user(
                 self._get_primary_dns_address(selected_cluster),
+                self._get_cluster_db_password(selected_cluster),
                 request.username,
                 request.password,
             )
@@ -117,6 +119,7 @@ class ClusterUsersService:
         try:
             self._delete_database_user(
                 self._get_primary_dns_address(selected_cluster),
+                self._get_cluster_db_password(selected_cluster),
                 username,
             )
             log_event(
@@ -149,6 +152,7 @@ class ClusterUsersService:
         try:
             self._revoke_database_user_role(
                 self._get_primary_dns_address(selected_cluster),
+                self._get_cluster_db_password(selected_cluster),
                 username,
                 role,
             )
@@ -189,6 +193,7 @@ class ClusterUsersService:
         try:
             self._update_database_user_password(
                 self._get_primary_dns_address(selected_cluster),
+                self._get_cluster_db_password(selected_cluster),
                 username,
                 password,
             )
@@ -225,9 +230,11 @@ class ClusterUsersService:
             )
         return cluster.lbs_inventory[0].dns_address
 
-    def _list_database_users(self, dns_address: str) -> list[DatabaseUser]:
+    def _list_database_users(
+        self, dns_address: str, password: str
+    ) -> list[DatabaseUser]:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, password) as conn:
                 with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
                     return cur.execute(
                         """
@@ -245,10 +252,14 @@ class ClusterUsersService:
             ) from err
 
     def _create_database_user(
-        self, dns_address: str, username: str, password: str
+        self,
+        dns_address: str,
+        cluster_password: str,
+        username: str,
+        password: str,
     ) -> None:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, cluster_password) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
@@ -264,9 +275,11 @@ class ClusterUsersService:
                 err, "cluster_users.create_database_user"
             ) from err
 
-    def _delete_database_user(self, dns_address: str, username: str) -> None:
+    def _delete_database_user(
+        self, dns_address: str, cluster_password: str, username: str
+    ) -> None:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, cluster_password) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         sql.SQL("DROP USER {}").format(sql.Identifier(username))
@@ -280,10 +293,14 @@ class ClusterUsersService:
             ) from err
 
     def _revoke_database_user_role(
-        self, dns_address: str, username: str, role: str
+        self,
+        dns_address: str,
+        cluster_password: str,
+        username: str,
+        role: str,
     ) -> None:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, cluster_password) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         sql.SQL("REVOKE {} FROM {}").format(
@@ -302,11 +319,12 @@ class ClusterUsersService:
     def _update_database_user_password(
         self,
         dns_address: str,
+        cluster_password: str,
         username: str,
         password: str,
     ) -> None:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, cluster_password) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
@@ -322,11 +340,23 @@ class ClusterUsersService:
                 err, "cluster_users.update_database_user_password"
             ) from err
 
+    def _get_cluster_db_password(self, cluster: Cluster) -> str:
+        if cluster.password is None:
+            raise ServiceValidationError(
+                f"Cluster '{cluster.cluster_id}' has no database password configured."
+            )
+        try:
+            return decrypt_secret(cluster.password).decode("utf-8")
+        except Exception as err:
+            raise ServiceValidationError(
+                f"Cluster '{cluster.cluster_id}' has an invalid database password."
+            ) from err
+
     @staticmethod
-    def _connect(dns_address: str) -> psycopg.Connection:
+    def _connect(dns_address: str, password: str) -> psycopg.Connection:
         return psycopg.connect(
             (
-                f"postgres://{CLUSTER_DB_USERNAME}:{CLUSTER_DB_PASSWORD}"
+                f"postgres://{CLUSTER_DB_USERNAME}:{password}"
                 f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
             ),
             autocommit=True,

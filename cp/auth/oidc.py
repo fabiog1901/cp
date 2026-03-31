@@ -10,7 +10,7 @@ from typing import Any
 import jwt
 from fastapi import HTTPException, Request, status
 
-from ..infra import decrypt_api_key_secret, validate_api_key_crypto_config
+from ..infra import decrypt_secret, validate_secret_crypto_config
 from ..models import CPRole
 from ..repos.base import BaseRepo
 from .common import (
@@ -42,7 +42,7 @@ class OIDCManager:
     def validate_config(self) -> None:
         """Validate auth configuration at startup, including API key crypto settings."""
         self.config.validate()
-        validate_api_key_crypto_config()
+        validate_secret_crypto_config()
 
     def _http_json(
         self,
@@ -333,7 +333,7 @@ class OIDCManager:
             )
 
         body = await request.body()
-        secret_key = decrypt_api_key_secret(api_key.encrypted_secret_access_key)
+        secret_key = decrypt_secret(api_key.encrypted_secret_access_key)
         expected_signature = api_key_signature(secret_key, request, timestamp, body)
 
         if not compare_digest(expected_signature, signature.strip().lower()):

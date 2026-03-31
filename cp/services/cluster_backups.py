@@ -7,6 +7,7 @@ from psycopg import sql
 from psycopg.rows import class_row
 
 from ..infra.db import translate_database_error
+from ..infra.util import decrypt_secret
 from ..infra.errors import RepositoryError
 from ..models import BackupDetails, BackupPathOption, Cluster, ClusterBackupsSnapshot
 from ..repos.base import BaseRepo
@@ -17,7 +18,6 @@ CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257
 CLUSTER_DB_NAME = "defaultdb"
 CLUSTER_DB_USERNAME = "cockroach"
-CLUSTER_DB_PASSWORD = "cockroach"
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +39,8 @@ class ClusterBackupsService:
             return ClusterBackupsSnapshot(
                 cluster=selected_cluster,
                 backup_paths=self._list_backup_paths(
-                    self._get_primary_dns_address(selected_cluster)
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
                 ),
             )
         except RepositoryError as err:
@@ -64,6 +65,7 @@ class ClusterBackupsService:
         try:
             return self._list_backup_details(
                 self._get_primary_dns_address(selected_cluster),
+                self._get_cluster_db_password(selected_cluster),
                 backup_path,
             )
         except RepositoryError as err:
@@ -190,9 +192,11 @@ class ClusterBackupsService:
             )
         return cluster.lbs_inventory[0].dns_address
 
-    def _list_backup_paths(self, dns_address: str) -> list[BackupPathOption]:
+    def _list_backup_paths(
+        self, dns_address: str, password: str
+    ) -> list[BackupPathOption]:
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, password) as conn:
                 with conn.cursor() as cur:
                     rows = cur.execute(
                         "SHOW BACKUPS IN 'external://backup';"
@@ -213,6 +217,7 @@ class ClusterBackupsService:
     def _list_backup_details(
         self,
         dns_address: str,
+        password: str,
         backup_path: str,
     ) -> list[BackupDetails]:
         query = sql.SQL(
@@ -229,7 +234,7 @@ class ClusterBackupsService:
         ).format(sql.Literal(backup_path))
 
         try:
-            with self._connect(dns_address) as conn:
+            with self._connect(dns_address, password) as conn:
                 with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
                     return cur.execute(query).fetchall()
         except Exception as err:
@@ -240,11 +245,23 @@ class ClusterBackupsService:
                 err, "cluster_backups.list_backup_details"
             ) from err
 
+    def _get_cluster_db_password(self, cluster: Cluster) -> str:
+        if cluster.password is None:
+            raise ServiceValidationError(
+                f"Cluster '{cluster.cluster_id}' has no database password configured."
+            )
+        try:
+            return decrypt_secret(cluster.password).decode("utf-8")
+        except Exception as err:
+            raise ServiceValidationError(
+                f"Cluster '{cluster.cluster_id}' has an invalid database password."
+            ) from err
+
     @staticmethod
-    def _connect(dns_address: str) -> psycopg.Connection:
+    def _connect(dns_address: str, password: str) -> psycopg.Connection:
         return psycopg.connect(
             (
-                f"postgres://{CLUSTER_DB_USERNAME}:{CLUSTER_DB_PASSWORD}"
+                f"postgres://{CLUSTER_DB_USERNAME}:{password}"
                 f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
             ),
             autocommit=True,

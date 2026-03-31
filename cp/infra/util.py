@@ -7,6 +7,8 @@ from contextvars import ContextVar
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+ENCRYPTED_SECRET_VERSION = b"\x01"
+
 
 def as_bool(value: str | None, default: bool = False) -> bool:
     """Parse common truthy environment-style values into a boolean."""
@@ -47,10 +49,10 @@ def safe_csv_set(raw_value: str | None) -> set[str]:
     return {part.strip() for part in raw_value.split(",") if part and part.strip()}
 
 
-def _api_key_master_key() -> bytes:
+def _secret_master_key() -> bytes:
     encoded_key = os.getenv("API_KEY_MASTER_KEY", "").strip()
     if not encoded_key:
-        raise RuntimeError("API_KEY_MASTER_KEY must be set for API key encryption.")
+        raise RuntimeError("API_KEY_MASTER_KEY must be set for secret encryption.")
 
     try:
         key = base64.b64decode(encoded_key, validate=True)
@@ -63,46 +65,58 @@ def _api_key_master_key() -> bytes:
     return key
 
 
+def validate_secret_crypto_config() -> None:
+    _secret_master_key()
+
+
 def validate_api_key_crypto_config() -> None:
-    _api_key_master_key()
+    validate_secret_crypto_config()
 
 
-def _api_key_secret_bytes(secret: bytes | str) -> bytes:
+def _secret_bytes(secret: bytes | str) -> bytes:
     if isinstance(secret, bytes):
         return secret
     return secret.encode("utf-8")
 
 
-def encrypt_api_key_secret(secret: bytes | str) -> bytes:
+def encrypt_secret(secret: bytes | str) -> bytes:
     nonce = secrets.token_bytes(12)
-    ciphertext = AESGCM(_api_key_master_key()).encrypt(
+    ciphertext = AESGCM(_secret_master_key()).encrypt(
         nonce,
-        _api_key_secret_bytes(secret),
+        _secret_bytes(secret),
         None,
     )
-    return b"\x01" + nonce + ciphertext
+    return ENCRYPTED_SECRET_VERSION + nonce + ciphertext
 
 
-def decrypt_api_key_secret(secret: bytes | str) -> bytes:
-    encrypted_secret = _api_key_secret_bytes(secret)
+def decrypt_secret(secret: bytes | str) -> bytes:
+    encrypted_secret = _secret_bytes(secret)
     if not encrypted_secret:
-        raise RuntimeError("Encrypted API key secret is empty.")
-    if encrypted_secret[:1] != b"\x01":
+        raise RuntimeError("Encrypted secret is empty.")
+    if encrypted_secret[:1] != ENCRYPTED_SECRET_VERSION:
         raise RuntimeError(
-            "Encrypted API key secret has an unsupported format. Migrate stored API keys to the versioned encrypted format."
+            "Encrypted secret has an unsupported format. Migrate stored secrets to the versioned encrypted format."
         )
 
     nonce = encrypted_secret[1:13]
     ciphertext = encrypted_secret[13:]
     if len(nonce) != 12 or not ciphertext:
-        raise RuntimeError("Encrypted API key secret is malformed.")
+        raise RuntimeError("Encrypted secret is malformed.")
 
     try:
-        return AESGCM(_api_key_master_key()).decrypt(nonce, ciphertext, None)
+        return AESGCM(_secret_master_key()).decrypt(nonce, ciphertext, None)
     except Exception as exc:
         raise RuntimeError(
-            "Encrypted API key secret could not be decrypted. Check API_KEY_MASTER_KEY and stored key material."
+            "Encrypted secret could not be decrypted. Check API_KEY_MASTER_KEY and stored key material."
         ) from exc
+
+
+def encrypt_api_key_secret(secret: bytes | str) -> bytes:
+    return encrypt_secret(secret)
+
+
+def decrypt_api_key_secret(secret: bytes | str) -> bytes:
+    return decrypt_secret(secret)
 
 
 class RequestIDFilter(logging.Filter):

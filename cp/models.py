@@ -207,6 +207,7 @@ class Cluster(BaseModel):
     cluster_id: str
     cluster_inventory: List[InventoryRegion]
     lbs_inventory: List[InventoryLB]
+    password: bytes | None = None
     version: str
     node_count: int
     node_cpus: int
