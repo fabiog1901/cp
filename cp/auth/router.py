@@ -113,7 +113,7 @@ def oidc_callback(
     )
     oidc.ensure_authorized(claims)
     actor_id = str(claims.get(oidc.config.ui_username_claim) or claims.get("sub"))
-    log_auth_event(repo, actor_id, AuditEvent.LOGIN_SUCCEEDED, {"auth_type": "oidc"})
+    log_auth_event(repo, actor_id, AuditEvent.LOGIN, {"auth_type": "oidc"})
 
     resp = RedirectResponse(next_path, status_code=302)
     cookie_kwargs = oidc_cookie_kwargs()
@@ -142,7 +142,7 @@ def oidc_logout(
     log_auth_event(
         repo,
         actor_id,
-        AuditEvent.LOGOUT_SUCCEEDED,
+        AuditEvent.LOGOUT,
         {"auth_type": str(claims.get("auth_type") or "oidc")},
     )
     resp = Response(status_code=204)

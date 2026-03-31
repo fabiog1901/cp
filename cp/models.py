@@ -64,8 +64,8 @@ class JobState(AutoNameStrEnum):
 
 
 class AuditEvent(AutoNameStrEnum):
-    LOGIN_SUCCEEDED = auto()
-    LOGOUT_SUCCEEDED = auto()
+    LOGIN = auto()
+    LOGOUT = auto()
     API_KEY_CREATED = auto()
     API_KEY_DELETED = auto()
     SETTING_UPDATED = auto()
@@ -323,7 +323,7 @@ class BackupPathOption(BaseModel):
 
 class DatabaseUser(BaseModel):
     username: str
-    options: list[str] | None
+    options: list[str] | str | None
     member_of: list[str] | None
 
 
