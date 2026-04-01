@@ -110,6 +110,7 @@ window.app = function () {
     jobsLoading: { list: false },
     jobsAutoRefreshEnabled: true,
     _jobsAutoTimer: null,
+    jobsLoadedContextClusterId: "",
     jobDetailsAutoRefreshEnabled: true,
     _jobDetailsAutoTimer: null,
     jobsContextClusterId: "",
@@ -668,6 +669,71 @@ window.app = function () {
       return this.alerts.filter(
         (alert) => String(alert?.severity || "").trim().toLowerCase() === normalized,
       ).length;
+    },
+
+    dashboardClusterCount(kind) {
+      const clusters = Array.isArray(this.servers) ? this.servers : [];
+      if (kind === "total") return clusters.length;
+      return clusters.filter((cluster) => {
+        const status = String(cluster?.status || "").trim().toLowerCase();
+        if (kind === "active") return status === "active" || status === "ready";
+        if (kind === "working")
+          return [
+            "creating",
+            "scaling",
+            "upgrading",
+            "restoring",
+            "deleting",
+          ].includes(status) || status.includes("ing");
+        if (kind === "unhealthy")
+          return [
+            "unhealthy",
+            "create_failed",
+            "scale_failed",
+            "restore_failed",
+            "delete_failed",
+            "upgrade_failed",
+          ].includes(status);
+        return false;
+      }).length;
+    },
+
+    dashboardJobCount(kind) {
+      const jobs = Array.isArray(this.jobs) ? this.jobs : [];
+      if (kind === "total") return jobs.length;
+      return jobs.filter((job) => {
+        const status = String(job?.status || "").trim().toLowerCase();
+        if (kind === "running") return status === "running";
+        if (kind === "queued") return status === "queued";
+        if (kind === "failed") return status.includes("fail") || status === "error";
+        if (kind === "done")
+          return ["completed", "complete", "done", "success", "succeeded"].includes(
+            status,
+          );
+        return false;
+      }).length;
+    },
+
+    dashboardNeedsAttentionCount() {
+      return (
+        this.dashboardClusterCount("unhealthy") +
+        this.dashboardJobCount("failed") +
+        this.alertSeverityCount("critical")
+      );
+    },
+
+    recentAlerts(limit = 10) {
+      return this.alerts
+        .slice()
+        .sort((a, b) => this.parseValue("date", b?.ts) - this.parseValue("date", a?.ts))
+        .slice(0, limit);
+    },
+
+    recentEvents(limit = 10) {
+      return this.events
+        .slice()
+        .sort((a, b) => this.parseValue("date", b?.ts) - this.parseValue("date", a?.ts))
+        .slice(0, limit);
     },
 
     fakeAlertsPayload() {
@@ -1812,13 +1878,9 @@ window.app = function () {
 
       // Start dashboard timer (only refresh if dashboard tab is active)
       this._autoTimer = setInterval(() => {
-        if (
-          this.autoRefreshEnabled &&
-          this.view === "dashboard" &&
-          this.computeUnits.length > 0
-        )
-          this.refreshDashboard();
-      }, 10_000);
+        if (this.autoRefreshEnabled && this.view === "dashboard")
+          this.refreshDashboardOverview();
+      }, 15_000);
 
       // Start clusters timer (legacy internal state name is servers)
       this._serversAutoTimer = setInterval(() => {
@@ -2143,7 +2205,12 @@ window.app = function () {
     },
 
     async ensureJobsView() {
-      if (this.jobs.length === 0 && !this.jobsLoading.list)
+      const expectedContext = String(this.jobsContextClusterId || "").trim();
+      const loadedContext = String(this.jobsLoadedContextClusterId || "").trim();
+      if (
+        (this.jobs.length === 0 || expectedContext !== loadedContext) &&
+        !this.jobsLoading.list
+      )
         await this.refreshJobs();
       else this.applyJobsFilterSort();
     },
@@ -4017,6 +4084,7 @@ window.app = function () {
             { method: "GET" },
           );
           this.jobs = Array.isArray(data?.jobs) ? data.jobs : [];
+          this.jobsLoadedContextClusterId = this.jobsContextClusterId;
           if (!this.jobsFilterQuery) {
             this.jobsFilterQuery = this.jobsContextClusterId;
             this.persistJobsFilter();
@@ -4026,6 +4094,7 @@ window.app = function () {
             method: "GET",
           });
           this.jobs = Array.isArray(data) ? data : [];
+          this.jobsLoadedContextClusterId = "";
         }
         this.jobsLastUpdatedUtc = this.utcNowString();
         this.applyJobsFilterSort();
@@ -5040,14 +5109,52 @@ window.app = function () {
     },
 
     // ---------- Dashboard lifecycle ----------
-    async ensureDashboardView() {
-      if (
-        this.canViewAdmin() &&
-        this.settings.length === 0 &&
-        !this.settingsLoading.list
-      ) {
-        await this.refreshSettings();
+    async refreshDashboardOverview({ onlyIfEmpty = false } = {}) {
+      if ((!onlyIfEmpty || this.servers.length === 0) && !this.serversLoading.list) {
+        await this.refreshServers();
+      } else {
+        this.applyServersFilterSort();
       }
+
+      if ((!onlyIfEmpty || this.jobs.length === 0) && !this.jobsLoading.list) {
+        const previousContext = this.jobsContextClusterId;
+        if (previousContext) this.jobsContextClusterId = "";
+        try {
+          await this.refreshJobs();
+        } finally {
+          this.jobsContextClusterId = previousContext;
+        }
+      } else {
+        this.applyJobsFilterSort();
+      }
+
+      if ((!onlyIfEmpty || this.events.length === 0) && !this.eventsLoading.list) {
+        await this.refreshEvents();
+      } else {
+        this.applyEventsFilterSort();
+      }
+
+      if ((!onlyIfEmpty || this.alerts.length === 0) && !this.alertsLoading.list) {
+        await this.refreshAlerts();
+      } else {
+        this.applyAlertsFilterSort();
+      }
+
+      if (this.canViewAdmin()) {
+        if ((!onlyIfEmpty || this.settings.length === 0) && !this.settingsLoading.list) {
+          await this.refreshSettings();
+        }
+        if ((!onlyIfEmpty || this.versions.length === 0) && !this.versionsLoading.list) {
+          await this.refreshVersions();
+        }
+        if ((!onlyIfEmpty || this.regions.length === 0) && !this.regionsLoading.list) {
+          await this.refreshRegions();
+        }
+      }
+    },
+
+    async ensureDashboardView() {
+      await this.refreshDashboardOverview({ onlyIfEmpty: true });
       this.applyFilterSort();
     },
 
