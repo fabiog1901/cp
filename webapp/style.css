@@ -1567,6 +1567,30 @@ tbody tr:hover {
   font-size: 13px;
 }
 
+.dashboard-fake-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px dashed rgba(45, 212, 191, 0.5);
+  background: rgba(45, 212, 191, 0.1);
+  color: #8ff7ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.dashboard-fake-value {
+  color: #8ff7ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
 .dashboard-grid-ops {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1711,6 +1735,10 @@ tbody tr:hover {
   transform: translateY(-1px);
   border-color: rgba(45, 212, 191, 0.34);
   background: rgba(45, 212, 191, 0.05);
+}
+
+.dashboard-feed-item-fake {
+  border-style: dashed;
 }
 
 .dashboard-feed-topline,

@@ -163,14 +163,14 @@
 
               <article class="dashboard-summary-card">
                 <div class="dashboard-card-kicker">Attention</div>
-                <div class="dashboard-summary-value" x-text="dashboardNeedsAttentionCount()"></div>
-                <div class="dashboard-summary-label">Items needing review</div>
+                <div class="dashboard-summary-value dashboard-fake-value" x-text="dashboardNeedsAttentionCount()"></div>
+                <div class="dashboard-summary-label">Items needing review <span class="dashboard-fake-chip">Includes fake alerts</span></div>
               </article>
 
               <article class="dashboard-summary-card">
                 <div class="dashboard-card-kicker">Signals</div>
-                <div class="dashboard-summary-value" x-text="alertSeverityCount('critical')"></div>
-                <div class="dashboard-summary-label">Critical alerts</div>
+                <div class="dashboard-summary-value dashboard-fake-value" x-text="alertSeverityCount('critical')"></div>
+                <div class="dashboard-summary-label">Critical alerts <span class="dashboard-fake-chip">Preview</span></div>
               </article>
             </section>
 
@@ -267,26 +267,26 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Signals</div>
-                    <h3 class="dashboard-card-title">Alerts</h3>
+                    <h3 class="dashboard-card-title">Alerts <span class="dashboard-fake-chip">Fake feed</span></h3>
                   </div>
-                  <div class="dashboard-stat" x-text="alerts.length"></div>
+                  <div class="dashboard-stat dashboard-fake-value" x-text="alerts.length"></div>
                 </div>
                 <div class="dashboard-kv-grid">
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Critical</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('critical')"></div>
+                    <div class="dashboard-kv-value dashboard-fake-value" x-text="alertSeverityCount('critical')"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Warning</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('warning')"></div>
+                    <div class="dashboard-kv-value dashboard-fake-value" x-text="alertSeverityCount('warning')"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Info</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('info')"></div>
+                    <div class="dashboard-kv-value dashboard-fake-value" x-text="alertSeverityCount('info')"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Last sync</div>
-                    <div class="dashboard-kv-value dashboard-kv-value-small" x-text="alertsLastUpdatedUtc || '-'"></div>
+                    <div class="dashboard-kv-value dashboard-kv-value-small dashboard-fake-value" x-text="alertsLastUpdatedUtc || '-'"></div>
                   </div>
                 </div>
                 <p class="dashboard-card-copy">Fake Alertmanager preview feed from <span class="ip-pill">/api/alerts</span>.</p>
@@ -325,14 +325,14 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Attention</div>
-                    <h3 class="dashboard-card-title">Needs Attention</h3>
+                    <h3 class="dashboard-card-title">Needs Attention <span class="dashboard-fake-chip">Partially fake</span></h3>
                   </div>
-                  <div class="dashboard-stat" x-text="dashboardNeedsAttentionCount()"></div>
+                  <div class="dashboard-stat dashboard-fake-value" x-text="dashboardNeedsAttentionCount()"></div>
                 </div>
                 <div class="dashboard-kv-grid">
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Critical alerts</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('critical')"></div>
+                    <div class="dashboard-kv-value dashboard-fake-value" x-text="alertSeverityCount('critical')"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Failed jobs</div>
@@ -353,13 +353,13 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Recent alerts</div>
-                    <h3 class="dashboard-card-title">Latest Signals</h3>
+                    <h3 class="dashboard-card-title">Latest Signals <span class="dashboard-fake-chip">Preview</span></h3>
                   </div>
                   <a href="#" class="dashboard-link" @click.prevent="setView('alerts')">Open Alerts</a>
                 </div>
                 <div class="dashboard-feed-list">
                   <template x-for="alert in recentAlerts(10)" :key="alert.alert_id">
-                    <a href="#" class="dashboard-feed-item" @click.prevent="setView('alerts')">
+                    <a href="#" class="dashboard-feed-item dashboard-feed-item-fake" @click.prevent="setView('alerts')">
                       <div class="dashboard-feed-topline">
                         <span class="service-pill" :style="alertSeverityStyle(alert.severity)"
                           x-text="alertSeverityDisplay(alert.severity)"></span>
