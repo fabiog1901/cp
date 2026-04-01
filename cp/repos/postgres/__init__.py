@@ -6,7 +6,6 @@ from .admin import ApiKeysRepo, PlaybooksRepo, RegionsRepo, SettingsRepo, Versio
 from .auth import AuthRepo
 from .cluster import ClusterRepo
 from .cluster_jobs import ClusterJobsRepo
-from .dashboard import DashboardRepo
 from .event import EventRepo
 from .jobs import JobsRepo
 from .mq import MqRepo
@@ -21,7 +20,6 @@ class PostgresRepo(
     PlaybooksRepo,
     AuthRepo,
     ClusterRepo,
-    DashboardRepo,
     EventRepo,
     JobsRepo,
     MqRepo,

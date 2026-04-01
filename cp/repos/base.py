@@ -188,18 +188,6 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
-    def query_prometheus_range(
-        self,
-        prom_url: str,
-        *,
-        query: str,
-        start: int,
-        end: int,
-        interval_secs: int,
-    ) -> dict[str, Any]:
-        pass
-
-    @abstractmethod
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         pass
 

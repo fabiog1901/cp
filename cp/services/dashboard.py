@@ -1,12 +1,18 @@
 """Business logic for the cluster dashboard vertical."""
 
+import logging
 import time
 from typing import Any
 
-from ..infra.errors import RepositoryError
+import requests
+
+from ..infra.errors import RepositoryError, RepositoryUnavailableError
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey
 from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
+
+PROMETHEUS_TIMEOUT_SECS = 10
+logger = logging.getLogger(__name__)
 
 
 class DashboardService:
@@ -92,7 +98,7 @@ class DashboardService:
             ),
         ]:
             try:
-                response = self.repo.query_prometheus_range(
+                response = self._query_prometheus_range(
                     prom_url,
                     query=query,
                     start=effective_start,
@@ -123,6 +129,46 @@ class DashboardService:
             current_nodes=sorted(current_nodes),
             chart_data=self._merge_by_ts(series),
         )
+
+    def _query_prometheus_range(
+        self,
+        prom_url: str,
+        *,
+        query: str,
+        start: int,
+        end: int,
+        interval_secs: int,
+    ) -> dict[str, Any]:
+        try:
+            response = requests.get(
+                prom_url,
+                params={
+                    "query": query,
+                    "start": start,
+                    "end": end,
+                    "step": f"{interval_secs}s",
+                },
+                timeout=PROMETHEUS_TIMEOUT_SECS,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as err:
+            logger.exception(
+                "Prometheus query failed [operation=dashboard.query_prometheus_range]"
+            )
+            raise RepositoryUnavailableError(
+                "Prometheus is temporarily unavailable.",
+                operation="dashboard.query_prometheus_range",
+                retryable=True,
+            ) from err
+        except ValueError as err:
+            logger.exception(
+                "Prometheus returned invalid JSON [operation=dashboard.query_prometheus_range]"
+            )
+            raise RepositoryError(
+                "Prometheus returned an invalid response.",
+                operation="dashboard.query_prometheus_range",
+            ) from err
 
     @staticmethod
     def _first_result_values(response: dict[str, Any]) -> list[list[str | float]]:
