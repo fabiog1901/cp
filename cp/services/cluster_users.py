@@ -2,14 +2,13 @@
 
 import logging
 
-import psycopg
-from pydantic import ValidationError
 from psycopg import sql
 from psycopg.rows import class_row
+from pydantic import ValidationError
 
 from ..infra.db import translate_database_error
-from ..infra.util import decrypt_secret
 from ..infra.errors import RepositoryError
+from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
     AuditEvent,
     Cluster,
@@ -21,10 +20,6 @@ from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
-CONNECT_TIMEOUT_SECS = 2
-CLUSTER_DB_PORT = 26257
-CLUSTER_DB_NAME = "defaultdb"
-CLUSTER_DB_USERNAME = "cockroach"
 logger = logging.getLogger(__name__)
 
 
@@ -43,12 +38,30 @@ class ClusterUsersService:
             return None
 
         try:
-            return ClusterUsersSnapshot(
-                cluster=selected_cluster,
-                database_users=self._list_database_users(
+            try:
+                with connect_cluster_db(
                     self._get_primary_dns_address(selected_cluster),
                     self._get_cluster_db_password(selected_cluster),
-                ),
+                ) as conn:
+                    with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
+                        database_users = cur.execute(
+                            """
+                            SELECT username, options, member_of
+                            FROM [SHOW USERS]
+                            WHERE username NOT IN ('admin', 'root', 'cockroach');
+                            """
+                        ).fetchall()
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.list_database_users]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.list_database_users"
+                ) from err
+
+            return ClusterUsersSnapshot(
+                cluster=selected_cluster,
+                database_users=database_users,
             )
         except RepositoryError as err:
             raise from_repository_error(
@@ -79,12 +92,25 @@ class ClusterUsersService:
             ) from err
 
         try:
-            self._create_database_user(
-                self._get_primary_dns_address(selected_cluster),
-                self._get_cluster_db_password(selected_cluster),
-                request.username,
-                request.password,
-            )
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
+                                sql.Identifier(request.username)
+                            ),
+                            (request.password,),
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.create_database_user]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.create_database_user"
+                ) from err
             log_event(
                 self.repo,
                 requested_by,
@@ -117,11 +143,22 @@ class ClusterUsersService:
             is_admin,
         )
         try:
-            self._delete_database_user(
-                self._get_primary_dns_address(selected_cluster),
-                self._get_cluster_db_password(selected_cluster),
-                username,
-            )
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("DROP USER {}").format(sql.Identifier(username))
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.delete_database_user]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.delete_database_user"
+                ) from err
             log_event(
                 self.repo,
                 requested_by,
@@ -150,12 +187,25 @@ class ClusterUsersService:
             is_admin,
         )
         try:
-            self._revoke_database_user_role(
-                self._get_primary_dns_address(selected_cluster),
-                self._get_cluster_db_password(selected_cluster),
-                username,
-                role,
-            )
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("REVOKE {} FROM {}").format(
+                                sql.Identifier(role),
+                                sql.Identifier(username),
+                            )
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.revoke_database_user_role]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.revoke_database_user_role"
+                ) from err
             log_event(
                 self.repo,
                 requested_by,
@@ -191,12 +241,25 @@ class ClusterUsersService:
             is_admin,
         )
         try:
-            self._update_database_user_password(
-                self._get_primary_dns_address(selected_cluster),
-                self._get_cluster_db_password(selected_cluster),
-                username,
-                password,
-            )
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
+                                sql.Identifier(username)
+                            ),
+                            (password,),
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.update_database_user_password]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.update_database_user_password"
+                ) from err
             log_event(
                 self.repo,
                 requested_by,
@@ -230,116 +293,6 @@ class ClusterUsersService:
             )
         return cluster.lbs_inventory[0].dns_address
 
-    def _list_database_users(
-        self, dns_address: str, password: str
-    ) -> list[DatabaseUser]:
-        try:
-            with self._connect(dns_address, password) as conn:
-                with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
-                    return cur.execute(
-                        """
-                        SELECT username, options, member_of
-                        FROM [SHOW USERS]
-                        WHERE username NOT IN ('admin', 'root', 'cockroach');
-                        """
-                    ).fetchall()
-        except Exception as err:
-            logger.debug(
-                "Cluster user query failed [operation=cluster_users.list_database_users]"
-            )
-            raise translate_database_error(
-                err, "cluster_users.list_database_users"
-            ) from err
-
-    def _create_database_user(
-        self,
-        dns_address: str,
-        cluster_password: str,
-        username: str,
-        password: str,
-    ) -> None:
-        try:
-            with self._connect(dns_address, cluster_password) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
-                            sql.Identifier(username)
-                        ),
-                        (password,),
-                    )
-        except Exception as err:
-            logger.debug(
-                "Cluster user query failed [operation=cluster_users.create_database_user]"
-            )
-            raise translate_database_error(
-                err, "cluster_users.create_database_user"
-            ) from err
-
-    def _delete_database_user(
-        self, dns_address: str, cluster_password: str, username: str
-    ) -> None:
-        try:
-            with self._connect(dns_address, cluster_password) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL("DROP USER {}").format(sql.Identifier(username))
-                    )
-        except Exception as err:
-            logger.debug(
-                "Cluster user query failed [operation=cluster_users.delete_database_user]"
-            )
-            raise translate_database_error(
-                err, "cluster_users.delete_database_user"
-            ) from err
-
-    def _revoke_database_user_role(
-        self,
-        dns_address: str,
-        cluster_password: str,
-        username: str,
-        role: str,
-    ) -> None:
-        try:
-            with self._connect(dns_address, cluster_password) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL("REVOKE {} FROM {}").format(
-                            sql.Identifier(role),
-                            sql.Identifier(username),
-                        )
-                    )
-        except Exception as err:
-            logger.debug(
-                "Cluster user query failed [operation=cluster_users.revoke_database_user_role]"
-            )
-            raise translate_database_error(
-                err, "cluster_users.revoke_database_user_role"
-            ) from err
-
-    def _update_database_user_password(
-        self,
-        dns_address: str,
-        cluster_password: str,
-        username: str,
-        password: str,
-    ) -> None:
-        try:
-            with self._connect(dns_address, cluster_password) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
-                            sql.Identifier(username)
-                        ),
-                        (password,),
-                    )
-        except Exception as err:
-            logger.debug(
-                "Cluster user query failed [operation=cluster_users.update_database_user_password]"
-            )
-            raise translate_database_error(
-                err, "cluster_users.update_database_user_password"
-            ) from err
-
     def _get_cluster_db_password(self, cluster: Cluster) -> str:
         if cluster.password is None:
             raise ServiceValidationError(
@@ -351,14 +304,3 @@ class ClusterUsersService:
             raise ServiceValidationError(
                 f"Cluster '{cluster.cluster_id}' has an invalid database password."
             ) from err
-
-    @staticmethod
-    def _connect(dns_address: str, password: str) -> psycopg.Connection:
-        return psycopg.connect(
-            (
-                f"postgres://{CLUSTER_DB_USERNAME}:{password}"
-                f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
-            ),
-            autocommit=True,
-            connect_timeout=CONNECT_TIMEOUT_SECS,
-        )

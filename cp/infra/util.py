@@ -5,9 +5,14 @@ import os
 import secrets
 from contextvars import ContextVar
 
+import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 ENCRYPTED_SECRET_VERSION = b"\x01"
+CONNECT_TIMEOUT_SECS = 2
+CLUSTER_DB_PORT = 26257
+CLUSTER_DB_NAME = "defaultdb"
+CLUSTER_DB_USERNAME = "cockroach"
 
 
 def as_bool(value: str | None, default: bool = False) -> bool:
@@ -117,6 +122,17 @@ def encrypt_api_key_secret(secret: bytes | str) -> bytes:
 
 def decrypt_api_key_secret(secret: bytes | str) -> bytes:
     return decrypt_secret(secret)
+
+
+def connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection:
+    return psycopg.connect(
+        (
+            f"postgres://{CLUSTER_DB_USERNAME}:{password}"
+            f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
+        ),
+        autocommit=True,
+        connect_timeout=CONNECT_TIMEOUT_SECS,
+    )
 
 
 class RequestIDFilter(logging.Filter):
