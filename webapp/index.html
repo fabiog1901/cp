@@ -68,6 +68,9 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'events' }"
               @click.prevent="setView('events')">Events</a>
 
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'alerts' }"
+              @click.prevent="setView('alerts')">Alerts</a>
+
             <a href="#" class="pill" :class="{ 'pill-accent': isAdminSectionView() }" x-show="canViewAdmin()"
               @click.prevent="setView('admin')">Admin</a>
           </nav>
@@ -118,6 +121,7 @@
               <button class="btn" @click="setView('clusters')">Open Clusters</button>
               <button class="btn" @click="openJobsView()">Open Jobs</button>
               <button class="btn" @click="setView('events')">Open Events</button>
+              <button class="btn" @click="setView('alerts')">Open Alerts</button>
               <button class="btn" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
               <a class="link-inline" href="/api/docs" target="_blank" rel="noopener">Open API docs</a>
               <a class="link-inline" href="https://github.com/fabiog1901/cp" target="_blank" rel="noopener">Open repository</a>
@@ -191,6 +195,23 @@
                 </p>
                 <a href="#" class="dashboard-link" @click.prevent="setView('events')">
                   Open Events
+                </a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Operational page</div>
+                    <h3 class="dashboard-card-title">Alerts</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="alerts.length"></div>
+                </div>
+                <p class="dashboard-card-copy">
+                  Shows recent fake Alertmanager-style alerts from <span class="ip-pill">/api/alerts</span> with
+                  severity, timestamp, and relative age.
+                </p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('alerts')">
+                  Open Alerts
                 </a>
               </article>
 
@@ -1676,6 +1697,104 @@
                   <template x-if="!eventsLoading.list && eventsVisibleRows.length === 0">
                     <tr>
                       <td colspan="5" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- ALERTS VIEW -->
+      <main class="layout events-layout" x-show="view === 'alerts'">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Alerts</div>
+              <div class="metric-value" x-text="alerts.length"></div>
+              <div class="metric-sub">Recent Alertmanager-style signals for CP operations.</div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Severity</h2>
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="legend">
+                <span class="legend-pill">🚨 Critical: <strong x-text="alertSeverityCount('critical')"></strong></span>
+                <span class="legend-pill">⚠️ Warning: <strong x-text="alertSeverityCount('warning')"></strong></span>
+                <span class="legend-pill">ℹ️ Info: <strong x-text="alertSeverityCount('info')"></strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="refreshAlerts()" :disabled="alertsLoading.list">
+                <span x-show="!alertsLoading.list">Refresh</span>
+                <span x-show="alertsLoading.list">Loading…</span>
+              </button>
+
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="alertsAutoRefreshEnabled" />
+                Auto-refresh (15s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main events-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Alerts</div>
+              <div class="main-subtitle">Recent alert feed from the fake alerts endpoint.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by severity, source, or alert text…"
+                x-model="alertsFilterQuery" @input="persistAlertsFilter(); applyAlertsFilterSort();" />
+
+              <div class="pill">Updated (UTC): <span x-text="alertsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container events-table-container">
+            <div class="table-scroll events-table-scroll">
+              <table class="events-table">
+                <thead>
+                  <tr>
+                    <th data-sort="date" :class="alertsSortClass(0)" @click="toggleAlertsSort(0)">Timestamp</th>
+                    <th data-sort="string" :class="alertsSortClass(1)" @click="toggleAlertsSort(1)">Severity</th>
+                    <th data-sort="string" :class="alertsSortClass(2)" @click="toggleAlertsSort(2)">Source</th>
+                    <th data-sort="string" :class="alertsSortClass(3)" @click="toggleAlertsSort(3)">Alert</th>
+                    <th>Details</th>
+                    <th data-sort="string" :class="alertsSortClass(4)" @click="toggleAlertsSort(4)">Age</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <template x-for="alert in alertsVisibleRows" :key="alert.alert_id">
+                    <tr>
+                      <td><span x-text="toUtcStringMaybe(alert.ts)"></span></td>
+                      <td>
+                        <span class="service-pill" :style="alertSeverityStyle(alert.severity)"
+                          x-text="alertSeverityDisplay(alert.severity)"></span>
+                      </td>
+                      <td><span x-text="alert.source || '-'"></span></td>
+                      <td><strong x-text="alert.summary || '-'"></strong></td>
+                      <td class="events-details-cell">
+                        <pre class="events-yaml" x-text="alert.details || '-'"></pre>
+                      </td>
+                      <td><span x-text="relativeTimeFromNow(alert.ts)"></span></td>
+                    </tr>
+                  </template>
+
+                  <template x-if="!alertsLoading.list && alertsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="6" style="padding: 18px; color: var(--muted);">No alerts.</td>
                     </tr>
                   </template>
                 </tbody>

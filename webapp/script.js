@@ -135,6 +135,24 @@ window.app = function () {
     eventsAutoRefreshEnabled: true,
     _eventsAutoTimer: null,
 
+    // ---------- Alerts state ----------
+    alerts: [],
+    alertsVisibleRows: [],
+    alertsFilterQuery: "",
+    alertsLastUpdatedUtc: null,
+    alertsSortIndex: 0,
+    alertsSortDir: "desc",
+    alertsSortTypeByIndex: {
+      0: "date", // ts
+      1: "string", // severity
+      2: "string", // source
+      3: "string", // summary
+      4: "date", // age
+    },
+    alertsLoading: { list: false },
+    alertsAutoRefreshEnabled: true,
+    _alertsAutoTimer: null,
+
     // ---------- API keys state ----------
     apiKeys: [],
     apiKeysVisibleRows: [],
@@ -589,6 +607,128 @@ window.app = function () {
         .replace(/\.\d{3}Z$/, "");
     },
 
+    relativeTimeFromNow(value) {
+      if (!value) return "-";
+      const ts = new Date(value);
+      if (isNaN(ts.getTime())) return "-";
+
+      const diffSecs = Math.max(0, Math.floor((Date.now() - ts.getTime()) / 1000));
+      if (diffSecs < 60) return `${diffSecs}s ago`;
+      if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
+      if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
+      return `${Math.floor(diffSecs / 86400)}d ago`;
+    },
+
+    alertSeverityMeta(severity) {
+      const normalized = String(severity || "info").trim().toLowerCase();
+      if (normalized === "critical") {
+        return {
+          icon: "🚨",
+          label: "Critical",
+          style: {
+            background: "rgba(127, 29, 29, 0.92)",
+            borderColor: "rgba(252, 165, 165, 0.52)",
+            color: "#fff1f2",
+          },
+        };
+      }
+      if (normalized === "warning") {
+        return {
+          icon: "⚠️",
+          label: "Warning",
+          style: {
+            background: "rgba(120, 53, 15, 0.92)",
+            borderColor: "rgba(253, 186, 116, 0.52)",
+            color: "#fff7ed",
+          },
+        };
+      }
+      return {
+        icon: "ℹ️",
+        label: "Info",
+        style: {
+          background: "rgba(8, 47, 73, 0.92)",
+          borderColor: "rgba(125, 211, 252, 0.48)",
+          color: "#eff6ff",
+        },
+      };
+    },
+
+    alertSeverityStyle(severity) {
+      return this.alertSeverityMeta(severity).style;
+    },
+
+    alertSeverityDisplay(severity) {
+      const meta = this.alertSeverityMeta(severity);
+      return `${meta.icon} ${meta.label}`;
+    },
+
+    alertSeverityCount(level) {
+      const normalized = String(level || "").trim().toLowerCase();
+      return this.alerts.filter(
+        (alert) => String(alert?.severity || "").trim().toLowerCase() === normalized,
+      ).length;
+    },
+
+    fakeAlertsPayload() {
+      const now = Date.now();
+      const minsAgo = (mins) => new Date(now - mins * 60_000).toISOString();
+      return [
+        {
+          alert_id: "am-1001",
+          ts: minsAgo(2),
+          severity: "critical",
+          source: "alertmanager",
+          summary: "Node down on cp-db-prod-03",
+          details:
+            "No heartbeat from node cp-db-prod-03 in us-east-1a for more than 90 seconds.",
+        },
+        {
+          alert_id: "am-1002",
+          ts: minsAgo(7),
+          severity: "warning",
+          source: "alertmanager",
+          summary: "High CPU usage on cp-analytics",
+          details:
+            "CPU saturation above 92% for 10 minutes on cluster cp-analytics.",
+        },
+        {
+          alert_id: "am-1003",
+          ts: minsAgo(14),
+          severity: "warning",
+          source: "alertmanager",
+          summary: "Replication lag elevated on cp-orders",
+          details: "Replica lag crossed 45 seconds and is trending upward.",
+        },
+        {
+          alert_id: "am-1004",
+          ts: minsAgo(29),
+          severity: "info",
+          source: "alertmanager",
+          summary: "Disk pressure warning cleared on cp-billing",
+          details:
+            "Filesystem usage returned below threshold after automated cleanup.",
+        },
+        {
+          alert_id: "am-1005",
+          ts: minsAgo(43),
+          severity: "critical",
+          source: "alertmanager",
+          summary: "Backup job failed for cp-infra-core",
+          details:
+            "Scheduled backup exited with a non-zero status and requires operator review.",
+        },
+        {
+          alert_id: "am-1006",
+          ts: minsAgo(95),
+          severity: "info",
+          source: "alertmanager",
+          summary: "Prometheus scrape target recovered",
+          details: "Metrics target for pg-exporter in eu-west-1b is healthy again.",
+        },
+      ];
+    },
+
     actionPillStyle(action) {
       const name = String(action || "")
         .trim()
@@ -728,6 +868,10 @@ window.app = function () {
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
+      }
+      if (this._alertsAutoTimer) {
+        clearInterval(this._alertsAutoTimer);
+        this._alertsAutoTimer = null;
       }
       if (this._jobsAutoTimer) {
         clearInterval(this._jobsAutoTimer);
@@ -1157,6 +1301,8 @@ window.app = function () {
             : this.routeHash("/jobs");
         case "events":
           return this.routeHash("/events");
+        case "alerts":
+          return this.routeHash("/alerts");
         case "admin":
           return this.routeHash("/admin");
         case "api_keys":
@@ -1204,6 +1350,7 @@ window.app = function () {
       else if (this.view === "jobs") await this.ensureJobsView();
       else if (this.view === "job") await this.ensureJobDetailView();
       else if (this.view === "events") await this.ensureEventsView();
+      else if (this.view === "alerts") await this.ensureAlertsView();
       else if (this.view === "api_keys") await this.ensureApiKeysView();
       else if (this.view === "settings") await this.ensureSettingsView();
       else if (this.view === "versions") await this.ensureVersionsView();
@@ -1262,6 +1409,8 @@ window.app = function () {
         }
       } else if (parts[0] === "events") {
         nextView = "events";
+      } else if (parts[0] === "alerts") {
+        nextView = "alerts";
       } else if (parts[0] === "admin") {
         if (parts[1] === "api-keys") nextView = "api_keys";
         else if (parts[1] === "settings") nextView = "settings";
@@ -1374,6 +1523,7 @@ window.app = function () {
         clusters: "Clusters",
         jobs: "Jobs",
         events: "Events",
+        alerts: "Alerts",
         admin: "Admin",
         playbooks: "Playbooks",
         api_keys: "API Keys",
@@ -1396,6 +1546,7 @@ window.app = function () {
         jobs: "Queued and completed orchestration work",
         job: "Job details and task execution history",
         events: "Cluster and platform activity stream",
+        alerts: "Operational alerts and incident signals",
         admin: "Administrative landing page and tooling",
         api_keys: "Manage API keys and one-time secret issuance",
         settings: "Manage dynamic configuration settings",
@@ -1554,6 +1705,9 @@ window.app = function () {
       const seIdx = localStorage.getItem("cp_events_sort_index");
       const seDir = localStorage.getItem("cp_events_sort_dir");
       const seFilter = localStorage.getItem("cp_events_filter");
+      const saIdx = localStorage.getItem("cp_alerts_sort_index");
+      const saDir = localStorage.getItem("cp_alerts_sort_dir");
+      const saFilter = localStorage.getItem("cp_alerts_filter");
       const sakIdx = localStorage.getItem("cp_api_keys_sort_index");
       const sakDir = localStorage.getItem("cp_api_keys_sort_dir");
       const sakFilter = localStorage.getItem("cp_api_keys_filter");
@@ -1582,6 +1736,7 @@ window.app = function () {
         this.jobsContextClusterId = jobsContextClusterId;
       if (selectedJobId !== null) this.selectedJobId = selectedJobId;
       if (seFilter !== null) this.eventsFilterQuery = seFilter;
+      if (saFilter !== null) this.alertsFilterQuery = saFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
@@ -1596,6 +1751,8 @@ window.app = function () {
         this.jobsSortIndex = +jobsIdx;
       if (seIdx !== null && !Number.isNaN(+seIdx))
         this.eventsSortIndex = +seIdx;
+      if (saIdx !== null && !Number.isNaN(+saIdx))
+        this.alertsSortIndex = +saIdx;
       if (sakIdx !== null && !Number.isNaN(+sakIdx))
         this.apiKeysSortIndex = +sakIdx;
       if (setIdx !== null && !Number.isNaN(+setIdx))
@@ -1603,6 +1760,7 @@ window.app = function () {
       if (ssDir === "desc") this.serversSortDir = "desc";
       if (jobsDir === "asc" || jobsDir === "desc") this.jobsSortDir = jobsDir;
       if (seDir === "asc" || seDir === "desc") this.eventsSortDir = seDir;
+      if (saDir === "asc" || saDir === "desc") this.alertsSortDir = saDir;
       if (sakDir === "asc" || sakDir === "desc") this.apiKeysSortDir = sakDir;
       if (setDir === "asc" || setDir === "desc") this.settingsSortDir = setDir;
       if (sFmt === "json" || sFmt === "yaml") this.inspectorFormat = sFmt;
@@ -1618,6 +1776,7 @@ window.app = function () {
         sView === "admin" ||
         sView === "playbooks" ||
         sView === "events" ||
+        sView === "alerts" ||
         sView === "api_keys" ||
         sView === "settings" ||
         sView === "versions" ||
@@ -1722,6 +1881,11 @@ window.app = function () {
           this.refreshEvents();
       }, 15_000);
 
+      this._alertsAutoTimer = setInterval(() => {
+        if (this.alertsAutoRefreshEnabled && this.view === "alerts")
+          this.refreshAlerts();
+      }, 15_000);
+
       this._apiKeysAutoTimer = setInterval(() => {
         if (this.apiKeysAutoRefreshEnabled && this.view === "api_keys")
           this.refreshApiKeys();
@@ -1823,6 +1987,21 @@ window.app = function () {
     async apiFetch(path, { method = "GET", body = null } = {}) {
       const url = this.apiBase + path;
       const startedAtUtc = this.utcNowString();
+
+      if (path === "/alerts" && method === "GET") {
+        const data = this.fakeAlertsPayload();
+        if (this.view === "dashboard") {
+          this.inspector = {
+            startedAtUtc,
+            url,
+            method,
+            status: 200,
+            ok: true,
+            response: data,
+          };
+        }
+        return data;
+      }
 
       const opts = { method, headers: {} };
       if (body !== null && body !== undefined) {
@@ -1988,6 +2167,12 @@ window.app = function () {
       if (this.events.length === 0 && !this.eventsLoading.list)
         await this.refreshEvents();
       else this.applyEventsFilterSort();
+    },
+
+    async ensureAlertsView() {
+      if (this.alerts.length === 0 && !this.alertsLoading.list)
+        await this.refreshAlerts();
+      else this.applyAlertsFilterSort();
     },
 
     async ensureApiKeysView() {
@@ -3949,6 +4134,96 @@ window.app = function () {
       }
     },
 
+    alertsRowText(alert) {
+      return [
+        alert?.ts,
+        alert?.severity,
+        alert?.source,
+        alert?.summary,
+        alert?.details,
+        this.relativeTimeFromNow(alert?.ts),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    alertsCellText(alert, colIndex) {
+      switch (colIndex) {
+        case 0:
+          return alert?.ts || "";
+        case 1:
+          return alert?.severity || "";
+        case 2:
+          return alert?.source || "";
+        case 3:
+          return alert?.summary || "";
+        case 4:
+          return alert?.ts || "";
+        default:
+          return "";
+      }
+    },
+
+    alertsSortClass(index) {
+      if (this.alertsSortIndex !== index) return "";
+      return this.alertsSortDir === "asc" ? "sort-asc" : "sort-desc";
+    },
+
+    toggleAlertsSort(index) {
+      if (this.alertsSortIndex === index)
+        this.alertsSortDir = this.alertsSortDir === "asc" ? "desc" : "asc";
+      else {
+        this.alertsSortIndex = index;
+        this.alertsSortDir = index === 0 ? "desc" : "asc";
+      }
+
+      localStorage.setItem(
+        "cp_alerts_sort_index",
+        String(this.alertsSortIndex),
+      );
+      localStorage.setItem("cp_alerts_sort_dir", this.alertsSortDir);
+      this.applyAlertsFilterSort();
+    },
+
+    applyAlertsFilterSort() {
+      const q = (this.alertsFilterQuery || "").toLowerCase().trim();
+      let rows = this.alerts.slice();
+      if (q) rows = rows.filter((alert) => this.alertsRowText(alert).includes(q));
+
+      if (this.alertsSortIndex !== null) {
+        const type =
+          this.alertsSortTypeByIndex[this.alertsSortIndex] || "string";
+        const idx = this.alertsSortIndex;
+        const dir = this.alertsSortDir;
+
+        rows.sort((a, b) => {
+          const av = this.parseValue(type, this.alertsCellText(a, idx));
+          const bv = this.parseValue(type, this.alertsCellText(b, idx));
+          if (av < bv) return dir === "asc" ? -1 : 1;
+          if (av > bv) return dir === "asc" ? 1 : -1;
+          return 0;
+        });
+      }
+
+      this.alertsVisibleRows = rows;
+    },
+
+    async refreshAlerts() {
+      this.alertsLoading.list = true;
+      try {
+        const data = await this.apiFetch("/alerts", { method: "GET" });
+        this.alerts = Array.isArray(data) ? data : [];
+        this.alertsLastUpdatedUtc = this.utcNowString();
+        this.applyAlertsFilterSort();
+      } catch (e) {
+        console.error(e);
+        this.alertsLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.alertsLoading.list = false;
+      }
+    },
+
     apiKeysRolesText(row) {
       return Array.isArray(row?.roles) && row.roles.length
         ? row.roles.join(", ")
@@ -4785,6 +5060,9 @@ window.app = function () {
     },
     persistEventsFilter() {
       localStorage.setItem("cp_events_filter", this.eventsFilterQuery || "");
+    },
+    persistAlertsFilter() {
+      localStorage.setItem("cp_alerts_filter", this.alertsFilterQuery || "");
     },
     persistInspectorFormat() {
       localStorage.setItem("cp_inspector_format", this.inspectorFormat);
