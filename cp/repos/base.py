@@ -106,6 +106,7 @@ class BaseRepo(ABC):
         node_cpus: int,
         node_count: int,
         disk_size: int,
+        password: bytes | None = None,
     ) -> None:
         pass
 
@@ -122,6 +123,7 @@ class BaseRepo(ABC):
         disk_size: int | None = None,
         status: str | None = None,
         grp: str | None = None,
+        password: bytes | None = None,
     ) -> None:
         pass
 

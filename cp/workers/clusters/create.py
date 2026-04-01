@@ -1,8 +1,10 @@
 import datetime as dt
 import logging
+import secrets
 from threading import Thread
 
 from ...infra import get_repo
+from ...infra.util import encrypt_secret
 from ...models import (
     ClusterRequest,
     ClusterState,
@@ -28,6 +30,8 @@ def create_cluster(
 ) -> None:
     repo = get_repo()
     cluster_request = ClusterRequest.model_validate(command.model_dump())
+    cluster_db_password = secrets.token_urlsafe(32)
+    encrypted_cluster_db_password = encrypt_secret(cluster_db_password)
 
     # check if cluster with same cluster_id exists
     c = repo.get_cluster(cluster_request.name, [], True)
@@ -55,6 +59,7 @@ def create_cluster(
         cluster_request.node_cpus,
         cluster_request.node_count,
         cluster_request.disk_size,
+        encrypted_cluster_db_password,
     )
 
     repo.link_job_to_cluster(
@@ -69,11 +74,17 @@ def create_cluster(
             job_id,
             cluster_request,
             created_by,
+            cluster_db_password,
         ),
     ).start()
 
 
-def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str):
+def create_cluster_worker(
+    job_id,
+    cluster_request: ClusterRequest,
+    created_by: str,
+    cluster_db_password: str,
+):
     repo = get_repo()
     try:
         deployment = []
@@ -169,7 +180,7 @@ def create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: s
             "dbusers": [
                 {
                     "name": repo.get_setting(SettingKey.default_username).value,
-                    "password": repo.get_setting(SettingKey.default_password).value,
+                    "password": cluster_db_password,
                     "is_cert": False,
                     "is_admin": True,
                 }

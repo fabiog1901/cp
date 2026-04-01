@@ -103,16 +103,17 @@ class ClusterRepo(BaseRepo):
         node_cpus: int,
         node_count: int,
         disk_size: int,
+        password: bytes | None = None,
     ) -> None:
         execute_stmt(
             """
             UPSERT INTO clusters
                 (cluster_id, status,
                 created_by, updated_by, grp,
-                version, node_cpus, node_count, disk_size)
+                version, node_cpus, node_count, disk_size, password)
             VALUES
                 (%s, %s, %s, %s, %s,
-                 %s, %s, %s, %s)
+                 %s, %s, %s, %s, %s)
             """,
             (
                 cluster_id,
@@ -124,6 +125,7 @@ class ClusterRepo(BaseRepo):
                 node_cpus,
                 node_count,
                 disk_size,
+                password,
             ),
             operation="cluster.upsert_cluster",
         )
@@ -140,6 +142,7 @@ class ClusterRepo(BaseRepo):
         disk_size: int | None = None,
         status: str | None = None,
         grp: str | None = None,
+        password: bytes | None = None,
     ) -> None:
         execute_stmt(
             """
@@ -152,6 +155,7 @@ class ClusterRepo(BaseRepo):
                 disk_size = coalesce(%s, disk_size),
                 status = coalesce(%s, status),
                 grp = coalesce(%s, grp),
+                password = coalesce(%s, password),
                 updated_by = coalesce(%s, updated_by)
             WHERE cluster_id = %s
             """,
@@ -164,6 +168,7 @@ class ClusterRepo(BaseRepo):
                 disk_size,
                 status,
                 grp,
+                password,
                 updated_by,
                 cluster_id,
             ),
