@@ -1993,6 +1993,9 @@
               <button class="btn" @click="setView('settings')">Settings</button>
               <button class="btn" @click="setView('api_keys')">API Keys</button>
               <button class="btn" @click="setView('versions')">Versions</button>
+              <button class="btn" @click="setView('node_counts')">Node Counts</button>
+              <button class="btn" @click="setView('cpu_counts')">Node CPUs</button>
+              <button class="btn" @click="setView('disk_sizes')">Disk Sizes</button>
               <button class="btn" @click="setView('regions')">Regions</button>
               <button class="btn" @click="setView('playbooks')">Playbooks</button>
             </div>
@@ -2045,6 +2048,42 @@
                 </div>
                 <p class="dashboard-card-copy">Configured database versions available to cluster operations.</p>
                 <a href="#" class="dashboard-link" @click.prevent="setView('versions')">Open Versions</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Node Counts</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="nodeCounts.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Available node-per-region options for cluster provisioning and scaling.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('node_counts')">Open Node Counts</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Node CPUs</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="cpuCounts.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Available CPU-per-node options exposed to cluster create and scale flows.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('cpu_counts')">Open Node CPUs</a>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Admin page</div>
+                    <h3 class="dashboard-card-title">Disk Sizes</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="diskSizes.length"></div>
+                </div>
+                <p class="dashboard-card-copy">Available disk size options offered by the cluster lifecycle operations.</p>
+                <a href="#" class="dashboard-link" @click.prevent="setView('disk_sizes')">Open Disk Sizes</a>
               </article>
 
               <article class="dashboard-card">
@@ -2498,6 +2537,495 @@
           <div class="metric" style="max-width: 720px; margin: 40px auto;">
             <div class="main-title">Not authorized</div>
             <div class="main-subtitle" x-text="unauthorizedViewMessage('versions')"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- NODE COUNTS VIEW -->
+      <main class="layout" x-show="view === 'node_counts' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Node Counts</div>
+              <div class="metric-value" x-text="nodeCounts.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshNodeCounts()" :disabled="nodeCountsLoading.list">
+                <span x-show="!nodeCountsLoading.list">Refresh</span>
+                <span x-show="nodeCountsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="nodeCountsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openNodeCountCreateModal()">
+                Add node count…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Node Counts</div>
+              <div class="main-subtitle">Configured node-per-region options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by node count…"
+                x-model="nodeCountsFilterQuery" @input="persistNodeCountsFilter(); applyNodeCountsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="nodeCountsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Node Count</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in nodeCountsVisibleRows" :key="row.node_count">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.node_count ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete node count"
+                          @click="openNodeCountDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!nodeCountsLoading.list && nodeCountsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div class="modal-backdrop" x-show="modal.nodeCountCreate.open" x-transition
+        @keydown.escape.window="closeNodeCountCreateModal()">
+        <div class="modal" @click.outside="closeNodeCountCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Node Count</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeNodeCountCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.nodeCountCreate" x-text="modalErrors.nodeCountCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">node_count</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.nodeCountCreate.node_count" placeholder="3" />
+              <div class="hint">Creates a new node count entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/node_counts/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeNodeCountCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="nodeCountsLoading.create" @click="createNodeCount()">
+              <span x-show="!nodeCountsLoading.create">CREATE NODE COUNT</span>
+              <span x-show="nodeCountsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-backdrop" x-show="modal.nodeCountDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeNodeCountDeleteConfirm()">
+        <div class="modal" @click.outside="closeNodeCountDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Node Count Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeNodeCountDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.nodeCountDeleteConfirm"
+              x-text="modalErrors.nodeCountDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove node count
+              <span class="ip-pill" x-text="modal.nodeCountDeleteConfirm.node_count"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/node_counts/<span
+                    x-text="modal.nodeCountDeleteConfirm.node_count"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeNodeCountDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="nodeCountsLoading.delete" @click="confirmNodeCountDelete()">
+              <span x-show="!nodeCountsLoading.delete">YES, DELETE</span>
+              <span x-show="nodeCountsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main class="layout" x-show="view === 'node_counts' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('node_counts')"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- CPU COUNTS VIEW -->
+      <main class="layout" x-show="view === 'cpu_counts' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Node CPUs</div>
+              <div class="metric-value" x-text="cpuCounts.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshCpuCounts()" :disabled="cpuCountsLoading.list">
+                <span x-show="!cpuCountsLoading.list">Refresh</span>
+                <span x-show="cpuCountsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="cpuCountsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openCpuCountCreateModal()">
+                Add node CPU…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Node CPUs</div>
+              <div class="main-subtitle">Configured CPU-per-node options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by CPU count…"
+                x-model="cpuCountsFilterQuery" @input="persistCpuCountsFilter(); applyCpuCountsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="cpuCountsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CPU Count</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in cpuCountsVisibleRows" :key="row.cpu_count">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.cpu_count ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete CPU count"
+                          @click="openCpuCountDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!cpuCountsLoading.list && cpuCountsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div class="modal-backdrop" x-show="modal.cpuCountCreate.open" x-transition
+        @keydown.escape.window="closeCpuCountCreateModal()">
+        <div class="modal" @click.outside="closeCpuCountCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create CPU Count</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeCpuCountCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.cpuCountCreate" x-text="modalErrors.cpuCountCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">cpu_count</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.cpuCountCreate.cpu_count" placeholder="4" />
+              <div class="hint">Creates a new CPU count entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/cpu_counts/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeCpuCountCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="cpuCountsLoading.create" @click="createCpuCount()">
+              <span x-show="!cpuCountsLoading.create">CREATE CPU COUNT</span>
+              <span x-show="cpuCountsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-backdrop" x-show="modal.cpuCountDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeCpuCountDeleteConfirm()">
+        <div class="modal" @click.outside="closeCpuCountDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm CPU Count Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeCpuCountDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.cpuCountDeleteConfirm"
+              x-text="modalErrors.cpuCountDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove CPU count
+              <span class="ip-pill" x-text="modal.cpuCountDeleteConfirm.cpu_count"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/cpu_counts/<span
+                    x-text="modal.cpuCountDeleteConfirm.cpu_count"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeCpuCountDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="cpuCountsLoading.delete" @click="confirmCpuCountDelete()">
+              <span x-show="!cpuCountsLoading.delete">YES, DELETE</span>
+              <span x-show="cpuCountsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main class="layout" x-show="view === 'cpu_counts' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('cpu_counts')"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- DISK SIZES VIEW -->
+      <main class="layout" x-show="view === 'disk_sizes' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Disk Sizes</div>
+              <div class="metric-value" x-text="diskSizes.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshDiskSizes()" :disabled="diskSizesLoading.list">
+                <span x-show="!diskSizesLoading.list">Refresh</span>
+                <span x-show="diskSizesLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="diskSizesAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openDiskSizeCreateModal()">
+                Add disk size…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Disk Sizes</div>
+              <div class="main-subtitle">Configured disk size options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by disk size…"
+                x-model="diskSizesFilterQuery" @input="persistDiskSizesFilter(); applyDiskSizesFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="diskSizesLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Size (GB)</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in diskSizesVisibleRows" :key="row.size_gb">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.size_gb ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete disk size"
+                          @click="openDiskSizeDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!diskSizesLoading.list && diskSizesVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div class="modal-backdrop" x-show="modal.diskSizeCreate.open" x-transition
+        @keydown.escape.window="closeDiskSizeCreateModal()">
+        <div class="modal" @click.outside="closeDiskSizeCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Disk Size</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDiskSizeCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.diskSizeCreate" x-text="modalErrors.diskSizeCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">size_gb</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.diskSizeCreate.size_gb" placeholder="50" />
+              <div class="hint">Creates a new disk size entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/disk_sizes/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDiskSizeCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="diskSizesLoading.create" @click="createDiskSize()">
+              <span x-show="!diskSizesLoading.create">CREATE DISK SIZE</span>
+              <span x-show="diskSizesLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-backdrop" x-show="modal.diskSizeDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeDiskSizeDeleteConfirm()">
+        <div class="modal" @click.outside="closeDiskSizeDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Disk Size Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDiskSizeDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.diskSizeDeleteConfirm"
+              x-text="modalErrors.diskSizeDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove disk size
+              <span class="ip-pill" x-text="modal.diskSizeDeleteConfirm.size_gb"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/disk_sizes/<span
+                    x-text="modal.diskSizeDeleteConfirm.size_gb"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDiskSizeDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="diskSizesLoading.delete" @click="confirmDiskSizeDelete()">
+              <span x-show="!diskSizesLoading.delete">YES, DELETE</span>
+              <span x-show="diskSizesLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main class="layout" x-show="view === 'disk_sizes' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('disk_sizes')"></div>
           </div>
         </section>
       </main>

@@ -202,6 +202,31 @@ window.app = function () {
     versionsAutoRefreshEnabled: true,
     _versionsAutoTimer: null,
 
+    // ---------- Cluster option state ----------
+    nodeCounts: [],
+    nodeCountsVisibleRows: [],
+    nodeCountsFilterQuery: "",
+    nodeCountsLastUpdatedUtc: null,
+    nodeCountsLoading: { list: false, create: false, delete: false },
+    nodeCountsAutoRefreshEnabled: true,
+    _nodeCountsAutoTimer: null,
+
+    cpuCounts: [],
+    cpuCountsVisibleRows: [],
+    cpuCountsFilterQuery: "",
+    cpuCountsLastUpdatedUtc: null,
+    cpuCountsLoading: { list: false, create: false, delete: false },
+    cpuCountsAutoRefreshEnabled: true,
+    _cpuCountsAutoTimer: null,
+
+    diskSizes: [],
+    diskSizesVisibleRows: [],
+    diskSizesFilterQuery: "",
+    diskSizesLastUpdatedUtc: null,
+    diskSizesLoading: { list: false, create: false, delete: false },
+    diskSizesAutoRefreshEnabled: true,
+    _diskSizesAutoTimer: null,
+
     // ---------- Regions state ----------
     regions: [],
     regionsVisibleRows: [],
@@ -293,6 +318,30 @@ window.app = function () {
       versionDeleteConfirm: {
         open: false,
         version: "",
+      },
+      nodeCountCreate: {
+        open: false,
+        node_count: "",
+      },
+      nodeCountDeleteConfirm: {
+        open: false,
+        node_count: "",
+      },
+      cpuCountCreate: {
+        open: false,
+        cpu_count: "",
+      },
+      cpuCountDeleteConfirm: {
+        open: false,
+        cpu_count: "",
+      },
+      diskSizeCreate: {
+        open: false,
+        size_gb: "",
+      },
+      diskSizeDeleteConfirm: {
+        open: false,
+        size_gb: "",
       },
       playbookVersionDeleteConfirm: {
         open: false,
@@ -397,6 +446,12 @@ window.app = function () {
       apiKeyDeleteConfirm: "",
       versionCreate: "",
       versionDeleteConfirm: "",
+      nodeCountCreate: "",
+      nodeCountDeleteConfirm: "",
+      cpuCountCreate: "",
+      cpuCountDeleteConfirm: "",
+      diskSizeCreate: "",
+      diskSizeDeleteConfirm: "",
       playbookVersionDeleteConfirm: "",
       regionCreate: "",
       regionDeleteConfirm: "",
@@ -1224,6 +1279,9 @@ window.app = function () {
         "settings",
         "api_keys",
         "versions",
+        "node_counts",
+        "cpu_counts",
+        "disk_sizes",
         "regions",
         "playbooks",
       ].includes(viewName);
@@ -1377,6 +1435,12 @@ window.app = function () {
           return this.routeHash("/admin/settings");
         case "versions":
           return this.routeHash("/admin/versions");
+        case "node_counts":
+          return this.routeHash("/admin/node-counts");
+        case "cpu_counts":
+          return this.routeHash("/admin/cpu-counts");
+        case "disk_sizes":
+          return this.routeHash("/admin/disk-sizes");
         case "regions":
           return this.routeHash("/admin/regions");
         case "playbooks":
@@ -1420,6 +1484,9 @@ window.app = function () {
       else if (this.view === "api_keys") await this.ensureApiKeysView();
       else if (this.view === "settings") await this.ensureSettingsView();
       else if (this.view === "versions") await this.ensureVersionsView();
+      else if (this.view === "node_counts") await this.ensureNodeCountsView();
+      else if (this.view === "cpu_counts") await this.ensureCpuCountsView();
+      else if (this.view === "disk_sizes") await this.ensureDiskSizesView();
       else if (this.view === "regions") await this.ensureRegionsView();
       else if (this.view === "admin") await this.ensureAdminView();
       else await this.ensureDashboardView();
@@ -1481,6 +1548,9 @@ window.app = function () {
         if (parts[1] === "api-keys") nextView = "api_keys";
         else if (parts[1] === "settings") nextView = "settings";
         else if (parts[1] === "versions") nextView = "versions";
+        else if (parts[1] === "node-counts") nextView = "node_counts";
+        else if (parts[1] === "cpu-counts") nextView = "cpu_counts";
+        else if (parts[1] === "disk-sizes") nextView = "disk_sizes";
         else if (parts[1] === "regions") nextView = "regions";
         else if (parts[1] === "playbooks") nextView = "playbooks";
         else nextView = "admin";
@@ -1561,6 +1631,9 @@ window.app = function () {
           "api_keys",
           "settings",
           "versions",
+          "node_counts",
+          "cpu_counts",
+          "disk_sizes",
           "regions",
         ].includes(viewName)
       ) {
@@ -1595,6 +1668,9 @@ window.app = function () {
         api_keys: "API Keys",
         settings: "Settings",
         versions: "Versions",
+        node_counts: "Node Counts",
+        cpu_counts: "Node CPUs",
+        disk_sizes: "Disk Sizes",
         regions: "Regions",
       };
       const label = labels[viewName] || "This view";
@@ -1617,6 +1693,9 @@ window.app = function () {
         api_keys: "Manage API keys and one-time secret issuance",
         settings: "Manage dynamic configuration settings",
         versions: "List database versions",
+        node_counts: "List available node counts",
+        cpu_counts: "List available CPU-per-node options",
+        disk_sizes: "List available disk size options",
         regions: "List configured deployment regions",
         playbooks: "Playbooks editor",
       };
@@ -1788,6 +1867,9 @@ window.app = function () {
       );
       const selectedJobId = localStorage.getItem("cp_selected_job_id");
       const versionsFilter = localStorage.getItem("cp_versions_filter");
+      const nodeCountsFilter = localStorage.getItem("cp_node_counts_filter");
+      const cpuCountsFilter = localStorage.getItem("cp_cpu_counts_filter");
+      const diskSizesFilter = localStorage.getItem("cp_disk_sizes_filter");
       const regionsFilter = localStorage.getItem("cp_regions_filter");
       const clusterUsersFilter = localStorage.getItem(
         "cp_cluster_users_filter",
@@ -1806,6 +1888,11 @@ window.app = function () {
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
+      if (nodeCountsFilter !== null)
+        this.nodeCountsFilterQuery = nodeCountsFilter;
+      if (cpuCountsFilter !== null) this.cpuCountsFilterQuery = cpuCountsFilter;
+      if (diskSizesFilter !== null)
+        this.diskSizesFilterQuery = diskSizesFilter;
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
       if (clusterUsersFilter !== null)
         this.clusterUsersFilterQuery = clusterUsersFilter;
@@ -1846,6 +1933,9 @@ window.app = function () {
         sView === "api_keys" ||
         sView === "settings" ||
         sView === "versions" ||
+        sView === "node_counts" ||
+        sView === "cpu_counts" ||
+        sView === "disk_sizes" ||
         sView === "regions"
       )
         this.view = sView;
@@ -1956,6 +2046,21 @@ window.app = function () {
       this._versionsAutoTimer = setInterval(() => {
         if (this.versionsAutoRefreshEnabled && this.view === "versions")
           this.refreshVersions();
+      }, 20_000);
+
+      this._nodeCountsAutoTimer = setInterval(() => {
+        if (this.nodeCountsAutoRefreshEnabled && this.view === "node_counts")
+          this.refreshNodeCounts();
+      }, 20_000);
+
+      this._cpuCountsAutoTimer = setInterval(() => {
+        if (this.cpuCountsAutoRefreshEnabled && this.view === "cpu_counts")
+          this.refreshCpuCounts();
+      }, 20_000);
+
+      this._diskSizesAutoTimer = setInterval(() => {
+        if (this.diskSizesAutoRefreshEnabled && this.view === "disk_sizes")
+          this.refreshDiskSizes();
       }, 20_000);
 
       this._regionsAutoTimer = setInterval(() => {
@@ -2272,6 +2377,36 @@ window.app = function () {
       else this.applyVersionsFilter();
     },
 
+    async ensureNodeCountsView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("node_counts", { fallback: false });
+        return;
+      }
+      if (this.nodeCounts.length === 0 && !this.nodeCountsLoading.list)
+        await this.refreshNodeCounts();
+      else this.applyNodeCountsFilter();
+    },
+
+    async ensureCpuCountsView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("cpu_counts", { fallback: false });
+        return;
+      }
+      if (this.cpuCounts.length === 0 && !this.cpuCountsLoading.list)
+        await this.refreshCpuCounts();
+      else this.applyCpuCountsFilter();
+    },
+
+    async ensureDiskSizesView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("disk_sizes", { fallback: false });
+        return;
+      }
+      if (this.diskSizes.length === 0 && !this.diskSizesLoading.list)
+        await this.refreshDiskSizes();
+      else this.applyDiskSizesFilter();
+    },
+
     async ensureRegionsView() {
       if (!this.canViewAdmin()) {
         this.handleForbiddenView("regions", { fallback: false });
@@ -2296,6 +2431,21 @@ window.app = function () {
         await this.refreshVersions();
       } else {
         this.applyVersionsFilter();
+      }
+      if (this.nodeCounts.length === 0 && !this.nodeCountsLoading.list) {
+        await this.refreshNodeCounts();
+      } else {
+        this.applyNodeCountsFilter();
+      }
+      if (this.cpuCounts.length === 0 && !this.cpuCountsLoading.list) {
+        await this.refreshCpuCounts();
+      } else {
+        this.applyCpuCountsFilter();
+      }
+      if (this.diskSizes.length === 0 && !this.diskSizesLoading.list) {
+        await this.refreshDiskSizes();
+      } else {
+        this.applyDiskSizesFilter();
       }
       if (this.regions.length === 0 && !this.regionsLoading.list) {
         await this.refreshRegions();
@@ -4942,6 +5092,307 @@ window.app = function () {
       }
     },
 
+    clusterOptionConfig(kind) {
+      const configs = {
+        node_counts: {
+          listProp: "nodeCounts",
+          visibleProp: "nodeCountsVisibleRows",
+          filterProp: "nodeCountsFilterQuery",
+          updatedProp: "nodeCountsLastUpdatedUtc",
+          loadingProp: "nodeCountsLoading",
+          endpoint: "/admin/node_counts/",
+          key: "node_count",
+          singularLabel: "Node count",
+          pluralLabel: "Node counts",
+          storageKey: "cp_node_counts_filter",
+          createModal: "nodeCountCreate",
+          deleteModal: "nodeCountDeleteConfirm",
+          createErrorKey: "nodeCountCreate",
+          deleteErrorKey: "nodeCountDeleteConfirm",
+          forbiddenView: "node_counts",
+        },
+        cpu_counts: {
+          listProp: "cpuCounts",
+          visibleProp: "cpuCountsVisibleRows",
+          filterProp: "cpuCountsFilterQuery",
+          updatedProp: "cpuCountsLastUpdatedUtc",
+          loadingProp: "cpuCountsLoading",
+          endpoint: "/admin/cpu_counts/",
+          key: "cpu_count",
+          singularLabel: "CPU count",
+          pluralLabel: "CPU counts",
+          storageKey: "cp_cpu_counts_filter",
+          createModal: "cpuCountCreate",
+          deleteModal: "cpuCountDeleteConfirm",
+          createErrorKey: "cpuCountCreate",
+          deleteErrorKey: "cpuCountDeleteConfirm",
+          forbiddenView: "cpu_counts",
+        },
+        disk_sizes: {
+          listProp: "diskSizes",
+          visibleProp: "diskSizesVisibleRows",
+          filterProp: "diskSizesFilterQuery",
+          updatedProp: "diskSizesLastUpdatedUtc",
+          loadingProp: "diskSizesLoading",
+          endpoint: "/admin/disk_sizes/",
+          key: "size_gb",
+          singularLabel: "Disk size",
+          pluralLabel: "Disk sizes",
+          storageKey: "cp_disk_sizes_filter",
+          createModal: "diskSizeCreate",
+          deleteModal: "diskSizeDeleteConfirm",
+          createErrorKey: "diskSizeCreate",
+          deleteErrorKey: "diskSizeDeleteConfirm",
+          forbiddenView: "disk_sizes",
+        },
+      };
+      return configs[kind];
+    },
+
+    clusterOptionRowValue(kind, row) {
+      const config = this.clusterOptionConfig(kind);
+      return Number(row?.[config?.key]);
+    },
+
+    applyClusterOptionFilter(kind) {
+      const config = this.clusterOptionConfig(kind);
+      const q = String(this[config.filterProp] || "").toLowerCase().trim();
+      let rows = this[config.listProp].slice();
+      if (q) {
+        rows = rows.filter((row) =>
+          String(this.clusterOptionRowValue(kind, row)).toLowerCase().includes(q),
+        );
+      }
+      rows.sort(
+        (a, b) =>
+          this.clusterOptionRowValue(kind, a) -
+          this.clusterOptionRowValue(kind, b),
+      );
+      this[config.visibleProp] = rows;
+    },
+
+    persistClusterOptionFilter(kind) {
+      const config = this.clusterOptionConfig(kind);
+      localStorage.setItem(config.storageKey, this[config.filterProp] || "");
+    },
+
+    openClusterOptionCreateModal(kind) {
+      const config = this.clusterOptionConfig(kind);
+      this.modal[config.createModal][config.key] = "";
+      this.clearModalError(config.createErrorKey);
+      this.modal[config.createModal].open = true;
+    },
+
+    closeClusterOptionCreateModal(kind) {
+      const config = this.clusterOptionConfig(kind);
+      this.modal[config.createModal].open = false;
+      this.modal[config.createModal][config.key] = "";
+      this.clearModalError(config.createErrorKey);
+    },
+
+    openClusterOptionDeleteConfirm(kind, row) {
+      const config = this.clusterOptionConfig(kind);
+      this.modal[config.deleteModal][config.key] = row?.[config.key] ?? "";
+      this.clearModalError(config.deleteErrorKey);
+      this.modal[config.deleteModal].open = true;
+    },
+
+    closeClusterOptionDeleteConfirm(kind) {
+      const config = this.clusterOptionConfig(kind);
+      this.modal[config.deleteModal].open = false;
+      this.modal[config.deleteModal][config.key] = "";
+      this.clearModalError(config.deleteErrorKey);
+    },
+
+    async createClusterOption(kind) {
+      const config = this.clusterOptionConfig(kind);
+      const rawValue = this.modal[config.createModal][config.key];
+      const value = Number.parseInt(String(rawValue || "").trim(), 10);
+      if (!Number.isFinite(value) || value <= 0) {
+        this.setModalError(
+          config.createErrorKey,
+          new Error(`${config.singularLabel} must be a positive integer.`),
+          `${config.singularLabel} must be a positive integer.`,
+        );
+        return;
+      }
+
+      this[config.loadingProp].create = true;
+      this.clearModalError(config.createErrorKey);
+      try {
+        await this.apiFetch(config.endpoint, {
+          method: "POST",
+          body: { [config.key]: value },
+        });
+        this.closeClusterOptionCreateModal(kind);
+        await this.refreshClusterOption(kind);
+        this.setActionNotice(`${config.singularLabel} '${value}' created.`);
+      } catch (e) {
+        this.setModalError(
+          config.createErrorKey,
+          e,
+          `Failed to create ${config.singularLabel.toLowerCase()}.`,
+        );
+      } finally {
+        this[config.loadingProp].create = false;
+      }
+    },
+
+    async confirmClusterOptionDelete(kind) {
+      const config = this.clusterOptionConfig(kind);
+      const value = Number.parseInt(
+        String(this.modal[config.deleteModal][config.key] || "").trim(),
+        10,
+      );
+      if (!Number.isFinite(value) || value <= 0) return;
+
+      this[config.loadingProp].delete = true;
+      this.clearModalError(config.deleteErrorKey);
+      try {
+        await this.apiFetch(`${config.endpoint}${encodeURIComponent(value)}`, {
+          method: "DELETE",
+        });
+        this.closeClusterOptionDeleteConfirm(kind);
+        await this.refreshClusterOption(kind);
+        this.setActionNotice(`${config.singularLabel} '${value}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          config.deleteErrorKey,
+          e,
+          `Failed to delete ${config.singularLabel.toLowerCase()}.`,
+        );
+      } finally {
+        this[config.loadingProp].delete = false;
+      }
+    },
+
+    async refreshClusterOption(kind) {
+      const config = this.clusterOptionConfig(kind);
+      this[config.loadingProp].list = true;
+      try {
+        const data = await this.apiFetch(config.endpoint, { method: "GET" });
+        this[config.listProp] = Array.isArray(data) ? data : [];
+        this[config.updatedProp] = this.utcNowString();
+        this.applyClusterOptionFilter(kind);
+      } catch (e) {
+        if (e?.forbidden) {
+          this.handleForbiddenView(config.forbiddenView, { fallback: false });
+        }
+        console.error(e);
+        this[config.updatedProp] = this.utcNowString();
+      } finally {
+        this[config.loadingProp].list = false;
+      }
+    },
+
+    applyNodeCountsFilter() {
+      this.applyClusterOptionFilter("node_counts");
+    },
+
+    persistNodeCountsFilter() {
+      this.persistClusterOptionFilter("node_counts");
+    },
+
+    openNodeCountCreateModal() {
+      this.openClusterOptionCreateModal("node_counts");
+    },
+
+    closeNodeCountCreateModal() {
+      this.closeClusterOptionCreateModal("node_counts");
+    },
+
+    openNodeCountDeleteConfirm(row) {
+      this.openClusterOptionDeleteConfirm("node_counts", row);
+    },
+
+    closeNodeCountDeleteConfirm() {
+      this.closeClusterOptionDeleteConfirm("node_counts");
+    },
+
+    async createNodeCount() {
+      await this.createClusterOption("node_counts");
+    },
+
+    async confirmNodeCountDelete() {
+      await this.confirmClusterOptionDelete("node_counts");
+    },
+
+    async refreshNodeCounts() {
+      await this.refreshClusterOption("node_counts");
+    },
+
+    applyCpuCountsFilter() {
+      this.applyClusterOptionFilter("cpu_counts");
+    },
+
+    persistCpuCountsFilter() {
+      this.persistClusterOptionFilter("cpu_counts");
+    },
+
+    openCpuCountCreateModal() {
+      this.openClusterOptionCreateModal("cpu_counts");
+    },
+
+    closeCpuCountCreateModal() {
+      this.closeClusterOptionCreateModal("cpu_counts");
+    },
+
+    openCpuCountDeleteConfirm(row) {
+      this.openClusterOptionDeleteConfirm("cpu_counts", row);
+    },
+
+    closeCpuCountDeleteConfirm() {
+      this.closeClusterOptionDeleteConfirm("cpu_counts");
+    },
+
+    async createCpuCount() {
+      await this.createClusterOption("cpu_counts");
+    },
+
+    async confirmCpuCountDelete() {
+      await this.confirmClusterOptionDelete("cpu_counts");
+    },
+
+    async refreshCpuCounts() {
+      await this.refreshClusterOption("cpu_counts");
+    },
+
+    applyDiskSizesFilter() {
+      this.applyClusterOptionFilter("disk_sizes");
+    },
+
+    persistDiskSizesFilter() {
+      this.persistClusterOptionFilter("disk_sizes");
+    },
+
+    openDiskSizeCreateModal() {
+      this.openClusterOptionCreateModal("disk_sizes");
+    },
+
+    closeDiskSizeCreateModal() {
+      this.closeClusterOptionCreateModal("disk_sizes");
+    },
+
+    openDiskSizeDeleteConfirm(row) {
+      this.openClusterOptionDeleteConfirm("disk_sizes", row);
+    },
+
+    closeDiskSizeDeleteConfirm() {
+      this.closeClusterOptionDeleteConfirm("disk_sizes");
+    },
+
+    async createDiskSize() {
+      await this.createClusterOption("disk_sizes");
+    },
+
+    async confirmDiskSizeDelete() {
+      await this.confirmClusterOptionDelete("disk_sizes");
+    },
+
+    async refreshDiskSizes() {
+      await this.refreshClusterOption("disk_sizes");
+    },
+
     regionsRowText(row) {
       return [
         row?.cloud,
@@ -5146,6 +5597,15 @@ window.app = function () {
         }
         if ((!onlyIfEmpty || this.versions.length === 0) && !this.versionsLoading.list) {
           await this.refreshVersions();
+        }
+        if ((!onlyIfEmpty || this.nodeCounts.length === 0) && !this.nodeCountsLoading.list) {
+          await this.refreshNodeCounts();
+        }
+        if ((!onlyIfEmpty || this.cpuCounts.length === 0) && !this.cpuCountsLoading.list) {
+          await this.refreshCpuCounts();
+        }
+        if ((!onlyIfEmpty || this.diskSizes.length === 0) && !this.diskSizesLoading.list) {
+          await this.refreshDiskSizes();
         }
         if ((!onlyIfEmpty || this.regions.length === 0) && !this.regionsLoading.list) {
           await this.refreshRegions();
