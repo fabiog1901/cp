@@ -1,7 +1,7 @@
 """Business logic for the cluster jobs vertical."""
 
 from ..infra.errors import RepositoryError
-from ..models import ClusterJobsSnapshot
+from ..models import ClusterJobsSnapshot, to_public_cluster
 from ..repos.base import BaseRepo
 from .errors import from_repository_error
 
@@ -22,7 +22,7 @@ class ClusterJobsService:
 
         try:
             return ClusterJobsSnapshot(
-                cluster=selected_cluster,
+                cluster=to_public_cluster(selected_cluster),
                 jobs=self.repo.list_cluster_jobs(cluster_id),
             )
         except RepositoryError as err:

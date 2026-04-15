@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.exceptions import RequestErrorModel
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import (
@@ -11,7 +10,6 @@ from ..infra import (
 )
 from ..models import (
     BackupDetails,
-    Cluster,
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
@@ -19,12 +17,14 @@ from ..models import (
     ClusterJobsSnapshot,
     ClusterOverview,
     ClusterPasswordUpdateRequest,
+    ClusterPublic,
     ClusterRestoreApiRequest,
     ClusterRoleRevokeRequest,
     ClusterScaleRequest,
     ClusterUpgradeRequest,
     ClusterUsersSnapshot,
     DashboardSnapshot,
+    ErrorResponse,
     JobID,
     NewDatabaseUserRequest,
 )
@@ -117,13 +117,13 @@ async def create_cluster(
 
 @router.get(
     "/{cluster_id}",
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster(
     cluster_id: str,
     claims: dict = Depends(require_readonly),
     service: ClusterService = Depends(get_cluster_service),
-) -> Cluster:
+) -> ClusterPublic:
     groups, is_admin = get_access_scope(claims)
     try:
         cluster = service.get_cluster_for_user(cluster_id, groups, is_admin)
@@ -140,7 +140,7 @@ async def get_cluster(
 @router.delete(
     "/{cluster_id}",
     response_model=JobID,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def delete_cluster(
     cluster_id: str,
@@ -158,7 +158,7 @@ async def delete_cluster(
 @router.get(
     "/{cluster_id}/options",
     response_model=ClusterDialogOptionsResponse,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster_options(
     cluster_id: str,
@@ -217,7 +217,7 @@ async def upgrade_cluster(
 @router.get(
     "/{cluster_id}/jobs",
     response_model=ClusterJobsSnapshot,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster_jobs(
     cluster_id: str,
@@ -240,7 +240,7 @@ async def get_cluster_jobs(
 @router.get(
     "/{cluster_id}/backups",
     response_model=ClusterBackupsSnapshot,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster_backups(
     cluster_id: str,
@@ -304,7 +304,7 @@ async def restore_cluster(
 @router.get(
     "/{cluster_id}/users",
     response_model=ClusterUsersSnapshot,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster_users(
     cluster_id: str,
@@ -416,7 +416,7 @@ async def update_cluster_user_password(
 @router.get(
     "/{cluster_id}/dashboard",
     response_model=DashboardSnapshot,
-    responses={404: {"model": RequestErrorModel, "description": "Cluster not found."}},
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def get_cluster_dashboard(
     cluster_id: str,

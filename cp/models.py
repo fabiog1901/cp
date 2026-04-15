@@ -177,6 +177,10 @@ class EventCountResponse(BaseModel):
     total: int
 
 
+class ErrorResponse(BaseModel):
+    detail: str
+
+
 #
 # CLUSTER
 #
@@ -203,6 +207,22 @@ class InventoryLB(BaseModel):
     dns_address: str
 
 
+class ClusterPublic(BaseModel):
+    cluster_id: str
+    cluster_inventory: List[InventoryRegion]
+    lbs_inventory: List[InventoryLB]
+    version: str
+    node_count: int
+    node_cpus: int
+    disk_size: int
+    status: str
+    grp: str
+    created_at: dt.datetime
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str
+
+
 class Cluster(BaseModel):
     cluster_id: str
     cluster_inventory: List[InventoryRegion]
@@ -218,6 +238,10 @@ class Cluster(BaseModel):
     created_by: str
     updated_at: dt.datetime
     updated_by: str
+
+
+def to_public_cluster(cluster: Cluster) -> ClusterPublic:
+    return ClusterPublic.model_validate(cluster.model_dump(exclude={"password"}))
 
 
 class ClusterRequest(BaseModel):
@@ -456,22 +480,22 @@ class DashboardMetrics(BaseModel):
 
 
 class DashboardSnapshot(BaseModel):
-    cluster: Cluster
+    cluster: ClusterPublic
     metrics: DashboardMetrics
 
 
 class ClusterJobsSnapshot(BaseModel):
-    cluster: Cluster
+    cluster: ClusterPublic
     jobs: list[Job]
 
 
 class ClusterUsersSnapshot(BaseModel):
-    cluster: Cluster
+    cluster: ClusterPublic
     database_users: list[DatabaseUser]
 
 
 class ClusterBackupsSnapshot(BaseModel):
-    cluster: Cluster
+    cluster: ClusterPublic
     backup_paths: list[BackupPathOption]
 
 

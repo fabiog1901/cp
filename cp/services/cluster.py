@@ -6,6 +6,7 @@ from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,
     Cluster,
+    ClusterPublic,
     ClusterScaleRequest,
     ClusterUpgradeRequest,
     CommandType,
@@ -13,6 +14,7 @@ from ..models import (
     DeleteClusterCommand,
     JobID,
     RestoreRequest,
+    to_public_cluster,
 )
 from ..repos.base import BaseRepo
 from .base import log_event
@@ -38,9 +40,12 @@ class ClusterService:
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
-    ) -> Cluster | None:
+    ) -> ClusterPublic | None:
         try:
-            return self.repo.get_cluster(cluster_id, groups, is_admin)
+            cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
+            if cluster is None:
+                return None
+            return to_public_cluster(cluster)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -53,7 +58,7 @@ class ClusterService:
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
-    ):
+    ) -> tuple[ClusterPublic | None, list]:
         selected_cluster = self.get_cluster_for_user(
             cluster_id,
             groups,

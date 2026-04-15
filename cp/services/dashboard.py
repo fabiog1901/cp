@@ -7,7 +7,7 @@ from typing import Any
 import requests
 
 from ..infra.errors import RepositoryError, RepositoryUnavailableError
-from ..models import DashboardMetrics, DashboardSnapshot, SettingKey
+from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
 from ..repos.base import BaseRepo
 from .errors import ServiceValidationError, from_repository_error
 
@@ -45,7 +45,10 @@ class DashboardService:
             end,
             interval_secs,
         )
-        return DashboardSnapshot(cluster=selected_cluster, metrics=metrics)
+        return DashboardSnapshot(
+            cluster=to_public_cluster(selected_cluster),
+            metrics=metrics,
+        )
 
     def load_dashboard_metrics(
         self,

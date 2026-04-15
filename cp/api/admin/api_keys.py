@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends
-from fastapi.exceptions import RequestErrorModel
 
 from ...auth import get_audit_actor
 from ...infra import get_api_keys_service
-from ...models import ApiKeyCreateRequest, ApiKeyCreateResponse, ApiKeySummary
+from ...models import (
+    ApiKeyCreateRequest,
+    ApiKeyCreateResponse,
+    ApiKeySummary,
+    ErrorResponse,
+)
 from ...services.admin.api_keys import ApiKeysService
 from ...services.errors import ServiceError
 from .common import raise_http_from_service_error
@@ -27,7 +31,7 @@ async def list_api_keys(
     response_model=ApiKeyCreateResponse,
     responses={
         400: {
-            "model": RequestErrorModel,
+            "model": ErrorResponse,
             "description": "valid_until must be in the future.",
         },
     },
@@ -47,7 +51,7 @@ async def create_api_key(
     "/{access_key}",
     responses={
         404: {
-            "model": RequestErrorModel,
+            "model": ErrorResponse,
             "description": "API key not found.",
         },
     },

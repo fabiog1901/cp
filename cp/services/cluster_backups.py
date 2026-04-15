@@ -18,6 +18,7 @@ from ..models import (
     CommandType,
     JobID,
     RestoreRequest,
+    to_public_cluster,
 )
 from ..repos.base import BaseRepo
 from .base import log_event
@@ -60,7 +61,7 @@ class ClusterBackupsService:
 
             paths = sorted((str(row[0]) for row in rows), reverse=True)
             return ClusterBackupsSnapshot(
-                cluster=selected_cluster,
+                cluster=to_public_cluster(selected_cluster),
                 backup_paths=[BackupPathOption(path="LATEST")]
                 + [BackupPathOption(path=path) for path in paths],
             )

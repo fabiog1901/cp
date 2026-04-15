@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.exceptions import RequestErrorModel
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import get_jobs_service
-from ..models import Job, JobDetailsResponse, JobRescheduleResponse
+from ..models import ErrorResponse, Job, JobDetailsResponse, JobRescheduleResponse
 from ..services.errors import (
     ServiceAuthorizationError,
     ServiceError,
@@ -62,7 +61,7 @@ async def list_jobs(
     "/{job_id}",
     responses={
         404: {
-            "model": RequestErrorModel,
+            "model": ErrorResponse,
             "description": "Job not found.",
         },
     },
@@ -92,7 +91,7 @@ async def get_job(
     response_model=JobDetailsResponse,
     responses={
         404: {
-            "model": RequestErrorModel,
+            "model": ErrorResponse,
             "description": "Job not found.",
         },
     },
@@ -122,7 +121,7 @@ async def get_job_details(
     response_model=JobRescheduleResponse,
     responses={
         404: {
-            "model": RequestErrorModel,
+            "model": ErrorResponse,
             "description": "Job not found.",
         },
     },

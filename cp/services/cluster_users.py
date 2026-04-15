@@ -15,6 +15,7 @@ from ..models import (
     ClusterUsersSnapshot,
     DatabaseUser,
     NewDatabaseUserRequest,
+    to_public_cluster,
 )
 from ..repos.base import BaseRepo
 from .base import log_event
@@ -60,7 +61,7 @@ class ClusterUsersService:
                 ) from err
 
             return ClusterUsersSnapshot(
-                cluster=selected_cluster,
+                cluster=to_public_cluster(selected_cluster),
                 database_users=database_users,
             )
         except RepositoryError as err:
