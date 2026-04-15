@@ -1,7 +1,7 @@
 """Admin versions repository backed by CockroachDB/Postgres."""
 
 from ....infra.db import execute_stmt, fetch_all
-from ....models import CpuCountOption, DiskSizeOption, NodeCountOption, Version
+from ....models import Version
 from ..common import convert_model_to_sql
 from .base import AdminPostgresRepo
 
@@ -42,37 +42,4 @@ class VersionsRepo(AdminPostgresRepo):
             """,
             (major_version,),
             Version,
-        )
-
-    def list_node_counts(self) -> list[NodeCountOption]:
-        return fetch_all(
-            """
-            SELECT nodes AS node_count
-            FROM nodes_per_region
-            ORDER BY nodes ASC
-            """,
-            (),
-            NodeCountOption,
-        )
-
-    def list_cpus_per_node(self) -> list[CpuCountOption]:
-        return fetch_all(
-            """
-            SELECT cpus AS cpu_count
-            FROM cpus_per_node
-            ORDER BY cpus ASC
-            """,
-            (),
-            CpuCountOption,
-        )
-
-    def list_disk_sizes(self) -> list[DiskSizeOption]:
-        return fetch_all(
-            """
-            SELECT size_gb
-            FROM disk_sizes
-            ORDER BY size_gb
-            """,
-            (),
-            DiskSizeOption,
         )

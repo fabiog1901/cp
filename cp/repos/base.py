@@ -176,11 +176,35 @@ class BaseRepo(ABC):
         pass
 
     @abstractmethod
+    def create_node_count(self, node_count: NodeCountOption) -> None:
+        pass
+
+    @abstractmethod
+    def delete_node_count(self, node_count: int) -> None:
+        pass
+
+    @abstractmethod
     def list_cpus_per_node(self) -> list[CpuCountOption]:
         pass
 
     @abstractmethod
+    def create_cpu_count(self, cpu_count: CpuCountOption) -> None:
+        pass
+
+    @abstractmethod
+    def delete_cpu_count(self, cpu_count: int) -> None:
+        pass
+
+    @abstractmethod
     def list_disk_sizes(self) -> list[DiskSizeOption]:
+        pass
+
+    @abstractmethod
+    def create_disk_size(self, disk_size: DiskSizeOption) -> None:
+        pass
+
+    @abstractmethod
+    def delete_disk_size(self, size_gb: int) -> None:
         pass
 
     @abstractmethod

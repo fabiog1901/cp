@@ -2,6 +2,7 @@ from fastapi import Depends
 
 from ..repos.base import BaseRepo
 from ..services.admin.api_keys import ApiKeysService
+from ..services.admin.cluster_options import ClusterOptionsService
 from ..services.admin.playbooks import PlaybooksService
 from ..services.admin.regions import RegionsService
 from ..services.admin.settings import SettingsService
@@ -31,6 +32,7 @@ __all__ = [
     "get_regions_service",
     "get_settings_service",
     "get_versions_service",
+    "get_cluster_options_service",
     "get_api_keys_service",
     "get_admin_service",
 ]
@@ -64,6 +66,7 @@ get_playbooks_service = _build_service(PlaybooksService)
 get_regions_service = _build_service(RegionsService)
 get_settings_service = _build_service(SettingsService)
 get_versions_service = _build_service(VersionsService)
+get_cluster_options_service = _build_service(ClusterOptionsService)
 get_api_keys_service = _build_service(ApiKeysService)
 
 

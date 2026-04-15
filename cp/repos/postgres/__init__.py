@@ -2,7 +2,14 @@
 
 from psycopg_pool import ConnectionPool
 
-from .admin import ApiKeysRepo, PlaybooksRepo, RegionsRepo, SettingsRepo, VersionsRepo
+from .admin import (
+    ApiKeysRepo,
+    ClusterOptionsRepo,
+    PlaybooksRepo,
+    RegionsRepo,
+    SettingsRepo,
+    VersionsRepo,
+)
 from .auth import AuthRepo
 from .cluster import ClusterRepo
 from .cluster_jobs import ClusterJobsRepo
@@ -13,6 +20,7 @@ from .mq import MqRepo
 
 class PostgresRepo(
     ApiKeysRepo,
+    ClusterOptionsRepo,
     ClusterJobsRepo,
     RegionsRepo,
     VersionsRepo,
