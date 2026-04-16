@@ -1327,11 +1327,7 @@ window.app = function () {
     },
 
     visibilityPath(path, extra = {}) {
-      return this.buildPath(path, {
-        groups: this.currentUserGroups(),
-        is_admin: this.canViewAdmin(),
-        ...extra,
-      });
+      return this.buildPath(path, extra);
     },
 
     routeHash(path, params = {}) {
@@ -2221,8 +2217,7 @@ window.app = function () {
 
     // ---------- Servers lifecycle ----------
     async ensureServersView() {
-      if (this.servers.length === 0 && !this.serversLoading.list)
-        await this.refreshServers();
+      if (!this.serversLoading.list) await this.refreshServers();
       else this.applyServersFilterSort();
     },
 
@@ -2233,12 +2228,7 @@ window.app = function () {
         this.syncHashFromState(true);
         return;
       }
-      if (
-        !this.selectedCluster ||
-        this.selectedCluster.cluster_id !== this.selectedClusterId
-      ) {
-        await this.refreshSelectedCluster();
-      }
+      if (!this.clusterLoading.details) await this.refreshSelectedCluster();
     },
 
     async ensureClusterDashboardView() {
@@ -2248,11 +2238,7 @@ window.app = function () {
         this.syncHashFromState(true);
         return;
       }
-      if (
-        !this.clusterDashboardSnapshot ||
-        this.clusterDashboardSnapshot?.cluster?.cluster_id !==
-          this.selectedClusterId
-      ) {
+      if (!this.clusterDashboardLoading.snapshot) {
         await this.refreshClusterDashboard();
         return;
       }
@@ -2266,20 +2252,9 @@ window.app = function () {
         this.syncHashFromState(true);
         return;
       }
-      if (
-        !this.selectedCluster ||
-        this.selectedCluster.cluster_id !== this.selectedClusterId
-      ) {
-        await this.refreshSelectedCluster();
-      }
-      if (
-        this.clusterUsers.length === 0 &&
-        !this.clusterUsersLoading.snapshot
-      ) {
-        await this.refreshClusterUsers();
-      } else {
-        this.applyClusterUsersFilter();
-      }
+      if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+      if (!this.clusterUsersLoading.snapshot) await this.refreshClusterUsers();
+      else this.applyClusterUsersFilter();
     },
 
     async ensureClusterBackupsView() {
@@ -2289,35 +2264,19 @@ window.app = function () {
         this.syncHashFromState(true);
         return;
       }
-      if (
-        !this.selectedCluster ||
-        this.selectedCluster.cluster_id !== this.selectedClusterId
-      ) {
-        await this.refreshSelectedCluster();
-      }
-      if (
-        this.clusterBackups.length === 0 &&
-        !this.clusterBackupsLoading.snapshot
-      ) {
+      if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+      if (!this.clusterBackupsLoading.snapshot) {
         await this.refreshClusterBackups();
-      } else if (
-        this.selectedClusterBackupPath &&
-        this.clusterBackupDetails.length === 0 &&
-        !this.clusterBackupsLoading.details
-      ) {
-        await this.refreshSelectedBackupDetails();
+      } else if (!this.clusterBackupsLoading.details) {
+        if (this.selectedClusterBackupPath) await this.refreshSelectedBackupDetails();
       }
     },
 
     async ensureJobsView() {
       const expectedContext = String(this.jobsContextClusterId || "").trim();
       const loadedContext = String(this.jobsLoadedContextClusterId || "").trim();
-      if (
-        (this.jobs.length === 0 || expectedContext !== loadedContext) &&
-        !this.jobsLoading.list
-      )
-        await this.refreshJobs();
-      else this.applyJobsFilterSort();
+      if (!this.jobsLoading.list) await this.refreshJobs();
+      else if (expectedContext === loadedContext) this.applyJobsFilterSort();
     },
 
     async ensureJobDetailView() {
@@ -2327,23 +2286,16 @@ window.app = function () {
         this.syncHashFromState(true);
         return;
       }
-      if (
-        !this.selectedJobDetails ||
-        this.selectedJobDetails?.job?.job_id !== Number(this.selectedJobId)
-      ) {
-        await this.refreshSelectedJobDetails();
-      }
+      if (!this.jobLoading.details) await this.refreshSelectedJobDetails();
     },
 
     async ensureEventsView() {
-      if (this.events.length === 0 && !this.eventsLoading.list)
-        await this.refreshEvents();
+      if (!this.eventsLoading.list) await this.refreshEvents();
       else this.applyEventsFilterSort();
     },
 
     async ensureAlertsView() {
-      if (this.alerts.length === 0 && !this.alertsLoading.list)
-        await this.refreshAlerts();
+      if (!this.alertsLoading.list) await this.refreshAlerts();
       else this.applyAlertsFilterSort();
     },
 
@@ -2352,8 +2304,7 @@ window.app = function () {
         this.handleForbiddenView("api_keys", { fallback: false });
         return;
       }
-      if (this.apiKeys.length === 0 && !this.apiKeysLoading.list)
-        await this.refreshApiKeys();
+      if (!this.apiKeysLoading.list) await this.refreshApiKeys();
       else this.applyApiKeysFilterSort();
     },
 
@@ -2362,8 +2313,7 @@ window.app = function () {
         this.handleForbiddenView("settings", { fallback: false });
         return;
       }
-      if (this.settings.length === 0 && !this.settingsLoading.list)
-        await this.refreshSettings();
+      if (!this.settingsLoading.list) await this.refreshSettings();
       else this.applySettingsFilterSort();
     },
 
@@ -2372,8 +2322,7 @@ window.app = function () {
         this.handleForbiddenView("versions", { fallback: false });
         return;
       }
-      if (this.versions.length === 0 && !this.versionsLoading.list)
-        await this.refreshVersions();
+      if (!this.versionsLoading.list) await this.refreshVersions();
       else this.applyVersionsFilter();
     },
 
@@ -2382,8 +2331,7 @@ window.app = function () {
         this.handleForbiddenView("node_counts", { fallback: false });
         return;
       }
-      if (this.nodeCounts.length === 0 && !this.nodeCountsLoading.list)
-        await this.refreshNodeCounts();
+      if (!this.nodeCountsLoading.list) await this.refreshNodeCounts();
       else this.applyNodeCountsFilter();
     },
 
@@ -2392,8 +2340,7 @@ window.app = function () {
         this.handleForbiddenView("cpu_counts", { fallback: false });
         return;
       }
-      if (this.cpuCounts.length === 0 && !this.cpuCountsLoading.list)
-        await this.refreshCpuCounts();
+      if (!this.cpuCountsLoading.list) await this.refreshCpuCounts();
       else this.applyCpuCountsFilter();
     },
 
@@ -2402,8 +2349,7 @@ window.app = function () {
         this.handleForbiddenView("disk_sizes", { fallback: false });
         return;
       }
-      if (this.diskSizes.length === 0 && !this.diskSizesLoading.list)
-        await this.refreshDiskSizes();
+      if (!this.diskSizesLoading.list) await this.refreshDiskSizes();
       else this.applyDiskSizesFilter();
     },
 
@@ -2412,8 +2358,7 @@ window.app = function () {
         this.handleForbiddenView("regions", { fallback: false });
         return;
       }
-      if (this.regions.length === 0 && !this.regionsLoading.list)
-        await this.refreshRegions();
+      if (!this.regionsLoading.list) await this.refreshRegions();
       else this.applyRegionsFilter();
     },
 
@@ -2422,32 +2367,32 @@ window.app = function () {
         this.handleForbiddenView("admin", { fallback: false });
         return;
       }
-      if (this.settings.length === 0 && !this.settingsLoading.list) {
+      if (!this.settingsLoading.list) {
         await this.refreshSettings();
       } else {
         this.applySettingsFilterSort();
       }
-      if (this.versions.length === 0 && !this.versionsLoading.list) {
+      if (!this.versionsLoading.list) {
         await this.refreshVersions();
       } else {
         this.applyVersionsFilter();
       }
-      if (this.nodeCounts.length === 0 && !this.nodeCountsLoading.list) {
+      if (!this.nodeCountsLoading.list) {
         await this.refreshNodeCounts();
       } else {
         this.applyNodeCountsFilter();
       }
-      if (this.cpuCounts.length === 0 && !this.cpuCountsLoading.list) {
+      if (!this.cpuCountsLoading.list) {
         await this.refreshCpuCounts();
       } else {
         this.applyCpuCountsFilter();
       }
-      if (this.diskSizes.length === 0 && !this.diskSizesLoading.list) {
+      if (!this.diskSizesLoading.list) {
         await this.refreshDiskSizes();
       } else {
         this.applyDiskSizesFilter();
       }
-      if (this.regions.length === 0 && !this.regionsLoading.list) {
+      if (!this.regionsLoading.list) {
         await this.refreshRegions();
       } else {
         this.applyRegionsFilter();
@@ -5614,7 +5559,7 @@ window.app = function () {
     },
 
     async ensureDashboardView() {
-      await this.refreshDashboardOverview({ onlyIfEmpty: true });
+      await this.refreshDashboardOverview({ onlyIfEmpty: false });
       this.applyFilterSort();
     },
 
@@ -6134,13 +6079,7 @@ window.app = function () {
         return;
       }
       this.ensureAce();
-      if (
-        !this.pbLoading.list &&
-        (this.playbooks.length === 0 ||
-          !this.selectedPlaybook ||
-          !this.pbVersions.length)
-      )
-        await this.reloadPlaybooks();
+      if (!this.pbLoading.list) await this.reloadPlaybooks();
     },
 
     ensureAce() {
