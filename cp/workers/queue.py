@@ -74,15 +74,13 @@ async def pull_from_mq():
                 with get_pool().connection() as conn:
                     with conn.cursor(row_factory=class_row(Msg)) as cur:
                         with conn.transaction():
-                            msg = cur.execute(
-                                """
+                            msg = cur.execute("""
                                 SELECT * 
                                 FROM mq 
                                 WHERE now() > start_after 
                                 LIMIT 1 
                                 FOR UPDATE SKIP LOCKED
-                                """
-                            ).fetchone()
+                                """).fetchone()
 
                             if msg is None:
                                 continue

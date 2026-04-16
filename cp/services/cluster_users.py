@@ -45,13 +45,11 @@ class ClusterUsersService:
                     self._get_cluster_db_password(selected_cluster),
                 ) as conn:
                     with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
-                        database_users = cur.execute(
-                            """
+                        database_users = cur.execute("""
                             SELECT username, options, member_of
                             FROM [SHOW USERS]
                             WHERE username NOT IN ('admin', 'root', 'cockroach');
-                            """
-                        ).fetchall()
+                            """).fetchall()
             except Exception as err:
                 logger.debug(
                     "Cluster user query failed [operation=cluster_users.list_database_users]"

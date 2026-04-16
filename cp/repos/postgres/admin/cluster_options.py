@@ -12,7 +12,7 @@ class ClusterOptionsRepo(AdminPostgresRepo):
             """
             SELECT node_count
             FROM nodes_per_region
-            ORDER BY node_count` ASC
+            ORDER BY node_count ASC
             """,
             (),
             NodeCountOption,

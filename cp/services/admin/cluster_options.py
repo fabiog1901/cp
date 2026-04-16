@@ -3,12 +3,7 @@
 from pydantic import ValidationError
 
 from ...infra.errors import RepositoryError
-from ...models import (
-    AuditEvent,
-    CpuCountOption,
-    DiskSizeOption,
-    NodeCountOption,
-)
+from ...models import AuditEvent, CpuCountOption, DiskSizeOption, NodeCountOption
 from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceValidationError, from_repository_error

@@ -86,8 +86,7 @@ class ClusterBackupsService:
         )
         try:
             try:
-                query = sql.SQL(
-                    """
+                query = sql.SQL("""
                     SELECT database_name, parent_schema_name, object_name,
                         object_type, backup_type, start_time, end_time
                     FROM [SHOW BACKUP {} IN 'external://backup']
@@ -95,9 +94,7 @@ class ClusterBackupsService:
                         database_name NOT IN ('system', 'postgres')
                         and object_name NOT IN ('system', 'postgres')
                     )
-
-                    """
-                ).format(sql.Literal(backup_path))
+                    """).format(sql.Literal(backup_path))
 
                 with connect_cluster_db(
                     self._get_primary_dns_address(selected_cluster),

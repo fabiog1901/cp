@@ -70,7 +70,7 @@ def parse_api_key_timestamp(timestamp: str) -> datetime:
 
     try:
         parsed = datetime.fromtimestamp(float(raw_timestamp), tz=timezone.utc)
-    except (OSError, OverflowError, ValueError):
+    except OSError, OverflowError, ValueError:
         normalized = (
             f"{raw_timestamp[:-1]}+00:00"
             if raw_timestamp.endswith("Z")
