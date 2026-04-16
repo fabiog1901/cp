@@ -1,0 +1,28 @@
+-- as user root
+USE defaultdb;
+
+DROP DATABASE IF EXISTS cp CASCADE;
+
+CREATE DATABASE cp;
+
+USE cp;
+
+CREATE user if not exists cp WITH PASSWORD 'cp' WITH ADMIN OPTION;
+
+-- revoke silly default grants from public role
+REVOKE connect ON DATABASE cp
+FROM
+    public;
+
+REVOKE USAGE,
+CREATE ON schema cp.public
+FROM
+    public;
+
+GRANT connect ON DATABASE cp TO cp;
+
+GRANT USAGE ON schema cp.public TO cp;
+
+ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON TABLES TO cp WITH GRANT OPTION;
+
+ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON SEQUENCES TO cp WITH GRANT OPTION;

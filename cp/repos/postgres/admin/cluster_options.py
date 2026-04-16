@@ -10,9 +10,9 @@ class ClusterOptionsRepo(AdminPostgresRepo):
     def list_node_counts(self) -> list[NodeCountOption]:
         return fetch_all(
             """
-            SELECT nodes AS node_count
+            SELECT node_count
             FROM nodes_per_region
-            ORDER BY nodes ASC
+            ORDER BY node_count` ASC
             """,
             (),
             NodeCountOption,
@@ -27,7 +27,7 @@ class ClusterOptionsRepo(AdminPostgresRepo):
             """
             DELETE
             FROM nodes_per_region
-            WHERE nodes = %s
+            WHERE node_count = %s
             """,
             (node_count,),
         )
@@ -35,9 +35,9 @@ class ClusterOptionsRepo(AdminPostgresRepo):
     def list_cpus_per_node(self) -> list[CpuCountOption]:
         return fetch_all(
             """
-            SELECT cpus AS cpu_count
+            SELECT cpu_count
             FROM cpus_per_node
-            ORDER BY cpus ASC
+            ORDER BY cpu_count ASC
             """,
             (),
             CpuCountOption,
@@ -52,7 +52,7 @@ class ClusterOptionsRepo(AdminPostgresRepo):
             """
             DELETE
             FROM cpus_per_node
-            WHERE cpus = %s
+            WHERE cpu_count = %s
             """,
             (cpu_count,),
         )
