@@ -105,6 +105,10 @@ def oidc_callback(
         raise HTTPException(
             status_code=401, detail="Token endpoint response missing id_token."
         )
+    refresh_token = token_payload.get("refresh_token")
+    refresh_token_value = (
+        refresh_token if isinstance(refresh_token, str) and refresh_token else None
+    )
 
     claims = oidc.validate_jwt(
         id_token,
@@ -112,13 +116,33 @@ def oidc_callback(
         strict_client_audience=True,
     )
     oidc.ensure_authorized(claims)
+    session_id = secrets.token_urlsafe(32)
+    repo.create_oidc_session(
+        oidc.build_session_record(
+            session_id,
+            id_token=id_token,
+            refresh_token=refresh_token_value,
+            claims=claims,
+        )
+    )
     actor_id = str(claims.get(oidc.config.ui_username_claim) or claims.get("sub"))
-    log_auth_event(repo, actor_id, AuditEvent.LOGIN, {"auth_type": "oidc"})
+    log_auth_event(
+        repo,
+        actor_id,
+        AuditEvent.LOGIN,
+        {
+            "auth_type": "oidc",
+            "refresh_token_present": bool(refresh_token_value),
+        },
+    )
 
     resp = RedirectResponse(next_path, status_code=302)
     cookie_kwargs = oidc_cookie_kwargs()
     resp.set_cookie(
-        oidc.config.session_cookie_name, id_token, max_age=3600, **cookie_kwargs
+        oidc.config.session_cookie_name,
+        session_id,
+        max_age=oidc.config.session_max_age_seconds,
+        **cookie_kwargs,
     )
     resp.delete_cookie(
         oidc.config.state_cookie_name, path="/", domain=oidc.config.cookie_domain
@@ -139,6 +163,9 @@ def oidc_logout(
     claims: dict[str, Any] = Security(require_authenticated),
 ):
     """Clear the OIDC session cookie and write a logout audit event."""
+    session_id = str(claims.get("_session_id") or "").strip()
+    if session_id:
+        repo.delete_oidc_session(session_id)
     log_auth_event(
         repo,
         actor_id,

@@ -619,6 +619,16 @@ class ApiKeySummary(BaseModel):
     roles: list[CPRole] | None = None
 
 
+class OIDCSessionRecord(BaseModel):
+    session_id: str
+    encrypted_id_token: bytes
+    encrypted_refresh_token: bytes | None = None
+    token_expires_at: dt.datetime
+    session_expires_at: dt.datetime
+    created_at: dt.datetime | None = None
+    updated_at: dt.datetime | None = None
+
+
 class ApiKeyCreateRequest(BaseModel):
     valid_until: dt.datetime
     roles: list[CPRole] | None = None

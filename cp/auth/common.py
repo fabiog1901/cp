@@ -46,12 +46,20 @@ def cookie_secure_default() -> bool:
     return as_bool(os.getenv("OIDC_COOKIE_SECURE"), default=False)
 
 
+def env_int(name: str, default: int, *, minimum: int = 0) -> int:
+    """Return an integer env var with a floor and safe fallback."""
+    raw_value = os.getenv(name, "").strip()
+    if not raw_value:
+        return default
+    try:
+        return max(minimum, int(raw_value))
+    except ValueError:
+        return default
+
+
 def api_key_signature_ttl_seconds() -> int:
     """Return the maximum allowed age for signed API key requests."""
-    try:
-        return max(0, int(os.getenv("API_KEY_SIGNATURE_TTL_SECONDS", "300")))
-    except ValueError:
-        return 300
+    return env_int("API_KEY_SIGNATURE_TTL_SECONDS", 300)
 
 
 def parse_api_key_timestamp(timestamp: str) -> datetime:
@@ -133,7 +141,9 @@ class OIDCConfig:
         default_factory=lambda: os.getenv("OIDC_CLIENT_SECRET", "").strip()
     )
     scopes: str = field(
-        default_factory=lambda: os.getenv("OIDC_SCOPES", "openid profile email").strip()
+        default_factory=lambda: os.getenv(
+            "OIDC_SCOPES", "openid profile email offline_access"
+        ).strip()
     )
     audience: str = field(
         default_factory=lambda: os.getenv("OIDC_AUDIENCE", "").strip()
@@ -166,6 +176,12 @@ class OIDCConfig:
         default_factory=lambda: os.getenv(
             "OIDC_NEXT_COOKIE_NAME", "cp_oidc_next"
         ).strip()
+    )
+    session_max_age_seconds: int = field(
+        default_factory=lambda: env_int("OIDC_SESSION_MAX_AGE_SECONDS", 2592000)
+    )
+    refresh_leeway_seconds: int = field(
+        default_factory=lambda: env_int("OIDC_REFRESH_LEEWAY_SECONDS", 60)
     )
     cookie_secure: bool = field(default_factory=cookie_secure_default)
     cookie_samesite: str = field(

@@ -17,6 +17,7 @@ from ..models import (
     LogMsg,
     NodeCountOption,
     Nodes,
+    OIDCSessionRecord,
     Playbook,
     PlaybookOverview,
     Region,
@@ -72,6 +73,29 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def list_role_group_mappings(self) -> list[RoleGroupMap]:
+        pass
+
+    @abstractmethod
+    def get_oidc_session(self, session_id: str) -> OIDCSessionRecord | None:
+        pass
+
+    @abstractmethod
+    def create_oidc_session(self, session: OIDCSessionRecord) -> None:
+        pass
+
+    @abstractmethod
+    def update_oidc_session(
+        self,
+        session_id: str,
+        *,
+        encrypted_id_token: bytes,
+        encrypted_refresh_token: bytes | None,
+        token_expires_at,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def delete_oidc_session(self, session_id: str) -> None:
         pass
 
     @abstractmethod

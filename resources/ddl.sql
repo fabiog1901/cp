@@ -119,6 +119,16 @@ CREATE TABLE public.api_keys (
     roles STRING[] NULL,
     CONSTRAINT pk_api_keys PRIMARY KEY (access_key ASC)
 );
+CREATE TABLE public.oidc_sessions (
+    session_id STRING NOT NULL,
+    encrypted_id_token BYTES NOT NULL,
+    encrypted_refresh_token BYTES NULL,
+    token_expires_at TIMESTAMPTZ NOT NULL,
+    session_expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    CONSTRAINT pk_oidc_sessions PRIMARY KEY (session_id ASC)
+) WITH (ttl = 'on', ttl_expiration_expression = e'(session_expires_at)', ttl_job_cron = '@hourly');
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.tasks ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;

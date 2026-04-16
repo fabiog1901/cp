@@ -3,15 +3,15 @@ import os
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hmac import compare_digest
 from typing import Any
 
 import jwt
 from fastapi import HTTPException, Request, status
 
-from ..infra import decrypt_secret, validate_secret_crypto_config
-from ..models import CPRole
+from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_config
+from ..models import CPRole, OIDCSessionRecord
 from ..repos.base import BaseRepo
 from .common import (
     OIDCConfig,
@@ -152,6 +152,26 @@ class OIDCManager:
             data=payload,
         )
 
+    def refresh_tokens(self, refresh_token: str) -> dict[str, Any]:
+        """Exchange a refresh token for fresh token material."""
+        metadata = self.get_metadata()
+        token_endpoint = str(metadata.get("token_endpoint") or "")
+        if not token_endpoint:
+            raise RuntimeError("OIDC provider metadata missing 'token_endpoint'")
+
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": self.config.client_id,
+            "client_secret": self.config.client_secret,
+        }
+
+        return self._http_json(
+            token_endpoint,
+            method="POST",
+            data=payload,
+        )
+
     def _select_jwk(self, token: str) -> Any:
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
@@ -218,6 +238,40 @@ class OIDCManager:
             raise HTTPException(status_code=401, detail="Invalid token nonce")
 
         return claims
+
+    @staticmethod
+    def token_expires_at(claims: dict[str, Any]) -> datetime:
+        """Return the UTC expiration timestamp encoded in the JWT claims."""
+        raw_exp = claims.get("exp")
+        if raw_exp is None:
+            raise HTTPException(status_code=401, detail="Token is missing 'exp'.")
+        try:
+            return datetime.fromtimestamp(float(raw_exp), tz=timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError) as exc:
+            raise HTTPException(
+                status_code=401, detail="Token has an invalid 'exp' claim."
+            ) from exc
+
+    def build_session_record(
+        self,
+        session_id: str,
+        *,
+        id_token: str,
+        refresh_token: str | None,
+        claims: dict[str, Any],
+    ) -> OIDCSessionRecord:
+        """Return the encrypted server-side session representation for an OIDC login."""
+        now = datetime.now(timezone.utc)
+        return OIDCSessionRecord(
+            session_id=session_id,
+            encrypted_id_token=encrypt_secret(id_token),
+            encrypted_refresh_token=(
+                encrypt_secret(refresh_token) if refresh_token else None
+            ),
+            token_expires_at=self.token_expires_at(claims),
+            session_expires_at=now
+            + timedelta(seconds=self.config.session_max_age_seconds),
+        )
 
     def ensure_authorized(self, claims: dict[str, Any]) -> dict[str, Any]:
         """Ensure the caller belongs to at least one configured application group."""
@@ -382,12 +436,94 @@ class OIDCManager:
             return {"sub": "anonymous", "auth_disabled": True}
 
         if session_token:
-            claims = self.validate_jwt(session_token)
-            return self.ensure_authorized(claims)
+            return self._claims_from_session(repo, session_token)
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated.",
+            headers={"X-Auth-Login-Url": self.config.login_path},
+        )
+
+    def _claims_from_session(
+        self,
+        repo: BaseRepo,
+        session_id: str,
+    ) -> dict[str, Any]:
+        """Load a server-side OIDC session, refreshing token material when needed."""
+        session = repo.get_oidc_session(session_id)
+        if session is None:
+            raise self._not_authenticated()
+
+        now = datetime.now(timezone.utc)
+        if session.session_expires_at <= now:
+            repo.delete_oidc_session(session_id)
+            raise self._not_authenticated("OIDC session expired.")
+
+        refresh_deadline = session.token_expires_at - timedelta(
+            seconds=self.config.refresh_leeway_seconds
+        )
+        if refresh_deadline <= now:
+            claims = self._refresh_session(repo, session)
+        else:
+            try:
+                id_token = decrypt_secret(session.encrypted_id_token).decode("utf-8")
+                claims = self.validate_jwt(id_token, strict_client_audience=True)
+            except Exception:
+                claims = self._refresh_session(repo, session)
+
+        claims = self.ensure_authorized(claims)
+        claims["_session_id"] = session_id
+        claims["auth_type"] = "oidc"
+        return claims
+
+    def _refresh_session(
+        self,
+        repo: BaseRepo,
+        session: OIDCSessionRecord,
+    ) -> dict[str, Any]:
+        """Refresh an OIDC session using its stored refresh token."""
+        if not session.encrypted_refresh_token:
+            repo.delete_oidc_session(session.session_id)
+            raise self._not_authenticated("OIDC session expired.")
+
+        try:
+            refresh_token = decrypt_secret(session.encrypted_refresh_token).decode(
+                "utf-8"
+            )
+            token_payload = self.refresh_tokens(refresh_token)
+        except Exception:
+            repo.delete_oidc_session(session.session_id)
+            raise self._not_authenticated("OIDC refresh failed. Please sign in again.")
+
+        id_token = token_payload.get("id_token")
+        if not id_token or not isinstance(id_token, str):
+            repo.delete_oidc_session(session.session_id)
+            raise self._not_authenticated(
+                "OIDC refresh response missing id_token. Please sign in again."
+            )
+
+        claims = self.validate_jwt(id_token, strict_client_audience=True)
+        self.ensure_authorized(claims)
+
+        next_refresh_token = token_payload.get("refresh_token")
+        effective_refresh_token = (
+            next_refresh_token
+            if isinstance(next_refresh_token, str) and next_refresh_token
+            else refresh_token
+        )
+        repo.update_oidc_session(
+            session.session_id,
+            encrypted_id_token=encrypt_secret(id_token),
+            encrypted_refresh_token=encrypt_secret(effective_refresh_token),
+            token_expires_at=self.token_expires_at(claims),
+        )
+        return claims
+
+    def _not_authenticated(self, detail: str = "Not authenticated.") -> HTTPException:
+        """Return the standard unauthenticated exception used by the OIDC session flow."""
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
             headers={"X-Auth-Login-Url": self.config.login_path},
         )
 
