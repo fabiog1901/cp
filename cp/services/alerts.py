@@ -10,6 +10,32 @@ class AlertsService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
+    @staticmethod
+    def _extract_cluster(payload: AlertmanagerPayload, alert) -> str | None:
+        return (
+            alert.labels.get("cluster")
+            or payload.commonLabels.get("cluster")
+            or payload.groupLabels.get("cluster")
+        )
+
+    @staticmethod
+    def _extract_nodes(alert) -> list[str]:
+        node_values: list[str] = []
+        for key in ("instance", "node", "nodename", "hostname"):
+            value = alert.labels.get(key)
+            if value:
+                node_values.extend(
+                    [item.strip() for item in value.split(",") if item.strip()]
+                )
+
+        seen: set[str] = set()
+        unique_nodes: list[str] = []
+        for node in node_values:
+            if node not in seen:
+                seen.add(node)
+                unique_nodes.append(node)
+        return unique_nodes
+
     def list_live_alerts(self) -> list[LiveAlert]:
         try:
             return self.repo.list_live_alerts()
@@ -26,19 +52,17 @@ class AlertsService:
                 self.repo.upsert_live_alert(
                     LiveAlert(
                         fingerprint=alert.fingerprint,
-                        receiver=payload.receiver,
-                        payload_status=payload.status,
-                        alert_name=alert.labels.get("alertname"),
-                        severity=alert.labels.get("severity"),
-                        status=alert.status,
-                        labels=alert.labels,
-                        annotations=alert.annotations,
+                        alert_type=(
+                            alert.labels.get("alertname")
+                            or payload.commonLabels.get("alertname")
+                            or "unknown"
+                        ),
+                        cluster=self._extract_cluster(payload, alert),
+                        nodes=self._extract_nodes(alert),
+                        summary=alert.annotations.get("summary"),
+                        description=alert.annotations.get("description"),
                         starts_at=alert.startsAt,
                         ends_at=alert.endsAt,
-                        group_labels=payload.groupLabels,
-                        common_labels=payload.commonLabels,
-                        common_annotations=payload.commonAnnotations,
-                        external_url=payload.externalURL,
                     )
                 )
         except RepositoryError as err:

@@ -670,16 +670,10 @@ class AlertmanagerPayload(BaseModel):
 
 class LiveAlert(BaseModel):
     fingerprint: str
-    receiver: str
-    payload_status: str
-    alert_name: str | None = None
-    severity: str | None = None
-    status: str
-    labels: Dict[str, str]
-    annotations: Dict[str, str]
+    alert_type: str
+    cluster: str | None = None
+    nodes: List[str] = Field(default_factory=list)
+    summary: str | None = None
+    description: str | None = None
     starts_at: dt.datetime
-    ends_at: dt.datetime
-    group_labels: Dict[str, str]
-    common_labels: Dict[str, str]
-    common_annotations: Dict[str, str]
-    external_url: str
+    ends_at: dt.datetime | None = None

@@ -169,8 +169,8 @@
 
               <article class="dashboard-summary-card">
                 <div class="dashboard-card-kicker">Signals</div>
-                <div class="dashboard-summary-value" x-text="alertSeverityCount('critical')"></div>
-                <div class="dashboard-summary-label">Critical alerts</div>
+                <div class="dashboard-summary-value" x-text="alertClusterCount()"></div>
+                <div class="dashboard-summary-label">Clusters with alerts</div>
               </article>
             </section>
 
@@ -273,16 +273,16 @@
                 </div>
                 <div class="dashboard-kv-grid">
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Critical</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('critical')"></div>
+                    <div class="dashboard-kv-label">Alerts</div>
+                    <div class="dashboard-kv-value" x-text="alerts.length"></div>
                   </div>
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Warning</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('warning')"></div>
+                    <div class="dashboard-kv-label">Clusters</div>
+                    <div class="dashboard-kv-value" x-text="alertClusterCount()"></div>
                   </div>
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Info</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('info')"></div>
+                    <div class="dashboard-kv-label">Nodes</div>
+                    <div class="dashboard-kv-value" x-text="alertNodeCount()"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Last sync</div>
@@ -331,8 +331,8 @@
                 </div>
                 <div class="dashboard-kv-grid">
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Critical alerts</div>
-                    <div class="dashboard-kv-value" x-text="alertSeverityCount('critical')"></div>
+                    <div class="dashboard-kv-label">Live alerts</div>
+                    <div class="dashboard-kv-value" x-text="alerts.length"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Failed jobs</div>
@@ -361,14 +361,13 @@
                   <template x-for="alert in recentAlerts(10)" :key="alert.alert_id">
                     <a href="#" class="dashboard-feed-item" @click.prevent="setView('alerts')">
                       <div class="dashboard-feed-topline">
-                        <span class="service-pill" :style="alertSeverityStyle(alert.severity)"
-                          x-text="alertSeverityDisplay(alert.severity)"></span>
+                        <span class="ip-pill" x-text="alert.cluster || 'unscoped'"></span>
                         <span class="dashboard-feed-age" x-text="relativeTimeFromNow(alert.ts)"></span>
                       </div>
-                      <div class="dashboard-feed-title" x-text="alert.summary"></div>
+                      <div class="dashboard-feed-title" x-text="alert.alert_type"></div>
                       <div class="dashboard-feed-meta">
                         <span x-text="toUtcStringMaybe(alert.ts)"></span>
-                        <span x-text="alert.source"></span>
+                        <span x-text="alert.nodes_text"></span>
                       </div>
                     </a>
                   </template>
@@ -1885,17 +1884,16 @@
             <div class="metric">
               <div class="metric-label">Total Alerts</div>
               <div class="metric-value" x-text="alerts.length"></div>
-              <div class="metric-sub">Recent Alertmanager-style signals for CP operations.</div>
+              <div class="metric-sub">Live alert inventory for clusters and nodes under management.</div>
             </div>
           </div>
 
           <div>
-            <h2>Severity</h2>
+            <h2>Impact</h2>
             <div class="metric" style="display:grid; gap:10px;">
               <div class="legend">
-                <span class="legend-pill">🚨 Critical: <strong x-text="alertSeverityCount('critical')"></strong></span>
-                <span class="legend-pill">⚠️ Warning: <strong x-text="alertSeverityCount('warning')"></strong></span>
-                <span class="legend-pill">ℹ️ Info: <strong x-text="alertSeverityCount('info')"></strong></span>
+                <span class="legend-pill">Clusters: <strong x-text="alertClusterCount()"></strong></span>
+                <span class="legend-pill">Nodes: <strong x-text="alertNodeCount()"></strong></span>
               </div>
             </div>
           </div>
@@ -1925,7 +1923,7 @@
             </div>
 
             <div class="main-actions">
-              <input type="search" class="search-input" placeholder="Filter by severity, source, or alert text…"
+              <input type="search" class="search-input" placeholder="Filter by alert type, cluster, or node…"
                 x-model="alertsFilterQuery" @input="persistAlertsFilter(); applyAlertsFilterSort();" />
 
               <div class="pill">Updated (UTC): <span x-text="alertsLastUpdatedUtc"></span></div>
@@ -1937,35 +1935,35 @@
               <table class="events-table">
                 <thead>
                   <tr>
-                    <th data-sort="date" :class="alertsSortClass(0)" @click="toggleAlertsSort(0)">Timestamp</th>
-                    <th data-sort="string" :class="alertsSortClass(1)" @click="toggleAlertsSort(1)">Severity</th>
-                    <th data-sort="string" :class="alertsSortClass(2)" @click="toggleAlertsSort(2)">Source</th>
-                    <th data-sort="string" :class="alertsSortClass(3)" @click="toggleAlertsSort(3)">Alert</th>
-                    <th>Details</th>
-                    <th data-sort="string" :class="alertsSortClass(4)" @click="toggleAlertsSort(4)">Age</th>
+                    <th data-sort="date" :class="alertsSortClass(0)" @click="toggleAlertsSort(0)">Started</th>
+                    <th data-sort="string" :class="alertsSortClass(1)" @click="toggleAlertsSort(1)">Alert Type</th>
+                    <th data-sort="string" :class="alertsSortClass(2)" @click="toggleAlertsSort(2)">Cluster</th>
+                    <th data-sort="string" :class="alertsSortClass(3)" @click="toggleAlertsSort(3)">Nodes</th>
+                    <th data-sort="string" :class="alertsSortClass(4)" @click="toggleAlertsSort(4)">Summary</th>
+                    <th data-sort="date" :class="alertsSortClass(5)" @click="toggleAlertsSort(5)">Ended</th>
+                    <th data-sort="date" :class="alertsSortClass(6)" @click="toggleAlertsSort(6)">Age</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   <template x-for="alert in alertsVisibleRows" :key="alert.alert_id">
                     <tr>
-                      <td><span x-text="toUtcStringMaybe(alert.ts)"></span></td>
-                      <td>
-                        <span class="service-pill" :style="alertSeverityStyle(alert.severity)"
-                          x-text="alertSeverityDisplay(alert.severity)"></span>
-                      </td>
-                      <td><span x-text="alert.source || '-'"></span></td>
-                      <td><strong x-text="alert.summary || '-'"></strong></td>
+                      <td><span x-text="toUtcStringMaybe(alert.starts_at)"></span></td>
+                      <td><strong x-text="alert.alert_type || '-'"></strong></td>
+                      <td><span x-text="alert.cluster || '-'"></span></td>
+                      <td><span x-text="alert.nodes_text"></span></td>
                       <td class="events-details-cell">
-                        <pre class="events-yaml" x-text="alert.details || '-'"></pre>
+                        <pre class="events-yaml" x-text="alert.summary"></pre>
+                        <pre class="events-yaml" x-text="alert.description"></pre>
                       </td>
-                      <td><span x-text="relativeTimeFromNow(alert.ts)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(alert.ends_at)"></span></td>
+                      <td><span x-text="relativeTimeFromNow(alert.starts_at)"></span></td>
                     </tr>
                   </template>
 
                   <template x-if="!alertsLoading.list && alertsVisibleRows.length === 0">
                     <tr>
-                      <td colspan="6" style="padding: 18px; color: var(--muted);">No alerts.</td>
+                      <td colspan="7" style="padding: 18px; color: var(--muted);">No alerts.</td>
                     </tr>
                   </template>
                 </tbody>

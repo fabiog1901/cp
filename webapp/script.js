@@ -144,11 +144,13 @@ window.app = function () {
     alertsSortIndex: 0,
     alertsSortDir: "desc",
     alertsSortTypeByIndex: {
-      0: "date", // ts
-      1: "string", // severity
-      2: "string", // source
-      3: "string", // summary
-      4: "date", // age
+      0: "date", // starts_at
+      1: "string", // alert_type
+      2: "string", // cluster
+      3: "string", // nodes_text
+      4: "string", // summary
+      5: "date", // ends_at
+      6: "date", // age
     },
     alertsLoading: { list: false },
     alertsAutoRefreshEnabled: true,
@@ -675,55 +677,22 @@ window.app = function () {
       return `${Math.floor(diffSecs / 86400)}d ago`;
     },
 
-    alertSeverityMeta(severity) {
-      const normalized = String(severity || "info").trim().toLowerCase();
-      if (normalized === "critical") {
-        return {
-          icon: "🚨",
-          label: "Critical",
-          style: {
-            background: "rgba(127, 29, 29, 0.92)",
-            borderColor: "rgba(252, 165, 165, 0.52)",
-            color: "#fff1f2",
-          },
-        };
-      }
-      if (normalized === "warning") {
-        return {
-          icon: "⚠️",
-          label: "Warning",
-          style: {
-            background: "rgba(120, 53, 15, 0.92)",
-            borderColor: "rgba(253, 186, 116, 0.52)",
-            color: "#fff7ed",
-          },
-        };
-      }
-      return {
-        icon: "ℹ️",
-        label: "Info",
-        style: {
-          background: "rgba(8, 47, 73, 0.92)",
-          borderColor: "rgba(125, 211, 252, 0.48)",
-          color: "#eff6ff",
-        },
-      };
+    alertClusterCount() {
+      return new Set(
+        this.alerts
+          .map((alert) => String(alert?.cluster || "").trim())
+          .filter(Boolean),
+      ).size;
     },
 
-    alertSeverityStyle(severity) {
-      return this.alertSeverityMeta(severity).style;
-    },
-
-    alertSeverityDisplay(severity) {
-      const meta = this.alertSeverityMeta(severity);
-      return `${meta.icon} ${meta.label}`;
-    },
-
-    alertSeverityCount(level) {
-      const normalized = String(level || "").trim().toLowerCase();
-      return this.alerts.filter(
-        (alert) => String(alert?.severity || "").trim().toLowerCase() === normalized,
-      ).length;
+    alertNodeCount() {
+      return new Set(
+        this.alerts.flatMap((alert) =>
+          Array.isArray(alert?.nodes)
+            ? alert.nodes.map((node) => String(node || "").trim()).filter(Boolean)
+            : [],
+        ),
+      ).size;
     },
 
     dashboardClusterCount(kind) {
@@ -773,7 +742,7 @@ window.app = function () {
       return (
         this.dashboardClusterCount("unhealthy") +
         this.dashboardJobCount("failed") +
-        this.alertSeverityCount("critical")
+        this.alerts.length
       );
     },
 
@@ -791,57 +760,22 @@ window.app = function () {
         .slice(0, limit);
     },
 
-    formatAlertDetails(alert) {
-      const sections = [];
-      const status = String(alert?.status || "").trim();
-      const receiver = String(alert?.receiver || "").trim();
-      const fingerprint = String(alert?.fingerprint || "").trim();
-      const externalUrl = String(alert?.external_url || "").trim();
-      const annotations = alert?.annotations || {};
-      const labels = alert?.labels || {};
-
-      if (status) sections.push(`status: ${status}`);
-      if (receiver) sections.push(`receiver: ${receiver}`);
-      if (fingerprint) sections.push(`fingerprint: ${fingerprint}`);
-      if (externalUrl) sections.push(`external_url: ${externalUrl}`);
-
-      const description =
-        annotations.description || annotations.summary || annotations.message || "";
-      if (description) sections.push(`description: ${description}`);
-
-      if (Object.keys(labels).length) {
-        sections.push(`labels: ${JSON.stringify(labels, null, 2)}`);
-      }
-      if (Object.keys(annotations).length) {
-        sections.push(`annotations: ${JSON.stringify(annotations, null, 2)}`);
-      }
-
-      return sections.join("\n\n");
+    alertNodesText(alert) {
+      return Array.isArray(alert?.nodes) && alert.nodes.length
+        ? alert.nodes.join(", ")
+        : "-";
     },
 
     normalizeAlertRow(alert) {
-      const labels = alert?.labels || {};
-      const annotations = alert?.annotations || {};
       return {
         ...alert,
         alert_id:
-          alert?.fingerprint ||
-          `${alert?.alert_name || "alert"}-${alert?.starts_at || ""}`,
-        ts: alert?.starts_at || alert?.ends_at || null,
-        severity: alert?.severity || labels.severity || "info",
-        source:
-          labels.instance ||
-          labels.job ||
-          labels.cluster_id ||
-          alert?.receiver ||
-          "alertmanager",
-        summary:
-          alert?.alert_name ||
-          labels.alertname ||
-          annotations.summary ||
-          annotations.message ||
-          "Alert",
-        details: this.formatAlertDetails(alert),
+          alert?.fingerprint || `${alert?.alert_type || "alert"}-${alert?.starts_at || ""}`,
+        ts: alert?.starts_at || null,
+        nodes: Array.isArray(alert?.nodes) ? alert.nodes : [],
+        nodes_text: this.alertNodesText(alert),
+        summary: alert?.summary || alert?.alert_type || "-",
+        description: alert?.description || "-",
       };
     },
 
@@ -4280,12 +4214,15 @@ window.app = function () {
 
     alertsRowText(alert) {
       return [
-        alert?.ts,
-        alert?.severity,
-        alert?.source,
+        alert?.starts_at,
+        alert?.alert_type,
+        alert?.cluster,
+        alert?.nodes_text,
         alert?.summary,
-        alert?.details,
-        this.relativeTimeFromNow(alert?.ts),
+        alert?.description,
+        alert?.ends_at,
+        alert?.fingerprint,
+        this.relativeTimeFromNow(alert?.starts_at),
       ]
         .filter(Boolean)
         .join(" ")
@@ -4295,15 +4232,19 @@ window.app = function () {
     alertsCellText(alert, colIndex) {
       switch (colIndex) {
         case 0:
-          return alert?.ts || "";
+          return alert?.starts_at || "";
         case 1:
-          return alert?.severity || "";
+          return alert?.alert_type || "";
         case 2:
-          return alert?.source || "";
+          return alert?.cluster || "";
         case 3:
-          return alert?.summary || "";
+          return alert?.nodes_text || "";
         case 4:
-          return alert?.ts || "";
+          return alert?.summary || "";
+        case 5:
+          return alert?.ends_at || "";
+        case 6:
+          return alert?.starts_at || "";
         default:
           return "";
       }

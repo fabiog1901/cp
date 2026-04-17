@@ -11,19 +11,13 @@ class AlertsRepo(BaseRepo):
             """
             SELECT
                 fingerprint,
-                receiver,
-                payload_status,
-                alert_name,
-                severity,
-                status,
-                labels,
-                annotations,
+                alert_type,
+                cluster,
+                nodes,
+                summary,
+                description,
                 starts_at,
-                ends_at,
-                group_labels,
-                common_labels,
-                common_annotations,
-                external_url
+                ends_at
             FROM live_alerts
             ORDER BY starts_at DESC, updated_at DESC
             """,
@@ -37,55 +31,37 @@ class AlertsRepo(BaseRepo):
             """
             INSERT INTO live_alerts (
                 fingerprint,
-                receiver,
-                payload_status,
-                alert_name,
-                severity,
-                status,
-                labels,
-                annotations,
+                alert_type,
+                cluster,
+                nodes,
+                summary,
+                description,
                 starts_at,
-                ends_at,
-                group_labels,
-                common_labels,
-                common_annotations,
-                external_url
+                ends_at
             )
             VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s
             )
             ON CONFLICT (fingerprint) DO UPDATE
             SET
-                receiver = excluded.receiver,
-                payload_status = excluded.payload_status,
-                alert_name = excluded.alert_name,
-                severity = excluded.severity,
-                status = excluded.status,
-                labels = excluded.labels,
-                annotations = excluded.annotations,
+                alert_type = excluded.alert_type,
+                cluster = excluded.cluster,
+                nodes = excluded.nodes,
+                summary = excluded.summary,
+                description = excluded.description,
                 starts_at = excluded.starts_at,
                 ends_at = excluded.ends_at,
-                group_labels = excluded.group_labels,
-                common_labels = excluded.common_labels,
-                common_annotations = excluded.common_annotations,
-                external_url = excluded.external_url,
                 updated_at = now()
             """,
             (
                 alert.fingerprint,
-                alert.receiver,
-                alert.payload_status,
-                alert.alert_name,
-                alert.severity,
-                alert.status,
-                alert.labels,
-                alert.annotations,
+                alert.alert_type,
+                alert.cluster,
+                alert.nodes,
+                alert.summary,
+                alert.description,
                 alert.starts_at,
                 alert.ends_at,
-                alert.group_labels,
-                alert.common_labels,
-                alert.common_annotations,
-                alert.external_url,
             ),
             operation="alerts.upsert_live_alert",
         )
