@@ -10,6 +10,16 @@ class AlertsService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
+    def list_live_alerts(self) -> list[LiveAlert]:
+        try:
+            return self.repo.list_live_alerts()
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Alerts are temporarily unavailable.",
+                fallback_message="Unable to load alerts.",
+            ) from err
+
     def ingest_payload(self, payload: AlertmanagerPayload) -> None:
         try:
             for alert in payload.alerts:

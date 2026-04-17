@@ -343,5 +343,9 @@ class BaseRepo(ABC):
     # ALERTS
     #
     @abstractmethod
+    def list_live_alerts(self) -> list[LiveAlert]:
+        pass
+
+    @abstractmethod
     def upsert_live_alert(self, alert: LiveAlert) -> None:
         pass

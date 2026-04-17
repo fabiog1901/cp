@@ -791,63 +791,58 @@ window.app = function () {
         .slice(0, limit);
     },
 
-    fakeAlertsPayload() {
-      const now = Date.now();
-      const minsAgo = (mins) => new Date(now - mins * 60_000).toISOString();
-      return [
-        {
-          alert_id: "am-1001",
-          ts: minsAgo(2),
-          severity: "critical",
-          source: "alertmanager",
-          summary: "Node down on cp-db-prod-03",
-          details:
-            "No heartbeat from node cp-db-prod-03 in us-east-1a for more than 90 seconds.",
-        },
-        {
-          alert_id: "am-1002",
-          ts: minsAgo(7),
-          severity: "warning",
-          source: "alertmanager",
-          summary: "High CPU usage on cp-analytics",
-          details:
-            "CPU saturation above 92% for 10 minutes on cluster cp-analytics.",
-        },
-        {
-          alert_id: "am-1003",
-          ts: minsAgo(14),
-          severity: "warning",
-          source: "alertmanager",
-          summary: "Replication lag elevated on cp-orders",
-          details: "Replica lag crossed 45 seconds and is trending upward.",
-        },
-        {
-          alert_id: "am-1004",
-          ts: minsAgo(29),
-          severity: "info",
-          source: "alertmanager",
-          summary: "Disk pressure warning cleared on cp-billing",
-          details:
-            "Filesystem usage returned below threshold after automated cleanup.",
-        },
-        {
-          alert_id: "am-1005",
-          ts: minsAgo(43),
-          severity: "critical",
-          source: "alertmanager",
-          summary: "Backup job failed for cp-infra-core",
-          details:
-            "Scheduled backup exited with a non-zero status and requires operator review.",
-        },
-        {
-          alert_id: "am-1006",
-          ts: minsAgo(95),
-          severity: "info",
-          source: "alertmanager",
-          summary: "Prometheus scrape target recovered",
-          details: "Metrics target for pg-exporter in eu-west-1b is healthy again.",
-        },
-      ];
+    formatAlertDetails(alert) {
+      const sections = [];
+      const status = String(alert?.status || "").trim();
+      const receiver = String(alert?.receiver || "").trim();
+      const fingerprint = String(alert?.fingerprint || "").trim();
+      const externalUrl = String(alert?.external_url || "").trim();
+      const annotations = alert?.annotations || {};
+      const labels = alert?.labels || {};
+
+      if (status) sections.push(`status: ${status}`);
+      if (receiver) sections.push(`receiver: ${receiver}`);
+      if (fingerprint) sections.push(`fingerprint: ${fingerprint}`);
+      if (externalUrl) sections.push(`external_url: ${externalUrl}`);
+
+      const description =
+        annotations.description || annotations.summary || annotations.message || "";
+      if (description) sections.push(`description: ${description}`);
+
+      if (Object.keys(labels).length) {
+        sections.push(`labels: ${JSON.stringify(labels, null, 2)}`);
+      }
+      if (Object.keys(annotations).length) {
+        sections.push(`annotations: ${JSON.stringify(annotations, null, 2)}`);
+      }
+
+      return sections.join("\n\n");
+    },
+
+    normalizeAlertRow(alert) {
+      const labels = alert?.labels || {};
+      const annotations = alert?.annotations || {};
+      return {
+        ...alert,
+        alert_id:
+          alert?.fingerprint ||
+          `${alert?.alert_name || "alert"}-${alert?.starts_at || ""}`,
+        ts: alert?.starts_at || alert?.ends_at || null,
+        severity: alert?.severity || labels.severity || "info",
+        source:
+          labels.instance ||
+          labels.job ||
+          labels.cluster_id ||
+          alert?.receiver ||
+          "alertmanager",
+        summary:
+          alert?.alert_name ||
+          labels.alertname ||
+          annotations.summary ||
+          annotations.message ||
+          "Alert",
+        details: this.formatAlertDetails(alert),
+      };
     },
 
     actionPillStyle(action) {
@@ -2150,21 +2145,6 @@ window.app = function () {
     async apiFetch(path, { method = "GET", body = null } = {}) {
       const url = this.apiBase + path;
       const startedAtUtc = this.utcNowString();
-
-      if (path === "/alerts" && method === "GET") {
-        const data = this.fakeAlertsPayload();
-        if (this.view === "dashboard") {
-          this.inspector = {
-            startedAtUtc,
-            url,
-            method,
-            status: 200,
-            ok: true,
-            response: data,
-          };
-        }
-        return data;
-      }
 
       const opts = { method, headers: {} };
       if (body !== null && body !== undefined) {
@@ -4377,7 +4357,9 @@ window.app = function () {
       this.alertsLoading.list = true;
       try {
         const data = await this.apiFetch("/alerts", { method: "GET" });
-        this.alerts = Array.isArray(data) ? data : [];
+        this.alerts = Array.isArray(data)
+          ? data.map((alert) => this.normalizeAlertRow(alert))
+          : [];
         this.alertsLastUpdatedUtc = this.utcNowString();
         this.applyAlertsFilterSort();
       } catch (e) {

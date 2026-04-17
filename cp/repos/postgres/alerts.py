@@ -1,11 +1,37 @@
 """Alerts repository backed by CockroachDB/Postgres."""
 
-from ...infra.db import execute_stmt
+from ...infra.db import execute_stmt, fetch_all
 from ...models import LiveAlert
 from ..base import BaseRepo
 
 
 class AlertsRepo(BaseRepo):
+    def list_live_alerts(self) -> list[LiveAlert]:
+        return fetch_all(
+            """
+            SELECT
+                fingerprint,
+                receiver,
+                payload_status,
+                alert_name,
+                severity,
+                status,
+                labels,
+                annotations,
+                starts_at,
+                ends_at,
+                group_labels,
+                common_labels,
+                common_annotations,
+                external_url
+            FROM live_alerts
+            ORDER BY starts_at DESC, updated_at DESC
+            """,
+            (),
+            LiveAlert,
+            operation="alerts.list_live_alerts",
+        )
+
     def upsert_live_alert(self, alert: LiveAlert) -> None:
         execute_stmt(
             """
