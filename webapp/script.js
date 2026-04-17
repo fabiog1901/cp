@@ -766,12 +766,25 @@ window.app = function () {
         : "-";
     },
 
+    normalizeAlertTimestamp(value) {
+      if (!value) return null;
+      const raw = String(value).trim();
+      if (!raw) return null;
+      if (raw.startsWith("0001-01-01")) return null;
+
+      const parsed = new Date(raw);
+      if (isNaN(parsed.getTime())) return value;
+      if (parsed.getUTCFullYear() <= 1) return null;
+      return value;
+    },
+
     normalizeAlertRow(alert) {
       return {
         ...alert,
         alert_id:
           alert?.fingerprint || `${alert?.alert_type || "alert"}-${alert?.starts_at || ""}`,
         ts: alert?.starts_at || null,
+        ends_at: this.normalizeAlertTimestamp(alert?.ends_at),
         nodes: Array.isArray(alert?.nodes) ? alert.nodes : [],
         nodes_text: this.alertNodesText(alert),
         summary: alert?.summary || alert?.alert_type || "-",
