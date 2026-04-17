@@ -646,3 +646,40 @@ class DeferredTask(BaseModel):
     fn: Callable[..., None]
     args: tuple | None
     kwargs: dict = {}
+
+
+
+class Alert(BaseModel):
+    status: str  # "firing" or "resolved"
+    labels: Dict[str, str]
+    annotations: Dict[str, str]
+    startsAt: dt.datetime
+    endsAt: dt.datetime
+    fingerprint: str
+
+
+class AlertmanagerPayload(BaseModel):
+    receiver: str
+    status: str
+    alerts: List[Alert]
+    groupLabels: Dict[str, str]
+    commonLabels: Dict[str, str]
+    commonAnnotations: Dict[str, str]
+    externalURL: str
+
+
+class LiveAlert(BaseModel):
+    fingerprint: str
+    receiver: str
+    payload_status: str
+    alert_name: str | None = None
+    severity: str | None = None
+    status: str
+    labels: Dict[str, str]
+    annotations: Dict[str, str]
+    starts_at: dt.datetime
+    ends_at: dt.datetime
+    group_labels: Dict[str, str]
+    common_labels: Dict[str, str]
+    common_annotations: Dict[str, str]
+    external_url: str

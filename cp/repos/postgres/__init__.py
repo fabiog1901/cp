@@ -10,6 +10,7 @@ from .admin import (
     SettingsRepo,
     VersionsRepo,
 )
+from .alerts import AlertsRepo
 from .auth import AuthRepo
 from .cluster import ClusterRepo
 from .cluster_jobs import ClusterJobsRepo
@@ -20,6 +21,7 @@ from .mq import MqRepo
 
 class PostgresRepo(
     ApiKeysRepo,
+    AlertsRepo,
     ClusterOptionsRepo,
     ClusterJobsRepo,
     RegionsRepo,

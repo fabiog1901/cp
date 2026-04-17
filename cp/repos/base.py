@@ -14,6 +14,7 @@ from ..models import (
     DiskSizeOption,
     Job,
     JobID,
+    LiveAlert,
     LogMsg,
     NodeCountOption,
     Nodes,
@@ -336,4 +337,11 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def log_event(self, event: LogMsg) -> None:
+        pass
+
+    #
+    # ALERTS
+    #
+    @abstractmethod
+    def upsert_live_alert(self, alert: LiveAlert) -> None:
         pass

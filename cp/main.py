@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import DB_ENGINE, DB_URL
-from .api import admin, clusters, events, jobs
+from .api import admin, alerts, clusters, events, jobs
 from .auth import oidc
 from .auth import router as auth_router
 from .infra import close_db, initialize_postgres, request_id_ctx
@@ -50,6 +50,7 @@ api = FastAPI(
 # all API endpoints are grouped in dedicated routers
 api.include_router(auth_router)
 api.include_router(admin.router)
+api.include_router(alerts.router)
 api.include_router(clusters.router)
 api.include_router(events.router)
 api.include_router(jobs.router)

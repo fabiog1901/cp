@@ -89,6 +89,25 @@ CREATE TABLE public.event_log (
     request_id UUID NULL,
     CONSTRAINT pk PRIMARY KEY (ts ASC, user_id ASC)
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(ts::TIMESTAMPTZ + \'90 days\')', ttl_job_cron = '@daily');
+CREATE TABLE public.live_alerts (
+    fingerprint STRING NOT NULL,
+    receiver STRING NOT NULL,
+    payload_status STRING NOT NULL,
+    alert_name STRING NULL,
+    severity STRING NULL,
+    status STRING NOT NULL,
+    labels JSONB NOT NULL DEFAULT '{}':::JSONB,
+    annotations JSONB NOT NULL DEFAULT '{}':::JSONB,
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    group_labels JSONB NOT NULL DEFAULT '{}':::JSONB,
+    common_labels JSONB NOT NULL DEFAULT '{}':::JSONB,
+    common_annotations JSONB NOT NULL DEFAULT '{}':::JSONB,
+    external_url STRING NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    CONSTRAINT pk_live_alerts PRIMARY KEY (fingerprint ASC)
+);
 CREATE TABLE public.playbooks (
     name STRING NOT NULL,
     version TIMESTAMPTZ(0) NOT NULL DEFAULT now():::TIMESTAMPTZ,

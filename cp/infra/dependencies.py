@@ -7,6 +7,7 @@ from ..services.admin.playbooks import PlaybooksService
 from ..services.admin.regions import RegionsService
 from ..services.admin.settings import SettingsService
 from ..services.admin.versions import VersionsService
+from ..services.alerts import AlertsService
 from ..services.auth import AuthService
 from ..services.cluster import ClusterService
 from ..services.cluster_backups import ClusterBackupsService
@@ -21,6 +22,7 @@ __all__ = [
     "get_repo",
     "get_compute_unit_service",
     "get_auth_service",
+    "get_alerts_service",
     "get_cluster_service",
     "get_cluster_backups_service",
     "get_cluster_jobs_service",
@@ -55,6 +57,7 @@ def _build_service(service_cls):
 
 
 get_auth_service = _build_service(AuthService)
+get_alerts_service = _build_service(AlertsService)
 get_cluster_service = _build_service(ClusterService)
 get_cluster_backups_service = _build_service(ClusterBackupsService)
 get_cluster_jobs_service = _build_service(ClusterJobsService)
