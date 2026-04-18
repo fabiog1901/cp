@@ -773,7 +773,7 @@
         cockroach sql \
           --host={{ cockroachdb_advertise_addr }} \
           --certs-dir=/var/lib/cockroach/certs \
-          -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ cloud_storage_url | replace('DEPLOYMENT_ID', deployment_id) }}';"
+          -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ s3_url | replace('DEPLOYMENT_ID', deployment_id) }}';"
 
     - name: CockroachDB - Setup Full Cluster Backup Schedule
       run_once: yes

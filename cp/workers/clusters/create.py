@@ -22,6 +22,14 @@ from .common import get_node_count_per_zone
 logger = logging.getLogger(__name__)
 
 
+def _get_s3_url(repo) -> str | None:
+    setting = repo.get_setting(SettingKey.s3_url)
+    if setting and setting.value:
+        return setting.value
+
+    return None
+
+
 def create_cluster(
     job_id: int,
     command: CreateClusterCommand,
@@ -185,7 +193,7 @@ def create_cluster_worker(
                     "is_admin": True,
                 }
             ],
-            "cloud_storage_url": repo.get_setting(SettingKey.cloud_storage_url).value,
+            "s3_url": _get_s3_url(repo),
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(

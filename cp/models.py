@@ -102,7 +102,11 @@ class CPRole(AutoNameStrEnum):
 
 
 class SettingKey(AutoNameStrEnum):
-    cloud_storage_url = auto()
+    s3_url = auto()
+    s3_admin_url = auto()
+    s3_admin_access_key = auto()
+    s3_admin_secret_key = auto()
+    s3_default_retention_days = auto()
     default_password = auto()
     default_username = auto()
     licence_key = auto()

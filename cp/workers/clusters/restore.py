@@ -9,6 +9,14 @@ from ..ansible import MyRunner
 logger = logging.getLogger(__name__)
 
 
+def _get_s3_url(repo) -> str | None:
+    setting = repo.get_setting(SettingKey.s3_url)
+    if setting and setting.value:
+        return setting.value
+
+    return None
+
+
 def restore_cluster(
     job_id: int,
     command: RestoreRequest,
@@ -74,7 +82,7 @@ def restore_cluster_worker(
             "object_type": rr.object_type,
             "object_name": rr.object_name,
             "backup_into": rr.backup_into,
-            "cloud_storage_url": repo.get_setting(SettingKey.cloud_storage_url),
+            "s3_url": _get_s3_url(repo),
         }
 
         job_status, _, _ = MyRunner(job_id).launch_runner(
