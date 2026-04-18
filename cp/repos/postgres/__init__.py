@@ -15,6 +15,7 @@ from .auth import AuthRepo
 from .cluster import ClusterRepo
 from .cluster_jobs import ClusterJobsRepo
 from .event import EventRepo
+from .external_connections import ExternalConnectionsRepo
 from .jobs import JobsRepo
 from .mq import MqRepo
 
@@ -31,6 +32,7 @@ class PostgresRepo(
     AuthRepo,
     ClusterRepo,
     EventRepo,
+    ExternalConnectionsRepo,
     JobsRepo,
     MqRepo,
 ):

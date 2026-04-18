@@ -254,6 +254,36 @@ def to_public_cluster(cluster: Cluster) -> ClusterPublic:
     return ClusterPublic.model_validate(cluster.model_dump(exclude={"password"}))
 
 
+class ExternalConnection(BaseModel):
+    cluster_id: str
+    name: str
+    connection_type: str
+    provider: str
+    endpoint: str
+    bucket_name: str | None = None
+    access_key_id: str | None = None
+    encrypted_secret_access_key: bytes | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    status: str
+    created_at: dt.datetime
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str
+
+
+class ExternalConnectionUpsert(BaseModel):
+    cluster_id: str
+    name: str
+    connection_type: str
+    provider: str
+    endpoint: str
+    bucket_name: str | None = None
+    access_key_id: str | None = None
+    encrypted_secret_access_key: bytes | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    status: str
+
+
 class ClusterRequest(BaseModel):
     name: str
     node_count: int

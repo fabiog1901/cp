@@ -25,6 +25,23 @@ CREATE TABLE public.clusters (
     password BYTES NOT NULL DEFAULT '\x':::BYTES,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC)
 );
+CREATE TABLE public.external_connections (
+    cluster_id STRING NOT NULL,
+    name STRING NOT NULL,
+    connection_type STRING NOT NULL,
+    provider STRING NOT NULL,
+    endpoint STRING NOT NULL,
+    bucket_name STRING NULL,
+    access_key_id STRING NULL,
+    encrypted_secret_access_key BYTES NULL,
+    metadata JSONB NOT NULL DEFAULT '{}':::JSONB,
+    status STRING NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    updated_by STRING NOT NULL,
+    CONSTRAINT pk_external_connections PRIMARY KEY (cluster_id ASC, name ASC)
+);
 CREATE TABLE public.jobs (
     job_id INT8 NOT NULL,
     job_type STRING NULL,
@@ -144,7 +161,9 @@ CREATE TABLE public.oidc_sessions (
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(session_expires_at)', ttl_job_cron = '@hourly');
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
+ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.tasks ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.map_clusters_jobs VALIDATE CONSTRAINT cluster_id_in_clusters;
 ALTER TABLE public.map_clusters_jobs VALIDATE CONSTRAINT job_id_in_jobs;
+ALTER TABLE public.external_connections VALIDATE CONSTRAINT cluster_id_in_external_connections;
 ALTER TABLE public.tasks VALIDATE CONSTRAINT job_id_in_jobs;

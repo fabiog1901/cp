@@ -12,6 +12,8 @@ from ..models import (
     CommandType,
     CpuCountOption,
     DiskSizeOption,
+    ExternalConnection,
+    ExternalConnectionUpsert,
     Job,
     JobID,
     LiveAlert,
@@ -154,6 +156,30 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def delete_cluster(self, cluster_id: str) -> None:
+        pass
+
+    @abstractmethod
+    def list_external_connections(self, cluster_id: str) -> list[ExternalConnection]:
+        pass
+
+    @abstractmethod
+    def get_external_connection(
+        self,
+        cluster_id: str,
+        name: str,
+    ) -> ExternalConnection | None:
+        pass
+
+    @abstractmethod
+    def upsert_external_connection(
+        self,
+        connection: ExternalConnectionUpsert,
+        updated_by: str,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def delete_external_connection(self, cluster_id: str, name: str) -> None:
         pass
 
     @abstractmethod
