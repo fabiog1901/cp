@@ -91,6 +91,7 @@
   vars:
     deployment_id: ""
     backup_path: ""
+    backup_external_connection_uri: ""
     restore_aost: ""
     object_type: ""
     object_name: ""
