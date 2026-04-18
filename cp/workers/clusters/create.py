@@ -16,18 +16,11 @@ from ...models import (
     Region,
     SettingKey,
 )
+from ...services.storage_broker import StorageBrokerService
 from ..ansible import MyRunner
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)
-
-
-def _get_s3_url(repo) -> str | None:
-    setting = repo.get_setting(SettingKey.s3_url)
-    if setting and setting.value:
-        return setting.value
-
-    return None
 
 
 def create_cluster(
@@ -95,6 +88,15 @@ def create_cluster_worker(
 ):
     repo = get_repo()
     try:
+        storage_broker = StorageBrokerService(repo)
+        storage_broker.ensure_backup_external_connection(
+            cluster_request.name,
+            created_by,
+        )
+        backup_external_connection_uri = (
+            storage_broker.get_backup_external_connection_uri(cluster_request.name)
+        )
+
         deployment = []
 
         for cloud_region in cluster_request.regions:
@@ -193,7 +195,7 @@ def create_cluster_worker(
                     "is_admin": True,
                 }
             ],
-            "s3_url": _get_s3_url(repo),
+            "backup_external_connection_uri": backup_external_connection_uri,
         }
 
         job_status, raw_data, _ = MyRunner(job_id).launch_runner(

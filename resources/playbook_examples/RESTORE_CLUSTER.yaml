@@ -81,7 +81,7 @@
             cockroach sql \
               --host={{ cockroachdb_advertise_addr }} \
               --certs-dir=/var/lib/cockroach/certs \
-              -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ s3_url | replace('DEPLOYMENT_ID', deployment_id) }}';"
+              -e "CREATE EXTERNAL CONNECTION IF NOT EXISTS backup AS '{{ backup_external_connection_uri }}';"
 
 - name: RESTORE BACKUP DATA
   hosts: cockroachdb

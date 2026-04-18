@@ -3,18 +3,11 @@ import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, JobState, PlaybookName, RestoreRequest, SettingKey
+from ...models import ClusterState, JobState, PlaybookName, RestoreRequest
+from ...services.storage_broker import StorageBrokerService
 from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
-
-
-def _get_s3_url(repo) -> str | None:
-    setting = repo.get_setting(SettingKey.s3_url)
-    if setting and setting.value:
-        return setting.value
-
-    return None
 
 
 def restore_cluster(
@@ -74,6 +67,9 @@ def restore_cluster_worker(
 ):
     repo = get_repo()
     try:
+        backup_external_connection_uri = StorageBrokerService(
+            repo
+        ).get_backup_external_connection_uri(rr.name)
         extra_vars = {
             "deployment_id": rr.name,
             "backup_path": rr.backup_path,
@@ -82,7 +78,7 @@ def restore_cluster_worker(
             "object_type": rr.object_type,
             "object_name": rr.object_name,
             "backup_into": rr.backup_into,
-            "s3_url": _get_s3_url(repo),
+            "backup_external_connection_uri": backup_external_connection_uri,
         }
 
         job_status, _, _ = MyRunner(job_id).launch_runner(
