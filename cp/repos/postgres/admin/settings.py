@@ -11,7 +11,7 @@ class SettingsRepo(AdminPostgresRepo):
             """
             SELECT
                 key,
-                value,
+                COALESCE(value, default_value) AS value,
                 default_value,
                 value_type,
                 category,
@@ -31,7 +31,7 @@ class SettingsRepo(AdminPostgresRepo):
             """
             SELECT
                 key,
-                value,
+                COALESCE(value, default_value) AS value,
                 default_value,
                 value_type,
                 category,

@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -8,7 +7,13 @@ from typing import Any
 from fastapi import Request
 
 from ..infra import as_bool, safe_csv_set, safe_json_string_dict
-from ..models import CPRole
+from ..models import CPRole, SettingKey
+from ..repos.base import BaseRepo
+
+OIDC_SESSION_COOKIE_NAME = "cp_session"
+OIDC_STATE_COOKIE_NAME = "cp_oidc_state"
+OIDC_NONCE_COOKIE_NAME = "cp_oidc_nonce"
+OIDC_NEXT_COOKIE_NAME = "cp_oidc_next"
 
 
 def claim_groups(claim_value: Any) -> set[str]:
@@ -39,27 +44,6 @@ def jsonable_role_groups(role_groups: dict[str, Any]) -> dict[str, list[str]]:
     for role_name, groups in role_groups.items():
         normalized[str(role_name)] = sorted(claim_groups(groups))
     return normalized
-
-
-def cookie_secure_default() -> bool:
-    """Return the configured secure-cookie default for OIDC session cookies."""
-    return as_bool(os.getenv("OIDC_COOKIE_SECURE"), default=False)
-
-
-def env_int(name: str, default: int, *, minimum: int = 0) -> int:
-    """Return an integer env var with a floor and safe fallback."""
-    raw_value = os.getenv(name, "").strip()
-    if not raw_value:
-        return default
-    try:
-        return max(minimum, int(raw_value))
-    except ValueError:
-        return default
-
-
-def api_key_signature_ttl_seconds() -> int:
-    """Return the maximum allowed age for signed API key requests."""
-    return env_int("API_KEY_SIGNATURE_TTL_SECONDS", 300)
 
 
 def parse_api_key_timestamp(timestamp: str) -> datetime:
@@ -126,92 +110,84 @@ def api_key_signature(
 
 @dataclass(frozen=True)
 class OIDCConfig:
-    """Configuration derived from environment variables for OIDC login and authz."""
+    """Configuration derived from settings for OIDC login and authz."""
 
-    enabled: bool = field(
-        default_factory=lambda: as_bool(os.getenv("OIDC_ENABLED"), default=False)
-    )
-    issuer_url: str = field(
-        default_factory=lambda: os.getenv("OIDC_ISSUER_URL", "").strip().rstrip("/")
-    )
-    client_id: str = field(
-        default_factory=lambda: os.getenv("OIDC_CLIENT_ID", "").strip()
-    )
-    client_secret: str = field(
-        default_factory=lambda: os.getenv("OIDC_CLIENT_SECRET", "").strip()
-    )
-    scopes: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_SCOPES", "openid profile email offline_access"
-        ).strip()
-    )
-    audience: str = field(
-        default_factory=lambda: os.getenv("OIDC_AUDIENCE", "").strip()
-    )
-    extra_auth_params_raw: str = field(
-        default_factory=lambda: os.getenv("OIDC_EXTRA_AUTH_PARAMS", "{}")
-    )
-    redirect_uri: str = field(
-        default_factory=lambda: os.getenv("OIDC_REDIRECT_URI", "").strip()
-    )
-    login_path: str = field(
-        default_factory=lambda: os.getenv("OIDC_LOGIN_PATH", "/api/auth/login").strip()
-    )
-    session_cookie_name: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_SESSION_COOKIE_NAME", "cp_session"
-        ).strip()
-    )
-    state_cookie_name: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_STATE_COOKIE_NAME", "cp_oidc_state"
-        ).strip()
-    )
-    nonce_cookie_name: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_NONCE_COOKIE_NAME", "cp_oidc_nonce"
-        ).strip()
-    )
-    next_cookie_name: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_NEXT_COOKIE_NAME", "cp_oidc_next"
-        ).strip()
-    )
-    session_max_age_seconds: int = field(
-        default_factory=lambda: env_int("OIDC_SESSION_MAX_AGE_SECONDS", 2592000)
-    )
-    refresh_leeway_seconds: int = field(
-        default_factory=lambda: env_int("OIDC_REFRESH_LEEWAY_SECONDS", 60)
-    )
-    cookie_secure: bool = field(default_factory=cookie_secure_default)
-    cookie_samesite: str = field(
-        default_factory=lambda: os.getenv("OIDC_COOKIE_SAMESITE", "lax").strip().lower()
-    )
-    cookie_domain: str | None = field(
-        default_factory=lambda: os.getenv("OIDC_COOKIE_DOMAIN")
-    )
-    verify_audience: bool = field(
-        default_factory=lambda: as_bool(
-            os.getenv("OIDC_VERIFY_AUDIENCE"), default=False
+    enabled: bool = False
+    issuer_url: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    scopes: str = "openid profile email offline_access"
+    audience: str = ""
+    extra_auth_params_raw: str = "{}"
+    redirect_uri: str = ""
+    login_path: str = "/api/auth/login"
+    session_max_age_seconds: int = 2592000
+    refresh_leeway_seconds: int = 60
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"
+    cookie_domain: str | None = None
+    verify_audience: bool = False
+    ui_username_claim: str = "preferred_username"
+    readonly_groups_raw: str = ""
+    user_groups_raw: str = ""
+    admin_groups_raw: str = ""
+    groups_claim_name: str = "groups"
+    cache_ttl_seconds: int = 300
+    api_key_signature_ttl_seconds: int = 300
+
+    @classmethod
+    def from_repo(cls, repo: BaseRepo) -> "OIDCConfig":
+        settings = {setting.key: setting for setting in repo.list_settings()}
+        enabled = as_bool(settings[SettingKey.oidc_enabled].value, default=False)
+        if not enabled:
+            return cls(
+                enabled=False,
+                cache_ttl_seconds=int(
+                    settings[SettingKey.oidc_cache_ttl_seconds].value
+                ),
+                api_key_signature_ttl_seconds=int(
+                    settings[SettingKey.auth_api_key_signature_ttl_seconds].value
+                ),
+            )
+
+        return cls(
+            enabled=enabled,
+            issuer_url=settings[SettingKey.oidc_issuer_url].value.rstrip("/"),
+            client_id=settings[SettingKey.oidc_client_id].value,
+            client_secret=settings[SettingKey.oidc_client_secret].value,
+            scopes=settings[SettingKey.oidc_scopes].value,
+            audience=settings[SettingKey.oidc_audience].value,
+            extra_auth_params_raw=settings[SettingKey.oidc_extra_auth_params].value,
+            redirect_uri=settings[SettingKey.oidc_redirect_uri].value,
+            login_path=settings[SettingKey.oidc_login_path].value,
+            session_max_age_seconds=int(
+                settings[SettingKey.oidc_session_max_age_seconds].value
+            ),
+            refresh_leeway_seconds=int(
+                settings[SettingKey.oidc_refresh_leeway_seconds].value
+            ),
+            cookie_secure=as_bool(
+                settings[SettingKey.oidc_cookie_secure].value,
+                default=False,
+            ),
+            cookie_samesite=settings[SettingKey.oidc_cookie_samesite].value.lower(),
+            cookie_domain=settings[SettingKey.oidc_cookie_domain].value or None,
+            verify_audience=as_bool(
+                settings[SettingKey.oidc_verify_audience].value,
+                default=False,
+            ),
+            ui_username_claim=settings[SettingKey.oidc_ui_username_claim].value,
+            readonly_groups_raw=settings[SettingKey.oidc_authz_readonly_groups].value,
+            user_groups_raw=settings[SettingKey.oidc_authz_user_groups].value,
+            admin_groups_raw=settings[SettingKey.oidc_authz_admin_groups].value,
+            groups_claim_name=settings[SettingKey.oidc_authz_groups_claim].value,
+            cache_ttl_seconds=int(
+                settings[SettingKey.oidc_cache_ttl_seconds].value
+            ),
+            api_key_signature_ttl_seconds=int(
+                settings[SettingKey.auth_api_key_signature_ttl_seconds].value
+            ),
         )
-    )
-    ui_username_claim: str = field(
-        default_factory=lambda: os.getenv(
-            "OIDC_UI_USERNAME_CLAIM", "preferred_username"
-        ).strip()
-    )
-    readonly_groups_raw: str = field(
-        default_factory=lambda: os.getenv("OIDC_AUTHZ_READONLY_GROUPS", "")
-    )
-    user_groups_raw: str = field(
-        default_factory=lambda: os.getenv("OIDC_AUTHZ_USER_GROUPS", "")
-    )
-    admin_groups_raw: str = field(
-        default_factory=lambda: os.getenv("OIDC_AUTHZ_ADMIN_GROUPS", "")
-    )
-    groups_claim_name: str = field(
-        default_factory=lambda: os.getenv("OIDC_AUTHZ_GROUPS_CLAIM", "groups").strip()
-    )
 
     @property
     def role_groups(self) -> dict[CPRole, set[str]]:
@@ -240,38 +216,40 @@ class OIDCConfig:
 
         missing = []
         if not self.issuer_url:
-            missing.append("OIDC_ISSUER_URL")
+            missing.append("oidc_issuer_url")
         if not self.client_id:
-            missing.append("OIDC_CLIENT_ID")
+            missing.append("oidc_client_id")
         if not self.client_secret:
-            missing.append("OIDC_CLIENT_SECRET")
+            missing.append("oidc_client_secret")
 
         if missing:
             raise RuntimeError(
-                f"OIDC is enabled but missing required env vars: {', '.join(missing)}"
+                f"OIDC is enabled but missing required settings: {', '.join(missing)}"
             )
 
         if self.cookie_samesite not in {"lax", "strict", "none"}:
-            raise RuntimeError("OIDC_COOKIE_SAMESITE must be one of: lax, strict, none")
+            raise RuntimeError(
+                "oidc_cookie_samesite must be one of: lax, strict, none"
+            )
 
         if self.cookie_samesite == "none" and not self.cookie_secure:
             raise RuntimeError(
-                "OIDC_COOKIE_SECURE must be true when OIDC_COOKIE_SAMESITE=none"
+                "oidc_cookie_secure must be true when oidc_cookie_samesite=none"
             )
 
         if not self.ui_username_claim:
             raise RuntimeError(
-                "OIDC_UI_USERNAME_CLAIM must be set when OIDC is enabled"
+                "oidc_ui_username_claim must be set when OIDC is enabled"
             )
 
         if not self.groups_claim_name:
             raise RuntimeError(
-                "OIDC_AUTHZ_GROUPS_CLAIM must be set when OIDC is enabled"
+                "oidc_authz_groups_claim must be set when OIDC is enabled"
             )
 
         if not self.authorized_groups:
             raise RuntimeError(
-                "At least one of OIDC_AUTHZ_READONLY_GROUPS, OIDC_AUTHZ_USER_GROUPS, OIDC_AUTHZ_ADMIN_GROUPS must include a group when OIDC is enabled"
+                "At least one of oidc_authz_readonly_groups, oidc_authz_user_groups, oidc_authz_admin_groups must include a group when OIDC is enabled"
             )
 
         self.extra_auth_params()
@@ -281,4 +259,4 @@ class OIDCConfig:
         try:
             return safe_json_string_dict(self.extra_auth_params_raw, default={})
         except ValueError as exc:
-            raise ValueError("OIDC_EXTRA_AUTH_PARAMS must be a JSON object") from exc
+            raise ValueError("oidc_extra_auth_params must be a JSON object") from exc

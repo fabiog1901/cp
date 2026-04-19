@@ -32,16 +32,20 @@ class StorageBrokerService:
         if existing is not None:
             return existing
 
-        endpoint = self._get_required_setting(SettingKey.s3_url)
-        admin_access_key = self._get_required_setting(SettingKey.s3_admin_access_key)
-        admin_secret_key = self._get_required_setting(SettingKey.s3_admin_secret_key)
+        endpoint = self._get_required_setting(SettingKey.storage_s3_url)
+        admin_access_key = self._get_required_setting(
+            SettingKey.storage_s3_admin_access_key
+        )
+        admin_secret_key = self._get_required_setting(
+            SettingKey.storage_s3_admin_secret_key
+        )
         retention_days_raw = self._get_optional_setting(
-            SettingKey.s3_default_retention_days
+            SettingKey.storage_s3_default_retention_days
         )
         retention_days = int(retention_days_raw) if retention_days_raw else None
         if retention_days is not None and retention_days < 1:
             raise ServiceValidationError(
-                "s3_default_retention_days must be greater than zero."
+                "storage.s3.default_retention_days must be greater than zero."
             )
 
         parsed_endpoint = urlparse(endpoint)

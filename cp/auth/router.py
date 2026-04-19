@@ -7,6 +7,12 @@ from fastapi.responses import RedirectResponse
 from ..infra import get_repo, request_id_ctx, safe_next_path
 from ..models import AuditEvent, LogMsg
 from ..repos.base import BaseRepo
+from .common import (
+    OIDC_NEXT_COOKIE_NAME,
+    OIDC_NONCE_COOKIE_NAME,
+    OIDC_SESSION_COOKIE_NAME,
+    OIDC_STATE_COOKIE_NAME,
+)
 from .dependencies import get_audit_actor, require_authenticated
 from .oidc import oidc
 
@@ -42,8 +48,13 @@ def log_auth_event(
 
 
 @router.get("/login")
-def oidc_login(request: Request, next: str = "/"):  # noqa: A002
+def oidc_login(
+    request: Request,
+    next: str = "/",  # noqa: A002
+    repo: BaseRepo = Depends(get_repo),
+):
     """Start the browser OIDC login flow and store anti-CSRF cookies."""
+    oidc.load_config(repo)
     if not oidc.enabled:
         raise HTTPException(
             status_code=404,
@@ -58,11 +69,9 @@ def oidc_login(request: Request, next: str = "/"):  # noqa: A002
 
     resp = RedirectResponse(auth_url, status_code=302)
     cookie_kwargs = oidc_cookie_kwargs()
-    resp.set_cookie(oidc.config.state_cookie_name, state, max_age=300, **cookie_kwargs)
-    resp.set_cookie(oidc.config.nonce_cookie_name, nonce, max_age=300, **cookie_kwargs)
-    resp.set_cookie(
-        oidc.config.next_cookie_name, next_path, max_age=300, **cookie_kwargs
-    )
+    resp.set_cookie(OIDC_STATE_COOKIE_NAME, state, max_age=300, **cookie_kwargs)
+    resp.set_cookie(OIDC_NONCE_COOKIE_NAME, nonce, max_age=300, **cookie_kwargs)
+    resp.set_cookie(OIDC_NEXT_COOKIE_NAME, next_path, max_age=300, **cookie_kwargs)
     return resp
 
 
@@ -76,6 +85,7 @@ def oidc_callback(
     error_description: str | None = None,
 ):
     """Finish the OIDC login flow, validate the ID token, and set the session cookie."""
+    oidc.load_config(repo)
     if not oidc.enabled:
         raise HTTPException(
             status_code=404,
@@ -86,9 +96,9 @@ def oidc_callback(
         desc = error_description or "OIDC authorization failed."
         raise HTTPException(status_code=401, detail=f"{error}: {desc}")
 
-    expected_state = request.cookies.get(oidc.config.state_cookie_name)
-    expected_nonce = request.cookies.get(oidc.config.nonce_cookie_name)
-    next_path = safe_next_path(request.cookies.get(oidc.config.next_cookie_name))
+    expected_state = request.cookies.get(OIDC_STATE_COOKIE_NAME)
+    expected_nonce = request.cookies.get(OIDC_NONCE_COOKIE_NAME)
+    next_path = safe_next_path(request.cookies.get(OIDC_NEXT_COOKIE_NAME))
 
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code.")
@@ -139,20 +149,14 @@ def oidc_callback(
     resp = RedirectResponse(next_path, status_code=302)
     cookie_kwargs = oidc_cookie_kwargs()
     resp.set_cookie(
-        oidc.config.session_cookie_name,
+        OIDC_SESSION_COOKIE_NAME,
         session_id,
         max_age=oidc.config.session_max_age_seconds,
         **cookie_kwargs,
     )
-    resp.delete_cookie(
-        oidc.config.state_cookie_name, path="/", domain=oidc.config.cookie_domain
-    )
-    resp.delete_cookie(
-        oidc.config.nonce_cookie_name, path="/", domain=oidc.config.cookie_domain
-    )
-    resp.delete_cookie(
-        oidc.config.next_cookie_name, path="/", domain=oidc.config.cookie_domain
-    )
+    resp.delete_cookie(OIDC_STATE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
+    resp.delete_cookie(OIDC_NONCE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
+    resp.delete_cookie(OIDC_NEXT_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
     return resp
 
 
@@ -174,7 +178,7 @@ def oidc_logout(
     )
     resp = Response(status_code=204)
     resp.delete_cookie(
-        oidc.config.session_cookie_name, path="/", domain=oidc.config.cookie_domain
+        OIDC_SESSION_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain
     )
     return resp
 

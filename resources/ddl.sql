@@ -137,7 +137,7 @@ CREATE TABLE public.settings (
     category STRING NULL,
     is_secret BOOL NULL DEFAULT false,
     description STRING NULL DEFAULT '':::STRING,
-    updated_at TIMESTAMPTZ NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     updated_by STRING NULL,
     CONSTRAINT pk_settings PRIMARY KEY (key ASC)
 );

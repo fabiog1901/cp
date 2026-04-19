@@ -182,14 +182,14 @@ def create_cluster_worker(
             "deployment": deployment,
             "cockroachdb_version": cluster_request.version,
             "cockroachdb_cluster_organization": repo.get_setting(
-                SettingKey.licence_org
+                SettingKey.cockroach_license_org
             ).value,
             "cockroachdb_enterprise_license": repo.get_setting(
-                SettingKey.licence_key
+                SettingKey.cockroach_license_key
             ).value,
             "dbusers": [
                 {
-                    "name": repo.get_setting(SettingKey.default_username).value,
+                    "name": repo.get_setting(SettingKey.cluster_default_username).value,
                     "password": cluster_db_password,
                     "is_cert": False,
                     "is_admin": True,

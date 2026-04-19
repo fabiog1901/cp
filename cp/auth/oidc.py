@@ -1,5 +1,4 @@
 import json
-import os
 import time
 import urllib.parse
 import urllib.request
@@ -15,8 +14,8 @@ from ..models import CPRole, OIDCSessionRecord
 from ..repos.base import BaseRepo
 from .common import (
     OIDCConfig,
+    OIDC_SESSION_COOKIE_NAME,
     api_key_signature,
-    api_key_signature_ttl_seconds,
     claims_groups,
     jsonable_role_groups,
     parse_api_key_timestamp,
@@ -28,19 +27,41 @@ class OIDCManager:
 
     def __init__(self) -> None:
         self.config = OIDCConfig()
+        self._config_loaded_at = 0.0
+        self._config_cache_ttl_seconds = 300
         self._metadata: dict[str, Any] | None = None
         self._jwks: dict[str, Any] | None = None
         self._meta_loaded_at = 0.0
         self._jwks_loaded_at = 0.0
-        self._cache_ttl_seconds = int(os.getenv("OIDC_CACHE_TTL_SECONDS", "300"))
+        self._cache_ttl_seconds = self.config.cache_ttl_seconds
 
     @property
     def enabled(self) -> bool:
         """Expose whether OIDC-backed authentication is enabled for the app."""
         return self.config.enabled
 
-    def validate_config(self) -> None:
+    def load_config(self, repo: BaseRepo, *, force: bool = False) -> None:
+        now = time.time()
+        if (
+            not force
+            and self._config_loaded_at
+            and (now - self._config_loaded_at) < self._config_cache_ttl_seconds
+        ):
+            return
+
+        new_config = OIDCConfig.from_repo(repo)
+        if self.config != new_config:
+            self._metadata = None
+            self._jwks = None
+            self._meta_loaded_at = 0.0
+            self._jwks_loaded_at = 0.0
+        self.config = new_config
+        self._cache_ttl_seconds = self.config.cache_ttl_seconds
+        self._config_loaded_at = now
+
+    def validate_config(self, repo: BaseRepo) -> None:
         """Validate auth configuration at startup, including API key crypto settings."""
+        self.load_config(repo, force=True)
         self.config.validate()
         validate_secret_crypto_config()
 
@@ -74,9 +95,6 @@ class OIDCManager:
                 raise RuntimeError(f"Expected JSON object from {url}")
             return parsed
 
-    def _metadata_url(self) -> str:
-        return f"{self.config.issuer_url}/.well-known/openid-configuration"
-
     def get_metadata(self) -> dict[str, Any]:
         """Return cached OIDC discovery metadata, refreshing it when the cache expires."""
         if (
@@ -84,7 +102,8 @@ class OIDCManager:
             and (time.time() - self._meta_loaded_at) < self._cache_ttl_seconds
         ):
             return self._metadata
-        self._metadata = self._http_json(self._metadata_url())
+        metadata_url = f"{self.config.issuer_url}/.well-known/openid-configuration"
+        self._metadata = self._http_json(metadata_url)
         self._meta_loaded_at = time.time()
         return self._metadata
 
@@ -313,7 +332,7 @@ class OIDCManager:
         payload["_cp"] = {
             **existing_meta,
             "display_name_claim": self.config.ui_username_claim,
-            "session_cookie_name": self.config.session_cookie_name,
+            "session_cookie_name": OIDC_SESSION_COOKIE_NAME,
         }
         return payload
 
@@ -378,7 +397,7 @@ class OIDCManager:
                 detail="Invalid X-Timestamp header.",
             ) from exc
 
-        max_age_seconds = api_key_signature_ttl_seconds()
+        max_age_seconds = self.config.api_key_signature_ttl_seconds
         age_seconds = abs((datetime.now(timezone.utc) - signed_at).total_seconds())
         if age_seconds > max_age_seconds:
             raise HTTPException(

@@ -12,7 +12,8 @@ from . import DB_ENGINE, DB_URL
 from .api import admin, alerts, clusters, events, jobs
 from .auth import oidc
 from .auth import router as auth_router
-from .infra import close_db, initialize_postgres, request_id_ctx
+from .infra import close_db, get_repo, initialize_postgres, request_id_ctx
+from .infra.logging import configure_logging
 from .workers.queue import get_nodes, pull_from_mq
 
 
@@ -20,10 +21,10 @@ from .workers.queue import get_nodes, pull_from_mq
 async def lifespan(_app: FastAPI):
     queue_task: asyncio.Task | None = None
 
-    oidc.validate_config()
-
     if DB_ENGINE == "postgres":
         initialize_postgres(DB_URL)
+        configure_logging(get_repo(), force=True)
+        oidc.validate_config(get_repo())
         queue_task = asyncio.create_task(pull_from_mq())
     else:
         pass

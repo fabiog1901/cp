@@ -1,15 +1,14 @@
 from typing import Any
 
 from fastapi import Depends, Request, Security
-from fastapi.security import APIKeyCookie, APIKeyHeader
+from fastapi.security import APIKeyHeader
 
 from ..infra import get_repo
 from ..models import CPRole
 from ..repos.base import BaseRepo
-from .common import claims_groups
+from .common import OIDC_SESSION_COOKIE_NAME, claims_groups
 from .oidc import oidc
 
-cookie_scheme = APIKeyCookie(name=oidc.config.session_cookie_name, auto_error=False)
 access_key_scheme = APIKeyHeader(
     name="X-CP-Access-Key",
     scheme_name="XAccessKey",
@@ -30,12 +29,13 @@ timestamp_scheme = APIKeyHeader(
 async def require_authenticated(
     request: Request,
     repo: BaseRepo = Depends(get_repo),
-    session_token: str | None = Security(cookie_scheme),
     access_key: str | None = Security(access_key_scheme),
     signature: str | None = Security(signature_scheme),
     timestamp: str | None = Security(timestamp_scheme),
 ) -> dict[str, Any]:
     """Return claims for the current caller, regardless of auth transport."""
+    oidc.load_config(repo)
+    session_token = request.cookies.get(OIDC_SESSION_COOKIE_NAME)
     return await oidc.current_claims(
         request,
         repo,
