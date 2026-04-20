@@ -3,6 +3,7 @@
 *.db
 assets/external/
 __pycache__/
+local/
 *.py[cod]
 .env
 .*
