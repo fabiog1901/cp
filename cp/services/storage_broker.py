@@ -2,11 +2,9 @@
 
 import json
 import secrets
-from urllib.parse import quote, urlencode, urlparse
-
-import minio
-from minio.commonconfig import ENABLED, Filter
-from minio.lifecycleconfig import Expiration, LifecycleConfig, Rule
+import subprocess
+from pathlib import Path
+from urllib.parse import quote, urlencode
 
 from ..infra.util import decrypt_secret, encrypt_secret
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
@@ -23,6 +21,69 @@ class StorageBrokerService:
     def __init__(self, repo: BaseRepo) -> None:
         self.repo = repo
 
+    def create_bucket_service_account(
+        self, bucketname: str, access_key: str, secret_key: str
+    ):
+        """
+        Temporary fix until rustfs has a stable API.
+        """
+
+        policy_path = "/tmp/rustfspolicy.json"
+
+        policy_document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": ["s3:ListBucket"],
+                    "Resource": [f"arn:aws:s3:::{bucketname}"],
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": ["s3:*"],
+                    "Resource": [f"arn:aws:s3:::{bucketname}/*"],
+                },
+            ],
+        }
+        Path(policy_path).write_text(json.dumps(policy_document, indent=2) + "\n")
+
+        subprocess.run(
+            ["rc", "mb", f"rem/{bucketname}"],
+            check=True,
+            text=True,
+        )
+        subprocess.run(
+            [
+                "rc",
+                "admin",
+                "policy",
+                "create",
+                "rem",
+                f"{bucketname}-policy",
+                str(policy_path),
+            ],
+            check=True,
+            text=True,
+        )
+
+        subprocess.run(
+            [
+                "rc",
+                "admin",
+                "service-account",
+                "create",
+                "rem",
+                access_key,
+                secret_key,
+                "--policy",
+                policy_path,
+                "--name",
+                f"{bucketname}-sa",
+            ],
+            check=True,
+            text=True,
+        )
+
     def ensure_backup_external_connection(
         self,
         cluster_id: str,
@@ -33,12 +94,12 @@ class StorageBrokerService:
             return existing
 
         endpoint = self._get_required_setting(SettingKey.storage_s3_url)
-        admin_access_key = self._get_required_setting(
-            SettingKey.storage_s3_admin_access_key
-        )
-        admin_secret_key = self._get_required_setting(
-            SettingKey.storage_s3_admin_secret_key
-        )
+        # admin_access_key = self._get_required_setting(
+        #     SettingKey.storage_s3_admin_access_key
+        # )
+        # admin_secret_key = self._get_required_setting(
+        #     SettingKey.storage_s3_admin_secret_key
+        # )
         retention_days_raw = self._get_optional_setting(
             SettingKey.storage_s3_default_retention_days
         )
@@ -48,87 +109,90 @@ class StorageBrokerService:
                 "storage.s3.default_retention_days must be greater than zero."
             )
 
-        parsed_endpoint = urlparse(endpoint)
-        minio_endpoint = parsed_endpoint.netloc or parsed_endpoint.path
-        if not minio_endpoint:
-            raise ServiceValidationError(f"Invalid S3 endpoint '{endpoint}'.")
+        # parsed_endpoint = urlparse(endpoint)
+        # minio_endpoint = parsed_endpoint.netloc or parsed_endpoint.path
+        # if not minio_endpoint:
+        #     raise ServiceValidationError(f"Invalid S3 endpoint '{endpoint}'.")
 
-        client = minio.Minio(
-            minio_endpoint,
-            access_key=admin_access_key,
-            secret_key=admin_secret_key,
-            secure=parsed_endpoint.scheme == "https",
-        )
+        # client = minio.Minio(
+        #     minio_endpoint,
+        #     access_key=admin_access_key,
+        #     secret_key=admin_secret_key,
+        #     secure=parsed_endpoint.scheme == "https",
+        # )
 
-        access_key_id = f"cp-{cluster_id[:12]}-{secrets.token_hex(6)}"
-        secret_access_key = secrets.token_urlsafe(32)
-        bucket_name = f"backups-{cluster_id}"
-        policy_name = f"cluster-{cluster_id}-backup"
-        bucket_arn = f"arn:aws:s3:::{bucket_name}"
-        policy_document = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": ["s3:*"],
-                    "Resource": [bucket_arn, f"{bucket_arn}/*"],
-                }
-            ],
-        }
-        policy_json = json.dumps(policy_document)
+        access_key_id = secrets.token_urlsafe(40)[:20]
+        secret_access_key = secrets.token_urlsafe(40)[:20]
 
-        if not client.bucket_exists(bucket_name):
-            client.make_bucket(bucket_name)
+        # policy_name = f"cluster-{cluster_id}-backup"
 
-        client.set_bucket_policy(bucket_name, policy_json)
+        # policy_document = {
+        #     "Version": "2012-10-17",
+        #     "Statement": [
+        #         {
+        #             "Effect": "Allow",
+        #             "Action": ["s3:*"],
+        #             "Resource": [bucket_arn, f"{bucket_arn}/*"],
+        #         }
+        #     ],
+        # }
+        # policy_json = json.dumps(policy_document)
 
-        if retention_days:
-            client.set_bucket_lifecycle(
-                bucket_name,
-                LifecycleConfig(
-                    [
-                        Rule(
-                            status=ENABLED,
-                            expiration=Expiration(days=retention_days),
-                            rule_filter=Filter(),
-                            rule_id=f"expire-{bucket_name}",
-                        )
-                    ]
-                ),
-            )
+        # if not client.bucket_exists(bucket_name):
+        #     client.make_bucket(bucket_name)
 
-        for method_name, args, action in (
-            (
-                "add_canned_policy",
-                (policy_name, policy_json),
-                "policy creation",
-            ),
-            (
-                "add_user",
-                (access_key_id, secret_access_key),
-                "user creation",
-            ),
-            (
-                "set_policy",
-                (policy_name, access_key_id),
-                "policy attachment",
-            ),
-        ):
-            method = getattr(client, method_name, None)
-            if method is None:
-                raise RuntimeError(
-                    f"The installed minio client does not support {action} via '{method_name}'."
-                )
-            try:
-                method(*args)
-            except Exception as err:
-                if method_name in {"add_canned_policy", "add_user"}:
-                    message = str(err).lower()
-                    if "exists" in message or "already" in message:
-                        continue
-                raise RuntimeError(
-                    f"Unable to provision S3 {action} using '{method_name}': {err}"
-                ) from err
+        # client.set_bucket_policy(bucket_name, policy_json)
+
+        # if retention_days:
+        #     client.set_bucket_lifecycle(
+        #         bucket_name,
+        #         LifecycleConfig(
+        #             [
+        #                 Rule(
+        #                     status=ENABLED,
+        #                     expiration=Expiration(days=retention_days),
+        #                     rule_filter=Filter(),
+        #                     rule_id=f"expire-{bucket_name}",
+        #                 )
+        #             ]
+        #         ),
+        #     )
+
+        # for method_name, args, action in (
+        #     (
+        #         "add_canned_policy",
+        #         (policy_name, policy_json),
+        #         "policy creation",
+        #     ),
+        #     (
+        #         "add_user",
+        #         (access_key_id, secret_access_key),
+        #         "user creation",
+        #     ),
+        #     (
+        #         "set_policy",
+        #         (policy_name, access_key_id),
+        #         "policy attachment",
+        #     ),
+        # ):
+        #     method = getattr(client, method_name, None)
+        #     if method is None:
+        #         raise RuntimeError(
+        #             f"The installed minio client does not support {action} via '{method_name}'."
+        #         )
+        #     try:
+        #         method(*args)
+        #     except Exception as err:
+        #         if method_name in {"add_canned_policy", "add_user"}:
+        #             message = str(err).lower()
+        #             if "exists" in message or "already" in message:
+        #                 continue
+        #         raise RuntimeError(
+        #             f"Unable to provision S3 {action} using '{method_name}': {err}"
+        #         ) from err
+
+        # this is a temp fix until rustfs has a stable admin API
+        self.create_bucket_service_account(cluster_id, access_key_id, secret_access_key)
 
         connection = ExternalConnectionUpsert(
             cluster_id=cluster_id,
@@ -136,11 +200,11 @@ class StorageBrokerService:
             connection_type=BACKUP_CONNECTION_TYPE,
             provider=BACKUP_PROVIDER,
             endpoint=endpoint,
-            bucket_name=bucket_name,
+            bucket_name=cluster_id,
             access_key_id=access_key_id,
             encrypted_secret_access_key=encrypt_secret(secret_access_key),
             metadata={
-                "policy_name": policy_name,
+                "policy_name": f"{cluster_id}-policy",
                 "retention_days": retention_days,
                 "s3_addressing_style": "path",
             },
@@ -154,7 +218,9 @@ class StorageBrokerService:
         return created
 
     def get_backup_external_connection_uri(self, cluster_id: str) -> str:
-        connection = self.repo.get_external_connection(cluster_id, BACKUP_CONNECTION_NAME)
+        connection = self.repo.get_external_connection(
+            cluster_id, BACKUP_CONNECTION_NAME
+        )
         if connection is None:
             raise ServiceValidationError(
                 f"Cluster '{cluster_id}' has no backup external connection configured."
@@ -169,7 +235,9 @@ class StorageBrokerService:
         if not connection.bucket_name:
             raise ServiceValidationError("External connection is missing bucket_name.")
         if not connection.access_key_id:
-            raise ServiceValidationError("External connection is missing access_key_id.")
+            raise ServiceValidationError(
+                "External connection is missing access_key_id."
+            )
         if not connection.encrypted_secret_access_key:
             raise ServiceValidationError(
                 "External connection is missing encrypted_secret_access_key."
@@ -180,15 +248,14 @@ class StorageBrokerService:
             {
                 "AWS_ACCESS_KEY_ID": connection.access_key_id,
                 "AWS_SECRET_ACCESS_KEY": secret,
-                "AWS_ENDPOINT": connection.endpoint,
-                "S3_ADDRESSING_STYLE": connection.metadata.get(
-                    "s3_addressing_style", "path"
-                ),
+                "AWS_REGION": "us-east-1",
             },
             quote_via=quote,
             safe="",
         )
-        return f"s3://{connection.bucket_name}?{query}"
+        return (
+            f"s3://{connection.bucket_name}?{query}&AWS_ENDPOINT={connection.endpoint}"
+        )
 
     def _get_required_setting(self, key: SettingKey) -> str:
         setting = self.repo.get_setting(key)

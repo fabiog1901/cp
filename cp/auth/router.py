@@ -154,9 +154,15 @@ def oidc_callback(
         max_age=oidc.config.session_max_age_seconds,
         **cookie_kwargs,
     )
-    resp.delete_cookie(OIDC_STATE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
-    resp.delete_cookie(OIDC_NONCE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
-    resp.delete_cookie(OIDC_NEXT_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain)
+    resp.delete_cookie(
+        OIDC_STATE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain
+    )
+    resp.delete_cookie(
+        OIDC_NONCE_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain
+    )
+    resp.delete_cookie(
+        OIDC_NEXT_COOKIE_NAME, path="/", domain=oidc.config.cookie_domain
+    )
     return resp
 
 

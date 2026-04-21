@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from hmac import new as hmac_new
@@ -181,9 +181,7 @@ class OIDCConfig:
             user_groups_raw=settings[SettingKey.oidc_authz_user_groups].value,
             admin_groups_raw=settings[SettingKey.oidc_authz_admin_groups].value,
             groups_claim_name=settings[SettingKey.oidc_authz_groups_claim].value,
-            cache_ttl_seconds=int(
-                settings[SettingKey.oidc_cache_ttl_seconds].value
-            ),
+            cache_ttl_seconds=int(settings[SettingKey.oidc_cache_ttl_seconds].value),
             api_key_signature_ttl_seconds=int(
                 settings[SettingKey.auth_api_key_signature_ttl_seconds].value
             ),
@@ -228,9 +226,7 @@ class OIDCConfig:
             )
 
         if self.cookie_samesite not in {"lax", "strict", "none"}:
-            raise RuntimeError(
-                "oidc_cookie_samesite must be one of: lax, strict, none"
-            )
+            raise RuntimeError("oidc_cookie_samesite must be one of: lax, strict, none")
 
         if self.cookie_samesite == "none" and not self.cookie_secure:
             raise RuntimeError(

@@ -13,8 +13,8 @@ from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_confi
 from ..models import CPRole, OIDCSessionRecord
 from ..repos.base import BaseRepo
 from .common import (
-    OIDCConfig,
     OIDC_SESSION_COOKIE_NAME,
+    OIDCConfig,
     api_key_signature,
     claims_groups,
     jsonable_role_groups,

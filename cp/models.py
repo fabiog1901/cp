@@ -668,7 +668,6 @@ class DeferredTask(BaseModel):
     kwargs: dict = {}
 
 
-
 class Alert(BaseModel):
     status: str  # "firing" or "resolved"
     labels: Dict[str, str]

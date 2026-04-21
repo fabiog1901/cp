@@ -20,7 +20,9 @@ class DashboardService:
         self.repo = repo
 
     def get_prometheus_url(self) -> str:
-        prom_url = self.repo.get_setting(SettingKey.observability_prometheus_url).value.strip()
+        prom_url = self.repo.get_setting(
+            SettingKey.observability_prometheus_url
+        ).value.strip()
         if not prom_url:
             raise ServiceValidationError("Missing Prometheus URL in settings.")
         return prom_url
