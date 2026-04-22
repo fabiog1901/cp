@@ -43,7 +43,7 @@
       <button type="button" class="btn" @click="loginWithSSO()">Login with SSO</button>
     </div>
 
-    <div x-show="authChecked && isAuthenticated">
+    <div class="app-shell" x-show="authChecked && isAuthenticated">
 
       <header class="topbar">
         <div class="topbar-title">
@@ -104,7 +104,7 @@
       </div>
 
       <!-- DASHBOARD VIEW -->
-      <main class="layout" x-show="view === 'dashboard'">
+      <main class="layout dashboard-layout" x-show="view === 'dashboard'">
         <aside class="sidebar">
           <div>
             <h2>Workspace</h2>
@@ -123,59 +123,26 @@
               <button class="btn" @click="setView('events')">Open Events</button>
               <button class="btn" @click="setView('alerts')">Open Alerts</button>
               <button class="btn" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
+            </div>
+          </div>
+
+          <div class="sidebar-external">
+            <h2>External</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
               <a class="link-inline" href="/api/docs" target="_blank" rel="noopener">Open API docs</a>
               <a class="link-inline" href="https://github.com/fabiog1901/cp" target="_blank" rel="noopener">Open repository</a>
             </div>
           </div>
         </aside>
 
-        <section class="main">
+        <section class="main dashboard-main">
           <div class="dashboard-home">
-            <section class="dashboard-hero">
-              <div class="eyebrow">Infrastructure control plane</div>
-              <h2>Operational overview for clusters, jobs, alerts, and platform activity.</h2>
-              <p>
-                This dashboard gives the infrastructure team a fast read on fleet health, orchestration pressure,
-                recent platform changes, and the newest alert signals, while keeping the familiar top-level pages
-                close at hand.
-              </p>
-              <div class="dashboard-hero-actions">
-                <button class="btn" @click="setView('clusters')">Open Clusters</button>
-                <button class="btn btn-secondary" @click="setView('alerts')">Open Alerts</button>
-                <button class="btn btn-secondary" @click="setView('events')">Open Events</button>
-                <button class="btn btn-secondary" x-show="canViewAdmin()" @click="setView('admin')">Open Admin</button>
-                <a class="btn btn-secondary" href="/api/docs" target="_blank" rel="noopener">API docs</a>
-              </div>
-            </section>
-
-            <section class="dashboard-summary-grid">
-              <article class="dashboard-summary-card">
-                <div class="dashboard-card-kicker">Fleet</div>
-                <div class="dashboard-summary-value" x-text="dashboardClusterCount('active')"></div>
-                <div class="dashboard-summary-label">Active clusters</div>
-              </article>
-
-              <article class="dashboard-summary-card">
-                <div class="dashboard-card-kicker">Jobs</div>
-                <div class="dashboard-summary-value" x-text="dashboardJobCount('running')"></div>
-                <div class="dashboard-summary-label">Running jobs</div>
-              </article>
-
-              <article class="dashboard-summary-card">
-                <div class="dashboard-card-kicker">Attention</div>
-                <div class="dashboard-summary-value" x-text="dashboardNeedsAttentionCount()"></div>
-                <div class="dashboard-summary-label">Items needing review</div>
-              </article>
-
-              <article class="dashboard-summary-card">
-                <div class="dashboard-card-kicker">Signals</div>
-                <div class="dashboard-summary-value" x-text="alertClusterCount()"></div>
-                <div class="dashboard-summary-label">Clusters with alerts</div>
-              </article>
+            <section class="dashboard-overview-bar">
+              <div class="dashboard-card-kicker">Operations Overview</div>
             </section>
 
             <section class="dashboard-grid dashboard-grid-ops">
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card dashboard-card-button" @click="setView('clusters')">
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Fleet health</div>
@@ -201,13 +168,9 @@
                     <div class="dashboard-kv-value dashboard-kv-value-small" x-text="serversLastUpdatedUtc || '-'"></div>
                   </div>
                 </div>
-                <p class="dashboard-card-copy">Cluster inventory and health state derived from <span class="ip-pill">/api/clusters/</span>.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('clusters')">
-                  Open Clusters
-                </a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card dashboard-card-button" @click="openJobsView()">
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Orchestration</div>
@@ -233,119 +196,7 @@
                     <div class="dashboard-kv-value dashboard-kv-value-small" x-text="jobsLastUpdatedUtc || '-'"></div>
                   </div>
                 </div>
-                <p class="dashboard-card-copy">Current orchestration pressure from <span class="ip-pill">/api/jobs/</span>.</p>
-                <a href="#" class="dashboard-link" @click.prevent="openJobsView()">
-                  Open Jobs
-                </a>
-              </article>
-
-              <article class="dashboard-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Activity</div>
-                    <h3 class="dashboard-card-title">Events</h3>
-                  </div>
-                  <div class="dashboard-stat" x-text="events.length"></div>
-                </div>
-                <div class="dashboard-kv-grid">
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Recent events</div>
-                    <div class="dashboard-kv-value" x-text="events.length"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Last sync</div>
-                    <div class="dashboard-kv-value dashboard-kv-value-small" x-text="eventsLastUpdatedUtc || '-'"></div>
-                  </div>
-                </div>
-                <p class="dashboard-card-copy">Recent platform activity from <span class="ip-pill">/api/events/</span>.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('events')">
-                  Open Events
-                </a>
-              </article>
-
-              <article class="dashboard-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Signals</div>
-                    <h3 class="dashboard-card-title">Alerts</h3>
-                  </div>
-                  <div class="dashboard-stat" x-text="alerts.length"></div>
-                </div>
-                <div class="dashboard-kv-grid">
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Alerts</div>
-                    <div class="dashboard-kv-value" x-text="alerts.length"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Clusters</div>
-                    <div class="dashboard-kv-value" x-text="alertClusterCount()"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Nodes</div>
-                    <div class="dashboard-kv-value" x-text="alertNodeCount()"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Last sync</div>
-                    <div class="dashboard-kv-value dashboard-kv-value-small" x-text="alertsLastUpdatedUtc || '-'"></div>
-                  </div>
-                </div>
-                <p class="dashboard-card-copy">Current Alertmanager feed from <span class="ip-pill">/api/alerts/</span>.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('alerts')">
-                  Open Alerts
-                </a>
-              </article>
-
-              <article class="dashboard-card" x-show="canViewAdmin()">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Admin posture</div>
-                    <h3 class="dashboard-card-title">Configuration</h3>
-                  </div>
-                  <div class="dashboard-stat">CP</div>
-                </div>
-                <div class="dashboard-kv-grid">
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Settings</div>
-                    <div class="dashboard-kv-value" x-text="settings.length"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Versions</div>
-                    <div class="dashboard-kv-value" x-text="versions.length"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Regions</div>
-                    <div class="dashboard-kv-value" x-text="regions.length"></div>
-                  </div>
-                </div>
-                <p class="dashboard-card-copy">Quick visibility into admin-managed configuration inventories.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('admin')">Open Admin</a>
-              </article>
-
-              <article class="dashboard-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Attention</div>
-                    <h3 class="dashboard-card-title">Needs Attention</h3>
-                  </div>
-                  <div class="dashboard-stat" x-text="dashboardNeedsAttentionCount()"></div>
-                </div>
-                <div class="dashboard-kv-grid">
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Live alerts</div>
-                    <div class="dashboard-kv-value" x-text="alerts.length"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Failed jobs</div>
-                    <div class="dashboard-kv-value" x-text="dashboardJobCount('failed')"></div>
-                  </div>
-                  <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Unhealthy clusters</div>
-                    <div class="dashboard-kv-value" x-text="dashboardClusterCount('unhealthy')"></div>
-                  </div>
-                </div>
-                <p class="dashboard-card-copy">Aggregated operational pressure points that are worth checking first.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('alerts')">Review Alerts</a>
-              </article>
+              </button>
             </section>
 
             <section class="dashboard-feed-grid">
@@ -494,7 +345,7 @@
           </div>
         </aside>
 
-        <section class="main">
+        <section class="main dashboard-main">
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Clusters</div>
@@ -1950,7 +1801,15 @@
                     <tr>
                       <td><span x-text="toUtcStringMaybe(alert.starts_at)"></span></td>
                       <td><strong x-text="alert.alert_type || '-'"></strong></td>
-                      <td><span x-text="alert.cluster || '-'"></span></td>
+                      <td>
+                        <template x-if="alert.cluster">
+                          <a href="#" class="ip-pill clickable" @click.prevent="openCluster(alert.cluster)"
+                            x-text="alert.cluster"></a>
+                        </template>
+                        <template x-if="!alert.cluster">
+                          <span>-</span>
+                        </template>
+                      </td>
                       <td><span x-text="alert.nodes_text"></span></td>
                       <td class="events-details-cell">
                         <pre class="events-yaml" x-text="alert.summary"></pre>
@@ -2002,111 +1861,98 @@
 
         <section class="main">
           <div class="dashboard-home">
-            <section class="dashboard-hero">
-              <div class="eyebrow">Admin workspace</div>
-              <h2>Admin tools grouped under one operational landing page.</h2>
-              <p>
-                Use this page to move through the restricted control plane subpages without exposing them in the
-                primary top-level navigation.
-              </p>
+            <section class="dashboard-overview-bar">
+              <div class="dashboard-card-kicker">Admin Tools</div>
             </section>
 
-            <section class="dashboard-grid">
-              <article class="dashboard-card">
+            <section class="dashboard-grid admin-grid">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('settings')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Configuration</div>
                     <h3 class="dashboard-card-title">Settings</h3>
                   </div>
                   <div class="dashboard-stat" x-text="settings.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Dynamic application settings and effective values.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('settings')">Open Settings</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('api_keys')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Access</div>
                     <h3 class="dashboard-card-title">API Keys</h3>
                   </div>
                   <div class="dashboard-stat" x-text="apiKeys.length || 0"></div>
                 </div>
                 <p class="dashboard-card-copy">Role-scoped access keys and one-time secret issuance.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('api_keys')">Open API Keys</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('versions')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Lifecycle</div>
                     <h3 class="dashboard-card-title">Versions</h3>
                   </div>
                   <div class="dashboard-stat" x-text="versions.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Configured database versions available to cluster operations.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('versions')">Open Versions</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('node_counts')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Capacity</div>
                     <h3 class="dashboard-card-title">Node Counts</h3>
                   </div>
                   <div class="dashboard-stat" x-text="nodeCounts.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Available node-per-region options for cluster provisioning and scaling.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('node_counts')">Open Node Counts</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('cpu_counts')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Capacity</div>
                     <h3 class="dashboard-card-title">Node CPUs</h3>
                   </div>
                   <div class="dashboard-stat" x-text="cpuCounts.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Available CPU-per-node options exposed to cluster create and scale flows.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('cpu_counts')">Open Node CPUs</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('disk_sizes')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Capacity</div>
                     <h3 class="dashboard-card-title">Disk Sizes</h3>
                   </div>
                   <div class="dashboard-stat" x-text="diskSizes.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Available disk size options offered by the cluster lifecycle operations.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('disk_sizes')">Open Disk Sizes</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('regions')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Placement</div>
                     <h3 class="dashboard-card-title">Regions</h3>
                   </div>
                   <div class="dashboard-stat" x-text="regions.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Configured cloud, region, and zone deployment targets.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('regions')">Open Regions</a>
-              </article>
+              </button>
 
-              <article class="dashboard-card">
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('playbooks')">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Admin page</div>
+                    <div class="dashboard-card-kicker">Automation</div>
                     <h3 class="dashboard-card-title">Playbooks</h3>
                   </div>
                   <div class="dashboard-stat" x-text="playbooks.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Versioned playbook content used by the control plane workflows.</p>
-                <a href="#" class="dashboard-link" @click.prevent="setView('playbooks')">Open Playbooks</a>
-              </article>
+              </button>
             </section>
           </div>
         </section>
