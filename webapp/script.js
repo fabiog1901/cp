@@ -701,17 +701,11 @@ window.app = function () {
       return clusters.filter((cluster) => {
         const status = String(cluster?.status || "").trim().toLowerCase();
         if (kind === "active") return status === "active" || status === "ready";
-        if (kind === "working")
-          return [
-            "creating",
-            "scaling",
-            "upgrading",
-            "restoring",
-            "deleting",
-          ].includes(status) || status.includes("ing");
+        if (kind === "creating") return status === "creating";
         if (kind === "unhealthy")
+          return status === "unhealthy";
+        if (kind === "failed")
           return [
-            "unhealthy",
             "create_failed",
             "scale_failed",
             "restore_failed",
@@ -741,6 +735,7 @@ window.app = function () {
     dashboardNeedsAttentionCount() {
       return (
         this.dashboardClusterCount("unhealthy") +
+        this.dashboardClusterCount("failed") +
         this.dashboardJobCount("failed") +
         this.alerts.length
       );
@@ -881,6 +876,10 @@ window.app = function () {
         hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
       }
       return palette[hash % palette.length];
+    },
+
+    alertTypePillStyle(alertType) {
+      return this.actionPillStyle(alertType);
     },
 
     errorMessage(err, fallback = "Request failed.") {

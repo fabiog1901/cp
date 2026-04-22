@@ -156,12 +156,12 @@
                     <div class="dashboard-kv-value" x-text="dashboardClusterCount('active')"></div>
                   </div>
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Working</div>
-                    <div class="dashboard-kv-value" x-text="dashboardClusterCount('working')"></div>
+                    <div class="dashboard-kv-label">Creating</div>
+                    <div class="dashboard-kv-value" x-text="dashboardClusterCount('creating')"></div>
                   </div>
                   <div class="dashboard-kv">
-                    <div class="dashboard-kv-label">Unhealthy</div>
-                    <div class="dashboard-kv-value" x-text="dashboardClusterCount('unhealthy')"></div>
+                    <div class="dashboard-kv-label">Failed</div>
+                    <div class="dashboard-kv-value" x-text="dashboardClusterCount('failed')"></div>
                   </div>
                   <div class="dashboard-kv">
                     <div class="dashboard-kv-label">Last sync</div>
@@ -212,12 +212,14 @@
                   <template x-for="alert in recentAlerts(10)" :key="alert.alert_id">
                     <a href="#" class="dashboard-feed-item" @click.prevent="setView('alerts')">
                       <div class="dashboard-feed-topline">
-                        <span class="ip-pill" x-text="alert.cluster || 'unscoped'"></span>
+                        <span class="service-pill alert-type-pill" :style="alertTypePillStyle(alert.alert_type)"
+                          x-text="alert.alert_type || '-'"></span>
                         <span class="dashboard-feed-age" x-text="relativeTimeFromNow(alert.ts)"></span>
                       </div>
-                      <div class="dashboard-feed-title" x-text="alert.alert_type"></div>
+                      <div class="dashboard-feed-title" x-text="alert.summary"></div>
                       <div class="dashboard-feed-meta">
                         <span x-text="toUtcStringMaybe(alert.ts)"></span>
+                        <span x-text="alert.cluster || 'unscoped'"></span>
                         <span x-text="alert.nodes_text"></span>
                       </div>
                     </a>
@@ -1800,7 +1802,10 @@
                   <template x-for="alert in alertsVisibleRows" :key="alert.alert_id">
                     <tr>
                       <td><span x-text="toUtcStringMaybe(alert.starts_at)"></span></td>
-                      <td><strong x-text="alert.alert_type || '-'"></strong></td>
+                      <td>
+                        <span class="service-pill alert-type-pill" :style="alertTypePillStyle(alert.alert_type)"
+                          x-text="alert.alert_type || '-'"></span>
+                      </td>
                       <td>
                         <template x-if="alert.cluster">
                           <a href="#" class="ip-pill clickable" @click.prevent="openCluster(alert.cluster)"
@@ -3789,13 +3794,12 @@
             </div>
 
             <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
-              <div class="metric-label">GET /api/auth/me</div>
               <pre class="inspector-pre" style="max-height: 26vh; white-space: pre-wrap;"
                 x-text="toYaml(authClaimsWithoutCookies())"></pre>
             </div>
 
             <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
-              <div class="metric-label">JWT id_token</div>
+              <div class="metric-label">Session Cookie</div>
               <pre class="inspector-pre" style="max-height: 12vh; white-space: pre-wrap;"
                 x-text="authSessionCookieValue()"></pre>
             </div>
