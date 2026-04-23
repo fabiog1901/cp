@@ -746,16 +746,25 @@
           --certs-dir=/var/lib/cockroach/certs \
           -e "SET CLUSTER SETTING enterprise.license = '{{ cockroachdb_enterprise_license }}';"
 
-    - name: CockroachDB - create admin user
+    - name: CockroachDB - create user
       run_once: yes
       shell: |
         cockroach sql \
           --host={{ cockroachdb_advertise_addr }} \
           --certs-dir=/var/lib/cockroach/certs \
-          -e "CREATE USER {{ item.name }} WITH password {{ "'" + item.password + "'" }};"
+          -e "CREATE USER {{ item.name }};"
       loop: "{{ dbusers }}"
       failed_when: result.rc != 0 and 'already exists' not in result.stderr
       register: result
+    
+    - name: CockroachDB - reset user password
+      run_once: yes
+      shell: |
+        cockroach sql \
+          --host={{ cockroachdb_advertise_addr }} \
+          --certs-dir=/var/lib/cockroach/certs \
+          -e "ALTER USER {{ item.name }} WITH password {{ "'" + item.password + "'" }};"
+      loop: "{{ dbusers }}"
 
     - name: CockroachDB - grant admin to user
       run_once: yes
