@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import get_jobs_service
-from ..models import ErrorResponse, Job, JobDetailsResponse, JobRescheduleResponse
+from ..models import (
+    ErrorResponse,
+    Job,
+    JobDetailsResponse,
+    JobRescheduleResponse,
+    JobStatsResponse,
+)
 from ..services.errors import (
     ServiceAuthorizationError,
     ServiceError,
@@ -53,6 +59,18 @@ async def list_jobs(
     groups, is_admin = get_access_scope(claims)
     try:
         return service.list_visible_jobs(groups, is_admin)
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+
+
+@router.get("/stats", response_model=JobStatsResponse)
+async def get_job_stats(
+    claims: dict = Depends(require_readonly),
+    service: JobsService = Depends(get_jobs_service),
+) -> JobStatsResponse:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.get_visible_job_stats(groups, is_admin)
     except ServiceError as err:
         _raise_http_from_service_error(err)
 

@@ -101,6 +101,12 @@ window.app = function () {
 
     // ---------- Jobs state ----------
     jobs: [],
+    jobStats: {
+      total: 0,
+      running: 0,
+      queued: 0,
+      failed: 0,
+    },
     jobsVisibleRows: [],
     jobsFilterQuery: "",
     jobsLastUpdatedUtc: null,
@@ -707,19 +713,7 @@ window.app = function () {
     },
 
     dashboardJobCount(kind) {
-      const jobs = Array.isArray(this.jobs) ? this.jobs : [];
-      if (kind === "total") return jobs.length;
-      return jobs.filter((job) => {
-        const status = String(job?.status || "").trim().toLowerCase();
-        if (kind === "running") return status === "running";
-        if (kind === "queued") return status === "queued";
-        if (kind === "failed") return status.includes("fail") || status === "error";
-        if (kind === "done")
-          return ["completed", "complete", "done", "success", "succeeded"].includes(
-            status,
-          );
-        return false;
-      }).length;
+      return Number(this.jobStats?.[kind] || 0);
     },
 
     dashboardNeedsAttentionCount() {
@@ -4139,6 +4133,27 @@ window.app = function () {
       }
     },
 
+    async refreshJobStats() {
+      this.jobsLoading.list = true;
+      try {
+        const data = await this.apiFetch(this.visibilityPath("/jobs/stats"), {
+          method: "GET",
+        });
+        this.jobStats = {
+          total: Number(data?.total || 0),
+          running: Number(data?.running || 0),
+          queued: Number(data?.queued || 0),
+          failed: Number(data?.failed || 0),
+        };
+        this.jobsLastUpdatedUtc = this.utcNowString();
+      } catch (e) {
+        console.error(e);
+        this.jobsLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.jobsLoading.list = false;
+      }
+    },
+
     eventsDetailsText(event) {
       return this.toYaml(event?.details ?? null);
     },
@@ -5460,16 +5475,17 @@ window.app = function () {
         await this.refreshClusterStats();
       }
 
-      if ((!onlyIfEmpty || this.jobs.length === 0) && !this.jobsLoading.list) {
+      const jobStatsEmpty =
+        !this.jobStats ||
+        Object.values(this.jobStats).every((value) => Number(value || 0) === 0);
+      if ((!onlyIfEmpty || jobStatsEmpty) && !this.jobsLoading.list) {
         const previousContext = this.jobsContextClusterId;
         if (previousContext) this.jobsContextClusterId = "";
         try {
-          await this.refreshJobs();
+          await this.refreshJobStats();
         } finally {
           this.jobsContextClusterId = previousContext;
         }
-      } else {
-        this.applyJobsFilterSort();
       }
 
       if ((!onlyIfEmpty || this.events.length === 0) && !this.eventsLoading.list) {

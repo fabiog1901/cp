@@ -17,6 +17,7 @@ from ..models import (
     ExternalConnectionUpsert,
     Job,
     JobID,
+    JobStatsResponse,
     LiveAlert,
     LogMsg,
     NodeCountOption,
@@ -273,6 +274,14 @@ class BaseRepo(ABC):
 
     @abstractmethod
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
+        pass
+
+    @abstractmethod
+    def get_job_stats(
+        self,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> JobStatsResponse:
         pass
 
     @abstractmethod

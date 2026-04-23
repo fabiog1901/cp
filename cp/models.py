@@ -181,6 +181,13 @@ class ClusterStatsResponse(BaseModel):
     failed: int
 
 
+class JobStatsResponse(BaseModel):
+    total: int
+    running: int
+    queued: int
+    failed: int
+
+
 class ErrorResponse(BaseModel):
     detail: str
 

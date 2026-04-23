@@ -3,7 +3,14 @@
 import yaml
 
 from ..infra.errors import RepositoryError
-from ..models import AuditEvent, CommandType, Job, JobID, parse_command_payload
+from ..models import (
+    AuditEvent,
+    CommandType,
+    Job,
+    JobID,
+    JobStatsResponse,
+    parse_command_payload,
+)
 from ..repos.base import BaseRepo
 from .base import log_event
 from .errors import ServiceNotFoundError, from_repository_error
@@ -21,6 +28,18 @@ class JobsService:
                 err,
                 unavailable_message="Jobs are temporarily unavailable.",
                 fallback_message="Unable to load JobsRepo.",
+            ) from err
+
+    def get_visible_job_stats(
+        self, groups: list[str], is_admin: bool
+    ) -> JobStatsResponse:
+        try:
+            return self.repo.get_job_stats(groups, is_admin)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Job stats are temporarily unavailable.",
+                fallback_message="Unable to load job stats.",
             ) from err
 
     def get_job_for_user(
