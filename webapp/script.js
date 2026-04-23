@@ -897,6 +897,12 @@ window.app = function () {
 
     // ---------- Auth ----------
     stopAutoRefreshTimers() {
+      if (typeof window !== "undefined" && window.__cpAutoRefreshTimers) {
+        Object.values(window.__cpAutoRefreshTimers).forEach((timerId) => {
+          clearInterval(timerId);
+        });
+        window.__cpAutoRefreshTimers = {};
+      }
       if (this._autoTimer) {
         clearInterval(this._autoTimer);
         this._autoTimer = null;
@@ -941,6 +947,18 @@ window.app = function () {
         clearInterval(this._versionsAutoTimer);
         this._versionsAutoTimer = null;
       }
+      if (this._nodeCountsAutoTimer) {
+        clearInterval(this._nodeCountsAutoTimer);
+        this._nodeCountsAutoTimer = null;
+      }
+      if (this._cpuCountsAutoTimer) {
+        clearInterval(this._cpuCountsAutoTimer);
+        this._cpuCountsAutoTimer = null;
+      }
+      if (this._diskSizesAutoTimer) {
+        clearInterval(this._diskSizesAutoTimer);
+        this._diskSizesAutoTimer = null;
+      }
       if (this._regionsAutoTimer) {
         clearInterval(this._regionsAutoTimer);
         this._regionsAutoTimer = null;
@@ -954,6 +972,25 @@ window.app = function () {
         this._settingsAutoTimer = null;
       }
       this.destroyClusterDashboardCharts();
+    },
+
+    setManagedInterval(name, prop, callback, intervalMs) {
+      if (this[prop]) {
+        clearInterval(this[prop]);
+        this[prop] = null;
+      }
+      if (typeof window !== "undefined") {
+        window.__cpAutoRefreshTimers = window.__cpAutoRefreshTimers || {};
+        const existing = window.__cpAutoRefreshTimers[name];
+        if (existing) {
+          clearInterval(existing);
+        }
+        const timerId = setInterval(callback, intervalMs);
+        window.__cpAutoRefreshTimers[name] = timerId;
+        this[prop] = timerId;
+        return;
+      }
+      this[prop] = setInterval(callback, intervalMs);
     },
 
     setAuthRequired(loginPath, errorMessage = "Not authenticated.") {
@@ -1768,6 +1805,8 @@ window.app = function () {
 
     // ---------- Init ----------
     async init() {
+      this.stopAutoRefreshTimers();
+
       const sIdx = localStorage.getItem("cp_sort_index");
       const sDir = localStorage.getItem("cp_sort_dir");
       const sFilter = localStorage.getItem("cp_filter");
@@ -1900,18 +1939,18 @@ window.app = function () {
       }
 
       // Start dashboard timer (only refresh if dashboard tab is active)
-      this._autoTimer = setInterval(() => {
+      this.setManagedInterval("dashboard", "_autoTimer", () => {
         if (this.autoRefreshEnabled && this.view === "dashboard")
           this.refreshDashboardOverview();
       }, 15_000);
 
       // Start clusters timer (legacy internal state name is servers)
-      this._serversAutoTimer = setInterval(() => {
+      this.setManagedInterval("clusters", "_serversAutoTimer", () => {
         if (this.serversAutoRefreshEnabled && this.view === "clusters")
           this.refreshServers();
       }, 15_000);
 
-      this._clusterDetailsAutoTimer = setInterval(() => {
+      this.setManagedInterval("cluster_detail", "_clusterDetailsAutoTimer", () => {
         if (
           this.clusterDetailsAutoRefreshEnabled &&
           this.view === "cluster" &&
@@ -1920,7 +1959,7 @@ window.app = function () {
           this.refreshSelectedCluster();
       }, 5_000);
 
-      this._clusterDashboardAutoTimer = setInterval(() => {
+      this.setManagedInterval("cluster_dashboard", "_clusterDashboardAutoTimer", () => {
         if (
           this.clusterDashboardAutoRefreshEnabled &&
           this.view === "cluster_dashboard" &&
@@ -1929,7 +1968,7 @@ window.app = function () {
           this.refreshClusterDashboard();
       }, 10_000);
 
-      this._clusterUsersAutoTimer = setInterval(() => {
+      this.setManagedInterval("cluster_users", "_clusterUsersAutoTimer", () => {
         if (
           this.clusterUsersAutoRefreshEnabled &&
           this.view === "cluster_users" &&
@@ -1938,7 +1977,7 @@ window.app = function () {
           this.refreshClusterUsers();
       }, 10_000);
 
-      this._clusterBackupsAutoTimer = setInterval(() => {
+      this.setManagedInterval("cluster_backups", "_clusterBackupsAutoTimer", () => {
         if (
           this.clusterBackupsAutoRefreshEnabled &&
           this.view === "cluster_backups" &&
@@ -1947,12 +1986,12 @@ window.app = function () {
           this.refreshClusterBackups();
       }, 20_000);
 
-      this._jobsAutoTimer = setInterval(() => {
+      this.setManagedInterval("jobs", "_jobsAutoTimer", () => {
         if (this.jobsAutoRefreshEnabled && this.view === "jobs")
           this.refreshJobs();
       }, 15_000);
 
-      this._jobDetailsAutoTimer = setInterval(() => {
+      this.setManagedInterval("job_detail", "_jobDetailsAutoTimer", () => {
         if (
           this.jobDetailsAutoRefreshEnabled &&
           this.view === "job" &&
@@ -1961,47 +2000,47 @@ window.app = function () {
           this.refreshSelectedJobDetails();
       }, 15_000);
 
-      this._eventsAutoTimer = setInterval(() => {
+      this.setManagedInterval("events", "_eventsAutoTimer", () => {
         if (this.eventsAutoRefreshEnabled && this.view === "events")
           this.refreshEvents();
       }, 15_000);
 
-      this._alertsAutoTimer = setInterval(() => {
+      this.setManagedInterval("alerts", "_alertsAutoTimer", () => {
         if (this.alertsAutoRefreshEnabled && this.view === "alerts")
           this.refreshAlerts();
       }, 15_000);
 
-      this._apiKeysAutoTimer = setInterval(() => {
+      this.setManagedInterval("api_keys", "_apiKeysAutoTimer", () => {
         if (this.apiKeysAutoRefreshEnabled && this.view === "api_keys")
           this.refreshApiKeys();
       }, 20_000);
 
-      this._versionsAutoTimer = setInterval(() => {
+      this.setManagedInterval("versions", "_versionsAutoTimer", () => {
         if (this.versionsAutoRefreshEnabled && this.view === "versions")
           this.refreshVersions();
       }, 20_000);
 
-      this._nodeCountsAutoTimer = setInterval(() => {
+      this.setManagedInterval("node_counts", "_nodeCountsAutoTimer", () => {
         if (this.nodeCountsAutoRefreshEnabled && this.view === "node_counts")
           this.refreshNodeCounts();
       }, 20_000);
 
-      this._cpuCountsAutoTimer = setInterval(() => {
+      this.setManagedInterval("cpu_counts", "_cpuCountsAutoTimer", () => {
         if (this.cpuCountsAutoRefreshEnabled && this.view === "cpu_counts")
           this.refreshCpuCounts();
       }, 20_000);
 
-      this._diskSizesAutoTimer = setInterval(() => {
+      this.setManagedInterval("disk_sizes", "_diskSizesAutoTimer", () => {
         if (this.diskSizesAutoRefreshEnabled && this.view === "disk_sizes")
           this.refreshDiskSizes();
       }, 20_000);
 
-      this._regionsAutoTimer = setInterval(() => {
+      this.setManagedInterval("regions", "_regionsAutoTimer", () => {
         if (this.regionsAutoRefreshEnabled && this.view === "regions")
           this.refreshRegions();
       }, 20_000);
 
-      this._settingsAutoTimer = setInterval(() => {
+      this.setManagedInterval("settings", "_settingsAutoTimer", () => {
         if (this.settingsAutoRefreshEnabled && this.view === "settings")
           this.refreshSettings();
       }, 20_000);
@@ -2235,8 +2274,15 @@ window.app = function () {
         this.handleForbiddenView("settings", { fallback: false });
         return;
       }
-      if (!this.settingsLoading.list) await this.refreshSettings();
-      else this.applySettingsFilterSort();
+      if (this.settingsLoading.list) {
+        this.applySettingsFilterSort();
+        return;
+      }
+      if (Array.isArray(this.settings) && this.settings.length > 0) {
+        this.applySettingsFilterSort();
+        return;
+      }
+      await this.refreshSettings();
     },
 
     async ensureVersionsView() {
@@ -4781,7 +4827,7 @@ window.app = function () {
     },
 
     settingSourceLabel(row) {
-      return row?.value === null || row?.value === undefined
+      return String(row?.value ?? "") === String(row?.default_value ?? "")
         ? "Default"
         : "Override";
     },
@@ -4793,7 +4839,7 @@ window.app = function () {
         const existingRowsByKey = Object.fromEntries(
           this.settings.map((row) => [row.key, row]),
         );
-        const data = await this.apiFetch("/admin/settings", { method: "GET" });
+        const data = await this.apiFetch("/admin/settings/", { method: "GET" });
         const rows = Array.isArray(data)
           ? data
           : Array.isArray(data?.items)
@@ -4885,17 +4931,13 @@ window.app = function () {
 
       this.settingsLoading.reset = true;
       try {
-        const updated = await this.apiFetch(
-          `/admin/settings/${encodeURIComponent(key)}`,
+        await this.apiFetch(
+          `/admin/settings/${encodeURIComponent(key)}/reset`,
           { method: "PUT" },
         );
-        this.settings = this.settings.map((entry) =>
-          entry.key === updated.key ? updated : entry,
-        );
-        this.setSettingDraft(updated.key, updated.value || "");
         this.closeSettingResetConfirm();
+        await this.refreshSettings();
         this.settingsLastUpdatedUtc = this.utcNowString();
-        this.applySettingsFilterSort();
       } catch (e) {
         this.setModalError(
           "settingResetConfirm",

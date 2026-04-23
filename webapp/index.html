@@ -3238,7 +3238,7 @@
                         <div style="display:grid; gap:6px;">
                           <span class="ip-pill" x-text="row.key"></span>
                           <span class="setting-source-pill"
-                            x-show="row.value !== null && row.value !== undefined"
+                            x-show="String(row?.value ?? '') !== String(row?.default_value ?? '')"
                             x-text="settingSourceLabel(row)"></span>
                         </div>
                       </td>
