@@ -191,16 +191,16 @@ window.app = function () {
     settings: [],
     settingsVisibleRows: [],
     settingsFilterQuery: "",
+    settingsCategoryTab: "all",
     settingsLastUpdatedUtc: null,
-    settingsSortIndex: 1,
+    settingsSortIndex: 0,
     settingsSortDir: "asc",
     settingsSortTypeByIndex: {
       0: "string", // key
-      1: "string", // category
-      2: "string", // value_type
-      3: "string", // effective_value
-      4: "string", // default_value
-      5: "date", // updated_at
+      1: "string", // value_type
+      2: "string", // effective_value
+      3: "string", // default_value
+      4: "date", // updated_at
     },
     settingsLoading: { list: false, update: false, reset: false },
     settingsAutoRefreshEnabled: true,
@@ -1790,6 +1790,7 @@ window.app = function () {
       const setIdx = localStorage.getItem("cp_settings_sort_index");
       const setDir = localStorage.getItem("cp_settings_sort_dir");
       const setFilter = localStorage.getItem("cp_settings_filter");
+      const setCategory = localStorage.getItem("cp_settings_category");
       const jobsFilter = localStorage.getItem("cp_jobs_filter");
       const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
       const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
@@ -1818,6 +1819,7 @@ window.app = function () {
       if (saFilter !== null) this.alertsFilterQuery = saFilter;
       if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
       if (setFilter !== null) this.settingsFilterQuery = setFilter;
+      if (setCategory !== null) this.settingsCategoryTab = setCategory;
       if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
       if (nodeCountsFilter !== null)
         this.nodeCountsFilterQuery = nodeCountsFilter;
@@ -4657,14 +4659,12 @@ window.app = function () {
         case 0:
           return row?.key || "";
         case 1:
-          return row?.category || "";
-        case 2:
           return row?.value_type || "";
-        case 3:
+        case 2:
           return row?.value || "";
-        case 4:
+        case 3:
           return row?.default_value || "";
-        case 5:
+        case 4:
           return row?.updated_at || "";
         default:
           return "";
@@ -4676,12 +4676,38 @@ window.app = function () {
       return this.settingsSortDir === "asc" ? "sort-asc" : "sort-desc";
     },
 
+    settingsCategories() {
+      return [...new Set(this.settings.map((row) => String(row?.category || "").trim()).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b),
+      );
+    },
+
+    settingsCategoryCount(category) {
+      if (category === "all") return this.settings.length;
+      return this.settings.filter(
+        (row) => String(row?.category || "").trim() === category,
+      ).length;
+    },
+
+    selectSettingsCategory(category) {
+      this.settingsCategoryTab = String(category || "all");
+      this.persistSettingsCategory();
+      this.applySettingsFilterSort();
+    },
+
+    persistSettingsCategory() {
+      localStorage.setItem(
+        "cp_settings_category",
+        this.settingsCategoryTab || "all",
+      );
+    },
+
     toggleSettingsSort(index) {
       if (this.settingsSortIndex === index)
         this.settingsSortDir = this.settingsSortDir === "asc" ? "desc" : "asc";
       else {
         this.settingsSortIndex = index;
-        this.settingsSortDir = index === 5 ? "desc" : "asc";
+        this.settingsSortDir = index === 4 ? "desc" : "asc";
       }
 
       localStorage.setItem(
@@ -4695,6 +4721,12 @@ window.app = function () {
     applySettingsFilterSort() {
       const q = (this.settingsFilterQuery || "").toLowerCase().trim();
       let rows = this.settings.slice();
+      if (this.settingsCategoryTab && this.settingsCategoryTab !== "all") {
+        rows = rows.filter(
+          (row) =>
+            String(row?.category || "").trim() === this.settingsCategoryTab,
+        );
+      }
       if (q) rows = rows.filter((row) => this.settingsRowText(row).includes(q));
 
       if (this.settingsSortIndex !== null) {
@@ -4770,6 +4802,13 @@ window.app = function () {
               ? data.settings
               : [];
         this.settings = rows;
+        if (
+          this.settingsCategoryTab !== "all" &&
+          !this.settingsCategories().includes(this.settingsCategoryTab)
+        ) {
+          this.settingsCategoryTab = "all";
+          this.persistSettingsCategory();
+        }
         this.settingsDrafts = Object.fromEntries(
           this.settings.map((row) => {
             const existing = existingRowsByKey[row.key];

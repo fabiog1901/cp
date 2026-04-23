@@ -3200,17 +3200,33 @@
 
           <div class="modal-error-banner" x-show="settingsError" x-text="settingsError" style="margin-bottom: 14px;"></div>
 
+          <div class="settings-tabs">
+            <button type="button" class="settings-tab"
+              :class="{ 'is-active': settingsCategoryTab === 'all' }"
+              @click="selectSettingsCategory('all')">
+              <span>All</span>
+              <span class="settings-tab-count" x-text="settingsCategoryCount('all')"></span>
+            </button>
+            <template x-for="category in settingsCategories()" :key="`settings-category-${category}`">
+              <button type="button" class="settings-tab"
+                :class="{ 'is-active': settingsCategoryTab === category }"
+                @click="selectSettingsCategory(category)">
+                <span x-text="category"></span>
+                <span class="settings-tab-count" x-text="settingsCategoryCount(category)"></span>
+              </button>
+            </template>
+          </div>
+
           <div class="table-container">
             <div class="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th data-sort="string" :class="settingsSortClass(0)" @click="toggleSettingsSort(0)">Key</th>
-                    <th data-sort="string" :class="settingsSortClass(1)" @click="toggleSettingsSort(1)">Category</th>
-                    <th data-sort="string" :class="settingsSortClass(2)" @click="toggleSettingsSort(2)">Type</th>
-                    <th data-sort="string" :class="settingsSortClass(3)" @click="toggleSettingsSort(3)">Value</th>
-                    <th data-sort="string" :class="settingsSortClass(4)" @click="toggleSettingsSort(4)">Default</th>
-                    <th data-sort="date" :class="settingsSortClass(5)" @click="toggleSettingsSort(5)">Updated (UTC)</th>
+                    <th data-sort="string" :class="settingsSortClass(1)" @click="toggleSettingsSort(1)">Type</th>
+                    <th data-sort="string" :class="settingsSortClass(2)" @click="toggleSettingsSort(2)">Value</th>
+                    <th data-sort="string" :class="settingsSortClass(3)" @click="toggleSettingsSort(3)">Default</th>
+                    <th data-sort="date" :class="settingsSortClass(4)" @click="toggleSettingsSort(4)">Updated (UTC)</th>
                     <th>Act</th>
                   </tr>
                 </thead>
@@ -3221,10 +3237,11 @@
                       <td>
                         <div style="display:grid; gap:6px;">
                           <span class="ip-pill" x-text="row.key"></span>
-                          <span class="setting-source-pill" x-text="settingSourceLabel(row)"></span>
+                          <span class="setting-source-pill"
+                            x-show="row.value !== null && row.value !== undefined"
+                            x-text="settingSourceLabel(row)"></span>
                         </div>
                       </td>
-                      <td><span x-text="row.category || '-'"></span></td>
                       <td><span class="service-pill" x-text="row.value_type || '-'"></span></td>
                       <td>
                         <div style="display:grid; gap:8px; min-width: 260px;">
@@ -3253,7 +3270,7 @@
 
                   <template x-if="!settingsLoading.list && settingsVisibleRows.length === 0">
                     <tr>
-                      <td colspan="7" style="padding: 18px; color: var(--muted);">No results.</td>
+                      <td colspan="6" style="padding: 18px; color: var(--muted);">No results.</td>
                     </tr>
                   </template>
                 </tbody>
