@@ -1100,7 +1100,7 @@
           </div>
         </aside>
 
-        <section class="main">
+        <section class="main job-detail-main">
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Cluster Dashboard</div>
@@ -1543,14 +1543,6 @@
       <!-- JOB DETAIL VIEW -->
       <main class="layout" x-show="view === 'job'">
         <aside class="sidebar">
-          <div>
-            <h2>Job</h2>
-            <div class="metric">
-              <div class="metric-label">Selected Job</div>
-              <div class="metric-value" x-text="selectedJobDetails?.job?.job_id || selectedJobId || '-'"></div>
-              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/jobs/{job_id}/details</span></div>
-            </div>
-          </div>
 
           <div>
             <h2>Navigation</h2>
@@ -1559,11 +1551,6 @@
               <button class="btn" @click="refreshSelectedJobDetails()" :disabled="jobLoading.details || !selectedJobId">
                 <span x-show="!jobLoading.details">Refresh</span>
                 <span x-show="jobLoading.details">Loading…</span>
-              </button>
-              <button class="btn btn-secondary" @click="rescheduleSelectedJob()"
-                :disabled="jobLoading.reschedule || !selectedJobId">
-                <span x-show="!jobLoading.reschedule">Reschedule Job</span>
-                <span x-show="jobLoading.reschedule">Rescheduling…</span>
               </button>
               <label
                 style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
@@ -1588,38 +1575,33 @@
         <section class="main">
           <div class="main-header">
             <div class="main-header-left">
-              <div class="main-title">Job Details</div>
-              <div class="main-subtitle">Job metadata, linked clusters, and execution tasks for the selected job.</div>
+              <div class="main-title cluster-detail-title">
+                <span>Job</span>
+                <span x-text="selectedJobDetails?.job?.job_id || selectedJobId || '-'"></span>
+              </div>
+            </div>
+            <div class="main-actions">
+              <button class="btn btn-secondary" @click="openJobRescheduleConfirm()"
+                :disabled="jobLoading.reschedule || !selectedJobId">
+                <span x-show="!jobLoading.reschedule">Reschedule Job</span>
+                <span x-show="jobLoading.reschedule">Rescheduling…</span>
+              </button>
+              <span class="status" :class="serversStatusClass(selectedJobDetails?.job?.status)">
+                <span class="status-dot"></span>
+                <span x-text="String(selectedJobDetails?.job?.status || 'unknown').toUpperCase()"></span>
+              </span>
             </div>
           </div>
 
-          <div class="dashboard-home" x-show="selectedJobDetails">
-            <section class="dashboard-hero">
-              <div class="eyebrow">Execution detail</div>
-              <h2>Job <span x-text="selectedJobDetails?.job?.job_id || selectedJobId || '-'"></span></h2>
-              <p>
-                This page shows the job payload returned by the jobs details endpoint together with the task list
-                recorded for this execution.
-              </p>
-            </section>
-
+          <div class="dashboard-home job-detail-home" x-show="selectedJobDetails">
             <section class="dashboard-grid job-details-grid">
               <article class="dashboard-card">
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Overview</div>
-                    <h3 class="dashboard-card-title">Job Summary</h3>
                   </div>
-                  <div class="dashboard-stat" x-text="selectedJobDetails?.tasks?.length ?? 0"></div>
                 </div>
                 <div class="cluster-facts">
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Status</span>
-                    <span class="status" :class="serversStatusClass(selectedJobDetails?.job?.status)">
-                      <span class="status-dot"></span>
-                      <span x-text="String(selectedJobDetails?.job?.status || 'unknown').toUpperCase()"></span>
-                    </span>
-                  </div>
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Type</span>
                     <span class="service-pill" x-text="selectedJobDetails?.job?.job_type || '-'"></span>
@@ -1636,20 +1618,6 @@
                     <span class="cluster-fact-label">Updated</span>
                     <span x-text="toUtcStringMaybe(selectedJobDetails?.job?.updated_at)"></span>
                   </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Linked Clusters</span>
-                    <span x-text="selectedJobDetails?.linked_clusters?.length ?? 0"></span>
-                  </div>
-                </div>
-                <div class="cluster-list-copy" x-show="selectedJobPrimaryClusterId()">
-                  Primary linked cluster:
-                  <a href="#" class="dashboard-link" style="margin-left: 6px;"
-                    @click.prevent="openCluster(selectedJobPrimaryClusterId())">
-                    <span class="ip-pill clickable" x-text="selectedJobPrimaryClusterLabel()"></span>
-                  </a>
-                </div>
-                <div class="cluster-list-copy" x-show="!selectedJobPrimaryClusterId()">
-                  No linked clusters returned for this job.
                 </div>
               </article>
 
@@ -1657,20 +1625,17 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Description</div>
-                    <h3 class="dashboard-card-title">Job Payload</h3>
                   </div>
-                  <div class="dashboard-stat">YAML</div>
                 </div>
                 <pre class="cluster-command"
                   x-text="selectedJobDetails?.description_yaml || jobsDescriptionText(selectedJobDetails?.job || {})"></pre>
               </article>
             </section>
 
-            <section class="dashboard-card cluster-actions-card">
+            <section class="dashboard-card cluster-actions-card job-tasks-card">
               <div class="dashboard-card-head">
                 <div>
                   <div class="dashboard-card-kicker">Tasks</div>
-                  <h3 class="dashboard-card-title">Execution Tasks</h3>
                 </div>
                 <div class="dashboard-stat" x-text="selectedJobDetails?.tasks?.length ?? 0"></div>
               </div>
@@ -1714,6 +1679,35 @@
           </div>
         </section>
       </main>
+
+      <!-- Job Reschedule Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.jobRescheduleConfirm.open" x-transition
+        @keydown.escape.window="closeJobRescheduleConfirm()">
+        <div class="modal" @click.outside="closeJobRescheduleConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Job Reschedule</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeJobRescheduleConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.jobRescheduleConfirm"
+              x-text="modalErrors.jobRescheduleConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will create a new execution request for job
+              <span class="ip-pill" x-text="modal.jobRescheduleConfirm.job_id || '-'"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeJobRescheduleConfirm()">CANCEL</button>
+            <button class="btn btn-secondary" :disabled="jobLoading.reschedule" @click="rescheduleSelectedJob()">
+              <span x-show="!jobLoading.reschedule">YES, RESCHEDULE</span>
+              <span x-show="jobLoading.reschedule">RESCHEDULING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- EVENTS VIEW -->
       <main class="layout events-layout" x-show="view === 'events'">

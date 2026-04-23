@@ -383,6 +383,10 @@ window.app = function () {
         open: false,
         cluster_id: "",
       },
+      jobRescheduleConfirm: {
+        open: false,
+        job_id: "",
+      },
       clusterCreate: {
         open: false,
         name: "",
@@ -3970,22 +3974,44 @@ window.app = function () {
       return `${linkedClusters.length} linked clusters returned. Opening the first linked cluster.`;
     },
 
-    async rescheduleSelectedJob() {
+    openJobRescheduleConfirm() {
       const jobId = String(this.selectedJobId || "").trim();
       if (!jobId) return;
+      this.modal.jobRescheduleConfirm.job_id = jobId;
+      this.clearModalError("jobRescheduleConfirm");
+      this.modal.jobRescheduleConfirm.open = true;
+    },
+
+    closeJobRescheduleConfirm() {
+      this.modal.jobRescheduleConfirm.open = false;
+      this.modal.jobRescheduleConfirm.job_id = "";
+      this.clearModalError("jobRescheduleConfirm");
+    },
+
+    async rescheduleSelectedJob() {
+      const jobId = String(
+        this.modal.jobRescheduleConfirm.job_id || this.selectedJobId || "",
+      ).trim();
+      if (!jobId) return;
       this.jobLoading.reschedule = true;
+      this.clearModalError("jobRescheduleConfirm");
       try {
         const result = await this.apiFetch(
           `/jobs/${encodeURIComponent(jobId)}/reschedule`,
           { method: "POST" },
         );
+        this.closeJobRescheduleConfirm();
         this.setActionNotice(`Job '${jobId}' rescheduled.`, result?.job_id);
         if (this.jobs.length > 0) {
           await this.refreshJobs();
         }
       } catch (e) {
         console.error(e);
-        this.setActionNotice(this.errorMessage(e, "Failed to reschedule job."));
+        this.setModalError(
+          "jobRescheduleConfirm",
+          e,
+          "Failed to reschedule job.",
+        );
       } finally {
         this.jobLoading.reschedule = false;
       }

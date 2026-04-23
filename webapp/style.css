@@ -342,6 +342,7 @@ body {
 .cluster-detail-title {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   width: fit-content;
   padding: 8px 14px;
   border-radius: 14px;
@@ -2039,6 +2040,23 @@ tbody tr:hover {
 
 .cluster-actions-card {
   min-height: auto;
+}
+
+.job-detail-main {
+  overflow: hidden;
+}
+
+.job-detail-home {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.job-tasks-card {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .cluster-detail-main {
