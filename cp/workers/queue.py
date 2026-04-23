@@ -11,6 +11,7 @@ from ..infra.db import get_pool
 from ..models import (
     CommandModel,
     CommandType,
+    ClusterState,
     FailZombieJobsCommand,
     JobState,
     Msg,
@@ -54,8 +55,18 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
 def get_nodes():
 
     rs: list[Nodes] = []
+    active_cluster_ids: set[str] = set()
 
     try:
+        active_cluster_ids = {
+            cluster.cluster_id
+            for cluster in get_repo().list_clusters([], True)
+            if cluster.status
+            not in {
+                ClusterState.DELETING.value,
+                ClusterState.DELETED.value,
+            }
+        }
         rs = get_repo().list_cluster_nodes()
     except Exception as e:
         print("Error", str(e))
@@ -63,6 +74,7 @@ def get_nodes():
     return [
         {"targets": [f"{n}:8080" for n in x.nodes], "labels": {"cluster": x.cluster_id}}
         for x in rs
+        if x.cluster_id in active_cluster_ids
     ]
 
 
