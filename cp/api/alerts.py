@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import require_readonly
 from ..infra import get_alerts_service
@@ -41,12 +41,13 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 
 @router.get("/", response_model=list[LiveAlert])
 async def list_alerts(
+    limit: int | None = Query(default=None, ge=1, le=200),
     claims: dict = Depends(require_readonly),
     service: AlertsService = Depends(get_alerts_service),
 ) -> list[LiveAlert]:
     del claims
     try:
-        return service.list_live_alerts()
+        return service.list_live_alerts(limit=limit)
     except ServiceError as err:
         _raise_http_from_service_error(err)
 

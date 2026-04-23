@@ -6,9 +6,15 @@ from ..base import BaseRepo
 
 
 class AlertsRepo(BaseRepo):
-    def list_live_alerts(self) -> list[LiveAlert]:
+    def list_live_alerts(self, limit: int | None = None) -> list[LiveAlert]:
+        limit_clause = ""
+        params: tuple = ()
+        if limit is not None:
+            limit_clause = "LIMIT %s"
+            params = (limit,)
+
         return fetch_all(
-            """
+            f"""
             SELECT
                 fingerprint,
                 alert_type,
@@ -20,8 +26,9 @@ class AlertsRepo(BaseRepo):
                 ends_at
             FROM live_alerts
             ORDER BY starts_at DESC, updated_at DESC
+            {limit_clause}
             """,
-            (),
+            params,
             LiveAlert,
             operation="alerts.list_live_alerts",
         )

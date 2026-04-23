@@ -36,9 +36,9 @@ class AlertsService:
                 unique_nodes.append(node)
         return unique_nodes
 
-    def list_live_alerts(self) -> list[LiveAlert]:
+    def list_live_alerts(self, limit: int | None = None) -> list[LiveAlert]:
         try:
-            return self.repo.list_live_alerts()
+            return self.repo.list_live_alerts(limit=limit)
         except RepositoryError as err:
             raise from_repository_error(
                 err,

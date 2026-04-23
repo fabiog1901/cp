@@ -387,7 +387,7 @@ class BaseRepo(ABC):
     # ALERTS
     #
     @abstractmethod
-    def list_live_alerts(self) -> list[LiveAlert]:
+    def list_live_alerts(self, limit: int | None = None) -> list[LiveAlert]:
         pass
 
     @abstractmethod

@@ -4233,11 +4233,11 @@ window.app = function () {
       this.eventsVisibleRows = rows;
     },
 
-    async refreshEvents() {
+    async refreshEvents({ limit = 200, offset = 0 } = {}) {
       this.eventsLoading.list = true;
       try {
         const data = await this.apiFetch(
-          this.visibilityPath("/events/", { limit: 200, offset: 0 }),
+          this.visibilityPath("/events/", { limit, offset }),
           { method: "GET" },
         );
         this.events = Array.isArray(data) ? data : [];
@@ -4333,10 +4333,14 @@ window.app = function () {
       this.alertsVisibleRows = rows;
     },
 
-    async refreshAlerts() {
+    async refreshAlerts({ limit = null } = {}) {
       this.alertsLoading.list = true;
       try {
-        const data = await this.apiFetch("/alerts", { method: "GET" });
+        const path =
+          limit === null
+            ? "/alerts/"
+            : this.visibilityPath("/alerts/", { limit });
+        const data = await this.apiFetch(path, { method: "GET" });
         this.alerts = Array.isArray(data)
           ? data.map((alert) => this.normalizeAlertRow(alert))
           : [];
@@ -5489,13 +5493,13 @@ window.app = function () {
       }
 
       if ((!onlyIfEmpty || this.events.length === 0) && !this.eventsLoading.list) {
-        await this.refreshEvents();
+        await this.refreshEvents({ limit: 20, offset: 0 });
       } else {
         this.applyEventsFilterSort();
       }
 
       if ((!onlyIfEmpty || this.alerts.length === 0) && !this.alertsLoading.list) {
-        await this.refreshAlerts();
+        await this.refreshAlerts({ limit: 20 });
       } else {
         this.applyAlertsFilterSort();
       }

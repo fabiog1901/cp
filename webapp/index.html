@@ -209,7 +209,7 @@
                   <a href="#" class="dashboard-link" @click.prevent="setView('alerts')">Open Alerts</a>
                 </div>
                 <div class="dashboard-feed-list">
-                  <template x-for="alert in recentAlerts(10)" :key="alert.alert_id">
+                  <template x-for="alert in recentAlerts(20)" :key="alert.alert_id">
                     <a href="#" class="dashboard-feed-item" @click.prevent="setView('alerts')">
                       <div class="dashboard-feed-topline">
                         <span class="service-pill alert-type-pill" :style="alertTypePillStyle(alert.alert_type)"
@@ -236,7 +236,7 @@
                   <a href="#" class="dashboard-link" @click.prevent="setView('events')">Open Events</a>
                 </div>
                 <div class="dashboard-feed-list">
-                  <template x-for="event in recentEvents(10)" :key="`${event.ts}-${event.user_id}-${event.action}`">
+                  <template x-for="event in recentEvents(20)" :key="`${event.ts}-${event.user_id}-${event.action}`">
                     <a href="#" class="dashboard-feed-item" @click.prevent="setView('events')">
                       <div class="dashboard-feed-topline">
                         <span class="service-pill event-action-pill" :style="actionPillStyle(event.action)"
