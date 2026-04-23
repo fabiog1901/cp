@@ -17,7 +17,8 @@ dependencies = [
     "psycopg-pool (>=3.3.0,<4.0.0)",
     "systemd-python (>=235,<236) ; sys_platform == \"linux\"",
     "requests (>=2.33.1,<3.0.0)",
-    "minio (>=7.2.20,<8.0.0)"
+    "minio (>=7.2.20,<8.0.0)",
+    "cryptography (>=46.0.7,<47.0.0)"
 ]
 
 
