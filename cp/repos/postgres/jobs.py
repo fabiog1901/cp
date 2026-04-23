@@ -192,13 +192,13 @@ class JobsRepo(BaseRepo):
             WITH
             fail_zombie_jobs AS (
                 INSERT INTO mq (msg_type, start_after)
-                VALUES (%s, now() + INTERVAL '60s' + (random()*10)::INTERVAL)
+                VALUES (%s, now() + INTERVAL '300s' + (random()*10)::INTERVAL)
                 RETURNING 1
             )
             UPDATE jobs
             SET status = %s
             WHERE status in (%s, %s)
-                AND now() > updated_at + INTERVAL '120s'
+                AND now() > updated_at + INTERVAL '300s'
             RETURNING job_id
             """,
             (

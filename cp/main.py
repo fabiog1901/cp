@@ -55,8 +55,6 @@ api.include_router(alerts.router)
 api.include_router(clusters.router)
 api.include_router(events.router)
 api.include_router(jobs.router)
-# api.include_router(compute_unit.router)
-# api.include_router(admin.router)
 
 
 @api.get("/prom-targets")
