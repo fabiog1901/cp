@@ -1,11 +1,10 @@
-"""Alerts repository backed by CockroachDB/Postgres."""
+"""Alerts repository."""
 
-from ...infra.db import execute_stmt, fetch_all
-from ...models import LiveAlert
-from ..base import BaseRepo
+from ..infra.db import execute_stmt, fetch_all
+from ..models import LiveAlert
 
 
-class AlertsRepo(BaseRepo):
+class AlertsRepo:
     def list_live_alerts(self, limit: int | None = None) -> list[LiveAlert]:
         limit_clause = ""
         params: tuple = ()

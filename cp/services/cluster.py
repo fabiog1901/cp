@@ -2,6 +2,7 @@
 
 from pydantic import ValidationError
 
+from ..infra.db import get_repo
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,
@@ -17,14 +18,14 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .base import log_event
 from .errors import ServiceValidationError, from_repository_error
 
 
 class ClusterService:
-    def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+    def __init__(self, repo: Repo | None = None) -> None:
+        self.repo = repo or get_repo()
 
     def list_visible_clusters(self, groups: list[str], is_admin: bool) -> list:
         try:

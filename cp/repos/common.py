@@ -1,4 +1,4 @@
-"""Shared helpers for Postgres-backed repositories."""
+"""Shared helpers for repository models."""
 
 from pydantic import BaseModel
 

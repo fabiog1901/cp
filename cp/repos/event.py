@@ -1,11 +1,10 @@
-"""Event repository backed by CockroachDB/Postgres."""
+"""Event repository."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_scalar
-from ...models import LogMsg
-from ..base import BaseRepo
+from ..infra.db import execute_stmt, fetch_all, fetch_scalar
+from ..models import LogMsg
 
 
-class EventRepo(BaseRepo):
+class EventRepo:
     def list_events(
         self,
         limit: int,

@@ -11,7 +11,7 @@ from fastapi import HTTPException, Request, status
 
 from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_config
 from ..models import CPRole, OIDCSessionRecord
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .common import (
     OIDC_SESSION_COOKIE_NAME,
     OIDCConfig,
@@ -40,7 +40,7 @@ class OIDCManager:
         """Expose whether OIDC-backed authentication is enabled for the app."""
         return self.config.enabled
 
-    def load_config(self, repo: BaseRepo, *, force: bool = False) -> None:
+    def load_config(self, repo: Repo, *, force: bool = False) -> None:
         now = time.time()
         if (
             not force
@@ -59,7 +59,7 @@ class OIDCManager:
         self._cache_ttl_seconds = self.config.cache_ttl_seconds
         self._config_loaded_at = now
 
-    def validate_config(self, repo: BaseRepo) -> None:
+    def validate_config(self, repo: Repo) -> None:
         """Validate auth configuration at startup, including API key crypto settings."""
         self.load_config(repo, force=True)
         self.config.validate()
@@ -370,7 +370,7 @@ class OIDCManager:
     async def validate_api_key(
         self,
         request: Request,
-        repo: BaseRepo,
+        repo: Repo,
         access_key: str,
         signature: str,
         timestamp: str,
@@ -429,7 +429,7 @@ class OIDCManager:
     async def current_claims(
         self,
         request: Request,
-        repo: BaseRepo,
+        repo: Repo,
         *,
         session_token: str | None = None,
         access_key: str | None = None,
@@ -465,7 +465,7 @@ class OIDCManager:
 
     def _claims_from_session(
         self,
-        repo: BaseRepo,
+        repo: Repo,
         session_id: str,
     ) -> dict[str, Any]:
         """Load a server-side OIDC session, refreshing token material when needed."""
@@ -497,7 +497,7 @@ class OIDCManager:
 
     def _refresh_session(
         self,
-        repo: BaseRepo,
+        repo: Repo,
         session: OIDCSessionRecord,
     ) -> dict[str, Any]:
         """Refresh an OIDC session using its stored refresh token."""

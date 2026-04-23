@@ -10,16 +10,12 @@ from ...models import (
     ApiKeySummary,
     AuditEvent,
 )
-from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 from .base import AdminService
 
 
 class ApiKeysService(AdminService):
-    def __init__(self, repo: BaseRepo) -> None:
-        super().__init__(repo)
-
     def list_api_keys(self, access_key: str | None = None) -> list[ApiKeySummary]:
         try:
             return self.repo.list_api_keys(access_key)

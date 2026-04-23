@@ -1,11 +1,10 @@
-"""Message queue repository backed by CockroachDB/Postgres."""
+"""Message queue repository."""
 
-from ...infra.db import fetch_one
-from ...models import CommandModel, CommandType, JobID, JobState
-from ..base import BaseRepo
+from ..infra.db import fetch_one
+from ..models import CommandModel, CommandType, JobID, JobState
 
 
-class MqRepo(BaseRepo):
+class MqRepo:
     def enqueue_command(
         self,
         command_type: CommandType,

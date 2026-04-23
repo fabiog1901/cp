@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Callable
+from typing import Any
 
 from psycopg import DatabaseError, InterfaceError, OperationalError
 from psycopg import errors as psycopg_errors
@@ -13,7 +13,6 @@ from psycopg.types.array import ListDumper
 from psycopg.types.json import Jsonb, JsonbDumper
 from psycopg_pool import ConnectionPool
 
-from ..repos.base import BaseRepo
 from .errors import (
     RepositoryConflictError,
     RepositoryError,
@@ -24,7 +23,6 @@ from .errors import (
 
 DB_URL = os.getenv("DB_URL")
 pool: ConnectionPool | None = None
-repo_factory: Callable[[], BaseRepo] | None = None
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +134,6 @@ def _normalize_stmt(stmt: str) -> str:
 
 def initialize_postgres(db_url: str | None = None) -> None:
     global pool
-    global repo_factory
 
     effective_db_url = db_url or DB_URL
     if not effective_db_url:
@@ -151,35 +148,25 @@ def initialize_postgres(db_url: str | None = None) -> None:
         configure=_register_dumpers,
     )
 
-    from ..repos.postgres import PostgresRepo
-
-    def get_pg_repo():
-        return PostgresRepo(get_pool())
-
-    repo_factory = get_pg_repo  # lambda: PostgresRepo(get_pool())
-
-
 def get_pool() -> ConnectionPool:
     if pool is None:
         raise RuntimeError("Database pool not initialized. Ensure lifespan ran.")
     return pool
 
 
-def get_repo() -> BaseRepo:
-    if repo_factory is None:
-        raise RuntimeError("Repository factory not initialized. Ensure lifespan ran.")
-    return repo_factory()
+def get_repo():
+    from ..repos import Repo
+
+    return Repo(get_pool())
 
 
 def close_db() -> None:
     global pool
-    global repo_factory
 
     if pool is not None:
         pool.close()
 
     pool = None
-    repo_factory = None
 
 
 def translate_database_error(

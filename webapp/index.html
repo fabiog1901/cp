@@ -433,10 +433,6 @@
           <div class="modal-body" style="display:grid; gap:14px;">
             <div class="modal-error-banner" x-show="modalErrors.clusterCreate" x-text="modalErrors.clusterCreate"></div>
 
-            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
-              This requests a new cluster through <span class="ip-pill">POST /api/clusters/</span>.
-            </div>
-
             <label class="field">
               <span class="field-label">Cluster Name</span>
               <div style="display:flex; gap:10px; align-items:center;">
@@ -505,7 +501,7 @@
                       @click="removeClusterCreateRegion(regionId)">
                       <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
                         class="region-pill-logo" />
-                      <span x-text="regionId"></span>
+                      <span x-text="regionLabel(regionId)"></span>
                       <span class="region-pill-remove">Remove</span>
                     </button>
                   </template>
@@ -523,7 +519,7 @@
                       @click="addClusterCreateRegion(region.region_id)">
                       <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
                         class="region-pill-logo" />
-                      <span x-text="region.region_id"></span>
+                      <span x-text="regionLabel(region.region_id)"></span>
                     </button>
                   </template>
                 </div>

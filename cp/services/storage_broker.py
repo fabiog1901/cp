@@ -6,9 +6,10 @@ import subprocess
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
+from ..infra.db import get_repo
 from ..infra.util import decrypt_secret, encrypt_secret
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .errors import ServiceValidationError
 
 BACKUP_CONNECTION_NAME = "backup"
@@ -18,8 +19,8 @@ BACKUP_CONNECTION_STATUS_READY = "READY"
 
 
 class StorageBrokerService:
-    def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+    def __init__(self, repo: Repo | None = None) -> None:
+        self.repo = repo or get_repo()
 
     def create_bucket_service_account(
         self, bucketname: str, access_key: str, secret_key: str

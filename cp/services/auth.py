@@ -1,13 +1,14 @@
 """Business logic for auth-related shared operations."""
 
+from ..infra.db import get_repo
 from ..infra.errors import RepositoryError
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .errors import from_repository_error
 
 
 class AuthService:
-    def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+    def __init__(self, repo: Repo | None = None) -> None:
+        self.repo = repo or get_repo()
 
     def list_role_group_mappings(self):
         try:

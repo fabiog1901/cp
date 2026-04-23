@@ -1,12 +1,12 @@
-"""Admin versions repository backed by CockroachDB/Postgres."""
+"""Admin versions repository."""
 
-from ....infra.db import execute_stmt, fetch_all
-from ....models import Version
+from ...infra.db import execute_stmt, fetch_all
+from ...models import Version
 from ..common import convert_model_to_sql
-from .base import AdminPostgresRepo
+from .base import AdminRepo
 
 
-class VersionsRepo(AdminPostgresRepo):
+class VersionsRepo(AdminRepo):
     def list_versions(self) -> list[Version]:
         return fetch_all(
             """

@@ -1,12 +1,12 @@
-"""Admin cluster options repository backed by CockroachDB/Postgres."""
+"""Admin cluster options repository."""
 
-from ....infra.db import execute_stmt, fetch_all
-from ....models import CpuCountOption, DiskSizeOption, NodeCountOption
+from ...infra.db import execute_stmt, fetch_all
+from ...models import CpuCountOption, DiskSizeOption, NodeCountOption
 from ..common import convert_model_to_sql
-from .base import AdminPostgresRepo
+from .base import AdminRepo
 
 
-class ClusterOptionsRepo(AdminPostgresRepo):
+class ClusterOptionsRepo(AdminRepo):
     def list_node_counts(self) -> list[NodeCountOption]:
         return fetch_all(
             """

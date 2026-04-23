@@ -2579,7 +2579,7 @@ window.app = function () {
     clusterCreateDiskSizeLabel(sizeValue) {
       const size = Number(sizeValue);
       if (!Number.isFinite(size) || size <= 0) return "-";
-      return `${size} GB (${this.getHumanSize(size)})`;
+      return `${size} GB`;
     },
 
     fullRegionId(cloud, region) {

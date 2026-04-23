@@ -11,16 +11,12 @@ from ...models import (
     PlaybookResponse,
     PlaybookVersionResponse,
 )
-from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 from .base import AdminService
 
 
 class PlaybooksService(AdminService):
-    def __init__(self, repo: BaseRepo) -> None:
-        super().__init__(repo)
-
     def get_playbook(self, name: str) -> PlaybookResponse:
         try:
             versions = self.repo.list_playbook_versions(name)

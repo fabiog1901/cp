@@ -5,7 +5,7 @@ from fastapi.security import APIKeyHeader
 
 from ..infra import get_repo
 from ..models import CPRole
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .common import OIDC_SESSION_COOKIE_NAME, claims_groups
 from .oidc import oidc
 
@@ -28,7 +28,7 @@ timestamp_scheme = APIKeyHeader(
 
 async def require_authenticated(
     request: Request,
-    repo: BaseRepo = Depends(get_repo),
+    repo: Repo = Depends(get_repo),
     access_key: str | None = Security(access_key_scheme),
     signature: str | None = Security(signature_scheme),
     timestamp: str | None = Security(timestamp_scheme),

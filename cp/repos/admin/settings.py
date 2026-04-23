@@ -1,11 +1,11 @@
-"""Admin settings repository backed by CockroachDB/Postgres."""
+"""Admin settings repository."""
 
-from ....infra.db import fetch_all, fetch_one
-from ....models import SettingKey, SettingRecord
-from .base import AdminPostgresRepo
+from ...infra.db import fetch_all, fetch_one
+from ...models import SettingKey, SettingRecord
+from .base import AdminRepo
 
 
-class SettingsRepo(AdminPostgresRepo):
+class SettingsRepo(AdminRepo):
     def list_settings(self) -> list[SettingRecord]:
         return fetch_all(
             """

@@ -6,7 +6,7 @@ from psycopg import sql
 from psycopg.rows import class_row
 from pydantic import ValidationError
 
-from ..infra.db import translate_database_error
+from ..infra.db import get_repo, translate_database_error
 from ..infra.errors import RepositoryError
 from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
@@ -20,7 +20,7 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class ClusterBackupsService:
-    def __init__(self, repo: BaseRepo):
-        self.repo = repo
+    def __init__(self, repo: Repo | None = None):
+        self.repo = repo or get_repo()
 
     def load_cluster_backups_snapshot(
         self,

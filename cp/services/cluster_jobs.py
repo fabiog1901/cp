@@ -1,14 +1,15 @@
 """Business logic for the cluster jobs vertical."""
 
+from ..infra.db import get_repo
 from ..infra.errors import RepositoryError
 from ..models import ClusterJobsSnapshot, to_public_cluster
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .errors import from_repository_error
 
 
 class ClusterJobsService:
-    def __init__(self, repo: BaseRepo) -> None:
-        self.repo = repo
+    def __init__(self, repo: Repo | None = None) -> None:
+        self.repo = repo or get_repo()
 
     def load_cluster_jobs_snapshot(
         self,

@@ -8,7 +8,7 @@ from fastapi import Request
 
 from ..infra import as_bool, safe_csv_set, safe_json_string_dict
 from ..models import CPRole, SettingKey
-from ..repos.base import BaseRepo
+from ..repos import Repo
 
 OIDC_SESSION_COOKIE_NAME = "cp_session"
 OIDC_STATE_COOKIE_NAME = "cp_oidc_state"
@@ -136,7 +136,7 @@ class OIDCConfig:
     api_key_signature_ttl_seconds: int = 300
 
     @classmethod
-    def from_repo(cls, repo: BaseRepo) -> "OIDCConfig":
+    def from_repo(cls, repo: Repo) -> "OIDCConfig":
         settings = {setting.key: setting for setting in repo.list_settings()}
         enabled = as_bool(settings[SettingKey.oidc_enabled].value, default=False)
         if not enabled:

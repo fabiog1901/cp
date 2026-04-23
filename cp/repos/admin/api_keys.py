@@ -1,11 +1,11 @@
-"""Admin API keys repository backed by CockroachDB/Postgres."""
+"""Admin API keys repository."""
 
-from ....infra.db import execute_stmt, fetch_all, fetch_one
-from ....models import ApiKeyCreateRequestInDB, ApiKeyRecord, ApiKeySummary
-from .base import AdminPostgresRepo
+from ...infra.db import execute_stmt, fetch_all, fetch_one
+from ...models import ApiKeyCreateRequestInDB, ApiKeyRecord, ApiKeySummary
+from .base import AdminRepo
 
 
-class ApiKeysRepo(AdminPostgresRepo):
+class ApiKeysRepo(AdminRepo):
     def get_api_key(self, access_key: str) -> ApiKeyRecord | None:
         return fetch_one(
             """

@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 
 from ..infra import get_repo, request_id_ctx, safe_next_path
 from ..models import AuditEvent, LogMsg
-from ..repos.base import BaseRepo
+from ..repos import Repo
 from .common import (
     OIDC_NEXT_COOKIE_NAME,
     OIDC_NONCE_COOKIE_NAME,
@@ -31,7 +31,7 @@ def oidc_cookie_kwargs() -> dict[str, Any]:
 
 
 def log_auth_event(
-    repo: BaseRepo,
+    repo: Repo,
     actor_id: str,
     action: AuditEvent,
     details: dict[str, Any] | None = None,
@@ -51,7 +51,7 @@ def log_auth_event(
 def oidc_login(
     request: Request,
     next: str = "/",  # noqa: A002
-    repo: BaseRepo = Depends(get_repo),
+    repo: Repo = Depends(get_repo),
 ):
     """Start the browser OIDC login flow and store anti-CSRF cookies."""
     oidc.load_config(repo)
@@ -78,7 +78,7 @@ def oidc_login(
 @router.get("/callback", name="oidc_callback")
 def oidc_callback(
     request: Request,
-    repo: BaseRepo = Depends(get_repo),
+    repo: Repo = Depends(get_repo),
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -168,7 +168,7 @@ def oidc_callback(
 
 @router.post("/logout")
 def oidc_logout(
-    repo: BaseRepo = Depends(get_repo),
+    repo: Repo = Depends(get_repo),
     actor_id: str = Depends(get_audit_actor),
     claims: dict[str, Any] = Security(require_authenticated),
 ):

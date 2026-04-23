@@ -5,16 +5,12 @@ from typing import Any
 
 from ...infra.errors import RepositoryError
 from ...models import AuditEvent, Region
-from ...repos.base import BaseRepo
 from ..base import log_event
 from ..errors import ServiceValidationError, from_repository_error
 from .base import AdminService
 
 
 class RegionsService(AdminService):
-    def __init__(self, repo: BaseRepo) -> None:
-        super().__init__(repo)
-
     def list_regions(self) -> list[Region]:
         try:
             return self.repo.list_regions()

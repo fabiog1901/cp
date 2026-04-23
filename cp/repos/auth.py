@@ -1,11 +1,10 @@
-"""Auth/support repository backed by CockroachDB/Postgres."""
+"""Auth/support repository."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_one, fetch_scalar
-from ...models import OIDCSessionRecord, RoleGroupMap
-from ..base import BaseRepo
+from ..infra.db import execute_stmt, fetch_all, fetch_one, fetch_scalar
+from ..models import OIDCSessionRecord, RoleGroupMap
 
 
-class AuthRepo(BaseRepo):
+class AuthRepo:
 
     def get_secret(self, secret_id: str) -> str:
         return fetch_scalar(

@@ -1,11 +1,10 @@
-"""External connections repository backed by CockroachDB/Postgres."""
+"""External connections repository."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import ExternalConnection, ExternalConnectionUpsert
-from ..base import BaseRepo
+from ..infra.db import execute_stmt, fetch_all, fetch_one
+from ..models import ExternalConnection, ExternalConnectionUpsert
 
 
-class ExternalConnectionsRepo(BaseRepo):
+class ExternalConnectionsRepo:
     def list_external_connections(self, cluster_id: str) -> list[ExternalConnection]:
         return fetch_all(
             """

@@ -1,6 +1,3 @@
-from fastapi import Depends
-
-from ..repos.base import BaseRepo
 from ..services.admin.api_keys import ApiKeysService
 from ..services.admin.cluster_options import ClusterOptionsService
 from ..services.admin.playbooks import PlaybooksService
@@ -40,7 +37,7 @@ __all__ = [
 ]
 
 
-def get_repo() -> BaseRepo:
+def get_repo():
     return _get_repo()
 
 
@@ -50,8 +47,8 @@ def get_compute_unit_service():
 
 
 def _build_service(service_cls):
-    def _get_service(repo: BaseRepo = Depends(get_repo)):
-        return service_cls(repo)
+    def _get_service():
+        return service_cls()
 
     return _get_service
 
@@ -74,5 +71,5 @@ get_api_keys_service = _build_service(ApiKeysService)
 
 
 # Backward-compatible alias for the legacy admin API slice on this branch.
-def get_admin_service(repo: BaseRepo = Depends(get_repo)) -> AuthService:
-    return AuthService(repo)
+def get_admin_service() -> AuthService:
+    return AuthService()

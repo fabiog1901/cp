@@ -1,7 +1,7 @@
-"""Jobs repository backed by CockroachDB/Postgres."""
+"""Jobs repository."""
 
-from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import (
+from ..infra.db import execute_stmt, fetch_all, fetch_one
+from ..models import (
     ClusterIDRef,
     CommandType,
     IntID,
@@ -10,10 +10,9 @@ from ...models import (
     JobStatsResponse,
     Task,
 )
-from ..base import BaseRepo
 
 
-class JobsRepo(BaseRepo):
+class JobsRepo:
     def get_job_stats(
         self, groups: list[str], is_admin: bool = False
     ) -> JobStatsResponse:

@@ -1,9 +1,9 @@
-"""Cluster repository backed by CockroachDB/Postgres."""
+"""Cluster repository."""
 
 from pydantic import TypeAdapter
 
-from ...infra.db import execute_stmt, fetch_all, fetch_one
-from ...models import (
+from ..infra.db import execute_stmt, fetch_all, fetch_one
+from ..models import (
     Cluster,
     ClusterOverview,
     ClusterState,
@@ -12,10 +12,9 @@ from ...models import (
     InventoryRegion,
     Nodes,
 )
-from ..base import BaseRepo
 
 
-class ClusterRepo(BaseRepo):
+class ClusterRepo:
     def get_cluster_stats(
         self,
         groups: list[str],

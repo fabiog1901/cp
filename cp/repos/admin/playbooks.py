@@ -1,11 +1,11 @@
-"""Admin playbooks repository backed by CockroachDB/Postgres."""
+"""Admin playbooks repository."""
 
-from ....infra.db import execute_stmt, fetch_all, fetch_one
-from ....models import Playbook, PlaybookOverview
-from .base import AdminPostgresRepo
+from ...infra.db import execute_stmt, fetch_all, fetch_one
+from ...models import Playbook, PlaybookOverview
+from .base import AdminRepo
 
 
-class PlaybooksRepo(AdminPostgresRepo):
+class PlaybooksRepo(AdminRepo):
     def get_playbook(self, name: str, version: str) -> Playbook:
         return fetch_one(
             """
