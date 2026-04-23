@@ -558,15 +558,6 @@
       <main class="layout" x-show="view === 'cluster'">
         <aside class="sidebar">
           <div>
-            <h2>Cluster</h2>
-            <div class="metric">
-              <div class="metric-label">Selected Cluster</div>
-              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
-              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}</span></div>
-            </div>
-          </div>
-
-          <div>
             <h2>Navigation</h2>
             <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
               <button class="btn" @click="backToClusters()">Back to Clusters</button>
@@ -579,76 +570,186 @@
                 <input type="checkbox" x-model="clusterDetailsAutoRefreshEnabled" />
                 Auto-refresh (5s)
               </label>
-              <button class="btn" type="button" @click="openClusterJobs()">Show Jobs</button>
-              <button class="btn" type="button" @click="openClusterDashboard()">Show Dashboard</button>
             </div>
           </div>
         </aside>
 
-        <section class="main">
+        <section class="main cluster-detail-main">
           <div class="main-header">
             <div class="main-header-left">
-              <div class="main-title">Cluster</div>
-              <div class="main-subtitle">Details, access points, and operational actions for the selected cluster.</div>
+              <div class="main-title cluster-detail-title" x-text="selectedCluster?.cluster_id || selectedClusterId || 'Cluster'"></div>
+            </div>
+            <div class="main-actions">
+              <span class="ip-pill" x-text="selectedCluster?.version || '-'"></span>
+              <span class="status" :class="serversStatusClass(selectedCluster?.status)">
+                <span class="status-dot"></span>
+                <span x-text="String(selectedCluster?.status || 'unknown').toUpperCase()"></span>
+              </span>
             </div>
           </div>
 
-          <div class="dashboard-home" x-show="selectedCluster">
-            <section class="dashboard-hero">
-              <div class="eyebrow">Cluster detail</div>
-              <h2 x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></h2>
-              <p>
-                Visibility is enforced by the API. This page shows the cluster payload returned for the current
-                authenticated user and groups the most common access points and next actions together.
-              </p>
+          <div class="dashboard-home cluster-detail-home" x-show="selectedCluster">
+            <section class="dashboard-card cluster-toolbar-card">
+              <div class="dashboard-card-head cluster-toolbar-head">
+                <div>
+                  <div class="dashboard-card-kicker">Operations</div>
+                </div>
+              </div>
+
+              <div class="cluster-toolbar-grid">
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterUpgradeModal()"
+                  :disabled="clusterLoading.upgrade"
+                  title="Open upgrade options for this cluster."
+                  aria-label="Upgrade cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4v11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M8 8l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Upgrade</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.upgrade ? 'Loading options…' : 'Move to a newer version'"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterScaleModal()"
+                  :disabled="clusterLoading.scale"
+                  title="Adjust node count, CPU, disk, and regions."
+                  aria-label="Scale cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 18V9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M12 18V5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M19 18v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <circle cx="5" cy="7" r="2" stroke="currentColor" stroke-width="1.8" />
+                      <circle cx="12" cy="18" r="2" stroke="currentColor" stroke-width="1.8" />
+                      <circle cx="19" cy="10" r="2" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Scale</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.scale ? 'Loading options…' : 'Resize nodes and regions'"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterUsers()"
+                  title="Open database user management for this cluster."
+                  aria-label="Open user management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M17 20a5 5 0 0 0-10 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <circle cx="12" cy="10" r="4" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Users</span>
+                    <span class="cluster-toolbar-sub">Manage database accounts</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterBackups()"
+                  title="Open backup management for this cluster."
+                  aria-label="Open backup management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 8.5h14v9A2.5 2.5 0 0 1 16.5 20h-9A2.5 2.5 0 0 1 5 17.5v-9Z" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M9 8.5V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5v2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Backups</span>
+                    <span class="cluster-toolbar-sub">Inspect backup paths</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterJobs()"
+                  title="Open jobs related to this cluster."
+                  aria-label="Open cluster jobs">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <rect x="4.5" y="5.5" width="15" height="13" rx="2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Jobs</span>
+                    <span class="cluster-toolbar-sub">See recent operations</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterDashboard()"
+                  title="Open the metrics dashboard for this cluster."
+                  aria-label="Open cluster dashboard">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 18.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M7.5 15l3-4 3 2 3-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="7.5" cy="15" r="1" fill="currentColor" />
+                      <circle cx="10.5" cy="11" r="1" fill="currentColor" />
+                      <circle cx="13.5" cy="13" r="1" fill="currentColor" />
+                      <circle cx="16.5" cy="8" r="1" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Dashboard</span>
+                    <span class="cluster-toolbar-sub">Open live metrics</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn cluster-toolbar-btn-danger" type="button"
+                  @click="openClusterDeleteConfirm()"
+                  :disabled="clusterLoading.delete"
+                  title="Delete this cluster."
+                  aria-label="Delete cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 7h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8 10v7M12 10v7M16 10v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M6.5 7l.7 10.1A2 2 0 0 0 9.2 19h5.6a2 2 0 0 0 2-1.9L17.5 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Delete</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.delete ? 'Submitting request…' : 'Danger zone action'"></span>
+                  </span>
+                </button>
+              </div>
             </section>
 
             <section class="dashboard-grid">
-              <article class="dashboard-card">
+              <article class="dashboard-card cluster-compact-card cluster-footprint-card">
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Overview</div>
-                    <h3 class="dashboard-card-title">Cluster Footprint</h3>
                   </div>
                   <div class="dashboard-stat"
-                    x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * (Array.isArray(selectedCluster.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0)) : '-'"></div>
+                    x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * Number(selectedCluster.node_cpus ?? 0)) : '-'"></div>
                 </div>
                 <div class="cluster-facts">
                   <div class="cluster-fact">
-                    <span class="cluster-fact-label">Total Footprint</span>
-                    <span
-                      x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * (Array.isArray(selectedCluster.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0)) : '-'"></span>
-                  </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Status</span>
-                    <span class="status" :class="serversStatusClass(selectedCluster?.status)">
-                      <span class="status-dot"></span>
-                      <span x-text="String(selectedCluster?.status || 'unknown').toUpperCase()"></span>
-                    </span>
-                  </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Group</span>
-                    <span class="service-pill" x-text="selectedCluster?.grp || '-'"></span>
-                  </div>
-                  <div class="cluster-fact">
-                    <span class="cluster-fact-label">Version</span>
-                    <span class="ip-pill" x-text="selectedCluster?.version || '-'"></span>
+                    <span class="cluster-fact-label">CPU / Node</span>
+                    <span x-text="selectedCluster?.node_cpus ?? '-'"></span>
                   </div>
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Node Count</span>
                     <span x-text="selectedCluster?.node_count ?? '-'"></span>
                   </div>
                   <div class="cluster-fact">
-                    <span class="cluster-fact-label">CPU / Node</span>
-                    <span x-text="selectedCluster?.node_cpus ?? '-'"></span>
-                  </div>
-                  <div class="cluster-fact">
                     <span class="cluster-fact-label">Disk GB</span>
                     <span x-text="selectedCluster?.disk_size ?? '-'"></span>
                   </div>
+                  
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Created By</span>
                     <span x-text="selectedCluster?.created_by || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Group</span>
+                    <span x-text="selectedCluster?.grp || '-'"></span>
                   </div>
                   <div class="cluster-fact">
                     <span class="cluster-fact-label">Created</span>
@@ -661,33 +762,38 @@
                 </div>
               </article>
 
-              <article class="dashboard-card">
+              <article class="dashboard-card cluster-compact-card cluster-connect-card">
                 <div class="dashboard-card-head">
                   <div>
-                    <div class="dashboard-card-kicker">Access</div>
-                    <h3 class="dashboard-card-title">DBConsole and Connect</h3>
+                    <div class="dashboard-card-kicker">Load Balancer Access</div>
                   </div>
                   <div class="dashboard-stat" x-text="clusterLbEndpoints().length || '--'"></div>
                 </div>
                 <div class="cluster-list" x-show="clusterLbEndpoints().length > 0">
                   <template x-for="lb in clusterLbEndpoints()" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
-                    <div class="cluster-list-item">
-                      <div class="cluster-list-title">
+                    <div class="cluster-list-item cluster-endpoint-row">
+                      <div class="cluster-endpoint-main cluster-list-title">
                         <img x-show="cloudLogoForCloud(lb.cloud)" :src="cloudLogoForCloud(lb.cloud)" alt=""
                           class="cluster-cloud-logo" />
-                        <span x-text="`${lb.cloud || '-'}:${lb.region || '-'}`"></span>
+                        <span x-text="lb.region || '-'"></span>
                         <span class="ip-pill" x-text="lb.dns_address || '-'"></span>
                       </div>
-                      <div class="cluster-list-pills">
+                      <div class="cluster-endpoint-actions">
+                        <button class="icon-btn" type="button"
+                          title="Copy endpoint address"
+                          @click="copyClusterEndpointAddress(lb)"
+                          :disabled="!clusterEndpointAddress(lb)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8" />
+                            <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                          </svg>
+                        </button>
+                        <span class="metric-sub cluster-endpoint-copied"
+                          x-show="clusterConnectCopiedFor === (lb.dns_address || '')">Copied</span>
                         <a class="dashboard-link" :class="{ 'is-disabled': !clusterDbConsoleUrl(lb) }"
                           :href="clusterDbConsoleUrl(lb) || '#'" target="_blank" rel="noopener"
                           @click.prevent="openDbConsole(lb)">Open DBConsole</a>
-                        <button class="btn btn-secondary" type="button" @click="copyClusterConnectCommand(lb)"
-                          :disabled="!clusterConnectCommand(lb)">Connect</button>
                       </div>
-                      <pre class="cluster-command"
-                        x-text="clusterConnectCommand(lb) || 'No load balancer DNS address available.'"></pre>
-                      <span class="metric-sub" x-show="clusterConnectCopiedFor === (lb.dns_address || '')">Connection command copied.</span>
                     </div>
                   </template>
                 </div>
@@ -700,7 +806,6 @@
                 <div class="dashboard-card-head">
                   <div>
                     <div class="dashboard-card-kicker">Inventory</div>
-                    <h3 class="dashboard-card-title">Regions and Nodes</h3>
                   </div>
                   <div class="dashboard-stat" x-text="Array.isArray(selectedCluster?.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0"></div>
                 </div>
@@ -728,43 +833,6 @@
                 </div>
               </article>
 
-            </section>
-
-            <section class="dashboard-card cluster-actions-card">
-              <div class="dashboard-card-head">
-                <div>
-                  <div class="dashboard-card-kicker">Actions</div>
-                  <h3 class="dashboard-card-title">Cluster Operations</h3>
-                </div>
-                <div class="dashboard-stat">3</div>
-              </div>
-              <div class="cluster-action-sections">
-                <div style="display:grid; gap:10px;">
-                  <div class="metric-label">Cluster Actions</div>
-                  <div class="cluster-action-grid">
-                    <button class="btn cluster-action-btn" type="button" @click="openClusterUpgradeModal()"
-                      :disabled="clusterLoading.upgrade">Upgrade Cluster</button>
-                    <button class="btn cluster-action-btn" type="button" @click="openClusterScaleModal()"
-                      :disabled="clusterLoading.scale">Scale Cluster</button>
-                    <button class="btn cluster-action-btn" type="button"
-                      @click="triggerClusterAction('Debug cluster')">Debug Cluster</button>
-                    <button class="btn btn-danger cluster-action-btn" type="button"
-                      @click="openClusterDeleteConfirm()">Delete Cluster</button>
-                  </div>
-                </div>
-
-                <div style="display:grid; gap:10px;">
-                  <div class="metric-label">Database Actions</div>
-                  <div class="cluster-action-grid">
-                    <button class="btn cluster-action-btn" type="button"
-                      @click="openClusterUsers()">User Management</button>
-                    <button class="btn cluster-action-btn" type="button"
-                      @click="openClusterBackups()">Backup Management</button>
-                    <button class="btn cluster-action-btn" type="button"
-                      @click="triggerClusterAction('Databases management')">Databases Management</button>
-                  </div>
-                </div>
-              </div>
             </section>
           </div>
 
@@ -1192,7 +1260,7 @@
                       @click="removeClusterScaleRegion(regionId)">
                       <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
                         class="region-pill-logo" />
-                      <span x-text="regionId"></span>
+                      <span x-text="regionLabel(regionId)"></span>
                       <span class="region-pill-remove">Remove</span>
                     </button>
                   </template>
@@ -1210,7 +1278,7 @@
                       @click="addClusterScaleRegion(region.region_id)">
                       <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
                         class="region-pill-logo" />
-                      <span x-text="region.region_id"></span>
+                      <span x-text="regionLabel(region.region_id)"></span>
                     </button>
                   </template>
                 </div>
@@ -1308,14 +1376,6 @@
             <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
               This will request deletion for cluster
               <span class="ip-pill" x-text="modal.clusterDeleteConfirm.cluster_id"></span>.
-            </div>
-
-            <div class="metric" style="display:grid; gap:8px;">
-              <div class="metric-label">Request</div>
-              <div>
-                <span class="ip-pill">DELETE /api/clusters/<span
-                    x-text="modal.clusterDeleteConfirm.cluster_id"></span></span>
-              </div>
             </div>
           </div>
 

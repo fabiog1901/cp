@@ -668,6 +668,12 @@ window.app = function () {
       return this.cloudLogoForCloud(this.cloudKeyFromRegion(regionId));
     },
 
+    regionLabel(regionId) {
+      const raw = String(regionId || "").trim();
+      if (!raw) return "-";
+      return raw.includes(":") ? raw.split(":").slice(1).join(":") : raw;
+    },
+
     toUtcStringMaybe(value) {
       if (!value) return "-";
       const d = new Date(value);
@@ -2922,28 +2928,25 @@ window.app = function () {
       return dns ? `https://${dns}:8080` : "";
     },
 
-    clusterConnectCommand(lbOrCluster = this.selectedCluster) {
+    clusterEndpointAddress(lbOrCluster = this.selectedCluster) {
       const dns = lbOrCluster?.dns_address
         ? String(lbOrCluster.dns_address || "").trim()
         : this.clusterPrimaryDns(lbOrCluster);
-      return dns ? `cockroach sql --host=${dns} --port=26257` : "";
+      return dns;
     },
 
-    async copyClusterConnectCommand(lbOrCluster = this.selectedCluster) {
-      const command = this.clusterConnectCommand(lbOrCluster);
-      const dns = lbOrCluster?.dns_address
-        ? String(lbOrCluster.dns_address || "").trim()
-        : this.clusterPrimaryDns(lbOrCluster);
-      if (!command) return;
+    async copyClusterEndpointAddress(lbOrCluster = this.selectedCluster) {
+      const dns = this.clusterEndpointAddress(lbOrCluster);
+      if (!dns) return;
       if (
         typeof navigator !== "undefined" &&
         navigator.clipboard &&
         typeof navigator.clipboard.writeText === "function"
       ) {
-        await navigator.clipboard.writeText(command);
+        await navigator.clipboard.writeText(dns);
       } else if (typeof document !== "undefined") {
         const el = document.createElement("textarea");
-        el.value = command;
+        el.value = dns;
         el.setAttribute("readonly", "");
         el.style.position = "absolute";
         el.style.left = "-9999px";
@@ -2955,8 +2958,8 @@ window.app = function () {
       this.clusterConnectCopiedFor = dns;
       this.setActionNotice(
         dns
-          ? `Cluster connect command copied for '${dns}'.`
-          : "Cluster connect command copied to clipboard.",
+          ? `Cluster endpoint copied for '${dns}'.`
+          : "Cluster endpoint copied to clipboard.",
       );
     },
 
