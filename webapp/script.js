@@ -19,6 +19,13 @@ window.app = function () {
 
     // ---------- Servers state ----------
     servers: [],
+    clusterStats: {
+      total: 0,
+      active: 0,
+      creating: 0,
+      unhealthy: 0,
+      failed: 0,
+    },
     serversVisibleRows: [],
     serversFilterQuery: "",
     serversLastUpdatedUtc: null,
@@ -696,24 +703,7 @@ window.app = function () {
     },
 
     dashboardClusterCount(kind) {
-      const clusters = Array.isArray(this.servers) ? this.servers : [];
-      if (kind === "total") return clusters.length;
-      return clusters.filter((cluster) => {
-        const status = String(cluster?.status || "").trim().toLowerCase();
-        if (kind === "active") return status === "active" || status === "ready";
-        if (kind === "creating") return status === "creating";
-        if (kind === "unhealthy")
-          return status === "unhealthy";
-        if (kind === "failed")
-          return [
-            "create_failed",
-            "scale_failed",
-            "restore_failed",
-            "delete_failed",
-            "upgrade_failed",
-          ].includes(status);
-        return false;
-      }).length;
+      return Number(this.clusterStats?.[kind] || 0);
     },
 
     dashboardJobCount(kind) {
@@ -2455,6 +2445,28 @@ window.app = function () {
         this.servers = Array.isArray(data) ? data : [];
         this.serversLastUpdatedUtc = this.utcNowString();
         this.applyServersFilterSort();
+      } catch (e) {
+        console.error(e);
+        this.serversLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.serversLoading.list = false;
+      }
+    },
+
+    async refreshClusterStats() {
+      this.serversLoading.list = true;
+      try {
+        const data = await this.apiFetch(this.visibilityPath("/clusters/stats"), {
+          method: "GET",
+        });
+        this.clusterStats = {
+          total: Number(data?.total || 0),
+          active: Number(data?.active || 0),
+          creating: Number(data?.creating || 0),
+          unhealthy: Number(data?.unhealthy || 0),
+          failed: Number(data?.failed || 0),
+        };
+        this.serversLastUpdatedUtc = this.utcNowString();
       } catch (e) {
         console.error(e);
         this.serversLastUpdatedUtc = this.utcNowString();
@@ -5441,10 +5453,11 @@ window.app = function () {
 
     // ---------- Dashboard lifecycle ----------
     async refreshDashboardOverview({ onlyIfEmpty = false } = {}) {
-      if ((!onlyIfEmpty || this.servers.length === 0) && !this.serversLoading.list) {
-        await this.refreshServers();
-      } else {
-        this.applyServersFilterSort();
+      const clusterStatsEmpty =
+        !this.clusterStats ||
+        Object.values(this.clusterStats).every((value) => Number(value || 0) === 0);
+      if ((!onlyIfEmpty || clusterStatsEmpty) && !this.serversLoading.list) {
+        await this.refreshClusterStats();
       }
 
       if ((!onlyIfEmpty || this.jobs.length === 0) && !this.jobsLoading.list) {
@@ -5469,27 +5482,6 @@ window.app = function () {
         await this.refreshAlerts();
       } else {
         this.applyAlertsFilterSort();
-      }
-
-      if (this.canViewAdmin()) {
-        if ((!onlyIfEmpty || this.settings.length === 0) && !this.settingsLoading.list) {
-          await this.refreshSettings();
-        }
-        if ((!onlyIfEmpty || this.versions.length === 0) && !this.versionsLoading.list) {
-          await this.refreshVersions();
-        }
-        if ((!onlyIfEmpty || this.nodeCounts.length === 0) && !this.nodeCountsLoading.list) {
-          await this.refreshNodeCounts();
-        }
-        if ((!onlyIfEmpty || this.cpuCounts.length === 0) && !this.cpuCountsLoading.list) {
-          await this.refreshCpuCounts();
-        }
-        if ((!onlyIfEmpty || this.diskSizes.length === 0) && !this.diskSizesLoading.list) {
-          await this.refreshDiskSizes();
-        }
-        if ((!onlyIfEmpty || this.regions.length === 0) && !this.regionsLoading.list) {
-          await this.refreshRegions();
-        }
       }
     },
 

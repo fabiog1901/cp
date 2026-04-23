@@ -173,6 +173,14 @@ class EventCountResponse(BaseModel):
     total: int
 
 
+class ClusterStatsResponse(BaseModel):
+    total: int
+    active: int
+    creating: int
+    unhealthy: int
+    failed: int
+
+
 class ErrorResponse(BaseModel):
     detail: str
 

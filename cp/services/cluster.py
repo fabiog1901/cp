@@ -8,6 +8,7 @@ from ..models import (
     Cluster,
     ClusterPublic,
     ClusterScaleRequest,
+    ClusterStatsResponse,
     ClusterUpgradeRequest,
     CommandType,
     CreateClusterCommand,
@@ -33,6 +34,18 @@ class ClusterService:
                 err,
                 unavailable_message="Clusters are temporarily unavailable.",
                 fallback_message="Unable to load clusters.",
+            ) from err
+
+    def get_visible_cluster_stats(
+        self, groups: list[str], is_admin: bool
+    ) -> ClusterStatsResponse:
+        try:
+            return self.repo.get_cluster_stats(groups, is_admin)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Cluster stats are temporarily unavailable.",
+                fallback_message="Unable to load cluster stats.",
             ) from err
 
     def get_cluster_for_user(

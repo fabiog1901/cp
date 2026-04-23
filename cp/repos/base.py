@@ -8,6 +8,7 @@ from ..models import (
     Cluster,
     ClusterIDRef,
     ClusterOverview,
+    ClusterStatsResponse,
     CommandModel,
     CommandType,
     CpuCountOption,
@@ -107,6 +108,14 @@ class BaseRepo(ABC):
         groups: list[str],
         is_admin: bool = False,
     ) -> list[ClusterOverview]:
+        pass
+
+    @abstractmethod
+    def get_cluster_stats(
+        self,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> ClusterStatsResponse:
         pass
 
     @abstractmethod

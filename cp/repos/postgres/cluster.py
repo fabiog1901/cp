@@ -7,6 +7,7 @@ from ...models import (
     Cluster,
     ClusterOverview,
     ClusterState,
+    ClusterStatsResponse,
     InventoryLB,
     InventoryRegion,
     Nodes,
@@ -15,6 +16,60 @@ from ..base import BaseRepo
 
 
 class ClusterRepo(BaseRepo):
+    def get_cluster_stats(
+        self,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> ClusterStatsResponse:
+        params: tuple = ()
+        where_clause = ""
+        operation = "cluster.get_cluster_stats.admin"
+        if not is_admin:
+            where_clause = "WHERE grp = ANY (%s)"
+            params = (groups,)
+            operation = "cluster.get_cluster_stats"
+
+        return fetch_one(
+            f"""
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS active,
+                COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS creating,
+                COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS unhealthy,
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN status IN (%s, %s, %s, %s, %s)
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS failed
+            FROM clusters
+            {where_clause}
+            """,
+            (
+                ClusterState.ACTIVE.value,
+                ClusterState.CREATING.value,
+                ClusterState.UNHEALTHY.value,
+                ClusterState.CREATE_FAILED.value,
+                ClusterState.SCALE_FAILED.value,
+                ClusterState.RESTORE_FAILED.value,
+                ClusterState.DELETE_FAILED.value,
+                ClusterState.UPGRADE_FAILED.value,
+                *params,
+            ),
+            ClusterStatsResponse,
+            operation=operation,
+        ) or ClusterStatsResponse(
+            total=0,
+            active=0,
+            creating=0,
+            unhealthy=0,
+            failed=0,
+        )
+
     def list_clusters(
         self,
         groups: list[str],

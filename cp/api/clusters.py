@@ -21,6 +21,7 @@ from ..models import (
     ClusterRestoreApiRequest,
     ClusterRoleRevokeRequest,
     ClusterScaleRequest,
+    ClusterStatsResponse,
     ClusterUpgradeRequest,
     ClusterUsersSnapshot,
     DashboardSnapshot,
@@ -77,6 +78,18 @@ async def list_clusters(
     groups, is_admin = get_access_scope(claims)
     try:
         return service.list_visible_clusters(groups, is_admin)
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+
+
+@router.get("/stats", response_model=ClusterStatsResponse)
+async def get_cluster_stats(
+    claims: dict = Depends(require_readonly),
+    service: ClusterService = Depends(get_cluster_service),
+) -> ClusterStatsResponse:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.get_visible_cluster_stats(groups, is_admin)
     except ServiceError as err:
         _raise_http_from_service_error(err)
 
