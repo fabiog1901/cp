@@ -1,7 +1,12 @@
 """Admin cluster options repository."""
 
 from ...infra.db import execute_stmt, fetch_all
-from ...models import CpuCountOption, DiskSizeOption, NodeCountOption
+from ...models import (
+    CpuCountOption,
+    DatabaseRoleConfig,
+    DiskSizeOption,
+    NodeCountOption,
+)
 from ..common import convert_model_to_sql
 from .base import AdminRepo
 
@@ -80,4 +85,46 @@ class ClusterOptionsRepo(AdminRepo):
             WHERE size_gb = %s
             """,
             (size_gb,),
+        )
+
+    def list_database_roles(self) -> list[DatabaseRoleConfig]:
+        return fetch_all(
+            """
+            SELECT role_name, sql_statement
+            FROM database_roles
+            ORDER BY role_name ASC
+            """,
+            (),
+            DatabaseRoleConfig,
+        )
+
+    def get_database_role(self, role: str) -> DatabaseRoleConfig | None:
+        roles = fetch_all(
+            """
+            SELECT role_name, sql_statement
+            FROM database_roles
+            WHERE role_name = %s
+            """,
+            (role,),
+            DatabaseRoleConfig,
+        )
+        return roles[0] if roles else None
+
+    def create_database_role(self, database_role: DatabaseRoleConfig) -> None:
+        execute_stmt(
+            """
+            INSERT INTO database_roles (role_name, sql_statement)
+            VALUES (%s, %s)
+            """,
+            (database_role.role_name, database_role.sql_statement),
+        )
+
+    def delete_database_role(self, role: str) -> None:
+        execute_stmt(
+            """
+            DELETE
+            FROM database_roles
+            WHERE role_name = %s
+            """,
+            (role,),
         )

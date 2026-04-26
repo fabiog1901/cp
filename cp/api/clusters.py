@@ -353,6 +353,7 @@ async def create_cluster_user(
             is_admin,
             request.username,
             request.password,
+            request.role,
             actor_id,
         )
     except ServiceError as err:
@@ -392,6 +393,29 @@ async def revoke_cluster_user_role(
     groups, is_admin = get_access_scope(claims)
     try:
         service.revoke_database_user_role(
+            cluster_id,
+            groups,
+            is_admin,
+            username,
+            request.role,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+
+
+@router.post("/{cluster_id}/users/{username}/grant-role")
+async def grant_cluster_user_role(
+    cluster_id: str,
+    username: str,
+    request: ClusterRoleRevokeRequest,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> None:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        service.grant_database_user_role(
             cluster_id,
             groups,
             is_admin,

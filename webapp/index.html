@@ -1909,6 +1909,7 @@
               <button class="btn" @click="setView('node_counts')">Node Counts</button>
               <button class="btn" @click="setView('cpu_counts')">Node CPUs</button>
               <button class="btn" @click="setView('disk_sizes')">Disk Sizes</button>
+              <button class="btn" @click="setView('database_roles')">Database Roles</button>
               <button class="btn" @click="setView('regions')">Regions</button>
               <button class="btn" @click="setView('playbooks')">Playbooks</button>
             </div>
@@ -1986,6 +1987,17 @@
                   <div class="dashboard-stat" x-text="diskSizes.length"></div>
                 </div>
                 <p class="dashboard-card-copy">Available disk size options offered by the cluster lifecycle operations.</p>
+              </button>
+
+              <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('database_roles')">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Access</div>
+                    <h3 class="dashboard-card-title">Database Roles</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="databaseRoles.length"></div>
+                </div>
+                <p class="dashboard-card-copy">SQL templates available when creating users on managed clusters.</p>
               </button>
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('regions')">
@@ -2930,6 +2942,167 @@
         </section>
       </main>
 
+      <!-- DATABASE ROLES VIEW -->
+      <main class="layout" x-show="view === 'database_roles' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Database Roles</div>
+              <div class="metric-value" x-text="databaseRoles.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshDatabaseRoles()" :disabled="databaseRolesLoading.list">
+                <span x-show="!databaseRolesLoading.list">Refresh</span>
+                <span x-show="databaseRolesLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="databaseRolesAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openDatabaseRoleCreateModal()">
+                Add database role…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Database Roles</div>
+              <div class="main-subtitle">Configured SQL templates for assigning roles when cluster database users are created.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by role or SQL…"
+                x-model="databaseRolesFilterQuery" @input="persistDatabaseRolesFilter(); applyDatabaseRolesFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="databaseRolesLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Role</th>
+                    <th>SQL Statement</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in databaseRolesVisibleRows" :key="row.role_name">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.role_name || '-'"></span></td>
+                      <td class="events-details-cell">
+                        <pre class="events-yaml" x-text="row.sql_statement || '-'"></pre>
+                      </td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete database role"
+                          @click="openDatabaseRoleDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!databaseRolesLoading.list && databaseRolesVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="3" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div class="modal-backdrop" x-show="modal.databaseRoleCreate.open" x-transition
+        @keydown.escape.window="closeDatabaseRoleCreateModal()">
+        <div class="modal" @click.outside="closeDatabaseRoleCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database Role</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDatabaseRoleCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.databaseRoleCreate" x-text="modalErrors.databaseRoleCreate">
+            </div>
+
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">role_name</div>
+                <input class="input" x-model="modal.databaseRoleCreate.role_name" placeholder="app_readonly" />
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">sql_statement</div>
+                <textarea class="textarea" x-model="modal.databaseRoleCreate.sql_statement"
+                  placeholder="CREATE ROLE IF NOT EXISTS {role}; GRANT {role} TO {username};"></textarea>
+                <div class="hint">Use {username} for the new database user and {role} for this configured role name.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDatabaseRoleCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="databaseRolesLoading.create" @click="createDatabaseRole()">
+              <span x-show="!databaseRolesLoading.create">CREATE ROLE</span>
+              <span x-show="databaseRolesLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-backdrop" x-show="modal.databaseRoleDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeDatabaseRoleDeleteConfirm()">
+        <div class="modal" @click.outside="closeDatabaseRoleDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Database Role Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDatabaseRoleDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.databaseRoleDeleteConfirm"
+              x-text="modalErrors.databaseRoleDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove database role
+              <span class="ip-pill" x-text="modal.databaseRoleDeleteConfirm.role_name"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDatabaseRoleDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="databaseRolesLoading.delete" @click="confirmDatabaseRoleDelete()">
+              <span x-show="!databaseRolesLoading.delete">YES, DELETE</span>
+              <span x-show="databaseRolesLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main class="layout" x-show="view === 'database_roles' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('database_roles')"></div>
+          </div>
+        </section>
+      </main>
+
       <!-- REGIONS VIEW -->
       <main class="layout" x-show="view === 'regions' && canViewAdmin()">
         <aside class="sidebar">
@@ -3295,6 +3468,16 @@
                 <div class="label">password</div>
                 <input class="input" type="password" x-model="modal.clusterUserCreate.password" placeholder="strong password" />
               </div>
+              <div class="form-row">
+                <div class="label">role</div>
+                <select class="input" x-model="modal.clusterUserCreate.role">
+                  <option value="">No configured role</option>
+                  <template x-for="role in databaseRoles" :key="`create-user-role-${role.role_name}`">
+                    <option :value="role.role_name" x-text="role.role_name"></option>
+                  </template>
+                </select>
+                <div class="hint" x-show="databaseRoles.length === 0">No database roles are configured in the admin catalog.</div>
+              </div>
             </div>
           </div>
 
@@ -3405,8 +3588,20 @@
 
             <div class="metric" style="display:grid; gap:8px; margin-top: 14px;">
               <div class="metric-label">Grant Role</div>
-              <input class="input" x-model="modal.clusterUserRoles.grantRole" placeholder="role_name" disabled />
-              <div class="metric-sub">Granting roles is not wired yet because this API currently exposes revoke-role but not an add-role or grant-role endpoint.</div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <select class="input" style="flex: 1 1 220px;" x-model="modal.clusterUserRoles.grantRole">
+                  <option value="">Select configured role</option>
+                  <template x-for="role in databaseRoles" :key="`grant-user-role-${role.role_name}`">
+                    <option :value="role.role_name" x-text="role.role_name"></option>
+                  </template>
+                </select>
+                <button class="btn btn-warn" type="button" :disabled="clusterUsersLoading.grantRole || !modal.clusterUserRoles.grantRole"
+                  @click="grantClusterUserRole()">
+                  <span x-show="!clusterUsersLoading.grantRole">GRANT</span>
+                  <span x-show="clusterUsersLoading.grantRole">GRANTING…</span>
+                </button>
+              </div>
+              <div class="metric-sub" x-show="databaseRoles.length === 0">No database roles are configured in the admin catalog.</div>
             </div>
           </div>
 

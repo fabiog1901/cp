@@ -61,6 +61,7 @@ class ClusterUsersService:
             return ClusterUsersSnapshot(
                 cluster=to_public_cluster(selected_cluster),
                 database_users=database_users,
+                database_roles=self.repo.list_database_roles(),
             )
         except RepositoryError as err:
             raise from_repository_error(
@@ -76,6 +77,7 @@ class ClusterUsersService:
         is_admin: bool,
         username: str,
         password: str,
+        role: str | None,
         requested_by: str,
     ) -> None:
         selected_cluster = self._get_cluster_or_raise(
@@ -84,13 +86,18 @@ class ClusterUsersService:
             is_admin,
         )
         try:
-            request = NewDatabaseUserRequest(username=username, password=password)
+            request = NewDatabaseUserRequest(
+                username=username,
+                password=password,
+                role=role,
+            )
         except ValidationError as err:
             raise ServiceValidationError(
                 "Database username or password is invalid."
             ) from err
 
         try:
+            selected_role = self._get_database_role_or_raise(request.role)
             try:
                 with connect_cluster_db(
                     self._get_primary_dns_address(selected_cluster),
@@ -103,6 +110,13 @@ class ClusterUsersService:
                             ),
                             (request.password,),
                         )
+                        if selected_role is not None:
+                            cur.execute(
+                                sql.SQL(selected_role.sql_statement).format(
+                                    username=sql.Identifier(request.username),
+                                    role=sql.Identifier(selected_role.role_name),
+                                )
+                            )
             except Exception as err:
                 logger.debug(
                     "Cluster user query failed [operation=cluster_users.create_database_user]"
@@ -117,6 +131,7 @@ class ClusterUsersService:
                 {
                     "cluster_id": selected_cluster.cluster_id,
                     "db_user": request.username,
+                    "role": selected_role.role_name if selected_role else None,
                 },
             )
         except RepositoryError as err:
@@ -222,6 +237,60 @@ class ClusterUsersService:
                 fallback_message=f"Unable to revoke role '{role}' from '{username}'.",
             ) from err
 
+    def grant_database_user_role(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        username: str,
+        role: str,
+        requested_by: str,
+    ) -> None:
+        selected_cluster = self._get_cluster_or_raise(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+        try:
+            selected_role = self._get_database_role_or_raise(role)
+            if selected_role is None:
+                raise ServiceValidationError("Database role is required.")
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL(selected_role.sql_statement).format(
+                                username=sql.Identifier(username),
+                                role=sql.Identifier(selected_role.role_name),
+                            )
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster user query failed [operation=cluster_users.grant_database_user_role]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.grant_database_user_role"
+                ) from err
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.DB_USER_ROLE_GRANTED,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "db_user": username,
+                    "role": selected_role.role_name,
+                },
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database role updates are temporarily unavailable.",
+                fallback_message=f"Unable to grant role '{role}' to '{username}'.",
+            ) from err
+
     def update_database_user_password(
         self,
         cluster_id: str,
@@ -303,3 +372,15 @@ class ClusterUsersService:
             raise ServiceValidationError(
                 f"Cluster '{cluster.cluster_id}' has an invalid database password."
             ) from err
+
+    def _get_database_role_or_raise(self, role: str | None):
+        normalized_role = str(role or "").strip()
+        if not normalized_role:
+            return None
+
+        selected_role = self.repo.get_database_role(normalized_role)
+        if selected_role is None:
+            raise ServiceValidationError(
+                f"Database role '{normalized_role}' is not configured."
+            )
+        return selected_role

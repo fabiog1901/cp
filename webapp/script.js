@@ -79,6 +79,7 @@ window.app = function () {
       delete: false,
       password: false,
       revokeRole: false,
+      grantRole: false,
     },
     clusterBackups: [],
     clusterBackupDetails: [],
@@ -242,6 +243,14 @@ window.app = function () {
     diskSizesAutoRefreshEnabled: true,
     _diskSizesAutoTimer: null,
 
+    databaseRoles: [],
+    databaseRolesVisibleRows: [],
+    databaseRolesFilterQuery: "",
+    databaseRolesLastUpdatedUtc: null,
+    databaseRolesLoading: { list: false, create: false, delete: false },
+    databaseRolesAutoRefreshEnabled: true,
+    _databaseRolesAutoTimer: null,
+
     // ---------- Regions state ----------
     regions: [],
     regionsVisibleRows: [],
@@ -358,6 +367,15 @@ window.app = function () {
         open: false,
         size_gb: "",
       },
+      databaseRoleCreate: {
+        open: false,
+        role_name: "",
+        sql_statement: "",
+      },
+      databaseRoleDeleteConfirm: {
+        open: false,
+        role_name: "",
+      },
       playbookVersionDeleteConfirm: {
         open: false,
         version: "",
@@ -420,6 +438,7 @@ window.app = function () {
         open: false,
         username: "",
         password: "",
+        role: "",
       },
       clusterUserDeleteConfirm: {
         open: false,
@@ -471,6 +490,8 @@ window.app = function () {
       cpuCountDeleteConfirm: "",
       diskSizeCreate: "",
       diskSizeDeleteConfirm: "",
+      databaseRoleCreate: "",
+      databaseRoleDeleteConfirm: "",
       playbookVersionDeleteConfirm: "",
       regionCreate: "",
       regionDeleteConfirm: "",
@@ -1409,6 +1430,8 @@ window.app = function () {
           return this.routeHash("/admin/cpu-counts");
         case "disk_sizes":
           return this.routeHash("/admin/disk-sizes");
+        case "database_roles":
+          return this.routeHash("/admin/database-roles");
         case "regions":
           return this.routeHash("/admin/regions");
         case "playbooks":
@@ -1455,6 +1478,8 @@ window.app = function () {
       else if (this.view === "node_counts") await this.ensureNodeCountsView();
       else if (this.view === "cpu_counts") await this.ensureCpuCountsView();
       else if (this.view === "disk_sizes") await this.ensureDiskSizesView();
+      else if (this.view === "database_roles")
+        await this.ensureDatabaseRolesView();
       else if (this.view === "regions") await this.ensureRegionsView();
       else if (this.view === "admin") await this.ensureAdminView();
       else await this.ensureDashboardView();
@@ -1519,6 +1544,7 @@ window.app = function () {
         else if (parts[1] === "node-counts") nextView = "node_counts";
         else if (parts[1] === "cpu-counts") nextView = "cpu_counts";
         else if (parts[1] === "disk-sizes") nextView = "disk_sizes";
+        else if (parts[1] === "database-roles") nextView = "database_roles";
         else if (parts[1] === "regions") nextView = "regions";
         else if (parts[1] === "playbooks") nextView = "playbooks";
         else nextView = "admin";
@@ -1602,6 +1628,7 @@ window.app = function () {
           "node_counts",
           "cpu_counts",
           "disk_sizes",
+          "database_roles",
           "regions",
         ].includes(viewName)
       ) {
@@ -1639,6 +1666,7 @@ window.app = function () {
         node_counts: "Node Counts",
         cpu_counts: "Node CPUs",
         disk_sizes: "Disk Sizes",
+        database_roles: "Database Roles",
         regions: "Regions",
       };
       const label = labels[viewName] || "This view";
@@ -1664,6 +1692,7 @@ window.app = function () {
         node_counts: "List available node counts",
         cpu_counts: "List available CPU-per-node options",
         disk_sizes: "List available disk size options",
+        database_roles: "Preconfigured database role SQL templates",
         regions: "List configured deployment regions",
         playbooks: "Playbooks editor",
       };
@@ -1841,6 +1870,9 @@ window.app = function () {
       const nodeCountsFilter = localStorage.getItem("cp_node_counts_filter");
       const cpuCountsFilter = localStorage.getItem("cp_cpu_counts_filter");
       const diskSizesFilter = localStorage.getItem("cp_disk_sizes_filter");
+      const databaseRolesFilter = localStorage.getItem(
+        "cp_database_roles_filter",
+      );
       const regionsFilter = localStorage.getItem("cp_regions_filter");
       const clusterUsersFilter = localStorage.getItem(
         "cp_cluster_users_filter",
@@ -1865,6 +1897,8 @@ window.app = function () {
       if (cpuCountsFilter !== null) this.cpuCountsFilterQuery = cpuCountsFilter;
       if (diskSizesFilter !== null)
         this.diskSizesFilterQuery = diskSizesFilter;
+      if (databaseRolesFilter !== null)
+        this.databaseRolesFilterQuery = databaseRolesFilter;
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
       if (clusterUsersFilter !== null)
         this.clusterUsersFilterQuery = clusterUsersFilter;
@@ -1908,6 +1942,7 @@ window.app = function () {
         sView === "node_counts" ||
         sView === "cpu_counts" ||
         sView === "disk_sizes" ||
+        sView === "database_roles" ||
         sView === "regions"
       )
         this.view = sView;
@@ -2033,6 +2068,14 @@ window.app = function () {
       this.setManagedInterval("disk_sizes", "_diskSizesAutoTimer", () => {
         if (this.diskSizesAutoRefreshEnabled && this.view === "disk_sizes")
           this.refreshDiskSizes();
+      }, 20_000);
+
+      this.setManagedInterval("database_roles", "_databaseRolesAutoTimer", () => {
+        if (
+          this.databaseRolesAutoRefreshEnabled &&
+          this.view === "database_roles"
+        )
+          this.refreshDatabaseRoles();
       }, 20_000);
 
       this.setManagedInterval("regions", "_regionsAutoTimer", () => {
@@ -2321,6 +2364,15 @@ window.app = function () {
       else this.applyDiskSizesFilter();
     },
 
+    async ensureDatabaseRolesView() {
+      if (!this.canViewAdmin()) {
+        this.handleForbiddenView("database_roles", { fallback: false });
+        return;
+      }
+      if (!this.databaseRolesLoading.list) await this.refreshDatabaseRoles();
+      else this.applyDatabaseRolesFilter();
+    },
+
     async ensureRegionsView() {
       if (!this.canViewAdmin()) {
         this.handleForbiddenView("regions", { fallback: false });
@@ -2359,6 +2411,11 @@ window.app = function () {
         await this.refreshDiskSizes();
       } else {
         this.applyDiskSizesFilter();
+      }
+      if (!this.databaseRolesLoading.list) {
+        await this.refreshDatabaseRoles();
+      } else {
+        this.applyDatabaseRolesFilter();
       }
       if (!this.regionsLoading.list) {
         await this.refreshRegions();
@@ -3538,6 +3595,10 @@ window.app = function () {
         this.clusterUsers = Array.isArray(snapshot?.database_users)
           ? snapshot.database_users
           : [];
+        this.databaseRoles = Array.isArray(snapshot?.database_roles)
+          ? snapshot.database_roles
+          : this.databaseRoles;
+        this.applyDatabaseRolesFilter();
         if (snapshot?.cluster) {
           this.selectedCluster = snapshot.cluster;
         }
@@ -3558,6 +3619,7 @@ window.app = function () {
       this.modal.clusterUserCreate.open = true;
       this.modal.clusterUserCreate.username = "";
       this.modal.clusterUserCreate.password = "";
+      this.modal.clusterUserCreate.role = "";
       this.clearModalError("clusterUserCreate");
     },
 
@@ -3565,6 +3627,7 @@ window.app = function () {
       this.modal.clusterUserCreate.open = false;
       this.modal.clusterUserCreate.username = "";
       this.modal.clusterUserCreate.password = "";
+      this.modal.clusterUserCreate.role = "";
       this.clearModalError("clusterUserCreate");
     },
 
@@ -3576,6 +3639,7 @@ window.app = function () {
       const password = String(
         this.modal.clusterUserCreate.password || "",
       ).trim();
+      const role = String(this.modal.clusterUserCreate.role || "").trim();
       if (!clusterId || !username || !password) {
         this.setModalError(
           "clusterUserCreate",
@@ -3591,7 +3655,7 @@ window.app = function () {
           `/clusters/${encodeURIComponent(clusterId)}/users`,
           {
             method: "POST",
-            body: { username, password },
+            body: { username, password, role: role || null },
           },
         );
         this.closeClusterUserCreateModal();
@@ -3751,6 +3815,46 @@ window.app = function () {
         this.setModalError("clusterUserRoles", e, "Failed to revoke role.");
       } finally {
         this.clusterUsersLoading.revokeRole = false;
+      }
+    },
+
+    async grantClusterUserRole() {
+      const clusterId = String(this.selectedClusterId || "").trim();
+      const username = String(
+        this.modal.clusterUserRoles.username || "",
+      ).trim();
+      const role = String(this.modal.clusterUserRoles.grantRole || "").trim();
+      if (!clusterId || !username || !role) {
+        this.setModalError(
+          "clusterUserRoles",
+          new Error("Select a configured role to grant."),
+          "Select a configured role to grant.",
+        );
+        return;
+      }
+      this.clusterUsersLoading.grantRole = true;
+      this.clearModalError("clusterUserRoles");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/grant-role`,
+          {
+            method: "POST",
+            body: { role },
+          },
+        );
+        this.modal.clusterUserRoles.grantRole = "";
+        await this.refreshClusterUsers();
+        const refreshed = this.clusterUsers.find(
+          (row) => String(row?.username || "") === username,
+        );
+        this.modal.clusterUserRoles.roles = Array.isArray(refreshed?.member_of)
+          ? refreshed.member_of.filter(Boolean)
+          : this.modal.clusterUserRoles.roles;
+        this.setActionNotice(`Role '${role}' granted to '${username}'.`);
+      } catch (e) {
+        this.setModalError("clusterUserRoles", e, "Failed to grant role.");
+      } finally {
+        this.clusterUsersLoading.grantRole = false;
       }
     },
 
@@ -5412,6 +5516,148 @@ window.app = function () {
 
     async refreshDiskSizes() {
       await this.refreshClusterOption("disk_sizes");
+    },
+
+    databaseRolesRowText(row) {
+      return [row?.role_name, row?.sql_statement]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    applyDatabaseRolesFilter() {
+      const q = String(this.databaseRolesFilterQuery || "")
+        .toLowerCase()
+        .trim();
+      let rows = Array.isArray(this.databaseRoles)
+        ? this.databaseRoles.slice()
+        : [];
+      if (q) {
+        rows = rows.filter((row) => this.databaseRolesRowText(row).includes(q));
+      }
+      rows.sort((a, b) =>
+        String(a?.role_name || "").localeCompare(String(b?.role_name || "")),
+      );
+      this.databaseRolesVisibleRows = rows;
+    },
+
+    persistDatabaseRolesFilter() {
+      localStorage.setItem(
+        "cp_database_roles_filter",
+        this.databaseRolesFilterQuery || "",
+      );
+    },
+
+    openDatabaseRoleCreateModal() {
+      this.modal.databaseRoleCreate.role_name = "";
+      this.modal.databaseRoleCreate.sql_statement = "";
+      this.clearModalError("databaseRoleCreate");
+      this.modal.databaseRoleCreate.open = true;
+    },
+
+    closeDatabaseRoleCreateModal() {
+      this.modal.databaseRoleCreate.open = false;
+      this.modal.databaseRoleCreate.role_name = "";
+      this.modal.databaseRoleCreate.sql_statement = "";
+      this.clearModalError("databaseRoleCreate");
+    },
+
+    openDatabaseRoleDeleteConfirm(row) {
+      this.modal.databaseRoleDeleteConfirm.role_name = String(
+        row?.role_name || "",
+      );
+      this.clearModalError("databaseRoleDeleteConfirm");
+      this.modal.databaseRoleDeleteConfirm.open = true;
+    },
+
+    closeDatabaseRoleDeleteConfirm() {
+      this.modal.databaseRoleDeleteConfirm.open = false;
+      this.modal.databaseRoleDeleteConfirm.role_name = "";
+      this.clearModalError("databaseRoleDeleteConfirm");
+    },
+
+    async createDatabaseRole() {
+      const roleName = String(
+        this.modal.databaseRoleCreate.role_name || "",
+      ).trim();
+      const sql_statement = String(
+        this.modal.databaseRoleCreate.sql_statement || "",
+      ).trim();
+      if (!roleName || !sql_statement) {
+        this.setModalError(
+          "databaseRoleCreate",
+          new Error("Role name and SQL statement are required."),
+          "Role name and SQL statement are required.",
+        );
+        return;
+      }
+
+      this.databaseRolesLoading.create = true;
+      this.clearModalError("databaseRoleCreate");
+      try {
+        await this.apiFetch("/admin/database_roles/", {
+          method: "POST",
+          body: { role_name: roleName, sql_statement },
+        });
+        this.closeDatabaseRoleCreateModal();
+        await this.refreshDatabaseRoles();
+        this.setActionNotice(`Database role '${roleName}' created.`);
+      } catch (e) {
+        this.setModalError(
+          "databaseRoleCreate",
+          e,
+          "Failed to create database role.",
+        );
+      } finally {
+        this.databaseRolesLoading.create = false;
+      }
+    },
+
+    async confirmDatabaseRoleDelete() {
+      const roleName = String(
+        this.modal.databaseRoleDeleteConfirm.role_name || "",
+      ).trim();
+      if (!roleName) return;
+
+      this.databaseRolesLoading.delete = true;
+      this.clearModalError("databaseRoleDeleteConfirm");
+      try {
+        await this.apiFetch(
+          `/admin/database_roles/${encodeURIComponent(roleName)}`,
+          { method: "DELETE" },
+        );
+        this.closeDatabaseRoleDeleteConfirm();
+        await this.refreshDatabaseRoles();
+        this.setActionNotice(`Database role '${roleName}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          "databaseRoleDeleteConfirm",
+          e,
+          "Failed to delete database role.",
+        );
+      } finally {
+        this.databaseRolesLoading.delete = false;
+      }
+    },
+
+    async refreshDatabaseRoles() {
+      this.databaseRolesLoading.list = true;
+      try {
+        const data = await this.apiFetch("/admin/database_roles/", {
+          method: "GET",
+        });
+        this.databaseRoles = Array.isArray(data) ? data : [];
+        this.databaseRolesLastUpdatedUtc = this.utcNowString();
+        this.applyDatabaseRolesFilter();
+      } catch (e) {
+        if (e?.forbidden) {
+          this.handleForbiddenView("database_roles", { fallback: false });
+        }
+        console.error(e);
+        this.databaseRolesLastUpdatedUtc = this.utcNowString();
+      } finally {
+        this.databaseRolesLoading.list = false;
+      }
     },
 
     regionsRowText(row) {

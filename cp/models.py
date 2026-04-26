@@ -78,6 +78,9 @@ class AuditEvent(AutoNameStrEnum):
     CPU_COUNT_DELETED = auto()
     DISK_SIZE_CREATED = auto()
     DISK_SIZE_DELETED = auto()
+    DATABASE_ROLE_CREATED = auto()
+    DATABASE_ROLE_DELETED = auto()
+    DB_USER_ROLE_GRANTED = auto()
     DB_USER_PASSWORD_UPDATED = auto()
     DB_USER_ROLE_REVOKED = auto()
     DB_USER_CREATED = auto()
@@ -393,9 +396,15 @@ class DatabaseUser(BaseModel):
     member_of: list[str] | None
 
 
+class DatabaseRoleConfig(BaseModel):
+    role_name: str
+    sql_statement: str
+
+
 class NewDatabaseUserRequest(BaseModel):
     username: str
     password: str
+    role: str | None = None
 
 
 # JOBS
@@ -533,6 +542,7 @@ class ClusterJobsSnapshot(BaseModel):
 class ClusterUsersSnapshot(BaseModel):
     cluster: ClusterPublic
     database_users: list[DatabaseUser]
+    database_roles: list[DatabaseRoleConfig] = Field(default_factory=list)
 
 
 class ClusterBackupsSnapshot(BaseModel):

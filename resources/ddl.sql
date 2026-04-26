@@ -24,6 +24,10 @@ CREATE TABLE public.clusters (
     updated_by STRING NOT NULL,
     password BYTES NOT NULL DEFAULT '\x':::BYTES,
     CONSTRAINT pk PRIMARY KEY (cluster_id ASC)
+) WITH (
+    ttl = 'on',
+    ttl_expiration_expression = e'(CASE WHEN status = \'DELETED\' THEN updated_at::TIMESTAMPTZ + \'90 days\'::INTERVAL ELSE NULL END)',
+    ttl_job_cron = '@daily'
 );
 CREATE TABLE public.external_connections (
     cluster_id STRING NOT NULL,
@@ -51,6 +55,10 @@ CREATE TABLE public.jobs (
     created_by STRING NULL,
     updated_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     CONSTRAINT pk PRIMARY KEY (job_id ASC)
+) WITH (
+    ttl = 'on',
+    ttl_expiration_expression = e'(updated_at::TIMESTAMPTZ + \'90 days\'::INTERVAL)',
+    ttl_job_cron = '@daily'
 );
 CREATE TABLE public.map_clusters_jobs (
     cluster_id STRING NOT NULL,
@@ -97,6 +105,11 @@ CREATE TABLE public.role_to_groups_mappings (
     "role" STRING NOT NULL,
     groups STRING[] NULL,
     CONSTRAINT pk PRIMARY KEY ("role" ASC)
+);
+CREATE TABLE public.database_roles (
+    role_name STRING NOT NULL,
+    sql_statement STRING NOT NULL,
+    CONSTRAINT pk_database_roles PRIMARY KEY (role_name ASC)
 );
 CREATE TABLE public.event_log (
     ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
@@ -159,11 +172,8 @@ CREATE TABLE public.oidc_sessions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     CONSTRAINT pk_oidc_sessions PRIMARY KEY (session_id ASC)
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(session_expires_at)', ttl_job_cron = '@hourly');
+
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.tasks ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
-ALTER TABLE public.map_clusters_jobs VALIDATE CONSTRAINT cluster_id_in_clusters;
-ALTER TABLE public.map_clusters_jobs VALIDATE CONSTRAINT job_id_in_jobs;
-ALTER TABLE public.external_connections VALIDATE CONSTRAINT cluster_id_in_external_connections;
-ALTER TABLE public.tasks VALIDATE CONSTRAINT job_id_in_jobs;
