@@ -337,6 +337,26 @@ async def get_cluster_users(
     return snapshot
 
 
+@router.post("/{cluster_id}/database-roles/sync")
+async def sync_cluster_database_roles(
+    cluster_id: str,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> dict[str, int]:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        synced = service.sync_cluster_database_roles(
+            cluster_id,
+            groups,
+            is_admin,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    return {"database_roles_synced": synced}
+
+
 @router.post("/{cluster_id}/users")
 async def create_cluster_user(
     cluster_id: str,

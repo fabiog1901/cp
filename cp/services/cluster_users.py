@@ -1,6 +1,7 @@
 """Business logic for the cluster users vertical."""
 
 import logging
+import re
 
 from psycopg import sql
 from psycopg.rows import class_row
@@ -12,7 +13,9 @@ from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
     AuditEvent,
     Cluster,
+    ClusterDatabaseRole,
     ClusterUsersSnapshot,
+    DatabaseRoleTemplateConfig,
     DatabaseUser,
     NewDatabaseUserRequest,
     to_public_cluster,
@@ -22,6 +25,9 @@ from .base import log_event
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 logger = logging.getLogger(__name__)
+
+SYSTEM_DATABASES = {"defaultdb", "postgres", "system"}
+SYSTEM_SCHEMAS = {"crdb_internal", "information_schema", "pg_catalog", "pg_extension"}
 
 
 class ClusterUsersService:
@@ -61,7 +67,8 @@ class ClusterUsersService:
             return ClusterUsersSnapshot(
                 cluster=to_public_cluster(selected_cluster),
                 database_users=database_users,
-                database_roles=self.repo.list_database_roles(),
+                database_role_templates=self.repo.list_database_role_templates(),
+                database_roles=self.repo.list_cluster_database_roles(cluster_id),
             )
         except RepositoryError as err:
             raise from_repository_error(
@@ -98,6 +105,7 @@ class ClusterUsersService:
 
         try:
             selected_database_roles = self._get_database_roles_or_raise(
+                selected_cluster.cluster_id,
                 self._normalized_database_roles(request.database_roles)
             )
             try:
@@ -206,6 +214,7 @@ class ClusterUsersService:
         )
         try:
             selected_database_roles = self._get_database_roles_or_raise(
+                selected_cluster.cluster_id,
                 self._normalized_database_roles(database_roles)
             )
             try:
@@ -266,6 +275,7 @@ class ClusterUsersService:
         )
         try:
             selected_database_roles = self._get_database_roles_or_raise(
+                selected_cluster.cluster_id,
                 self._normalized_database_roles(database_roles)
             )
             try:
@@ -305,6 +315,89 @@ class ClusterUsersService:
                 err,
                 unavailable_message="Database role updates are temporarily unavailable.",
                 fallback_message=f"Unable to grant roles to '{username}'.",
+            ) from err
+
+    def sync_cluster_database_roles(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        requested_by: str,
+    ) -> int:
+        selected_cluster = self._get_cluster_or_raise(cluster_id, groups, is_admin)
+        try:
+            templates = self.repo.list_database_role_templates()
+            if not templates:
+                return 0
+
+            synced = 0
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        databases = self._list_user_databases(cur)
+                        for database_name in databases:
+                            schemas = self._list_user_schemas(cur, database_name)
+                            for template in templates:
+                                targets = self._targets_for_template(
+                                    database_name,
+                                    schemas,
+                                    template,
+                                )
+                                for schema_name, database_role in targets:
+                                    stmt = sql.SQL(template.sql_statement).format(
+                                        database_role=sql.Identifier(database_role),
+                                        role=sql.Identifier(database_role),
+                                        database_name=sql.Identifier(database_name),
+                                        database=sql.Identifier(database_name),
+                                        schema_name=sql.Identifier(schema_name)
+                                        if schema_name
+                                        else sql.SQL(""),
+                                        schema=sql.Identifier(schema_name)
+                                        if schema_name
+                                        else sql.SQL(""),
+                                    )
+                                    cur.execute(stmt)
+                                    self.repo.upsert_cluster_database_role(
+                                        ClusterDatabaseRole(
+                                            cluster_id=selected_cluster.cluster_id,
+                                            database_name=database_name,
+                                            schema_name=schema_name,
+                                            database_role=database_role,
+                                            database_role_template=template.database_role_template,
+                                            scope_type=template.scope_type,
+                                            sql_statement=stmt.as_string(conn),
+                                        )
+                                    )
+                                    synced += 1
+            except RepositoryError:
+                raise
+            except Exception as err:
+                logger.debug(
+                    "Cluster role sync failed [operation=cluster_users.sync_cluster_database_roles]"
+                )
+                raise translate_database_error(
+                    err, "cluster_users.sync_cluster_database_roles"
+                ) from err
+
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.DATABASE_ROLE_CREATED,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "database_roles_synced": synced,
+                },
+            )
+            return synced
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database role sync is temporarily unavailable.",
+                validation_message="Database role templates or cluster objects are invalid.",
+                fallback_message=f"Unable to sync database roles for cluster '{cluster_id}'.",
             ) from err
 
     def update_database_user_password(
@@ -403,19 +496,94 @@ class ClusterUsersService:
                 normalized_database_roles.append(normalized_database_role)
         return normalized_database_roles
 
-    def _get_database_roles_or_raise(self, database_roles: list[str]):
+    def _get_database_roles_or_raise(
+        self, cluster_id: str, database_roles: list[str]
+    ) -> list[ClusterDatabaseRole]:
         if not database_roles:
             return []
 
         selected_database_roles = []
         for database_role in database_roles:
-            selected_database_role = self.repo.get_database_role(database_role)
+            selected_database_role = self.repo.get_cluster_database_role(
+                cluster_id, database_role
+            )
             if selected_database_role is None:
                 raise ServiceValidationError(
-                    f"Database role '{database_role}' is not configured."
+                    f"Database role '{database_role}' is not configured for this cluster."
                 )
             selected_database_roles.append(selected_database_role)
         return selected_database_roles
+
+    @staticmethod
+    def _list_user_databases(cur) -> list[str]:
+        rows = cur.execute("SHOW DATABASES").fetchall()
+        databases = []
+        for row in rows:
+            database_name = str(row[0] if isinstance(row, tuple) else row).strip()
+            if database_name and database_name not in SYSTEM_DATABASES:
+                databases.append(database_name)
+        return databases
+
+    @staticmethod
+    def _list_user_schemas(cur, database_name: str) -> list[str]:
+        cur.execute(
+            sql.SQL("SHOW SCHEMAS FROM DATABASE {}").format(
+                sql.Identifier(database_name)
+            )
+        )
+        rows = cur.fetchall()
+        schemas = []
+        for row in rows:
+            schema_name = str(row[0] if isinstance(row, tuple) else row).strip()
+            if schema_name and schema_name not in SYSTEM_SCHEMAS:
+                schemas.append(schema_name)
+        return schemas
+
+    def _targets_for_template(
+        self,
+        database_name: str,
+        schemas: list[str],
+        template: DatabaseRoleTemplateConfig,
+    ) -> list[tuple[str | None, str]]:
+        if template.scope_type == "database":
+            return [
+                (
+                    None,
+                    self._generated_database_role_name(
+                        database_name,
+                        None,
+                        template.database_role_template,
+                    ),
+                )
+            ]
+        return [
+            (
+                schema_name,
+                self._generated_database_role_name(
+                    database_name,
+                    schema_name,
+                    template.database_role_template,
+                ),
+            )
+            for schema_name in schemas
+        ]
+
+    @staticmethod
+    def _generated_database_role_name(
+        database_name: str,
+        schema_name: str | None,
+        template_name: str,
+    ) -> str:
+        parts = [database_name]
+        if schema_name:
+            parts.append(schema_name)
+        parts.append(template_name)
+        role_name = "_".join(parts).lower()
+        role_name = re.sub(r"[^a-z0-9_]+", "_", role_name)
+        role_name = re.sub(r"_+", "_", role_name).strip("_")
+        if not role_name:
+            raise ServiceValidationError("Generated database role name is invalid.")
+        return role_name
 
     @staticmethod
     def _grant_database_role(cur, username: str, database_role: str) -> None:

@@ -2,8 +2,9 @@
 
 from ...infra.db import execute_stmt, fetch_all
 from ...models import (
+    ClusterDatabaseRole,
     CpuCountOption,
-    DatabaseRoleConfig,
+    DatabaseRoleTemplateConfig,
     DiskSizeOption,
     NodeCountOption,
 )
@@ -87,44 +88,118 @@ class ClusterOptionsRepo(AdminRepo):
             (size_gb,),
         )
 
-    def list_database_roles(self) -> list[DatabaseRoleConfig]:
+    def list_database_role_templates(self) -> list[DatabaseRoleTemplateConfig]:
         return fetch_all(
             """
-            SELECT database_role, sql_statement
-            FROM database_roles
-            ORDER BY database_role ASC
+            SELECT database_role_template, scope_type, sql_statement
+            FROM database_role_templates
+            ORDER BY database_role_template ASC
             """,
             (),
-            DatabaseRoleConfig,
+            DatabaseRoleTemplateConfig,
         )
 
-    def get_database_role(self, database_role: str) -> DatabaseRoleConfig | None:
-        database_roles = fetch_all(
+    def get_database_role_template(
+        self, database_role_template: str
+    ) -> DatabaseRoleTemplateConfig | None:
+        database_role_templates = fetch_all(
             """
-            SELECT database_role, sql_statement
-            FROM database_roles
-            WHERE database_role = %s
+            SELECT database_role_template, scope_type, sql_statement
+            FROM database_role_templates
+            WHERE database_role_template = %s
             """,
-            (database_role,),
-            DatabaseRoleConfig,
+            (database_role_template,),
+            DatabaseRoleTemplateConfig,
         )
-        return database_roles[0] if database_roles else None
+        return database_role_templates[0] if database_role_templates else None
 
-    def create_database_role(self, database_role: DatabaseRoleConfig) -> None:
+    def create_database_role_template(
+        self, database_role_template: DatabaseRoleTemplateConfig
+    ) -> None:
         execute_stmt(
             """
-            INSERT INTO database_roles (database_role, sql_statement)
-            VALUES (%s, %s)
+            INSERT INTO database_role_templates (
+                database_role_template,
+                scope_type,
+                sql_statement
+            )
+            VALUES (%s, %s, %s)
             """,
-            (database_role.database_role, database_role.sql_statement),
+            (
+                database_role_template.database_role_template,
+                database_role_template.scope_type,
+                database_role_template.sql_statement,
+            ),
         )
 
-    def delete_database_role(self, database_role: str) -> None:
+    def delete_database_role_template(self, database_role_template: str) -> None:
         execute_stmt(
             """
             DELETE
-            FROM database_roles
-            WHERE database_role = %s
+            FROM database_role_templates
+            WHERE database_role_template = %s
             """,
-            (database_role,),
+            (database_role_template,),
+        )
+
+    def list_database_roles(self) -> list[DatabaseRoleTemplateConfig]:
+        return self.list_database_role_templates()
+
+    def get_database_role(
+        self, database_role: str
+    ) -> DatabaseRoleTemplateConfig | None:
+        return self.get_database_role_template(database_role)
+
+    def list_cluster_database_roles(self, cluster_id: str) -> list[ClusterDatabaseRole]:
+        return fetch_all(
+            """
+            SELECT cluster_id, database_name, schema_name, database_role,
+                database_role_template, scope_type, sql_statement
+            FROM cluster_database_roles
+            WHERE cluster_id = %s
+            ORDER BY database_name ASC, schema_name ASC, database_role ASC
+            """,
+            (cluster_id,),
+            ClusterDatabaseRole,
+        )
+
+    def get_cluster_database_role(
+        self, cluster_id: str, database_role: str
+    ) -> ClusterDatabaseRole | None:
+        roles = fetch_all(
+            """
+            SELECT cluster_id, database_name, schema_name, database_role,
+                database_role_template, scope_type, sql_statement
+            FROM cluster_database_roles
+            WHERE cluster_id = %s AND database_role = %s
+            """,
+            (cluster_id, database_role),
+            ClusterDatabaseRole,
+        )
+        return roles[0] if roles else None
+
+    def upsert_cluster_database_role(self, role: ClusterDatabaseRole) -> None:
+        execute_stmt(
+            """
+            UPSERT INTO cluster_database_roles (
+                cluster_id,
+                database_name,
+                schema_name,
+                database_role,
+                database_role_template,
+                scope_type,
+                sql_statement,
+                updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, now():::TIMESTAMPTZ)
+            """,
+            (
+                role.cluster_id,
+                role.database_name,
+                role.schema_name,
+                role.database_role,
+                role.database_role_template,
+                role.scope_type,
+                role.sql_statement,
+            ),
         )

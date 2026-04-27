@@ -106,10 +106,24 @@ CREATE TABLE public.role_to_groups_mappings (
     groups STRING[] NULL,
     CONSTRAINT pk PRIMARY KEY ("role" ASC)
 );
-CREATE TABLE public.database_roles (
-    database_role STRING NOT NULL,
+CREATE TABLE public.database_role_templates (
+    database_role_template STRING NOT NULL,
+    scope_type STRING NOT NULL DEFAULT 'schema':::STRING,
     sql_statement STRING NOT NULL,
-    CONSTRAINT pk_database_roles PRIMARY KEY (database_role ASC)
+    CONSTRAINT pk_database_role_templates PRIMARY KEY (database_role_template ASC)
+);
+CREATE TABLE public.cluster_database_roles (
+    cluster_id STRING NOT NULL,
+    database_name STRING NOT NULL,
+    schema_name STRING NULL,
+    database_role STRING NOT NULL,
+    database_role_template STRING NOT NULL,
+    scope_type STRING NOT NULL,
+    sql_statement STRING NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    CONSTRAINT pk_cluster_database_roles PRIMARY KEY (cluster_id ASC, database_role ASC),
+    CONSTRAINT fk_cluster_database_roles_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE
 );
 CREATE TABLE public.event_log (
     ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,

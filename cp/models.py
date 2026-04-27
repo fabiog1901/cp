@@ -396,9 +396,20 @@ class DatabaseUser(BaseModel):
     member_of: list[str] | None
 
 
-class DatabaseRoleConfig(BaseModel):
-    database_role: str
+class DatabaseRoleTemplateConfig(BaseModel):
+    database_role_template: str
+    scope_type: str = "schema"
     sql_statement: str = ""
+
+
+class ClusterDatabaseRole(BaseModel):
+    cluster_id: str
+    database_name: str
+    schema_name: str | None = None
+    database_role: str
+    database_role_template: str
+    scope_type: str
+    sql_statement: str
 
 
 class NewDatabaseUserRequest(BaseModel):
@@ -542,7 +553,8 @@ class ClusterJobsSnapshot(BaseModel):
 class ClusterUsersSnapshot(BaseModel):
     cluster: ClusterPublic
     database_users: list[DatabaseUser]
-    database_roles: list[DatabaseRoleConfig] = Field(default_factory=list)
+    database_role_templates: list[DatabaseRoleTemplateConfig] = Field(default_factory=list)
+    database_roles: list[ClusterDatabaseRole] = Field(default_factory=list)
 
 
 class ClusterBackupsSnapshot(BaseModel):

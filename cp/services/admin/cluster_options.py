@@ -6,7 +6,7 @@ from ...infra.errors import RepositoryError
 from ...models import (
     AuditEvent,
     CpuCountOption,
-    DatabaseRoleConfig,
+    DatabaseRoleTemplateConfig,
     DiskSizeOption,
     NodeCountOption,
 )
@@ -166,74 +166,91 @@ class ClusterOptionsService(AdminService):
                 fallback_message=f"Unable to delete disk size '{size_gb}'.",
             ) from err
 
-    def list_database_roles(self) -> list[DatabaseRoleConfig]:
+    def list_database_role_templates(self) -> list[DatabaseRoleTemplateConfig]:
         try:
-            return self.repo.list_database_roles()
+            return self.repo.list_database_role_templates()
         except RepositoryError as err:
             raise from_repository_error(
                 err,
-                unavailable_message="Database roles are temporarily unavailable.",
-                fallback_message="Unable to load database roles.",
+                unavailable_message="Database role templates are temporarily unavailable.",
+                fallback_message="Unable to load database role templates.",
             ) from err
 
-    def create_database_role(
+    def create_database_role_template(
         self,
-        database_role: str,
+        database_role_template: str,
+        scope_type: str,
         sql_statement: str,
         created_by: str,
-    ) -> DatabaseRoleConfig:
+    ) -> DatabaseRoleTemplateConfig:
         try:
-            model = DatabaseRoleConfig(
-                database_role=self._normalize_database_role(database_role),
+            model = DatabaseRoleTemplateConfig(
+                database_role_template=self._normalize_database_role_template(
+                    database_role_template
+                ),
+                scope_type=self._normalize_database_role_scope(scope_type),
                 sql_statement=self._normalize_database_role_sql(
                     sql_statement,
                 ),
             )
         except ValidationError as err:
             raise ServiceValidationError(
-                "Database role configuration is invalid."
+                "Database role template configuration is invalid."
             ) from err
 
         try:
-            self.repo.create_database_role(model)
+            self.repo.create_database_role_template(model)
             log_event(
                 self.repo,
                 created_by,
                 AuditEvent.DATABASE_ROLE_CREATED,
-                {"database_role": model.database_role},
+                {"database_role_template": model.database_role_template},
             )
             return model
         except RepositoryError as err:
             raise from_repository_error(
                 err,
-                unavailable_message="Database roles could not be updated right now.",
-                conflict_message=f"Database role '{model.database_role}' already exists.",
-                validation_message="The database role configuration is invalid.",
-                fallback_message=f"Unable to create database role '{model.database_role}'.",
+                unavailable_message="Database role templates could not be updated right now.",
+                conflict_message=f"Database role template '{model.database_role_template}' already exists.",
+                validation_message="The database role template configuration is invalid.",
+                fallback_message=f"Unable to create database role template '{model.database_role_template}'.",
             ) from err
 
-    def delete_database_role(self, database_role: str, deleted_by: str) -> None:
-        normalized_database_role = self._normalize_database_role(database_role)
+    def delete_database_role_template(
+        self, database_role_template: str, deleted_by: str
+    ) -> None:
+        normalized_database_role_template = self._normalize_database_role_template(
+            database_role_template
+        )
         try:
-            self.repo.delete_database_role(normalized_database_role)
+            self.repo.delete_database_role_template(normalized_database_role_template)
             log_event(
                 self.repo,
                 deleted_by,
                 AuditEvent.DATABASE_ROLE_DELETED,
-                {"database_role": normalized_database_role},
+                {"database_role_template": normalized_database_role_template},
             )
         except RepositoryError as err:
             raise from_repository_error(
                 err,
-                unavailable_message="Database roles could not be updated right now.",
-                fallback_message=f"Unable to delete database role '{normalized_database_role}'.",
+                unavailable_message="Database role templates could not be updated right now.",
+                fallback_message=f"Unable to delete database role template '{normalized_database_role_template}'.",
             ) from err
 
     @staticmethod
-    def _normalize_database_role(database_role: str) -> str:
-        normalized = str(database_role or "").strip()
+    def _normalize_database_role_template(database_role_template: str) -> str:
+        normalized = str(database_role_template or "").strip()
         if not normalized:
-            raise ServiceValidationError("Database role is required.")
+            raise ServiceValidationError("Database role template is required.")
+        return normalized
+
+    @staticmethod
+    def _normalize_database_role_scope(scope_type: str) -> str:
+        normalized = str(scope_type or "schema").strip().lower()
+        if normalized not in {"database", "schema"}:
+            raise ServiceValidationError(
+                "Database role template scope must be 'database' or 'schema'."
+            )
         return normalized
 
     @staticmethod
