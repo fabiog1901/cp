@@ -10,6 +10,7 @@ from ..infra import (
 )
 from ..models import (
     BackupDetails,
+    ClusterDatabaseObject,
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
@@ -24,6 +25,7 @@ from ..models import (
     ClusterStatsResponse,
     ClusterUpgradeRequest,
     ClusterUsersSnapshot,
+    CreateClusterDatabaseObjectRequest,
     DashboardSnapshot,
     ErrorResponse,
     JobID,
@@ -312,6 +314,105 @@ async def restore_cluster(
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)
+
+
+@router.get(
+    "/{cluster_id}/database-objects",
+    response_model=list[ClusterDatabaseObject],
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
+)
+async def list_cluster_database_objects(
+    cluster_id: str,
+    claims: dict = Depends(require_user),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> list[ClusterDatabaseObject]:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        database_objects = service.list_database_objects(cluster_id, groups, is_admin)
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    if database_objects is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cluster '{cluster_id}' was not found.",
+        )
+    return database_objects
+
+
+@router.post(
+    "/{cluster_id}/database-objects",
+    response_model=ClusterDatabaseObject,
+)
+async def create_cluster_database_object(
+    cluster_id: str,
+    request: CreateClusterDatabaseObjectRequest,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> ClusterDatabaseObject:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.create_database_object(
+            cluster_id,
+            groups,
+            is_admin,
+            request.database_name,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+
+
+@router.get(
+    "/{cluster_id}/database-objects/{database_name}",
+    response_model=ClusterDatabaseObject,
+    responses={
+        404: {"model": ErrorResponse, "description": "Database object not found."}
+    },
+)
+async def get_cluster_database_object(
+    cluster_id: str,
+    database_name: str,
+    claims: dict = Depends(require_user),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> ClusterDatabaseObject:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        database_object = service.get_database_object(
+            cluster_id,
+            groups,
+            is_admin,
+            database_name,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    if database_object is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Database object '{database_name}' was not found.",
+        )
+    return database_object
+
+
+@router.delete("/{cluster_id}/database-objects/{database_name}")
+async def delete_cluster_database_object(
+    cluster_id: str,
+    database_name: str,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> None:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        service.delete_database_object(
+            cluster_id,
+            groups,
+            is_admin,
+            database_name,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
 
 
 @router.get(

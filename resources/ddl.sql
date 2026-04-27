@@ -112,6 +112,16 @@ CREATE TABLE public.database_role_templates (
     sql_statement STRING NOT NULL,
     CONSTRAINT pk_database_role_templates PRIMARY KEY (database_role_template ASC)
 );
+CREATE TABLE public.cluster_database_objects (
+    cluster_id STRING NOT NULL,
+    database_name STRING NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    updated_by STRING NOT NULL,
+    CONSTRAINT pk_cluster_database_objects PRIMARY KEY (cluster_id ASC, database_name ASC),
+    CONSTRAINT fk_cluster_database_objects_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE
+);
 CREATE TABLE public.cluster_database_roles (
     cluster_id STRING NOT NULL,
     database_name STRING NOT NULL,
@@ -124,6 +134,7 @@ CREATE TABLE public.cluster_database_roles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     CONSTRAINT pk_cluster_database_roles PRIMARY KEY (cluster_id ASC, database_role ASC),
     CONSTRAINT fk_cluster_database_roles_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE,
+    CONSTRAINT fk_cluster_database_roles_database_object_ref_cluster_database_objects FOREIGN KEY (cluster_id, database_name) REFERENCES public.cluster_database_objects(cluster_id, database_name) ON DELETE CASCADE,
     CONSTRAINT fk_cluster_database_roles_template_ref_database_role_templates FOREIGN KEY (database_role_template) REFERENCES public.database_role_templates(database_role_template)
 );
 CREATE TABLE public.event_log (

@@ -80,6 +80,8 @@ class AuditEvent(AutoNameStrEnum):
     DISK_SIZE_DELETED = auto()
     DATABASE_ROLE_CREATED = auto()
     DATABASE_ROLE_DELETED = auto()
+    DATABASE_OBJECT_CREATED = auto()
+    DATABASE_OBJECT_DELETED = auto()
     DB_USER_ROLE_GRANTED = auto()
     DB_USER_PASSWORD_UPDATED = auto()
     DB_USER_ROLE_REVOKED = auto()
@@ -410,6 +412,19 @@ class ClusterDatabaseRole(BaseModel):
     database_role_template: str
     scope_type: str
     sql_statement: str
+
+
+class ClusterDatabaseObject(BaseModel):
+    cluster_id: str
+    database_name: str
+    created_at: dt.datetime
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str
+
+
+class CreateClusterDatabaseObjectRequest(BaseModel):
+    database_name: str
 
 
 class NewDatabaseUserRequest(BaseModel):

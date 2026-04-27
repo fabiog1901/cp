@@ -13,8 +13,10 @@ from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
     AuditEvent,
     Cluster,
+    ClusterDatabaseObject,
     ClusterDatabaseRole,
     ClusterUsersSnapshot,
+    CreateClusterDatabaseObjectRequest,
     DatabaseRoleTemplateConfig,
     DatabaseUser,
     NewDatabaseUserRequest,
@@ -28,11 +30,210 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_DATABASES = {"defaultdb", "postgres", "system"}
 SYSTEM_SCHEMAS = {"crdb_internal", "information_schema", "pg_catalog", "pg_extension"}
+DATABASE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
 
 
 class ClusterUsersService:
     def __init__(self, repo: Repo | None = None) -> None:
         self.repo = repo or get_repo()
+
+    def list_database_objects(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+    ) -> list[ClusterDatabaseObject] | None:
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
+        if selected_cluster is None:
+            return None
+        try:
+            return self.repo.list_cluster_database_objects(cluster_id)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database objects are temporarily unavailable.",
+                fallback_message=f"Unable to list database objects for cluster '{cluster_id}'.",
+            ) from err
+
+    def get_database_object(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        database_name: str,
+    ) -> ClusterDatabaseObject | None:
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
+        if selected_cluster is None:
+            return None
+        normalized_database_name = self._normalized_database_name(database_name)
+        try:
+            return self.repo.get_cluster_database_object(
+                cluster_id,
+                normalized_database_name,
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database objects are temporarily unavailable.",
+                fallback_message=f"Unable to load database object '{normalized_database_name}'.",
+            ) from err
+
+    def create_database_object(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        database_name: str,
+        requested_by: str,
+    ) -> ClusterDatabaseObject:
+        selected_cluster = self._get_cluster_or_raise(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+        try:
+            request = CreateClusterDatabaseObjectRequest(database_name=database_name)
+        except ValidationError as err:
+            raise ServiceValidationError("Database object name is invalid.") from err
+
+        normalized_database_name = self._normalized_database_name(
+            request.database_name,
+        )
+        try:
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("CREATE DATABASE {}").format(
+                                sql.Identifier(normalized_database_name)
+                            )
+                        )
+            except Exception as err:
+                logger.debug(
+                    "Cluster database object query failed [operation=cluster_database_objects.create_database]"
+                )
+                raise translate_database_error(
+                    err, "cluster_database_objects.create_database"
+                ) from err
+
+            self.repo.upsert_cluster_database_object(
+                selected_cluster.cluster_id,
+                normalized_database_name,
+                requested_by,
+            )
+            self._materialize_cluster_database_roles(
+                selected_cluster,
+                requested_by,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.DATABASE_OBJECT_CREATED,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "database_name": normalized_database_name,
+                },
+            )
+            database_object = self.repo.get_cluster_database_object(
+                selected_cluster.cluster_id,
+                normalized_database_name,
+            )
+            if database_object is None:
+                raise ServiceValidationError(
+                    f"Database object '{normalized_database_name}' was not stored."
+                )
+            return database_object
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database object creation is temporarily unavailable.",
+                conflict_message=f"Database object '{normalized_database_name}' already exists.",
+                validation_message="Database object name is invalid.",
+                fallback_message=f"Unable to create database object '{normalized_database_name}'.",
+            ) from err
+
+    def delete_database_object(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        database_name: str,
+        requested_by: str,
+    ) -> None:
+        selected_cluster = self._get_cluster_or_raise(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+        normalized_database_name = self._normalized_database_name(database_name)
+        if (
+            self.repo.get_cluster_database_object(
+                selected_cluster.cluster_id,
+                normalized_database_name,
+            )
+            is None
+        ):
+            raise ServiceNotFoundError(
+                f"Database object '{normalized_database_name}' was not found."
+            )
+
+        try:
+            database_roles = self.repo.list_cluster_database_roles_for_database(
+                selected_cluster.cluster_id,
+                normalized_database_name,
+            )
+            try:
+                with connect_cluster_db(
+                    self._get_primary_dns_address(selected_cluster),
+                    self._get_cluster_db_password(selected_cluster),
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            sql.SQL("DROP DATABASE {} CASCADE").format(
+                                sql.Identifier(normalized_database_name)
+                            )
+                        )
+                        for database_role in database_roles:
+                            self._revoke_database_role_from_members(
+                                cur,
+                                database_role.database_role,
+                            )
+                            cur.execute(
+                                sql.SQL("DROP ROLE IF EXISTS {}").format(
+                                    sql.Identifier(database_role.database_role)
+                                )
+                            )
+            except Exception as err:
+                logger.debug(
+                    "Cluster database object query failed [operation=cluster_database_objects.delete_database]"
+                )
+                raise translate_database_error(
+                    err, "cluster_database_objects.delete_database"
+                ) from err
+
+            self.repo.delete_cluster_database_object(
+                selected_cluster.cluster_id,
+                normalized_database_name,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.DATABASE_OBJECT_DELETED,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "database_name": normalized_database_name,
+                },
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database object deletion is temporarily unavailable.",
+                validation_message="Database object could not be deleted.",
+                fallback_message=f"Unable to delete database object '{normalized_database_name}'.",
+            ) from err
 
     def load_cluster_users_snapshot(
         self,
@@ -343,6 +544,11 @@ class ClusterUsersService:
                     with conn.cursor() as cur:
                         databases = self._list_user_databases(cur)
                         for database_name in databases:
+                            self.repo.upsert_cluster_database_object(
+                                selected_cluster.cluster_id,
+                                database_name,
+                                requested_by,
+                            )
                             schemas = self._list_user_schemas(cur, database_name)
                             for template in templates:
                                 targets = self._targets_for_template(
@@ -505,6 +711,19 @@ class ClusterUsersService:
                 normalized_database_roles.append(normalized_database_role)
         return normalized_database_roles
 
+    @staticmethod
+    def _normalized_database_name(database_name: str) -> str:
+        normalized_database_name = str(database_name or "").strip()
+        if normalized_database_name in SYSTEM_DATABASES:
+            raise ServiceValidationError(
+                f"Database object '{normalized_database_name}' is reserved."
+            )
+        if not DATABASE_NAME_RE.match(normalized_database_name):
+            raise ServiceValidationError(
+                "Database object names must start with a letter or underscore and contain only letters, numbers, and underscores."
+            )
+        return normalized_database_name
+
     def _get_database_roles_or_raise(
         self, cluster_id: str, database_roles: list[str]
     ) -> list[ClusterDatabaseRole]:
@@ -602,3 +821,20 @@ class ClusterUsersService:
                 sql.Identifier(username),
             )
         )
+
+    @staticmethod
+    def _revoke_database_role_from_members(cur, database_role: str) -> None:
+        rows = cur.execute("""
+            SELECT username, member_of
+            FROM [SHOW USERS]
+            """).fetchall()
+        for row in rows:
+            username = row[0]
+            member_of = row[1] if len(row) > 1 else None
+            if isinstance(member_of, list) and database_role in member_of:
+                cur.execute(
+                    sql.SQL("REVOKE {} FROM {}").format(
+                        sql.Identifier(database_role),
+                        sql.Identifier(username),
+                    )
+                )

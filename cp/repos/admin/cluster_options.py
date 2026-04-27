@@ -2,6 +2,7 @@
 
 from ...infra.db import execute_stmt, fetch_all
 from ...models import (
+    ClusterDatabaseObject,
     ClusterDatabaseRole,
     CpuCountOption,
     DatabaseRoleTemplateConfig,
@@ -142,6 +143,71 @@ class ClusterOptionsRepo(AdminRepo):
             (database_role_template,),
         )
 
+    def list_cluster_database_objects(
+        self, cluster_id: str
+    ) -> list[ClusterDatabaseObject]:
+        return fetch_all(
+            """
+            SELECT cluster_id, database_name, created_at, created_by,
+                updated_at, updated_by
+            FROM cluster_database_objects
+            WHERE cluster_id = %s
+            ORDER BY database_name ASC
+            """,
+            (cluster_id,),
+            ClusterDatabaseObject,
+        )
+
+    def get_cluster_database_object(
+        self, cluster_id: str, database_name: str
+    ) -> ClusterDatabaseObject | None:
+        database_objects = fetch_all(
+            """
+            SELECT cluster_id, database_name, created_at, created_by,
+                updated_at, updated_by
+            FROM cluster_database_objects
+            WHERE cluster_id = %s AND database_name = %s
+            """,
+            (cluster_id, database_name),
+            ClusterDatabaseObject,
+        )
+        return database_objects[0] if database_objects else None
+
+    def upsert_cluster_database_object(
+        self,
+        cluster_id: str,
+        database_name: str,
+        updated_by: str,
+    ) -> None:
+        execute_stmt(
+            """
+            INSERT INTO cluster_database_objects (
+                cluster_id,
+                database_name,
+                created_by,
+                updated_by
+            )
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (cluster_id, database_name)
+            DO UPDATE SET
+                updated_by = excluded.updated_by,
+                updated_at = now():::TIMESTAMPTZ
+            """,
+            (cluster_id, database_name, updated_by, updated_by),
+        )
+
+    def delete_cluster_database_object(
+        self, cluster_id: str, database_name: str
+    ) -> None:
+        execute_stmt(
+            """
+            DELETE
+            FROM cluster_database_objects
+            WHERE cluster_id = %s AND database_name = %s
+            """,
+            (cluster_id, database_name),
+        )
+
     def list_cluster_database_roles(self, cluster_id: str) -> list[ClusterDatabaseRole]:
         return fetch_all(
             """
@@ -169,6 +235,21 @@ class ClusterOptionsRepo(AdminRepo):
             ClusterDatabaseRole,
         )
         return roles[0] if roles else None
+
+    def list_cluster_database_roles_for_database(
+        self, cluster_id: str, database_name: str
+    ) -> list[ClusterDatabaseRole]:
+        return fetch_all(
+            """
+            SELECT cluster_id, database_name, schema_name, database_role,
+                database_role_template, scope_type, sql_statement
+            FROM cluster_database_roles
+            WHERE cluster_id = %s AND database_name = %s
+            ORDER BY schema_name ASC, database_role ASC
+            """,
+            (cluster_id, database_name),
+            ClusterDatabaseRole,
+        )
 
     def upsert_cluster_database_role(self, role: ClusterDatabaseRole) -> None:
         execute_stmt(

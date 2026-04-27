@@ -67,6 +67,17 @@ window.app = function () {
       upgrade: false,
       scale: false,
     },
+    clusterDatabaseObjects: [],
+    clusterDatabaseObjectsVisibleRows: [],
+    clusterDatabaseObjectsFilterQuery: "",
+    clusterDatabaseObjectsLastUpdatedUtc: null,
+    clusterDatabaseObjectsAutoRefreshEnabled: true,
+    _clusterDatabasesAutoTimer: null,
+    clusterDatabaseObjectsLoading: {
+      list: false,
+      create: false,
+      delete: false,
+    },
     clusterUsers: [],
     clusterUsersVisibleRows: [],
     clusterUsersClusterId: "",
@@ -437,6 +448,14 @@ window.app = function () {
           regions: [],
         },
       },
+      clusterDatabaseObjectCreate: {
+        open: false,
+        database_name: "",
+      },
+      clusterDatabaseObjectDeleteConfirm: {
+        open: false,
+        database_name: "",
+      },
       clusterUserCreate: {
         open: false,
         username: "",
@@ -502,6 +521,8 @@ window.app = function () {
       clusterCreate: "",
       clusterUpgrade: "",
       clusterScale: "",
+      clusterDatabaseObjectCreate: "",
+      clusterDatabaseObjectDeleteConfirm: "",
       clusterUserCreate: "",
       clusterUserDeleteConfirm: "",
       clusterUserPassword: "",
@@ -949,6 +970,10 @@ window.app = function () {
       if (this._clusterUsersAutoTimer) {
         clearInterval(this._clusterUsersAutoTimer);
         this._clusterUsersAutoTimer = null;
+      }
+      if (this._clusterDatabasesAutoTimer) {
+        clearInterval(this._clusterDatabasesAutoTimer);
+        this._clusterDatabasesAutoTimer = null;
       }
       if (this._clusterBackupsAutoTimer) {
         clearInterval(this._clusterBackupsAutoTimer);
@@ -1403,6 +1428,12 @@ window.app = function () {
                 `/clusters/${encodeURIComponent(this.selectedClusterId)}/users`,
               )
             : this.routeHash("/clusters");
+        case "cluster_databases":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}/databases`,
+              )
+            : this.routeHash("/clusters");
         case "cluster_backups":
           return this.selectedClusterId
             ? this.routeHash(
@@ -1472,6 +1503,8 @@ window.app = function () {
         await this.ensureClusterDashboardView();
       else if (this.view === "cluster_users")
         await this.ensureClusterUsersView();
+      else if (this.view === "cluster_databases")
+        await this.ensureClusterDatabasesView();
       else if (this.view === "cluster_backups")
         await this.ensureClusterBackupsView();
       else if (this.view === "jobs") await this.ensureJobsView();
@@ -1514,6 +1547,7 @@ window.app = function () {
           nextClusterId = String(parts[1] || "").trim();
           if (parts[2] === "dashboard") nextView = "cluster_dashboard";
           else if (parts[2] === "users") nextView = "cluster_users";
+          else if (parts[2] === "databases") nextView = "cluster_databases";
           else if (parts[2] === "backups") nextView = "cluster_backups";
           else nextView = "cluster";
         }
@@ -1570,6 +1604,7 @@ window.app = function () {
         this.clusterConnectCopiedFor = "";
         if (clusterChanged) {
           this.selectedCluster = null;
+          this.clearClusterDatabaseObjectsState();
           this.clearClusterUsersState();
           this.clusterBackups = [];
           this.clusterBackupDetails = [];
@@ -1605,6 +1640,9 @@ window.app = function () {
       }
 
       this.view = nextView;
+      if (this.view !== "cluster" && this.view !== "cluster_databases") {
+        this.clearClusterDatabaseObjectsState();
+      }
       if (this.view !== "cluster_users") {
         this.clearClusterUsersState();
       }
@@ -1727,6 +1765,7 @@ window.app = function () {
       this.setActionNotice(this.unauthorizedViewMessage(viewName));
       if (!fallback) return;
 
+      this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       this.view = "dashboard";
       localStorage.setItem("cp_view", this.view);
@@ -1890,6 +1929,9 @@ window.app = function () {
       const clusterUsersFilter = localStorage.getItem(
         "cp_cluster_users_filter",
       );
+      const clusterDatabaseObjectsFilter = localStorage.getItem(
+        "cp_cluster_database_objects_filter",
+      );
 
       if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
       if (sDir === "desc") this.sortDir = "desc";
@@ -1915,6 +1957,8 @@ window.app = function () {
       if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
       if (clusterUsersFilter !== null)
         this.clusterUsersFilterQuery = clusterUsersFilter;
+      if (clusterDatabaseObjectsFilter !== null)
+        this.clusterDatabaseObjectsFilterQuery = clusterDatabaseObjectsFilter;
       if (selectedClusterId !== null)
         this.selectedClusterId = selectedClusterId;
       if (ssIdx !== null && !Number.isNaN(+ssIdx))
@@ -1942,6 +1986,7 @@ window.app = function () {
         sView === "cluster" ||
         sView === "cluster_dashboard" ||
         sView === "cluster_users" ||
+        sView === "cluster_databases" ||
         sView === "cluster_backups" ||
         sView === "jobs" ||
         sView === "job" ||
@@ -2023,6 +2068,15 @@ window.app = function () {
           this.selectedClusterId
         )
           this.refreshClusterUsers();
+      }, 10_000);
+
+      this.setManagedInterval("cluster_databases", "_clusterDatabasesAutoTimer", () => {
+        if (
+          this.clusterDatabaseObjectsAutoRefreshEnabled &&
+          this.view === "cluster_databases" &&
+          this.selectedClusterId
+        )
+          this.refreshClusterDatabaseObjects();
       }, 10_000);
 
       this.setManagedInterval("cluster_backups", "_clusterBackupsAutoTimer", () => {
@@ -2114,6 +2168,9 @@ window.app = function () {
       }
 
       this.clearViewNotice();
+      if (next !== "cluster" && next !== "cluster_databases") {
+        this.clearClusterDatabaseObjectsState();
+      }
       if (next !== "cluster_users") {
         this.clearClusterUsersState();
       }
@@ -2158,6 +2215,7 @@ window.app = function () {
       }
       this.selectedJobId = nextId;
       localStorage.setItem("cp_selected_job_id", nextId);
+      this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       this.view = "job";
       localStorage.setItem("cp_view", this.view);
@@ -2244,6 +2302,7 @@ window.app = function () {
 
     async ensureClusterDetailView() {
       if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
         this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
@@ -2251,10 +2310,17 @@ window.app = function () {
         return;
       }
       if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+      else if (
+        !this.clusterDatabaseObjectsLoading.list &&
+        !this.clusterDatabaseObjectsLastUpdatedUtc
+      ) {
+        await this.refreshClusterDatabaseObjects();
+      }
     },
 
     async ensureClusterDashboardView() {
       if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
         this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
@@ -2270,6 +2336,7 @@ window.app = function () {
 
     async ensureClusterUsersView() {
       if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
         this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
@@ -2281,8 +2348,27 @@ window.app = function () {
       else this.applyClusterUsersFilter();
     },
 
+    async ensureClusterDatabasesView() {
+      if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
+        return;
+      }
+      if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+      if (
+        !this.clusterDatabaseObjectsLoading.list &&
+        !this.clusterDatabaseObjectsLastUpdatedUtc
+      )
+        await this.refreshClusterDatabaseObjects();
+      else this.applyClusterDatabaseObjectsFilter();
+    },
+
     async ensureClusterBackupsView() {
       if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
         this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
@@ -3007,6 +3093,7 @@ window.app = function () {
       this.selectedClusterId = nextId;
       localStorage.setItem("cp_selected_cluster_id", nextId);
       this.clusterConnectCopiedFor = "";
+      this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
@@ -3028,6 +3115,7 @@ window.app = function () {
           this.visibilityPath(`/clusters/${encodeURIComponent(clusterId)}`),
           { method: "GET" },
         );
+        await this.refreshClusterDatabaseObjects();
       } catch (e) {
         console.error(e);
         this.viewNotice = this.errorMessage(
@@ -3035,8 +3123,183 @@ window.app = function () {
           "Failed to load cluster details.",
         );
         this.selectedCluster = null;
+        this.clearClusterDatabaseObjectsState();
       } finally {
         this.clusterLoading.details = false;
+      }
+    },
+
+    clearClusterDatabaseObjectsState() {
+      this.clusterDatabaseObjects = [];
+      this.clusterDatabaseObjectsVisibleRows = [];
+      this.clusterDatabaseObjectsLastUpdatedUtc = null;
+      this.modal.clusterDatabaseObjectCreate.database_name = "";
+      this.modal.clusterDatabaseObjectDeleteConfirm.database_name = "";
+    },
+
+    persistClusterDatabaseObjectsFilter() {
+      localStorage.setItem(
+        "cp_cluster_database_objects_filter",
+        this.clusterDatabaseObjectsFilterQuery || "",
+      );
+    },
+
+    clusterDatabaseObjectRowText(row) {
+      return [
+        row?.database_name,
+        row?.created_by,
+        row?.updated_by,
+        this.toUtcStringMaybe(row?.created_at),
+        this.toUtcStringMaybe(row?.updated_at),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    applyClusterDatabaseObjectsFilter() {
+      const q = String(this.clusterDatabaseObjectsFilterQuery || "")
+        .trim()
+        .toLowerCase();
+      let rows = Array.isArray(this.clusterDatabaseObjects)
+        ? [...this.clusterDatabaseObjects]
+        : [];
+      if (q) {
+        rows = rows.filter((row) =>
+          this.clusterDatabaseObjectRowText(row).includes(q),
+        );
+      }
+      rows.sort((a, b) =>
+        String(a?.database_name || "").localeCompare(
+          String(b?.database_name || ""),
+        ),
+      );
+      this.clusterDatabaseObjectsVisibleRows = rows;
+    },
+
+    async refreshClusterDatabaseObjects() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+
+      this.clusterDatabaseObjectsLoading.list = true;
+      try {
+        const rows = await this.apiFetch(
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/database-objects`,
+          ),
+          { method: "GET" },
+        );
+        this.clusterDatabaseObjects = Array.isArray(rows) ? rows : [];
+        this.clusterDatabaseObjectsLastUpdatedUtc = this.utcNowString();
+        this.applyClusterDatabaseObjectsFilter();
+      } catch (e) {
+        console.error(e);
+        this.clearClusterDatabaseObjectsState();
+        this.clusterDatabaseObjectsLastUpdatedUtc = this.utcNowString();
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load database objects."),
+        );
+      } finally {
+        this.clusterDatabaseObjectsLoading.list = false;
+      }
+    },
+
+    openClusterDatabaseObjectCreateModal() {
+      this.modal.clusterDatabaseObjectCreate.open = true;
+      this.modal.clusterDatabaseObjectCreate.database_name = "";
+      this.clearModalError("clusterDatabaseObjectCreate");
+    },
+
+    closeClusterDatabaseObjectCreateModal() {
+      this.modal.clusterDatabaseObjectCreate.open = false;
+      this.modal.clusterDatabaseObjectCreate.database_name = "";
+      this.clearModalError("clusterDatabaseObjectCreate");
+    },
+
+    async createClusterDatabaseObject() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const databaseName = String(
+        this.modal.clusterDatabaseObjectCreate.database_name || "",
+      ).trim();
+      if (!clusterId || !databaseName) {
+        this.modalErrors.clusterDatabaseObjectCreate =
+          "Database name is required.";
+        return;
+      }
+
+      this.clusterDatabaseObjectsLoading.create = true;
+      this.clearModalError("clusterDatabaseObjectCreate");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/database-objects`,
+          {
+            method: "POST",
+            body: { database_name: databaseName },
+          },
+        );
+        this.closeClusterDatabaseObjectCreateModal();
+        this.clearClusterUsersState();
+        await this.refreshClusterDatabaseObjects();
+        this.setActionNotice(
+          `Database object '${databaseName}' created and default roles materialized.`,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterDatabaseObjectCreate",
+          e,
+          "Failed to create database object.",
+        );
+      } finally {
+        this.clusterDatabaseObjectsLoading.create = false;
+      }
+    },
+
+    openClusterDatabaseObjectDeleteConfirm(databaseObject) {
+      const databaseName = String(databaseObject?.database_name || "").trim();
+      if (!databaseName) return;
+      this.modal.clusterDatabaseObjectDeleteConfirm.open = true;
+      this.modal.clusterDatabaseObjectDeleteConfirm.database_name = databaseName;
+      this.clearModalError("clusterDatabaseObjectDeleteConfirm");
+    },
+
+    closeClusterDatabaseObjectDeleteConfirm() {
+      this.modal.clusterDatabaseObjectDeleteConfirm.open = false;
+      this.modal.clusterDatabaseObjectDeleteConfirm.database_name = "";
+      this.clearModalError("clusterDatabaseObjectDeleteConfirm");
+    },
+
+    async confirmClusterDatabaseObjectDelete() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const databaseName = String(
+        this.modal.clusterDatabaseObjectDeleteConfirm.database_name || "",
+      ).trim();
+      if (!clusterId || !databaseName) return;
+
+      this.clusterDatabaseObjectsLoading.delete = true;
+      this.clearModalError("clusterDatabaseObjectDeleteConfirm");
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/database-objects/${encodeURIComponent(databaseName)}`,
+          { method: "DELETE" },
+        );
+        this.closeClusterDatabaseObjectDeleteConfirm();
+        this.clearClusterUsersState();
+        await this.refreshClusterDatabaseObjects();
+        this.setActionNotice(`Database object '${databaseName}' deleted.`);
+      } catch (e) {
+        this.setModalError(
+          "clusterDatabaseObjectDeleteConfirm",
+          e,
+          "Failed to delete database object.",
+        );
+      } finally {
+        this.clusterDatabaseObjectsLoading.delete = false;
       }
     },
 
@@ -3115,6 +3378,7 @@ window.app = function () {
       this.selectedClusterId = String(clusterId).trim();
       localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
       this.view = "cluster_dashboard";
+      this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -3140,11 +3404,26 @@ window.app = function () {
       if (!clusterId) return;
       this.selectedClusterId = String(clusterId).trim();
       localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.clearClusterDatabaseObjectsState();
       this.view = "cluster_users";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
       this.syncHashFromState();
       this.ensureClusterUsersView();
+    },
+
+    openClusterDatabases() {
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.selectedClusterId = String(clusterId).trim();
+      localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.clearClusterUsersState();
+      this.view = "cluster_databases";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.syncHashFromState();
+      this.ensureClusterDatabasesView();
     },
 
     openClusterBackups() {
@@ -3153,6 +3432,7 @@ window.app = function () {
       if (!clusterId) return;
       this.selectedClusterId = String(clusterId).trim();
       localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       this.view = "cluster_backups";
       localStorage.setItem("cp_view", this.view);

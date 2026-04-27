@@ -60,7 +60,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' || view === 'cluster_backups' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' || view === 'cluster_databases' || view === 'cluster_backups' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
@@ -636,6 +636,22 @@
                   </span>
                 </button>
 
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterDatabases()"
+                  title="Open database object management for this cluster."
+                  aria-label="Open database object management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <ellipse cx="12" cy="6" rx="7" ry="3" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Databases</span>
+                    <span class="cluster-toolbar-sub" x-text="`${clusterDatabaseObjects.length || 0} managed database objects`"></span>
+                  </span>
+                </button>
+
                 <button class="cluster-toolbar-btn" type="button" @click="openClusterBackups()"
                   title="Open backup management for this cluster."
                   aria-label="Open backup management">
@@ -1041,6 +1057,91 @@
         </section>
       </main>
 
+      <!-- CLUSTER DATABASES VIEW -->
+      <main class="layout" x-show="view === 'cluster_databases'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterDatabaseObjects()" :disabled="clusterDatabaseObjectsLoading.list || !selectedClusterId">
+                <span x-show="!clusterDatabaseObjectsLoading.list">Refresh</span>
+                <span x-show="clusterDatabaseObjectsLoading.list">Loading…</span>
+              </button>
+              <button class="btn btn-warn" @click="openClusterDatabaseObjectCreateModal()">Create Database…</button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDatabaseObjectsAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Database Management</div>
+              <div class="main-subtitle">Create, inspect, and remove managed database objects for the selected cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by database, owner, or timestamp…"
+                x-model="clusterDatabaseObjectsFilterQuery" @input="persistClusterDatabaseObjectsFilter(); applyClusterDatabaseObjectsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="clusterDatabaseObjectsLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Database</th>
+                    <th>Created By</th>
+                    <th>Created (UTC)</th>
+                    <th>Updated By</th>
+                    <th>Updated (UTC)</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="databaseObject in clusterDatabaseObjectsVisibleRows" :key="`${databaseObject.cluster_id}-${databaseObject.database_name}`">
+                    <tr>
+                      <td><span class="ip-pill" x-text="databaseObject.database_name || '-'"></span></td>
+                      <td><span x-text="databaseObject.created_by || '-'"></span></td>
+                      <td><span x-text="toUtcStringMaybe(databaseObject.created_at)"></span></td>
+                      <td><span x-text="databaseObject.updated_by || '-'"></span></td>
+                      <td><span x-text="toUtcStringMaybe(databaseObject.updated_at)"></span></td>
+                      <td>
+                        <div class="cluster-list-pills">
+                          <button class="btn btn-danger" type="button"
+                            @click="openClusterDatabaseObjectDeleteConfirm(databaseObject)"
+                            :disabled="clusterDatabaseObjectsLoading.delete">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!clusterDatabaseObjectsLoading.list && clusterDatabaseObjectsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="6" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
       <!-- CLUSTER DASHBOARD VIEW -->
       <main class="layout" x-show="view === 'cluster_dashboard'">
         <aside class="sidebar">
@@ -1368,6 +1469,70 @@
             <button class="btn btn-danger" :disabled="clusterLoading.delete" @click="confirmClusterDelete()">
               <span x-show="!clusterLoading.delete">YES, DELETE</span>
               <span x-show="clusterLoading.delete">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster Database Object Create Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterDatabaseObjectCreate.open" x-transition
+        @keydown.escape.window="closeClusterDatabaseObjectCreateModal()">
+        <div class="modal" @click.outside="closeClusterDatabaseObjectCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database Object</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDatabaseObjectCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDatabaseObjectCreate"
+              x-text="modalErrors.clusterDatabaseObjectCreate"></div>
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Cluster</div>
+              <div><span class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></span></div>
+            </div>
+            <div class="form-row">
+              <div class="label">database_name</div>
+              <input class="input" x-model="modal.clusterDatabaseObjectCreate.database_name" placeholder="application_db" />
+              <div class="hint">Default database roles will be materialized from the configured templates.</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDatabaseObjectCreateModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterDatabaseObjectsLoading.create"
+              @click="createClusterDatabaseObject()">
+              <span x-show="!clusterDatabaseObjectsLoading.create">CREATE DATABASE</span>
+              <span x-show="clusterDatabaseObjectsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster Database Object Delete Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterDatabaseObjectDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterDatabaseObjectDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterDatabaseObjectDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Delete Database Object</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDatabaseObjectDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDatabaseObjectDeleteConfirm"
+              x-text="modalErrors.clusterDatabaseObjectDeleteConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will drop database
+              <span class="ip-pill" x-text="modal.clusterDatabaseObjectDeleteConfirm.database_name || '-'"></span>
+              and remove its managed database roles.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDatabaseObjectDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterDatabaseObjectsLoading.delete"
+              @click="confirmClusterDatabaseObjectDelete()">
+              <span x-show="!clusterDatabaseObjectsLoading.delete">DELETE DATABASE</span>
+              <span x-show="clusterDatabaseObjectsLoading.delete">DELETING…</span>
             </button>
           </div>
         </div>

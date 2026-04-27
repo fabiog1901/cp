@@ -219,6 +219,12 @@ def translate_database_error(
             operation=operation_name,
         )
 
+    if isinstance(err, psycopg_errors.DuplicateDatabase):
+        return RepositoryConflictError(
+            "Database already exists.",
+            operation=operation_name,
+        )
+
     if isinstance(
         err,
         (
