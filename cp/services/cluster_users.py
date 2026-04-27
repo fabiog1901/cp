@@ -597,15 +597,6 @@ class ClusterUsersService:
                     err, "cluster_users.materialize_cluster_database_roles"
                 ) from err
 
-            log_event(
-                self.repo,
-                requested_by,
-                AuditEvent.DATABASE_ROLE_CREATED,
-                {
-                    "cluster_id": selected_cluster.cluster_id,
-                    "database_roles_materialized": synced,
-                },
-            )
             return synced
         except RepositoryError as err:
             raise from_repository_error(
