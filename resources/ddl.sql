@@ -123,7 +123,8 @@ CREATE TABLE public.cluster_database_roles (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     CONSTRAINT pk_cluster_database_roles PRIMARY KEY (cluster_id ASC, database_role ASC),
-    CONSTRAINT fk_cluster_database_roles_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE
+    CONSTRAINT fk_cluster_database_roles_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE,
+    CONSTRAINT fk_cluster_database_roles_template_ref_database_role_templates FOREIGN KEY (database_role_template) REFERENCES public.database_role_templates(database_role_template)
 );
 CREATE TABLE public.event_log (
     ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,

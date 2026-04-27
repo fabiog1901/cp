@@ -321,12 +321,18 @@ async def restore_cluster(
 )
 async def get_cluster_users(
     cluster_id: str,
-    claims: dict = Depends(require_readonly),
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> ClusterUsersSnapshot:
     groups, is_admin = get_access_scope(claims)
     try:
-        snapshot = service.load_cluster_users_snapshot(cluster_id, groups, is_admin)
+        snapshot = service.load_cluster_users_snapshot(
+            cluster_id,
+            groups,
+            is_admin,
+            actor_id,
+        )
     except ServiceError as err:
         _raise_http_from_service_error(err)
     if snapshot is None:
@@ -335,26 +341,6 @@ async def get_cluster_users(
             detail=f"Cluster '{cluster_id}' was not found.",
         )
     return snapshot
-
-
-@router.post("/{cluster_id}/database-roles/sync")
-async def sync_cluster_database_roles(
-    cluster_id: str,
-    claims: dict = Depends(require_user),
-    actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
-) -> dict[str, int]:
-    groups, is_admin = get_access_scope(claims)
-    try:
-        synced = service.sync_cluster_database_roles(
-            cluster_id,
-            groups,
-            is_admin,
-            actor_id,
-        )
-    except ServiceError as err:
-        _raise_http_from_service_error(err)
-    return {"database_roles_synced": synced}
 
 
 @router.post("/{cluster_id}/users")

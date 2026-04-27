@@ -20,6 +20,7 @@ from .errors import (
     RepositoryUnavailableError,
     RepositoryValidationError,
 )
+from .util import ClusterDatabaseConnectionError
 
 DB_URL = os.getenv("DB_URL")
 pool: ConnectionPool | None = None
@@ -176,6 +177,19 @@ def translate_database_error(
 ) -> RepositoryError:
     operation_name = operation or "database.statement"
     sqlstate = getattr(err, "sqlstate", None)
+
+    if isinstance(err, ClusterDatabaseConnectionError):
+        logger.warning(
+            "Cluster database unavailable [operation=%s host=%s reason=%s]",
+            operation_name,
+            err.dns_address,
+            err.reason,
+        )
+        return RepositoryUnavailableError(
+            "Cluster database is temporarily unavailable.",
+            operation=operation_name,
+            retryable=True,
+        )
 
     logger.exception(
         "Database operation failed [operation=%s sqlstate=%s error=%s]",

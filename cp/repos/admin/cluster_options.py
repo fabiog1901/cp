@@ -142,14 +142,6 @@ class ClusterOptionsRepo(AdminRepo):
             (database_role_template,),
         )
 
-    def list_database_roles(self) -> list[DatabaseRoleTemplateConfig]:
-        return self.list_database_role_templates()
-
-    def get_database_role(
-        self, database_role: str
-    ) -> DatabaseRoleTemplateConfig | None:
-        return self.get_database_role_template(database_role)
-
     def list_cluster_database_roles(self, cluster_id: str) -> list[ClusterDatabaseRole]:
         return fetch_all(
             """
@@ -202,4 +194,27 @@ class ClusterOptionsRepo(AdminRepo):
                 role.scope_type,
                 role.sql_statement,
             ),
+        )
+
+    def delete_stale_cluster_database_roles(
+        self, cluster_id: str, database_roles: list[str]
+    ) -> None:
+        if not database_roles:
+            execute_stmt(
+                """
+                DELETE FROM cluster_database_roles
+                WHERE cluster_id = %s
+                """,
+                (cluster_id,),
+            )
+            return
+
+        placeholders = ", ".join(["%s"] * len(database_roles))
+        execute_stmt(
+            f"""
+            DELETE FROM cluster_database_roles
+            WHERE cluster_id = %s
+            AND database_role NOT IN ({placeholders})
+            """,
+            (cluster_id, *database_roles),
         )

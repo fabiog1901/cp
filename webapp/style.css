@@ -913,6 +913,22 @@ td:first-child {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
   overflow: hidden;
 }
+
+.modal-constrained {
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-constrained .modal-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.modal-constrained .modal-header,
+.modal-constrained .modal-footer {
+  flex: 0 0 auto;
+}
 .modal-header {
   padding: 14px 16px;
   display: flex;
@@ -966,6 +982,22 @@ td:first-child {
 .roles-editor {
   display: grid;
   gap: 8px;
+}
+
+.modal-scroll-row {
+  min-height: 0;
+}
+
+.roles-editor-scroll {
+  max-height: min(360px, 42vh);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.roles-pills-scroll {
+  max-height: min(180px, 22vh);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .check-card {

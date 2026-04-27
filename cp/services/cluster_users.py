@@ -39,12 +39,17 @@ class ClusterUsersService:
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
+        requested_by: str,
     ) -> ClusterUsersSnapshot | None:
         selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
 
         try:
+            self._materialize_cluster_database_roles(
+                selected_cluster,
+                requested_by,
+            )
             try:
                 with connect_cluster_db(
                     self._get_primary_dns_address(selected_cluster),
@@ -318,20 +323,18 @@ class ClusterUsersService:
                 fallback_message=f"Unable to grant roles to '{username}'.",
             ) from err
 
-    def sync_cluster_database_roles(
+    def _materialize_cluster_database_roles(
         self,
-        cluster_id: str,
-        groups: list[str],
-        is_admin: bool,
+        selected_cluster: Cluster,
         requested_by: str,
     ) -> int:
-        selected_cluster = self._get_cluster_or_raise(cluster_id, groups, is_admin)
         try:
             templates = self.repo.list_database_role_templates()
             if not templates:
                 return 0
 
             synced = 0
+            desired_database_roles = []
             try:
                 with connect_cluster_db(
                     self._get_primary_dns_address(selected_cluster),
@@ -348,6 +351,7 @@ class ClusterUsersService:
                                     template,
                                 )
                                 for schema_name, database_role in targets:
+                                    desired_database_roles.append(database_role)
                                     stmt = sql.SQL(template.sql_statement).format(
                                         database_role=sql.Identifier(database_role),
                                         role=sql.Identifier(database_role),
@@ -373,14 +377,18 @@ class ClusterUsersService:
                                         )
                                     )
                                     synced += 1
+                        self.repo.delete_stale_cluster_database_roles(
+                            selected_cluster.cluster_id,
+                            desired_database_roles,
+                        )
             except RepositoryError:
                 raise
             except Exception as err:
                 logger.debug(
-                    "Cluster role sync failed [operation=cluster_users.sync_cluster_database_roles]"
+                    "Cluster role materialization failed [operation=cluster_users.materialize_cluster_database_roles]"
                 )
                 raise translate_database_error(
-                    err, "cluster_users.sync_cluster_database_roles"
+                    err, "cluster_users.materialize_cluster_database_roles"
                 ) from err
 
             log_event(
@@ -389,16 +397,16 @@ class ClusterUsersService:
                 AuditEvent.DATABASE_ROLE_CREATED,
                 {
                     "cluster_id": selected_cluster.cluster_id,
-                    "database_roles_synced": synced,
+                    "database_roles_materialized": synced,
                 },
             )
             return synced
         except RepositoryError as err:
             raise from_repository_error(
                 err,
-                unavailable_message="Database role sync is temporarily unavailable.",
+                unavailable_message="Database role materialization is temporarily unavailable.",
                 validation_message="Database role templates or cluster objects are invalid.",
-                fallback_message=f"Unable to sync database roles for cluster '{cluster_id}'.",
+                fallback_message=f"Unable to materialize database roles for cluster '{selected_cluster.cluster_id}'.",
             ) from err
 
     def update_database_user_password(
@@ -528,7 +536,7 @@ class ClusterUsersService:
     @staticmethod
     def _list_user_schemas(cur, database_name: str) -> list[str]:
         cur.execute(
-            sql.SQL("SHOW SCHEMAS FROM DATABASE {}").format(
+            sql.SQL("SHOW SCHEMAS FROM {}").format(
                 sql.Identifier(database_name)
             )
         )

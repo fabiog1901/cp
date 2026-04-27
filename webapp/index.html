@@ -971,10 +971,6 @@
                 <span x-show="!clusterUsersLoading.snapshot">Refresh</span>
                 <span x-show="clusterUsersLoading.snapshot">Loading…</span>
               </button>
-              <button class="btn" @click="syncClusterDatabaseRoles()" :disabled="clusterUsersLoading.syncDatabaseRoles || !selectedClusterId">
-                <span x-show="!clusterUsersLoading.syncDatabaseRoles">Sync Database Roles</span>
-                <span x-show="clusterUsersLoading.syncDatabaseRoles">Syncing…</span>
-              </button>
               <button class="btn btn-warn" @click="openClusterUserCreateModal()">Create User…</button>
               <label
                 style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
@@ -3534,7 +3530,7 @@
       <!-- Cluster User Create Modal -->
       <div class="modal-backdrop" x-show="modal.clusterUserCreate.open" x-transition
         @keydown.escape.window="closeClusterUserCreateModal()">
-        <div class="modal" @click.outside="closeClusterUserCreateModal()">
+        <div class="modal modal-constrained" @click.outside="closeClusterUserCreateModal()">
           <div class="modal-header">
             <h3 class="modal-title">Create Database User</h3>
             <button class="btn" style="padding:7px 12px;" @click="closeClusterUserCreateModal()">CLOSE</button>
@@ -3551,9 +3547,9 @@
                 <div class="label">password</div>
                 <input class="input" type="password" x-model="modal.clusterUserCreate.password" placeholder="strong password" />
               </div>
-              <div class="form-row">
+              <div class="form-row modal-scroll-row">
                 <div class="label">database_roles</div>
-                <div class="roles-editor">
+                <div class="roles-editor roles-editor-scroll">
                   <template x-for="databaseRole in databaseRoles" :key="`create-user-database-role-${databaseRole.database_role}`">
                     <label class="check-card">
                       <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserCreate.database_roles" />
@@ -3561,7 +3557,7 @@
                     </label>
                   </template>
                 </div>
-                <div class="hint" x-show="databaseRoles.length === 0">No database roles have been synced for this cluster.</div>
+                <div class="hint" x-show="databaseRoles.length === 0">No database roles have been materialized for this cluster.</div>
               </div>
             </div>
           </div>
@@ -3638,7 +3634,7 @@
       <!-- Cluster User Roles Modal -->
       <div class="modal-backdrop" x-show="modal.clusterUserRoles.open" x-transition
         @keydown.escape.window="closeClusterUserRolesModal()">
-        <div class="modal" @click.outside="closeClusterUserRolesModal()">
+        <div class="modal modal-constrained" @click.outside="closeClusterUserRolesModal()">
           <div class="modal-header">
             <h3 class="modal-title">Manage User Roles</h3>
             <button class="btn" style="padding:7px 12px;" @click="closeClusterUserRolesModal()">CLOSE</button>
@@ -3651,9 +3647,9 @@
               <div><span class="ip-pill" x-text="modal.clusterUserRoles.username || '-'"></span></div>
             </div>
 
-            <div class="metric" style="display:grid; gap:10px;">
+            <div class="metric modal-scroll-row" style="display:grid; gap:10px;">
               <div class="metric-label">Current Database Roles</div>
-              <div class="cluster-list-pills" x-show="modal.clusterUserRoles.databaseRoles.length > 0">
+              <div class="cluster-list-pills roles-pills-scroll" x-show="modal.clusterUserRoles.databaseRoles.length > 0">
                 <template x-for="databaseRole in modal.clusterUserRoles.databaseRoles" :key="`${modal.clusterUserRoles.username}-${databaseRole}`">
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="service-pill" x-text="databaseRole"></span>
@@ -3671,10 +3667,10 @@
               </div>
             </div>
 
-            <div class="metric" style="display:grid; gap:8px; margin-top: 14px;">
+            <div class="metric modal-scroll-row" style="display:grid; gap:8px; margin-top: 14px;">
               <div class="metric-label">Grant Database Roles</div>
               <div style="display:grid; gap:10px;">
-                <div class="roles-editor">
+                <div class="roles-editor roles-editor-scroll">
                   <template x-for="databaseRole in databaseRoles" :key="`grant-user-database-role-${databaseRole.database_role}`">
                     <label class="check-card">
                       <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserRoles.grantDatabaseRoles" />
@@ -3688,7 +3684,7 @@
                   <span x-show="clusterUsersLoading.grantDatabaseRoles">GRANTING…</span>
                 </button>
               </div>
-              <div class="metric-sub" x-show="databaseRoles.length === 0">Sync database roles before assigning them to users.</div>
+              <div class="metric-sub" x-show="databaseRoles.length === 0">No materialized database roles are available for this cluster.</div>
             </div>
           </div>
 

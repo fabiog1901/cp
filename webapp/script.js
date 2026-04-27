@@ -69,6 +69,7 @@ window.app = function () {
     },
     clusterUsers: [],
     clusterUsersVisibleRows: [],
+    clusterUsersClusterId: "",
     clusterUsersFilterQuery: "",
     clusterUsersLastUpdatedUtc: null,
     clusterUsersAutoRefreshEnabled: true,
@@ -80,7 +81,6 @@ window.app = function () {
       password: false,
       revokeDatabaseRole: false,
       grantDatabaseRoles: false,
-      syncDatabaseRoles: false,
     },
     clusterBackups: [],
     clusterBackupDetails: [],
@@ -1570,8 +1570,7 @@ window.app = function () {
         this.clusterConnectCopiedFor = "";
         if (clusterChanged) {
           this.selectedCluster = null;
-          this.clusterUsers = [];
-          this.clusterUsersVisibleRows = [];
+          this.clearClusterUsersState();
           this.clusterBackups = [];
           this.clusterBackupDetails = [];
           this.clusterDashboardSnapshot = null;
@@ -1606,6 +1605,9 @@ window.app = function () {
       }
 
       this.view = nextView;
+      if (this.view !== "cluster_users") {
+        this.clearClusterUsersState();
+      }
       localStorage.setItem("cp_view", this.view);
 
       if (!this.isViewAccessible(this.view)) {
@@ -1725,6 +1727,7 @@ window.app = function () {
       this.setActionNotice(this.unauthorizedViewMessage(viewName));
       if (!fallback) return;
 
+      this.clearClusterUsersState();
       this.view = "dashboard";
       localStorage.setItem("cp_view", this.view);
       this.syncHashFromState(true);
@@ -2111,6 +2114,9 @@ window.app = function () {
       }
 
       this.clearViewNotice();
+      if (next !== "cluster_users") {
+        this.clearClusterUsersState();
+      }
       this.view = next;
       localStorage.setItem("cp_view", this.view);
       this.syncHashFromState();
@@ -2152,6 +2158,7 @@ window.app = function () {
       }
       this.selectedJobId = nextId;
       localStorage.setItem("cp_selected_job_id", nextId);
+      this.clearClusterUsersState();
       this.view = "job";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -2237,6 +2244,7 @@ window.app = function () {
 
     async ensureClusterDetailView() {
       if (!this.selectedClusterId) {
+        this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
         this.syncHashFromState(true);
@@ -2247,6 +2255,7 @@ window.app = function () {
 
     async ensureClusterDashboardView() {
       if (!this.selectedClusterId) {
+        this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
         this.syncHashFromState(true);
@@ -2261,6 +2270,7 @@ window.app = function () {
 
     async ensureClusterUsersView() {
       if (!this.selectedClusterId) {
+        this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
         this.syncHashFromState(true);
@@ -2273,6 +2283,7 @@ window.app = function () {
 
     async ensureClusterBackupsView() {
       if (!this.selectedClusterId) {
+        this.clearClusterUsersState();
         this.view = "clusters";
         localStorage.setItem("cp_view", this.view);
         this.syncHashFromState(true);
@@ -2295,6 +2306,7 @@ window.app = function () {
 
     async ensureJobDetailView() {
       if (!this.selectedJobId) {
+        this.clearClusterUsersState();
         this.view = "jobs";
         localStorage.setItem("cp_view", this.view);
         this.syncHashFromState(true);
@@ -2995,6 +3007,7 @@ window.app = function () {
       this.selectedClusterId = nextId;
       localStorage.setItem("cp_selected_cluster_id", nextId);
       this.clusterConnectCopiedFor = "";
+      this.clearClusterUsersState();
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -3102,6 +3115,7 @@ window.app = function () {
       this.selectedClusterId = String(clusterId).trim();
       localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
       this.view = "cluster_dashboard";
+      this.clearClusterUsersState();
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
       this.syncHashFromState();
@@ -3113,6 +3127,7 @@ window.app = function () {
         this.setView("clusters");
         return;
       }
+      this.clearClusterUsersState();
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
       this.syncHashFromState();
@@ -3138,6 +3153,7 @@ window.app = function () {
       if (!clusterId) return;
       this.selectedClusterId = String(clusterId).trim();
       localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.clearClusterUsersState();
       this.view = "cluster_backups";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -3575,6 +3591,16 @@ window.app = function () {
         .toLowerCase();
     },
 
+    clearClusterUsersState() {
+      this.clusterUsers = [];
+      this.clusterUsersVisibleRows = [];
+      this.clusterUsersClusterId = "";
+      this.databaseRoles = [];
+      this.modal.clusterUserCreate.database_roles = [];
+      this.modal.clusterUserRoles.databaseRoles = [];
+      this.modal.clusterUserRoles.grantDatabaseRoles = [];
+    },
+
     applyClusterUsersFilter() {
       const q = String(this.clusterUsersFilterQuery || "")
         .trim()
@@ -3594,6 +3620,9 @@ window.app = function () {
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
       ).trim();
       if (!clusterId) return;
+      if (this.clusterUsersClusterId !== clusterId) {
+        this.clearClusterUsersState();
+      }
       this.clusterUsersLoading.snapshot = true;
       try {
         const snapshot = await this.apiFetch(
@@ -3605,6 +3634,7 @@ window.app = function () {
         this.clusterUsers = Array.isArray(snapshot?.database_users)
           ? snapshot.database_users
           : [];
+        this.clusterUsersClusterId = clusterId;
         this.databaseRoleTemplates = Array.isArray(snapshot?.database_role_templates)
           ? snapshot.database_role_templates
           : this.databaseRoleTemplates;
@@ -3619,37 +3649,13 @@ window.app = function () {
         this.applyClusterUsersFilter();
       } catch (e) {
         console.error(e);
+        this.clearClusterUsersState();
         this.clusterUsersLastUpdatedUtc = this.utcNowString();
         this.setActionNotice(
           this.errorMessage(e, "Failed to load cluster users."),
         );
       } finally {
         this.clusterUsersLoading.snapshot = false;
-      }
-    },
-
-    async syncClusterDatabaseRoles() {
-      const clusterId = String(
-        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
-      ).trim();
-      if (!clusterId) return;
-
-      this.clusterUsersLoading.syncDatabaseRoles = true;
-      try {
-        const result = await this.apiFetch(
-          `/clusters/${encodeURIComponent(clusterId)}/database-roles/sync`,
-          { method: "POST" },
-        );
-        await this.refreshClusterUsers();
-        this.setActionNotice(
-          `Synced ${Number(result?.database_roles_synced || 0)} database roles.`,
-        );
-      } catch (e) {
-        this.setActionNotice(
-          this.errorMessage(e, "Failed to sync database roles."),
-        );
-      } finally {
-        this.clusterUsersLoading.syncDatabaseRoles = false;
       }
     },
 

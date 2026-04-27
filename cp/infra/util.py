@@ -6,6 +6,7 @@ import secrets
 from contextvars import ContextVar
 
 import psycopg
+from psycopg import OperationalError
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 ENCRYPTED_SECRET_VERSION = b"\x01"
@@ -13,6 +14,15 @@ CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257
 CLUSTER_DB_NAME = "defaultdb"
 CLUSTER_DB_USERNAME = "cockroach"
+
+
+class ClusterDatabaseConnectionError(Exception):
+    """Raised when a cluster database cannot be reached in normal operation."""
+
+    def __init__(self, dns_address: str, reason: str) -> None:
+        self.dns_address = dns_address
+        self.reason = reason
+        super().__init__(f"Cluster database '{dns_address}' is unreachable: {reason}")
 
 
 def as_bool(value: str | None, default: bool = False) -> bool:
@@ -125,14 +135,29 @@ def decrypt_api_key_secret(secret: bytes | str) -> bytes:
 
 
 def connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection:
-    return psycopg.connect(
-        (
-            f"postgres://{CLUSTER_DB_USERNAME}:{password}"
-            f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
-        ),
-        autocommit=True,
-        connect_timeout=CONNECT_TIMEOUT_SECS,
-    )
+    try:
+        return psycopg.connect(
+            (
+                f"postgres://{CLUSTER_DB_USERNAME}:{password}"
+                f"@{dns_address}:{CLUSTER_DB_PORT}/{CLUSTER_DB_NAME}?sslmode=require"
+            ),
+            autocommit=True,
+            connect_timeout=CONNECT_TIMEOUT_SECS,
+        )
+    except TimeoutError as exc:
+        raise ClusterDatabaseConnectionError(dns_address, "connection timed out") from exc
+    except OperationalError as exc:
+        if _is_cluster_connection_timeout(exc):
+            raise ClusterDatabaseConnectionError(
+                dns_address,
+                "connection timed out",
+            ) from exc
+        raise
+
+
+def _is_cluster_connection_timeout(err: OperationalError) -> bool:
+    message = str(err).lower()
+    return "timeout" in message or "timed out" in message
 
 
 class RequestIDFilter(logging.Filter):
