@@ -28,7 +28,7 @@ async def create_database_role(
 ) -> DatabaseRoleConfig:
     try:
         return service.create_database_role(
-            request.role_name,
+            request.database_role,
             request.sql_statement,
             actor_id,
         )
@@ -36,13 +36,13 @@ async def create_database_role(
         raise_http_from_service_error(err)
 
 
-@router.delete("/{role}")
+@router.delete("/{database_role}")
 async def delete_database_role(
-    role: str,
+    database_role: str,
     actor_id: str = Depends(get_audit_actor),
     service: ClusterOptionsService = Depends(get_cluster_options_service),
 ) -> None:
     try:
-        service.delete_database_role(role, actor_id)
+        service.delete_database_role(database_role, actor_id)
     except ServiceError as err:
         raise_http_from_service_error(err)

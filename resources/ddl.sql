@@ -107,9 +107,9 @@ CREATE TABLE public.role_to_groups_mappings (
     CONSTRAINT pk PRIMARY KEY ("role" ASC)
 );
 CREATE TABLE public.database_roles (
-    role_name STRING NOT NULL,
+    database_role STRING NOT NULL,
     sql_statement STRING NOT NULL,
-    CONSTRAINT pk_database_roles PRIMARY KEY (role_name ASC)
+    CONSTRAINT pk_database_roles PRIMARY KEY (database_role ASC)
 );
 CREATE TABLE public.event_log (
     ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,

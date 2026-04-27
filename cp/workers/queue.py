@@ -9,9 +9,9 @@ from psycopg.rows import class_row
 from ..infra import get_repo
 from ..infra.db import get_pool
 from ..models import (
+    ClusterState,
     CommandModel,
     CommandType,
-    ClusterState,
     FailZombieJobsCommand,
     JobState,
     Msg,

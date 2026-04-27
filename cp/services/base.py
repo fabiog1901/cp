@@ -3,8 +3,8 @@
 import logging
 from typing import Any
 
-from ..repos import Repo
 from ..models import AuditEvent, LogMsg
+from ..repos import Repo
 
 logger = logging.getLogger(__name__)
 

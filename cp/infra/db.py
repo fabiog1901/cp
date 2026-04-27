@@ -148,6 +148,7 @@ def initialize_postgres(db_url: str | None = None) -> None:
         configure=_register_dumpers,
     )
 
+
 def get_pool() -> ConnectionPool:
     if pool is None:
         raise RuntimeError("Database pool not initialized. Ensure lifespan ran.")

@@ -13,13 +13,13 @@ from ..models import (
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
+    ClusterDatabaseRolesUpdateRequest,
     ClusterDialogOptionsResponse,
     ClusterJobsSnapshot,
     ClusterOverview,
     ClusterPasswordUpdateRequest,
     ClusterPublic,
     ClusterRestoreApiRequest,
-    ClusterRoleRevokeRequest,
     ClusterScaleRequest,
     ClusterStatsResponse,
     ClusterUpgradeRequest,
@@ -353,7 +353,7 @@ async def create_cluster_user(
             is_admin,
             request.username,
             request.password,
-            request.role,
+            request.database_roles,
             actor_id,
         )
     except ServiceError as err:
@@ -381,46 +381,46 @@ async def delete_cluster_user(
         _raise_http_from_service_error(err)
 
 
-@router.post("/{cluster_id}/users/{username}/revoke-role")
-async def revoke_cluster_user_role(
+@router.post("/{cluster_id}/users/{username}/grant-database-roles")
+async def grant_cluster_user_database_roles(
     cluster_id: str,
     username: str,
-    request: ClusterRoleRevokeRequest,
+    request: ClusterDatabaseRolesUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
     groups, is_admin = get_access_scope(claims)
     try:
-        service.revoke_database_user_role(
+        service.grant_database_user_roles(
             cluster_id,
             groups,
             is_admin,
             username,
-            request.role,
+            request.database_roles,
             actor_id,
         )
     except ServiceError as err:
         _raise_http_from_service_error(err)
 
 
-@router.post("/{cluster_id}/users/{username}/grant-role")
-async def grant_cluster_user_role(
+@router.post("/{cluster_id}/users/{username}/revoke-database-roles")
+async def revoke_cluster_user_database_roles(
     cluster_id: str,
     username: str,
-    request: ClusterRoleRevokeRequest,
+    request: ClusterDatabaseRolesUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
     service: ClusterUsersService = Depends(get_cluster_users_service),
 ) -> None:
     groups, is_admin = get_access_scope(claims)
     try:
-        service.grant_database_user_role(
+        service.revoke_database_user_roles(
             cluster_id,
             groups,
             is_admin,
             username,
-            request.role,
+            request.database_roles,
             actor_id,
         )
     except ServiceError as err:

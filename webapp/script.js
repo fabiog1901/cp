@@ -78,8 +78,8 @@ window.app = function () {
       create: false,
       delete: false,
       password: false,
-      revokeRole: false,
-      grantRole: false,
+      revokeDatabaseRole: false,
+      grantDatabaseRoles: false,
     },
     clusterBackups: [],
     clusterBackupDetails: [],
@@ -369,12 +369,12 @@ window.app = function () {
       },
       databaseRoleCreate: {
         open: false,
-        role_name: "",
-        sql_statement: "",
+        database_role: "",
+        sql_statement: "CREATE ROLE IF NOT EXISTS {database_role};",
       },
       databaseRoleDeleteConfirm: {
         open: false,
-        role_name: "",
+        database_role: "",
       },
       playbookVersionDeleteConfirm: {
         open: false,
@@ -438,7 +438,7 @@ window.app = function () {
         open: false,
         username: "",
         password: "",
-        role: "",
+        database_roles: [],
       },
       clusterUserDeleteConfirm: {
         open: false,
@@ -452,8 +452,8 @@ window.app = function () {
       clusterUserRoles: {
         open: false,
         username: "",
-        roles: [],
-        grantRole: "",
+        databaseRoles: [],
+        grantDatabaseRoles: [],
       },
       apiKeySecret: {
         open: false,
@@ -536,6 +536,9 @@ window.app = function () {
     // Ace
     _ace: null,
     _aceReady: false,
+    _databaseRoleAce: null,
+    _databaseRoleAceReady: false,
+    _databaseRolePreviewEditors: new WeakMap(),
 
     clusterDashboardPalette: [
       "#1f77b4",
@@ -1692,7 +1695,7 @@ window.app = function () {
         node_counts: "List available node counts",
         cpu_counts: "List available CPU-per-node options",
         disk_sizes: "List available disk size options",
-        database_roles: "Preconfigured database role SQL templates",
+        database_roles: "Preconfigured database roles",
         regions: "List configured deployment regions",
         playbooks: "Playbooks editor",
       };
@@ -3619,7 +3622,7 @@ window.app = function () {
       this.modal.clusterUserCreate.open = true;
       this.modal.clusterUserCreate.username = "";
       this.modal.clusterUserCreate.password = "";
-      this.modal.clusterUserCreate.role = "";
+      this.modal.clusterUserCreate.database_roles = [];
       this.clearModalError("clusterUserCreate");
     },
 
@@ -3627,7 +3630,7 @@ window.app = function () {
       this.modal.clusterUserCreate.open = false;
       this.modal.clusterUserCreate.username = "";
       this.modal.clusterUserCreate.password = "";
-      this.modal.clusterUserCreate.role = "";
+      this.modal.clusterUserCreate.database_roles = [];
       this.clearModalError("clusterUserCreate");
     },
 
@@ -3639,7 +3642,13 @@ window.app = function () {
       const password = String(
         this.modal.clusterUserCreate.password || "",
       ).trim();
-      const role = String(this.modal.clusterUserCreate.role || "").trim();
+      const database_roles = Array.isArray(
+        this.modal.clusterUserCreate.database_roles,
+      )
+        ? this.modal.clusterUserCreate.database_roles
+            .map((databaseRole) => String(databaseRole || "").trim())
+            .filter(Boolean)
+        : [];
       if (!clusterId || !username || !password) {
         this.setModalError(
           "clusterUserCreate",
@@ -3655,7 +3664,7 @@ window.app = function () {
           `/clusters/${encodeURIComponent(clusterId)}/users`,
           {
             method: "POST",
-            body: { username, password, role: role || null },
+            body: { username, password, database_roles },
           },
         );
         this.closeClusterUserCreateModal();
@@ -3771,90 +3780,104 @@ window.app = function () {
     openClusterUserRolesModal(row) {
       this.modal.clusterUserRoles.open = true;
       this.modal.clusterUserRoles.username = String(row?.username || "").trim();
-      this.modal.clusterUserRoles.roles = Array.isArray(row?.member_of)
+      this.modal.clusterUserRoles.databaseRoles = Array.isArray(row?.member_of)
         ? row.member_of.filter(Boolean)
         : [];
-      this.modal.clusterUserRoles.grantRole = "";
+      this.modal.clusterUserRoles.grantDatabaseRoles = [];
       this.clearModalError("clusterUserRoles");
     },
 
     closeClusterUserRolesModal() {
       this.modal.clusterUserRoles.open = false;
       this.modal.clusterUserRoles.username = "";
-      this.modal.clusterUserRoles.roles = [];
-      this.modal.clusterUserRoles.grantRole = "";
+      this.modal.clusterUserRoles.databaseRoles = [];
+      this.modal.clusterUserRoles.grantDatabaseRoles = [];
       this.clearModalError("clusterUserRoles");
     },
 
-    async revokeClusterUserRole(role) {
+    async revokeClusterUserDatabaseRole(databaseRole) {
       const clusterId = String(this.selectedClusterId || "").trim();
       const username = String(
         this.modal.clusterUserRoles.username || "",
       ).trim();
-      const normalizedRole = String(role || "").trim();
-      if (!clusterId || !username || !normalizedRole) return;
-      this.clusterUsersLoading.revokeRole = true;
+      const normalizedDatabaseRole = String(databaseRole || "").trim();
+      if (!clusterId || !username || !normalizedDatabaseRole) return;
+      this.clusterUsersLoading.revokeDatabaseRole = true;
       this.clearModalError("clusterUserRoles");
       try {
         await this.apiFetch(
-          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/revoke-role`,
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/revoke-database-roles`,
           {
             method: "POST",
-            body: { role: normalizedRole },
+            body: { database_roles: [normalizedDatabaseRole] },
           },
         );
-        this.modal.clusterUserRoles.roles =
-          this.modal.clusterUserRoles.roles.filter(
-            (entry) => entry !== normalizedRole,
+        this.modal.clusterUserRoles.databaseRoles =
+          this.modal.clusterUserRoles.databaseRoles.filter(
+            (entry) => entry !== normalizedDatabaseRole,
           );
         await this.refreshClusterUsers();
         this.setActionNotice(
-          `Role '${normalizedRole}' revoked from '${username}'.`,
+          `Database role '${normalizedDatabaseRole}' revoked from '${username}'.`,
         );
       } catch (e) {
-        this.setModalError("clusterUserRoles", e, "Failed to revoke role.");
+        this.setModalError(
+          "clusterUserRoles",
+          e,
+          "Failed to revoke database role.",
+        );
       } finally {
-        this.clusterUsersLoading.revokeRole = false;
+        this.clusterUsersLoading.revokeDatabaseRole = false;
       }
     },
 
-    async grantClusterUserRole() {
+    async grantClusterUserDatabaseRoles() {
       const clusterId = String(this.selectedClusterId || "").trim();
       const username = String(
         this.modal.clusterUserRoles.username || "",
       ).trim();
-      const role = String(this.modal.clusterUserRoles.grantRole || "").trim();
-      if (!clusterId || !username || !role) {
+      const database_roles = Array.isArray(
+        this.modal.clusterUserRoles.grantDatabaseRoles,
+      )
+        ? this.modal.clusterUserRoles.grantDatabaseRoles
+            .map((databaseRole) => String(databaseRole || "").trim())
+            .filter(Boolean)
+        : [];
+      if (!clusterId || !username || database_roles.length === 0) {
         this.setModalError(
           "clusterUserRoles",
-          new Error("Select a configured role to grant."),
-          "Select a configured role to grant.",
+          new Error("Select at least one configured database role to grant."),
+          "Select at least one configured database role to grant.",
         );
         return;
       }
-      this.clusterUsersLoading.grantRole = true;
+      this.clusterUsersLoading.grantDatabaseRoles = true;
       this.clearModalError("clusterUserRoles");
       try {
         await this.apiFetch(
-          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/grant-role`,
+          `/clusters/${encodeURIComponent(clusterId)}/users/${encodeURIComponent(username)}/grant-database-roles`,
           {
             method: "POST",
-            body: { role },
+            body: { database_roles },
           },
         );
-        this.modal.clusterUserRoles.grantRole = "";
+        this.modal.clusterUserRoles.grantDatabaseRoles = [];
         await this.refreshClusterUsers();
         const refreshed = this.clusterUsers.find(
           (row) => String(row?.username || "") === username,
         );
-        this.modal.clusterUserRoles.roles = Array.isArray(refreshed?.member_of)
+        this.modal.clusterUserRoles.databaseRoles = Array.isArray(refreshed?.member_of)
           ? refreshed.member_of.filter(Boolean)
-          : this.modal.clusterUserRoles.roles;
-        this.setActionNotice(`Role '${role}' granted to '${username}'.`);
+          : this.modal.clusterUserRoles.databaseRoles;
+        this.setActionNotice(`Database roles granted to '${username}'.`);
       } catch (e) {
-        this.setModalError("clusterUserRoles", e, "Failed to grant role.");
+        this.setModalError(
+          "clusterUserRoles",
+          e,
+          "Failed to grant database roles.",
+        );
       } finally {
-        this.clusterUsersLoading.grantRole = false;
+        this.clusterUsersLoading.grantDatabaseRoles = false;
       }
     },
 
@@ -5519,7 +5542,7 @@ window.app = function () {
     },
 
     databaseRolesRowText(row) {
-      return [row?.role_name, row?.sql_statement]
+      return [row?.database_role, row?.sql_statement]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -5536,9 +5559,12 @@ window.app = function () {
         rows = rows.filter((row) => this.databaseRolesRowText(row).includes(q));
       }
       rows.sort((a, b) =>
-        String(a?.role_name || "").localeCompare(String(b?.role_name || "")),
+        String(a?.database_role || "").localeCompare(
+          String(b?.database_role || ""),
+        ),
       );
       this.databaseRolesVisibleRows = rows;
+      this.$nextTick(() => this.renderDatabaseRoleSqlEditors());
     },
 
     persistDatabaseRolesFilter() {
@@ -5549,22 +5575,35 @@ window.app = function () {
     },
 
     openDatabaseRoleCreateModal() {
-      this.modal.databaseRoleCreate.role_name = "";
-      this.modal.databaseRoleCreate.sql_statement = "";
+      this.modal.databaseRoleCreate.database_role = "";
+      this.modal.databaseRoleCreate.sql_statement =
+        "CREATE ROLE IF NOT EXISTS {database_role};";
       this.clearModalError("databaseRoleCreate");
       this.modal.databaseRoleCreate.open = true;
+      this.$nextTick(() => {
+        this.ensureDatabaseRoleAce();
+        if (this._databaseRoleAceReady && this._databaseRoleAce) {
+          this._databaseRoleAce.setValue(
+            this.modal.databaseRoleCreate.sql_statement,
+            -1,
+          );
+          this._databaseRoleAce.resize();
+          this._databaseRoleAce.focus();
+        }
+      });
     },
 
     closeDatabaseRoleCreateModal() {
       this.modal.databaseRoleCreate.open = false;
-      this.modal.databaseRoleCreate.role_name = "";
-      this.modal.databaseRoleCreate.sql_statement = "";
+      this.modal.databaseRoleCreate.database_role = "";
+      this.modal.databaseRoleCreate.sql_statement =
+        "CREATE ROLE IF NOT EXISTS {database_role};";
       this.clearModalError("databaseRoleCreate");
     },
 
     openDatabaseRoleDeleteConfirm(row) {
-      this.modal.databaseRoleDeleteConfirm.role_name = String(
-        row?.role_name || "",
+      this.modal.databaseRoleDeleteConfirm.database_role = String(
+        row?.database_role || "",
       );
       this.clearModalError("databaseRoleDeleteConfirm");
       this.modal.databaseRoleDeleteConfirm.open = true;
@@ -5572,22 +5611,32 @@ window.app = function () {
 
     closeDatabaseRoleDeleteConfirm() {
       this.modal.databaseRoleDeleteConfirm.open = false;
-      this.modal.databaseRoleDeleteConfirm.role_name = "";
+      this.modal.databaseRoleDeleteConfirm.database_role = "";
       this.clearModalError("databaseRoleDeleteConfirm");
     },
 
     async createDatabaseRole() {
-      const roleName = String(
-        this.modal.databaseRoleCreate.role_name || "",
+      const databaseRole = String(
+        this.modal.databaseRoleCreate.database_role || "",
       ).trim();
-      const sql_statement = String(
-        this.modal.databaseRoleCreate.sql_statement || "",
+      const sqlStatement = String(
+        this._databaseRoleAceReady && this._databaseRoleAce
+          ? this._databaseRoleAce.getValue()
+          : this.modal.databaseRoleCreate.sql_statement || "",
       ).trim();
-      if (!roleName || !sql_statement) {
+      if (!databaseRole) {
         this.setModalError(
           "databaseRoleCreate",
-          new Error("Role name and SQL statement are required."),
-          "Role name and SQL statement are required.",
+          new Error("Database role is required."),
+          "Database role is required.",
+        );
+        return;
+      }
+      if (!sqlStatement) {
+        this.setModalError(
+          "databaseRoleCreate",
+          new Error("SQL statement is required."),
+          "SQL statement is required.",
         );
         return;
       }
@@ -5597,11 +5646,14 @@ window.app = function () {
       try {
         await this.apiFetch("/admin/database_roles/", {
           method: "POST",
-          body: { role_name: roleName, sql_statement },
+          body: {
+            database_role: databaseRole,
+            sql_statement: sqlStatement,
+          },
         });
         this.closeDatabaseRoleCreateModal();
         await this.refreshDatabaseRoles();
-        this.setActionNotice(`Database role '${roleName}' created.`);
+        this.setActionNotice(`Database role '${databaseRole}' created.`);
       } catch (e) {
         this.setModalError(
           "databaseRoleCreate",
@@ -5614,21 +5666,21 @@ window.app = function () {
     },
 
     async confirmDatabaseRoleDelete() {
-      const roleName = String(
-        this.modal.databaseRoleDeleteConfirm.role_name || "",
+      const databaseRole = String(
+        this.modal.databaseRoleDeleteConfirm.database_role || "",
       ).trim();
-      if (!roleName) return;
+      if (!databaseRole) return;
 
       this.databaseRolesLoading.delete = true;
       this.clearModalError("databaseRoleDeleteConfirm");
       try {
         await this.apiFetch(
-          `/admin/database_roles/${encodeURIComponent(roleName)}`,
+          `/admin/database_roles/${encodeURIComponent(databaseRole)}`,
           { method: "DELETE" },
         );
         this.closeDatabaseRoleDeleteConfirm();
         await this.refreshDatabaseRoles();
-        this.setActionNotice(`Database role '${roleName}' deleted.`);
+        this.setActionNotice(`Database role '${databaseRole}' deleted.`);
       } catch (e) {
         this.setModalError(
           "databaseRoleDeleteConfirm",
@@ -6414,6 +6466,71 @@ window.app = function () {
         ok: true,
         message: `${this.utcNowString()} - Editor ready.`,
       };
+    },
+
+    ensureDatabaseRoleAce() {
+      if (this._databaseRoleAceReady) return;
+
+      if (!window.ace || !this.$refs.databaseRoleSqlEditor) {
+        this.setModalError(
+          "databaseRoleCreate",
+          new Error("SQL editor is not available."),
+          "SQL editor is not available.",
+        );
+        return;
+      }
+
+      const editor = window.ace.edit(this.$refs.databaseRoleSqlEditor);
+      editor.setTheme("ace/theme/cobalt");
+      editor.session.setMode("ace/mode/sql");
+      editor.setOptions({
+        showPrintMargin: false,
+        useSoftTabs: true,
+        tabSize: 2,
+        wrap: true,
+        minLines: 10,
+        maxLines: 18,
+      });
+
+      this._databaseRoleAce = editor;
+      this._databaseRoleAceReady = true;
+    },
+
+    renderDatabaseRoleSqlEditors() {
+      const nodes = document.querySelectorAll(".sql-preview-editor");
+      nodes.forEach((node) => {
+        const sqlStatement = String(node.dataset.databaseRoleSql || "-");
+        if (!window.ace) {
+          node.textContent = sqlStatement;
+          return;
+        }
+
+        let editor = this._databaseRolePreviewEditors.get(node);
+        if (!editor) {
+          editor = window.ace.edit(node);
+          editor.setTheme("ace/theme/cobalt");
+          editor.session.setMode("ace/mode/sql");
+          editor.session.setUseWorker(false);
+          editor.setReadOnly(true);
+          editor.setOptions({
+            showPrintMargin: false,
+            highlightActiveLine: false,
+            highlightGutterLine: false,
+            wrap: true,
+            minLines: 4,
+            maxLines: 10,
+          });
+          editor.renderer.setShowGutter(true);
+          if (editor.renderer.$cursorLayer?.element) {
+            editor.renderer.$cursorLayer.element.style.display = "none";
+          }
+          this._databaseRolePreviewEditors.set(node, editor);
+        }
+        if (editor.getValue() !== sqlStatement) {
+          editor.setValue(sqlStatement, -1);
+        }
+        editor.resize();
+      });
     },
 
     async reloadPlaybooks() {

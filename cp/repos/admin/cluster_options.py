@@ -90,41 +90,41 @@ class ClusterOptionsRepo(AdminRepo):
     def list_database_roles(self) -> list[DatabaseRoleConfig]:
         return fetch_all(
             """
-            SELECT role_name, sql_statement
+            SELECT database_role, sql_statement
             FROM database_roles
-            ORDER BY role_name ASC
+            ORDER BY database_role ASC
             """,
             (),
             DatabaseRoleConfig,
         )
 
-    def get_database_role(self, role: str) -> DatabaseRoleConfig | None:
-        roles = fetch_all(
+    def get_database_role(self, database_role: str) -> DatabaseRoleConfig | None:
+        database_roles = fetch_all(
             """
-            SELECT role_name, sql_statement
+            SELECT database_role, sql_statement
             FROM database_roles
-            WHERE role_name = %s
+            WHERE database_role = %s
             """,
-            (role,),
+            (database_role,),
             DatabaseRoleConfig,
         )
-        return roles[0] if roles else None
+        return database_roles[0] if database_roles else None
 
     def create_database_role(self, database_role: DatabaseRoleConfig) -> None:
         execute_stmt(
             """
-            INSERT INTO database_roles (role_name, sql_statement)
+            INSERT INTO database_roles (database_role, sql_statement)
             VALUES (%s, %s)
             """,
-            (database_role.role_name, database_role.sql_statement),
+            (database_role.database_role, database_role.sql_statement),
         )
 
-    def delete_database_role(self, role: str) -> None:
+    def delete_database_role(self, database_role: str) -> None:
         execute_stmt(
             """
             DELETE
             FROM database_roles
-            WHERE role_name = %s
+            WHERE database_role = %s
             """,
-            (role,),
+            (database_role,),
         )

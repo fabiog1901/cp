@@ -17,8 +17,9 @@ class JobsRepo:
         self, groups: list[str], is_admin: bool = False
     ) -> JobStatsResponse:
         if is_admin:
-            return fetch_one(
-                """
+            return (
+                fetch_one(
+                    """
                 SELECT
                     COUNT(*) AS total,
                     COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS running,
@@ -26,16 +27,19 @@ class JobsRepo:
                     COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS failed
                 FROM jobs
                 """,
-                (
-                    JobState.RUNNING.value,
-                    JobState.QUEUED.value,
-                    JobState.FAILED.value,
-                ),
-                JobStatsResponse,
-            ) or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+                    (
+                        JobState.RUNNING.value,
+                        JobState.QUEUED.value,
+                        JobState.FAILED.value,
+                    ),
+                    JobStatsResponse,
+                )
+                or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+            )
 
-        return fetch_one(
-            """
+        return (
+            fetch_one(
+                """
             WITH
             c AS (
                 SELECT cluster_id
@@ -55,14 +59,16 @@ class JobsRepo:
             FROM jobs
             WHERE job_id IN (SELECT * FROM cj)
             """,
-            (
-                groups,
-                JobState.RUNNING.value,
-                JobState.QUEUED.value,
-                JobState.FAILED.value,
-            ),
-            JobStatsResponse,
-        ) or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+                (
+                    groups,
+                    JobState.RUNNING.value,
+                    JobState.QUEUED.value,
+                    JobState.FAILED.value,
+                ),
+                JobStatsResponse,
+            )
+            or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+        )
 
     def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
         if is_admin:

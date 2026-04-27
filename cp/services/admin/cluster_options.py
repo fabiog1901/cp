@@ -178,17 +178,21 @@ class ClusterOptionsService(AdminService):
 
     def create_database_role(
         self,
-        role: str,
+        database_role: str,
         sql_statement: str,
         created_by: str,
     ) -> DatabaseRoleConfig:
         try:
             model = DatabaseRoleConfig(
-                role_name=self._normalize_database_role(role),
-                sql_statement=self._normalize_sql_statement(sql_statement),
+                database_role=self._normalize_database_role(database_role),
+                sql_statement=self._normalize_database_role_sql(
+                    sql_statement,
+                ),
             )
         except ValidationError as err:
-            raise ServiceValidationError("Database role configuration is invalid.") from err
+            raise ServiceValidationError(
+                "Database role configuration is invalid."
+            ) from err
 
         try:
             self.repo.create_database_role(model)
@@ -196,45 +200,47 @@ class ClusterOptionsService(AdminService):
                 self.repo,
                 created_by,
                 AuditEvent.DATABASE_ROLE_CREATED,
-                {"role": model.role_name},
+                {"database_role": model.database_role},
             )
             return model
         except RepositoryError as err:
             raise from_repository_error(
                 err,
                 unavailable_message="Database roles could not be updated right now.",
-                conflict_message=f"Database role '{model.role_name}' already exists.",
+                conflict_message=f"Database role '{model.database_role}' already exists.",
                 validation_message="The database role configuration is invalid.",
-                fallback_message=f"Unable to create database role '{model.role_name}'.",
+                fallback_message=f"Unable to create database role '{model.database_role}'.",
             ) from err
 
-    def delete_database_role(self, role: str, deleted_by: str) -> None:
-        normalized_role = self._normalize_database_role(role)
+    def delete_database_role(self, database_role: str, deleted_by: str) -> None:
+        normalized_database_role = self._normalize_database_role(database_role)
         try:
-            self.repo.delete_database_role(normalized_role)
+            self.repo.delete_database_role(normalized_database_role)
             log_event(
                 self.repo,
                 deleted_by,
                 AuditEvent.DATABASE_ROLE_DELETED,
-                {"role": normalized_role},
+                {"database_role": normalized_database_role},
             )
         except RepositoryError as err:
             raise from_repository_error(
                 err,
                 unavailable_message="Database roles could not be updated right now.",
-                fallback_message=f"Unable to delete database role '{normalized_role}'.",
+                fallback_message=f"Unable to delete database role '{normalized_database_role}'.",
             ) from err
 
     @staticmethod
-    def _normalize_database_role(role: str) -> str:
-        normalized = str(role or "").strip()
+    def _normalize_database_role(database_role: str) -> str:
+        normalized = str(database_role or "").strip()
         if not normalized:
             raise ServiceValidationError("Database role is required.")
         return normalized
 
     @staticmethod
-    def _normalize_sql_statement(sql_statement: str) -> str:
+    def _normalize_database_role_sql(
+        sql_statement: str,
+    ) -> str:
         normalized = str(sql_statement or "").strip()
-        if not normalized:
-            raise ServiceValidationError("SQL statement is required.")
-        return normalized
+        if normalized:
+            return normalized
+        return "CREATE ROLE IF NOT EXISTS {database_role};"

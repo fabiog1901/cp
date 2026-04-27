@@ -28,8 +28,9 @@ class ClusterRepo:
             params = (groups,)
             operation = "cluster.get_cluster_stats"
 
-        return fetch_one(
-            f"""
+        return (
+            fetch_one(
+                f"""
             SELECT
                 COUNT(*) AS total,
                 COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS active,
@@ -48,25 +49,27 @@ class ClusterRepo:
             FROM clusters
             {where_clause}
             """,
-            (
-                ClusterState.ACTIVE.value,
-                ClusterState.CREATING.value,
-                ClusterState.UNHEALTHY.value,
-                ClusterState.CREATE_FAILED.value,
-                ClusterState.SCALE_FAILED.value,
-                ClusterState.RESTORE_FAILED.value,
-                ClusterState.DELETE_FAILED.value,
-                ClusterState.UPGRADE_FAILED.value,
-                *params,
-            ),
-            ClusterStatsResponse,
-            operation=operation,
-        ) or ClusterStatsResponse(
-            total=0,
-            active=0,
-            creating=0,
-            unhealthy=0,
-            failed=0,
+                (
+                    ClusterState.ACTIVE.value,
+                    ClusterState.CREATING.value,
+                    ClusterState.UNHEALTHY.value,
+                    ClusterState.CREATE_FAILED.value,
+                    ClusterState.SCALE_FAILED.value,
+                    ClusterState.RESTORE_FAILED.value,
+                    ClusterState.DELETE_FAILED.value,
+                    ClusterState.UPGRADE_FAILED.value,
+                    *params,
+                ),
+                ClusterStatsResponse,
+                operation=operation,
+            )
+            or ClusterStatsResponse(
+                total=0,
+                active=0,
+                creating=0,
+                unhealthy=0,
+                failed=0,
+            )
         )
 
     def list_clusters(

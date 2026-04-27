@@ -397,14 +397,14 @@ class DatabaseUser(BaseModel):
 
 
 class DatabaseRoleConfig(BaseModel):
-    role_name: str
-    sql_statement: str
+    database_role: str
+    sql_statement: str = ""
 
 
 class NewDatabaseUserRequest(BaseModel):
     username: str
     password: str
-    role: str | None = None
+    database_roles: list[str] = Field(default_factory=list)
 
 
 # JOBS
@@ -585,8 +585,8 @@ class ClusterRestoreApiRequest(BaseModel):
     backup_into: str | None = None
 
 
-class ClusterRoleRevokeRequest(BaseModel):
-    role: str
+class ClusterDatabaseRolesUpdateRequest(BaseModel):
+    database_roles: list[str] = Field(default_factory=list)
 
 
 class ClusterPasswordUpdateRequest(BaseModel):

@@ -17,9 +17,10 @@
   <!-- Alpine last -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-  <!-- Ace Editor (YAML mode) -->
+  <!-- Ace Editor (YAML/SQL modes) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/mode-yaml.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/mode-sql.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ext-searchbox.js"></script>
 </head>
 
@@ -837,7 +838,6 @@
             <div class="metric">
               <div class="metric-label">Selected Cluster</div>
               <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
-              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/backups</span></div>
             </div>
           </div>
 
@@ -960,7 +960,6 @@
             <div class="metric">
               <div class="metric-label">Selected Cluster</div>
               <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
-              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/users</span></div>
             </div>
           </div>
 
@@ -1050,7 +1049,6 @@
             <div class="metric">
               <div class="metric-label">Selected Cluster</div>
               <div class="metric-value" x-text="clusterDashboardSnapshot?.cluster?.cluster_id || selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
-              <div class="metric-sub">Loaded from <span class="ip-pill">GET /api/clusters/{cluster_id}/dashboard</span></div>
             </div>
           </div>
 
@@ -1925,9 +1923,17 @@
             <section class="dashboard-grid admin-grid">
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('settings')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Configuration</div>
-                    <h3 class="dashboard-card-title">Settings</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2" />
+                        <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2.1 2.1 0 0 1-2.97 2.97l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65V21.4a2.1 2.1 0 0 1-4.2 0v-.09a1.8 1.8 0 0 0-1.1-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06a2.1 2.1 0 0 1-2.97-2.97l.06-.06A1.8 1.8 0 0 0 3.6 15a1.8 1.8 0 0 0-1.65-1.1H1.8a2.1 2.1 0 0 1 0-4.2h.09A1.8 1.8 0 0 0 3.54 8a1.8 1.8 0 0 0-.36-1.98l-.06-.06A2.1 2.1 0 0 1 6.09 3l.06.06A1.8 1.8 0 0 0 8.13 3.4 1.8 1.8 0 0 0 9.23 1.8V1.7a2.1 2.1 0 0 1 4.2 0v.09a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.1 2.1 0 0 1 2.97 2.97l-.06.06A1.8 1.8 0 0 0 19.4 8c.2.7.84 1.18 1.56 1.18h.14a2.1 2.1 0 0 1 0 4.2h-.09A1.8 1.8 0 0 0 19.4 15Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Configuration</div>
+                      <h3 class="dashboard-card-title">Settings</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="settings.length"></div>
                 </div>
@@ -1936,9 +1942,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('api_keys')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Access</div>
-                    <h3 class="dashboard-card-title">API Keys</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M15 7a4 4 0 1 0-3.1 6.9L14 16h3v3h3v-3h2v-3h-4.1L15 10.1A4 4 0 0 0 15 7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <path d="M7.5 8.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Access</div>
+                      <h3 class="dashboard-card-title">API Keys</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="apiKeys.length || 0"></div>
                 </div>
@@ -1947,9 +1961,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('versions')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Lifecycle</div>
-                    <h3 class="dashboard-card-title">Versions</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M6 4h9l4 4v12H6V4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <path d="M14 4v5h5M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Lifecycle</div>
+                      <h3 class="dashboard-card-title">Versions</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="versions.length"></div>
                 </div>
@@ -1958,9 +1980,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('node_counts')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Capacity</div>
-                    <h3 class="dashboard-card-title">Node Counts</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M6 5h12v5H6V5ZM6 14h12v5H6v-5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <path d="M9 7.5h.01M9 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Capacity</div>
+                      <h3 class="dashboard-card-title">Node Counts</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="nodeCounts.length"></div>
                 </div>
@@ -1969,9 +1999,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('cpu_counts')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Capacity</div>
-                    <h3 class="dashboard-card-title">Node CPUs</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2" />
+                        <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3M10 10h4v4h-4v-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Capacity</div>
+                      <h3 class="dashboard-card-title">Node CPUs</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="cpuCounts.length"></div>
                 </div>
@@ -1980,9 +2018,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('disk_sizes')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Capacity</div>
-                    <h3 class="dashboard-card-title">Disk Sizes</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M5 6c0-1.66 3.13-3 7-3s7 1.34 7 3v12c0 1.66-3.13 3-7 3s-7-1.34-7-3V6Z" stroke="currentColor" stroke-width="2" />
+                        <path d="M19 6c0 1.66-3.13 3-7 3S5 7.66 5 6M19 12c0 1.66-3.13 3-7 3s-7-1.34-7-3" stroke="currentColor" stroke-width="2" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Capacity</div>
+                      <h3 class="dashboard-card-title">Disk Sizes</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="diskSizes.length"></div>
                 </div>
@@ -1991,20 +2037,36 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('database_roles')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Access</div>
-                    <h3 class="dashboard-card-title">Database Roles</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3 4 6v6c0 4.4 3.1 7.6 8 9 4.9-1.4 8-4.6 8-9V6l-8-3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <path d="M9 12h6M12 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Access</div>
+                      <h3 class="dashboard-card-title">Database Roles</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="databaseRoles.length"></div>
                 </div>
-                <p class="dashboard-card-copy">SQL templates available when creating users on managed clusters.</p>
+                <p class="dashboard-card-copy">Database roles available to users on managed clusters.</p>
               </button>
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('regions')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Placement</div>
-                    <h3 class="dashboard-card-title">Regions</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="2" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Placement</div>
+                      <h3 class="dashboard-card-title">Regions</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="regions.length"></div>
                 </div>
@@ -2013,9 +2075,17 @@
 
               <button type="button" class="dashboard-card admin-card admin-card-button" @click="setView('playbooks')">
                 <div class="dashboard-card-head">
-                  <div>
-                    <div class="dashboard-card-kicker">Automation</div>
-                    <h3 class="dashboard-card-title">Playbooks</h3>
+                  <div class="admin-card-title-row">
+                    <span class="admin-card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <path d="M8 4v13a3 3 0 0 0 3 3M9 8h5M9 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <div class="dashboard-card-kicker">Automation</div>
+                      <h3 class="dashboard-card-title">Playbooks</h3>
+                    </div>
                   </div>
                   <div class="dashboard-stat" x-text="playbooks.length"></div>
                 </div>
@@ -2976,11 +3046,11 @@
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Database Roles</div>
-              <div class="main-subtitle">Configured SQL templates for assigning roles when cluster database users are created.</div>
+              <div class="main-subtitle">Configured database roles for cluster users.</div>
             </div>
 
             <div class="main-actions">
-              <input type="search" class="search-input" placeholder="Filter by role or SQL…"
+              <input type="search" class="search-input" placeholder="Filter by role…"
                 x-model="databaseRolesFilterQuery" @input="persistDatabaseRolesFilter(); applyDatabaseRolesFilter();" />
               <div class="pill">Updated (UTC): <span x-text="databaseRolesLastUpdatedUtc"></span></div>
             </div>
@@ -2991,17 +3061,18 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Role</th>
+                    <th>Database Role</th>
                     <th>SQL Statement</th>
                     <th>Act</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <template x-for="row in databaseRolesVisibleRows" :key="row.role_name">
+                  <template x-for="row in databaseRolesVisibleRows" :key="row.database_role">
                     <tr>
-                      <td><span class="ip-pill" x-text="row.role_name || '-'"></span></td>
-                      <td class="events-details-cell">
-                        <pre class="events-yaml" x-text="row.sql_statement || '-'"></pre>
+                      <td><span class="ip-pill" x-text="row.database_role || '-'"></span></td>
+                      <td>
+                        <div class="sql-preview-editor" x-init="$nextTick(() => renderDatabaseRoleSqlEditors())"
+                          :data-database-role-sql="row.sql_statement || '-'"></div>
                       </td>
                       <td>
                         <button type="button" class="icon-btn" title="Delete database role"
@@ -3043,15 +3114,14 @@
             </div>
 
             <div class="form-grid">
-              <div class="form-row">
-                <div class="label">role_name</div>
-                <input class="input" x-model="modal.databaseRoleCreate.role_name" placeholder="app_readonly" />
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">database_role</div>
+                <input class="input" x-model="modal.databaseRoleCreate.database_role" placeholder="app_readonly" />
               </div>
               <div class="form-row" style="grid-column: 1 / -1;">
                 <div class="label">sql_statement</div>
-                <textarea class="textarea" x-model="modal.databaseRoleCreate.sql_statement"
-                  placeholder="CREATE ROLE IF NOT EXISTS {role}; GRANT {role} TO {username};"></textarea>
-                <div class="hint">Use {username} for the new database user and {role} for this configured role name.</div>
+                <div class="modal-ace-editor" x-ref="databaseRoleSqlEditor"></div>
+                <div class="hint">Use {database_role} where the configured role name should be safely inserted.</div>
               </div>
             </div>
           </div>
@@ -3080,7 +3150,7 @@
 
             <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
               This will permanently remove database role
-              <span class="ip-pill" x-text="modal.databaseRoleDeleteConfirm.role_name"></span>.
+              <span class="ip-pill" x-text="modal.databaseRoleDeleteConfirm.database_role"></span>.
             </div>
           </div>
 
@@ -3469,13 +3539,15 @@
                 <input class="input" type="password" x-model="modal.clusterUserCreate.password" placeholder="strong password" />
               </div>
               <div class="form-row">
-                <div class="label">role</div>
-                <select class="input" x-model="modal.clusterUserCreate.role">
-                  <option value="">No configured role</option>
-                  <template x-for="role in databaseRoles" :key="`create-user-role-${role.role_name}`">
-                    <option :value="role.role_name" x-text="role.role_name"></option>
+                <div class="label">database_roles</div>
+                <div class="roles-editor">
+                  <template x-for="databaseRole in databaseRoles" :key="`create-user-database-role-${databaseRole.database_role}`">
+                    <label class="check-card">
+                      <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserCreate.database_roles" />
+                      <span x-text="databaseRole.database_role"></span>
+                    </label>
                   </template>
-                </select>
+                </div>
                 <div class="hint" x-show="databaseRoles.length === 0">No database roles are configured in the admin catalog.</div>
               </div>
             </div>
@@ -3567,12 +3639,12 @@
             </div>
 
             <div class="metric" style="display:grid; gap:10px;">
-              <div class="metric-label">Current Roles</div>
-              <div class="cluster-list-pills" x-show="modal.clusterUserRoles.roles.length > 0">
-                <template x-for="role in modal.clusterUserRoles.roles" :key="`${modal.clusterUserRoles.username}-${role}`">
+              <div class="metric-label">Current Database Roles</div>
+              <div class="cluster-list-pills" x-show="modal.clusterUserRoles.databaseRoles.length > 0">
+                <template x-for="databaseRole in modal.clusterUserRoles.databaseRoles" :key="`${modal.clusterUserRoles.username}-${databaseRole}`">
                   <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="service-pill" x-text="role"></span>
-                    <button class="icon-btn" title="Revoke role" @click="revokeClusterUserRole(role)" :disabled="clusterUsersLoading.revokeRole">
+                    <span class="service-pill" x-text="databaseRole"></span>
+                    <button class="icon-btn" title="Revoke database role" @click="revokeClusterUserDatabaseRole(databaseRole)" :disabled="clusterUsersLoading.revokeDatabaseRole">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                         <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -3581,24 +3653,26 @@
                   </div>
                 </template>
               </div>
-              <div class="cluster-list-copy" x-show="modal.clusterUserRoles.roles.length === 0">
-                No roles returned for this user.
+              <div class="cluster-list-copy" x-show="modal.clusterUserRoles.databaseRoles.length === 0">
+                No database roles returned for this user.
               </div>
             </div>
 
             <div class="metric" style="display:grid; gap:8px; margin-top: 14px;">
-              <div class="metric-label">Grant Role</div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <select class="input" style="flex: 1 1 220px;" x-model="modal.clusterUserRoles.grantRole">
-                  <option value="">Select configured role</option>
-                  <template x-for="role in databaseRoles" :key="`grant-user-role-${role.role_name}`">
-                    <option :value="role.role_name" x-text="role.role_name"></option>
+              <div class="metric-label">Grant Database Roles</div>
+              <div style="display:grid; gap:10px;">
+                <div class="roles-editor">
+                  <template x-for="databaseRole in databaseRoles" :key="`grant-user-database-role-${databaseRole.database_role}`">
+                    <label class="check-card">
+                      <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserRoles.grantDatabaseRoles" />
+                      <span x-text="databaseRole.database_role"></span>
+                    </label>
                   </template>
-                </select>
-                <button class="btn btn-warn" type="button" :disabled="clusterUsersLoading.grantRole || !modal.clusterUserRoles.grantRole"
-                  @click="grantClusterUserRole()">
-                  <span x-show="!clusterUsersLoading.grantRole">GRANT</span>
-                  <span x-show="clusterUsersLoading.grantRole">GRANTING…</span>
+                </div>
+                <button class="btn btn-warn" type="button" :disabled="clusterUsersLoading.grantDatabaseRoles || modal.clusterUserRoles.grantDatabaseRoles.length === 0"
+                  @click="grantClusterUserDatabaseRoles()">
+                  <span x-show="!clusterUsersLoading.grantDatabaseRoles">GRANT</span>
+                  <span x-show="clusterUsersLoading.grantDatabaseRoles">GRANTING…</span>
                 </button>
               </div>
               <div class="metric-sub" x-show="databaseRoles.length === 0">No database roles are configured in the admin catalog.</div>

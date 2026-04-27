@@ -1256,6 +1256,35 @@ td:first-child {
   height: 100%;
 }
 
+.modal-ace-editor {
+  width: 100%;
+  height: clamp(220px, 34vh, 360px);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.sql-preview {
+  display: block;
+  max-width: min(560px, 52vw);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sql-preview-editor {
+  width: min(680px, 58vw);
+  height: 144px;
+  min-width: 360px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.95);
+}
+
 .select {
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(148, 163, 184, 0.4);
@@ -1811,6 +1840,37 @@ tbody tr:hover {
 
 .admin-card .dashboard-card-title {
   font-size: 16px;
+}
+
+.admin-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-card-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  background: rgba(45, 212, 191, 0.08);
+  color: #8ff7ea;
+}
+
+.admin-card-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.admin-card-button:hover .admin-card-icon {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
 }
 
 .job-details-grid {
