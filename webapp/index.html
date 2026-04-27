@@ -874,7 +874,7 @@
           </div>
         </aside>
 
-        <section class="main">
+        <section class="main cluster-backups-main">
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Backup Management</div>
@@ -886,7 +886,7 @@
             </div>
           </div>
 
-          <div class="dashboard-home">
+          <div class="dashboard-home cluster-backups-home">
             <section class="dashboard-card cluster-actions-card">
               <div class="dashboard-card-head">
                 <div>
@@ -912,7 +912,7 @@
               </div>
             </section>
 
-            <section class="dashboard-card cluster-actions-card">
+            <section class="dashboard-card cluster-actions-card cluster-backup-details-card">
               <div class="dashboard-card-head">
                 <div>
                   <div class="dashboard-card-kicker">Details</div>
@@ -923,9 +923,9 @@
               <div class="metric-sub" x-show="selectedClusterBackupPath">
                 Showing details for <span class="ip-pill" x-text="selectedClusterBackupPath"></span>
               </div>
-              <div class="table-container">
-                <div class="table-scroll">
-                  <table>
+              <div class="table-container cluster-backup-details-table">
+                <div class="table-scroll cluster-backup-details-scroll">
+                  <table class="cluster-backup-contents-table">
                     <thead>
                       <tr>
                         <th>Database</th>

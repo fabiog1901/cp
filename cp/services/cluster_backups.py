@@ -87,7 +87,7 @@ class ClusterBackupsService:
         try:
             try:
                 query = sql.SQL("""
-                    SELECT database_name, parent_schema_name, object_name,
+                    SELECT DISTINCT database_name, parent_schema_name, object_name,
                         object_type, backup_type, start_time, end_time
                     FROM [SHOW BACKUP {} IN 'external://backup']
                     WHERE (
