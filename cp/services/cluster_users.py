@@ -54,7 +54,8 @@ class ClusterUsersService:
                         database_users = cur.execute("""
                             SELECT username, options, member_of
                             FROM [SHOW USERS]
-                            WHERE username NOT IN ('admin', 'root', 'cockroach');
+                            WHERE username NOT IN ('admin', 'root', 'cockroach')
+                            AND NOT ('NOLOGIN' = ANY(options));
                             """).fetchall()
             except Exception as err:
                 logger.debug(
