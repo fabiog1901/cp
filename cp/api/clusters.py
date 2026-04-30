@@ -17,6 +17,7 @@ from ..models import (
     ClusterDatabaseRolesUpdateRequest,
     ClusterDialogOptionsResponse,
     ClusterJobsSnapshot,
+    ClusterObjectRestoreApiRequest,
     ClusterOverview,
     ClusterPasswordUpdateRequest,
     ClusterPublic,
@@ -309,6 +310,33 @@ async def restore_cluster(
             request.object_type,
             request.object_name,
             request.backup_into,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    return JobID(job_id=job_id)
+
+
+@router.post("/{cluster_id}/restores/objects", response_model=JobID)
+async def restore_cluster_object(
+    cluster_id: str,
+    request: ClusterObjectRestoreApiRequest,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterBackupsService = Depends(get_cluster_backups_service),
+) -> JobID:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        job_id = service.enqueue_object_restore(
+            cluster_id,
+            groups,
+            is_admin,
+            request.backup_path,
+            request.restore_aost,
+            request.object_type,
+            request.object_name,
+            request.into_db,
+            request.new_db_name,
             actor_id,
         )
     except ServiceError as err:

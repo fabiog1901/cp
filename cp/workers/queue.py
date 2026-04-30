@@ -21,7 +21,11 @@ from ..models import (
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters
-from .clusters.restore import restore_cluster
+from .clusters.restore import (
+    poll_cluster_restore,
+    restore_cluster,
+    restore_cluster_object,
+)
 from .clusters.scale import scale_cluster
 from .clusters.upgrade import upgrade_cluster
 
@@ -47,6 +51,8 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     CommandType.SCALE_CLUSTER: scale_cluster,
     CommandType.UPGRADE_CLUSTER: upgrade_cluster,
     CommandType.RESTORE_CLUSTER: restore_cluster,
+    CommandType.RESTORE_CLUSTER_OBJECT: restore_cluster_object,
+    CommandType.POLL_CLUSTER_RESTORE: poll_cluster_restore,
     CommandType.FAIL_ZOMBIE_JOBS: fail_zombie_jobs,
     CommandType.HEALTHCHECK_CLUSTERS: healthcheck_clusters,
 }

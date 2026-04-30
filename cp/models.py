@@ -1,8 +1,8 @@
 import datetime as dt
 from enum import StrEnum, auto
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
@@ -36,6 +36,8 @@ class CommandType(AutoNameStrEnum):
     UPGRADE_CLUSTER = auto()
     DEBUG_CLUSTER = auto()
     RESTORE_CLUSTER = auto()
+    RESTORE_CLUSTER_OBJECT = auto()
+    POLL_CLUSTER_RESTORE = auto()
     HEALTHCHECK_CLUSTERS = auto()
     FAIL_ZOMBIE_JOBS = auto()
 
@@ -338,6 +340,63 @@ class RestoreRequest(CommandModel):
     backup_into: str | None
 
 
+class RestoreClusterObjectRequest(CommandModel):
+    cluster_id: str
+    backup_path: str
+    restore_aost: str | None = None
+    object_type: Literal["database", "table"]
+    object_name: str
+    into_db: str | None = None
+    new_db_name: str | None = None
+
+    @field_validator(
+        "cluster_id",
+        "backup_path",
+        "object_name",
+        "restore_aost",
+        "into_db",
+        "new_db_name",
+        mode="before",
+    )
+    @classmethod
+    def empty_strings_to_none(cls, value):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("object_type", mode="before")
+    @classmethod
+    def normalize_object_type(cls, value):
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("cluster_id", "backup_path", "object_name")
+    @classmethod
+    def require_value(cls, value: str | None):
+        if value is None:
+            raise ValueError("Field must not be empty.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_restore_options(self):
+        if self.object_type == "database" and self.into_db is not None:
+            raise ValueError("into_db can only be used when restoring a table.")
+        if self.object_type == "table" and self.new_db_name is not None:
+            raise ValueError("new_db_name can only be used when restoring a database.")
+        return self
+
+
+class PollClusterRestoreRequest(CommandModel):
+    cluster_id: str
+    cp_job_id: int
+    cockroach_job_id: int
+    poll_attempt: int = 1
+
+
 class ClusterScaleRequest(CommandModel):
     name: str
     node_count: int
@@ -362,6 +421,8 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.UPGRADE_CLUSTER: ClusterUpgradeRequest,
     CommandType.DEBUG_CLUSTER: DebugClusterCommand,
     CommandType.RESTORE_CLUSTER: RestoreRequest,
+    CommandType.RESTORE_CLUSTER_OBJECT: RestoreClusterObjectRequest,
+    CommandType.POLL_CLUSTER_RESTORE: PollClusterRestoreRequest,
     CommandType.HEALTHCHECK_CLUSTERS: HealthcheckClustersCommand,
     CommandType.FAIL_ZOMBIE_JOBS: FailZombieJobsCommand,
 }
@@ -610,6 +671,54 @@ class ClusterRestoreApiRequest(BaseModel):
     object_type: str | None = None
     object_name: str | None = None
     backup_into: str | None = None
+
+
+class ClusterObjectRestoreApiRequest(BaseModel):
+    backup_path: str
+    restore_aost: str | None = None
+    object_type: Literal["database", "table"]
+    object_name: str
+    into_db: str | None = None
+    new_db_name: str | None = None
+
+    @field_validator(
+        "backup_path",
+        "object_name",
+        "restore_aost",
+        "into_db",
+        "new_db_name",
+        mode="before",
+    )
+    @classmethod
+    def empty_strings_to_none(cls, value):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("object_type", mode="before")
+    @classmethod
+    def normalize_object_type(cls, value):
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("backup_path", "object_name")
+    @classmethod
+    def require_value(cls, value: str | None):
+        if value is None:
+            raise ValueError("Field must not be empty.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_restore_options(self):
+        if self.object_type == "database" and self.into_db is not None:
+            raise ValueError("into_db can only be used when restoring a table.")
+        if self.object_type == "table" and self.new_db_name is not None:
+            raise ValueError("new_db_name can only be used when restoring a database.")
+        return self
 
 
 class ClusterDatabaseRolesUpdateRequest(BaseModel):

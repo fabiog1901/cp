@@ -17,6 +17,7 @@ from ..models import (
     ClusterBackupsSnapshot,
     CommandType,
     JobID,
+    RestoreClusterObjectRequest,
     RestoreRequest,
     to_public_cluster,
 )
@@ -175,6 +176,60 @@ class ClusterBackupsService:
                 fallback_message=f"Unable to request restore for cluster '{selected_cluster.cluster_id}'.",
             ) from err
 
+    def enqueue_object_restore(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        backup_path: str,
+        restore_aost: str | None,
+        object_type: str,
+        object_name: str,
+        into_db: str | None,
+        new_db_name: str | None,
+        requested_by: str,
+    ) -> int:
+        selected_cluster = self._get_cluster_or_raise(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+        restore_request = self.validate_object_restore_request(
+            cluster_id=selected_cluster.cluster_id,
+            backup_path=backup_path,
+            restore_aost=restore_aost,
+            object_type=object_type,
+            object_name=object_name,
+            into_db=into_db,
+            new_db_name=new_db_name,
+        )
+
+        payload = RestoreClusterObjectRequest(**restore_request)
+
+        try:
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.RESTORE_CLUSTER_OBJECT,
+                payload,
+                requested_by,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.CLUSTER_RESTORE_REQUESTED,
+                payload.model_dump() | {"job_id": msg_id.job_id},
+            )
+            return msg_id.job_id
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Object restore could not be requested right now.",
+                validation_message="The object restore request contains invalid data.",
+                fallback_message=(
+                    f"Unable to request object restore for cluster "
+                    f"'{selected_cluster.cluster_id}'."
+                ),
+            ) from err
+
     def _get_cluster_or_raise(
         self,
         cluster_id: str,
@@ -196,6 +251,17 @@ class ClusterBackupsService:
             raise ServiceValidationError(
                 msg,
                 title="Invalid Restore Request",
+            ) from err
+
+    @staticmethod
+    def validate_object_restore_request(**kwargs) -> dict:
+        try:
+            return RestoreClusterObjectRequest(**kwargs).model_dump()
+        except ValidationError as err:
+            msg = err.errors()[0].get("msg", "Object restore request is invalid.")
+            raise ServiceValidationError(
+                msg,
+                title="Invalid Object Restore Request",
             ) from err
 
     @staticmethod
