@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
 from ..infra import get_backup_catalog_service
-from ..models import BackupCatalogSnapshot
+from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
 from ..services.errors import (
     ServiceAuthorizationError,
@@ -76,3 +76,23 @@ async def sync_recovery_backups(
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return {"status": "queued"}
+
+
+@router.post("/restores", response_model=JobID)
+async def restore_full_cluster(
+    request: ClusterRecoveryRestoreApiRequest,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: BackupCatalogService = Depends(get_backup_catalog_service),
+) -> JobID:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        job_id = service.enqueue_full_cluster_restore(
+            request,
+            groups,
+            is_admin,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    return JobID(job_id=job_id)

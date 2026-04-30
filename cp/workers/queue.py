@@ -25,6 +25,7 @@ from .clusters.healthcheck import healthcheck_clusters
 from .clusters.restore import (
     poll_cluster_restore,
     restore_cluster,
+    restore_full_cluster,
     restore_cluster_object,
 )
 from .clusters.scale import scale_cluster
@@ -53,6 +54,7 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     CommandType.UPGRADE_CLUSTER: upgrade_cluster,
     CommandType.RESTORE_CLUSTER: restore_cluster,
     CommandType.RESTORE_CLUSTER_OBJECT: restore_cluster_object,
+    CommandType.RESTORE_FULL_CLUSTER: restore_full_cluster,
     CommandType.POLL_CLUSTER_RESTORE: poll_cluster_restore,
     CommandType.SYNC_BACKUP_CATALOG: sync_backup_catalog,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: sync_cluster_backup_catalog,

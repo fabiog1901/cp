@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from ..infra.db import execute_stmt, fetch_all
+from ..infra.db import execute_stmt, fetch_all, fetch_one
 from ..models import BackupCatalogEntry, BackupCatalogEntryUpsert
 
 
@@ -36,6 +36,39 @@ class BackupCatalogRepo:
             tuple(params),
             BackupCatalogEntry,
             operation=operation,
+        )
+
+    def get_backup_catalog_entry(
+        self,
+        cluster_id: str,
+        backup_path: str,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> BackupCatalogEntry | None:
+        if is_admin:
+            return fetch_one(
+                """
+                SELECT *
+                FROM cluster_backup_catalog
+                WHERE cluster_id = %s
+                    AND backup_path = %s
+                """,
+                (cluster_id, backup_path),
+                BackupCatalogEntry,
+                operation="backup_catalog.get.admin",
+            )
+
+        return fetch_one(
+            """
+            SELECT *
+            FROM cluster_backup_catalog
+            WHERE cluster_id = %s
+                AND backup_path = %s
+                AND grp = ANY (%s)
+            """,
+            (cluster_id, backup_path, groups),
+            BackupCatalogEntry,
+            operation="backup_catalog.get",
         )
 
     def replace_cluster_backup_catalog(

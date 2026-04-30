@@ -25,7 +25,6 @@ class PlaybookName(AutoNameStrEnum):
     SCALE_NODE_CPUS = auto()
     UPGRADE_CLUSTER = auto()
     HEALTHCHECK_CLUSTER = auto()
-    RESTORE_CLUSTER = auto()
 
 
 class CommandType(AutoNameStrEnum):
@@ -37,6 +36,7 @@ class CommandType(AutoNameStrEnum):
     DEBUG_CLUSTER = auto()
     RESTORE_CLUSTER = auto()
     RESTORE_CLUSTER_OBJECT = auto()
+    RESTORE_FULL_CLUSTER = auto()
     POLL_CLUSTER_RESTORE = auto()
     SYNC_BACKUP_CATALOG = auto()
     SYNC_CLUSTER_BACKUP_CATALOG = auto()
@@ -392,6 +392,36 @@ class RestoreClusterObjectRequest(CommandModel):
         return self
 
 
+class RestoreFullClusterRequest(CommandModel):
+    source_cluster_id: str
+    target_cluster_id: str
+    backup_path: str
+    restore_aost: str | None = None
+
+    @field_validator(
+        "source_cluster_id",
+        "target_cluster_id",
+        "backup_path",
+        "restore_aost",
+        mode="before",
+    )
+    @classmethod
+    def empty_strings_to_none(cls, value):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("source_cluster_id", "target_cluster_id", "backup_path")
+    @classmethod
+    def require_value(cls, value: str | None):
+        if value is None:
+            raise ValueError("Field must not be empty.")
+        return value
+
+
 class PollClusterRestoreRequest(CommandModel):
     cluster_id: str
     cp_job_id: int
@@ -432,6 +462,7 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.DEBUG_CLUSTER: DebugClusterCommand,
     CommandType.RESTORE_CLUSTER: RestoreRequest,
     CommandType.RESTORE_CLUSTER_OBJECT: RestoreClusterObjectRequest,
+    CommandType.RESTORE_FULL_CLUSTER: RestoreFullClusterRequest,
     CommandType.POLL_CLUSTER_RESTORE: PollClusterRestoreRequest,
     CommandType.SYNC_BACKUP_CATALOG: SyncBackupCatalogRequest,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: SyncClusterBackupCatalogRequest,
@@ -501,6 +532,36 @@ class BackupCatalogEntry(BaseModel):
 
 class BackupCatalogSnapshot(BaseModel):
     backups: list[BackupCatalogEntry]
+
+
+class ClusterRecoveryRestoreApiRequest(BaseModel):
+    source_cluster_id: str
+    target_cluster_id: str
+    backup_path: str
+    restore_aost: str | None = None
+
+    @field_validator(
+        "source_cluster_id",
+        "target_cluster_id",
+        "backup_path",
+        "restore_aost",
+        mode="before",
+    )
+    @classmethod
+    def empty_strings_to_none(cls, value):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("source_cluster_id", "target_cluster_id", "backup_path")
+    @classmethod
+    def require_value(cls, value: str | None):
+        if value is None:
+            raise ValueError("Field must not be empty.")
+        return value
 
 
 class BackupCatalogObjectUpsert(BaseModel):

@@ -1,23 +1,22 @@
 import datetime as dt
 import logging
-from threading import Thread
 
 from psycopg import sql
 from psycopg.rows import dict_row
 
 from ...infra import get_repo
+from ...infra.db import get_pool
 from ...models import (
     ClusterState,
     CommandType,
     JobState,
     PollClusterRestoreRequest,
-    PlaybookName,
+    RestoreFullClusterRequest,
     RestoreClusterObjectRequest,
     RestoreRequest,
 )
 from ...services.cluster_db import connect_to_cluster_db
 from ...services.storage_broker import StorageBrokerService
-from ..ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -71,17 +70,45 @@ def restore_cluster(
     repo.link_job_to_cluster(
         rr.name,
         job_id,
-        JobState.QUEUED,
+        JobState.RUNNING,
     )
 
-    Thread(
-        target=restore_cluster_worker,
-        args=(
+    restore_cluster_worker(job_id, rr, requested_by)
+
+
+def restore_full_cluster(
+    job_id: int,
+    command: RestoreFullClusterRequest,
+    requested_by: str,
+) -> None:
+    repo = get_repo()
+
+    rr = command
+    target_cluster = repo.get_cluster(rr.target_cluster_id, [], True)
+    if target_cluster is None or target_cluster.status != ClusterState.ACTIVE:
+        repo.update_job(job_id, JobState.FAILED)
+        repo.create_task(
             job_id,
-            rr,
-            requested_by,
-        ),
-    ).start()
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The target cluster must exist and be in an ACTIVE state for recovery.",
+        )
+        return
+
+    repo.update_cluster(
+        rr.target_cluster_id,
+        requested_by,
+        status=ClusterState.RESTORING,
+    )
+
+    repo.link_job_to_cluster(
+        rr.target_cluster_id,
+        job_id,
+        JobState.RUNNING,
+    )
+
+    restore_full_cluster_worker(job_id, rr, requested_by)
 
 
 def restore_cluster_object(
@@ -121,68 +148,21 @@ def restore_cluster_object(
     )
 
     try:
-        object_name_parts = [part.strip() for part in rr.object_name.split(".")]
-        if (
-            not object_name_parts
-            or len(object_name_parts) > 3
-            or any(part == "" for part in object_name_parts)
-        ):
-            raise ValueError("object_name must be a valid database or table name.")
-
-        backup_path = (
-            sql.SQL("LATEST")
-            if rr.backup_path.upper() == "LATEST"
-            else sql.Literal(rr.backup_path)
+        cockroach_job_id = _submit_detached_restore(
+            cluster,
+            backup_path=rr.backup_path,
+            backup_location="external://backup",
+            restore_aost=rr.restore_aost,
+            object_type=rr.object_type,
+            object_name=rr.object_name,
+            into_db=rr.into_db,
+            new_db_name=rr.new_db_name,
         )
-        restore_query = sql.SQL("RESTORE {} {} FROM {} IN {}").format(
-            sql.SQL(rr.object_type.upper()),
-            sql.Identifier(*object_name_parts),
-            backup_path,
-            sql.Literal("external://backup"),
-        )
-        if rr.restore_aost:
-            restore_query += sql.SQL(" AS OF SYSTEM TIME {}").format(
-                sql.Literal(rr.restore_aost)
-            )
-
-        restore_options = []
-        if rr.into_db:
-            restore_options.append(
-                sql.SQL("into_db = {}").format(sql.Literal(rr.into_db))
-            )
-        if rr.new_db_name:
-            restore_options.append(
-                sql.SQL("new_db_name = {}").format(sql.Literal(rr.new_db_name))
-            )
-        restore_query += sql.SQL(" WITH ") + sql.SQL(", ").join(
-            restore_options + [sql.SQL("DETACHED")]
-        )
-
-        with connect_to_cluster_db(cluster) as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                row = cur.execute(restore_query).fetchone()
-
-        if row is None or row.get("job_id") is None:
-            raise RuntimeError("CockroachDB did not return a restore job id.")
-
-        cockroach_job_id = int(row["job_id"])
-        repo.create_task(
+        _record_restore_submission(
             job_id,
-            0,
-            dt.datetime.now(dt.timezone.utc),
-            "RESTORE_SUBMITTED",
-            f"CockroachDB restore job {cockroach_job_id} was submitted.",
-        )
-
-        repo.enqueue_message(
-            CommandType.POLL_CLUSTER_RESTORE,
-            PollClusterRestoreRequest(
-                cluster_id=rr.cluster_id,
-                cp_job_id=job_id,
-                cockroach_job_id=cockroach_job_id,
-            ),
+            rr.cluster_id,
+            cockroach_job_id,
             requested_by,
-            start_after_seconds=RESTORE_POLL_INTERVAL_SECONDS,
         )
     except Exception as err:
         logger.exception(
@@ -203,6 +183,81 @@ def restore_cluster_object(
         )
 
 
+def restore_full_cluster_worker(
+    job_id: int,
+    rr: RestoreFullClusterRequest,
+    requested_by: str,
+):
+    repo = get_repo()
+    try:
+        target_cluster = repo.get_cluster(rr.target_cluster_id, [], True)
+        if target_cluster is None:
+            raise ValueError(f"Target cluster '{rr.target_cluster_id}' was not found.")
+
+        backup_external_connection_uri = StorageBrokerService(
+            repo
+        ).get_backup_external_connection_uri(rr.source_cluster_id)
+        _validate_full_cluster_backup(
+            rr.backup_path,
+            backup_external_connection_uri,
+        )
+
+        cockroach_job_id = _submit_detached_restore(
+            target_cluster,
+            backup_path=rr.backup_path,
+            backup_location=backup_external_connection_uri,
+            restore_aost=rr.restore_aost,
+        )
+        _record_restore_submission(
+            job_id,
+            rr.target_cluster_id,
+            cockroach_job_id,
+            requested_by,
+        )
+    except Exception as err:
+        logger.exception(
+            "Unhandled error while recovering cluster '%s' from '%s'",
+            rr.target_cluster_id,
+            rr.source_cluster_id,
+        )
+        repo.update_job(job_id, JobState.FAILED)
+        repo.create_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
+        )
+        repo.update_cluster(
+            rr.target_cluster_id,
+            requested_by,
+            status=ClusterState.RESTORE_FAILED,
+        )
+
+
+def _validate_full_cluster_backup(
+    backup_path: str,
+    backup_external_connection_uri: str,
+) -> None:
+    backup_path_sql = (
+        sql.SQL("LATEST")
+        if backup_path.upper() == "LATEST"
+        else sql.Literal(backup_path)
+    )
+    query = sql.SQL("SELECT * FROM [SHOW BACKUP FROM {} IN {}]").format(
+        backup_path_sql,
+        sql.Literal(backup_external_connection_uri),
+    )
+    with get_pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            rows = cur.execute(query).fetchall()
+
+    if not rows:
+        raise ValueError("The selected backup path was not found in source storage.")
+    if not any(row.get("is_full_cluster") is True for row in rows):
+        raise ValueError("The selected backup is not a full cluster backup.")
+
+
 def restore_cluster_worker(
     job_id: int,
     rr: RestoreRequest,
@@ -210,36 +265,34 @@ def restore_cluster_worker(
 ):
     repo = get_repo()
     try:
-        backup_external_connection_uri = StorageBrokerService(
-            repo
-        ).get_backup_external_connection_uri(rr.name)
-        extra_vars = {
-            "deployment_id": rr.name,
-            "backup_path": rr.backup_path,
-            "restore_aost": rr.restore_aost,
-            "restore_full_cluster": rr.restore_full_cluster,
-            "object_type": rr.object_type,
-            "object_name": rr.object_name,
-            "backup_into": rr.backup_into,
-            "backup_external_connection_uri": backup_external_connection_uri,
-        }
+        cluster = repo.get_cluster(rr.name, [], True)
+        if cluster is None:
+            raise ValueError(f"Cluster '{rr.name}' was not found.")
 
-        job_status, _, _ = MyRunner(job_id).launch_runner(
-            PlaybookName.RESTORE_CLUSTER, extra_vars
-        )
-
-        if job_status != "successful":
-            repo.update_cluster(
-                rr.name,
-                requested_by,
-                status=ClusterState.RESTORE_FAILED,
+        backup_location = "external://backup"
+        if rr.restore_full_cluster:
+            backup_external_connection_uri = StorageBrokerService(
+                repo
+            ).get_backup_external_connection_uri(rr.name)
+            _validate_full_cluster_backup(
+                rr.backup_path,
+                backup_external_connection_uri,
             )
-            return
-
-        repo.update_cluster(
+            backup_location = backup_external_connection_uri
+        cockroach_job_id = _submit_detached_restore(
+            cluster,
+            backup_path=rr.backup_path,
+            backup_location=backup_location,
+            restore_aost=rr.restore_aost,
+            object_type=rr.object_type,
+            object_name=rr.object_name,
+            new_db_name=rr.backup_into,
+        )
+        _record_restore_submission(
+            job_id,
             rr.name,
+            cockroach_job_id,
             requested_by,
-            status=ClusterState.ACTIVE,
         )
     except Exception as err:
         logger.exception("Unhandled error while restoring cluster '%s'", rr.name)
@@ -256,6 +309,97 @@ def restore_cluster_worker(
             requested_by,
             status=ClusterState.RESTORE_FAILED,
         )
+
+
+def _submit_detached_restore(
+    cluster,
+    *,
+    backup_path: str,
+    backup_location: str,
+    restore_aost: str | None = None,
+    object_type: str | None = None,
+    object_name: str | None = None,
+    into_db: str | None = None,
+    new_db_name: str | None = None,
+) -> int:
+    restore_target = sql.SQL("")
+    if object_type or object_name:
+        if object_type is None or object_name is None:
+            raise ValueError("Both object_type and object_name are required.")
+        normalized_object_type = object_type.strip().lower()
+        if normalized_object_type not in {"database", "table"}:
+            raise ValueError("object_type must be either 'database' or 'table'.")
+        object_name_parts = [part.strip() for part in object_name.split(".")]
+        if (
+            not object_name_parts
+            or len(object_name_parts) > 3
+            or any(part == "" for part in object_name_parts)
+        ):
+            raise ValueError("object_name must be a valid database or table name.")
+        restore_target = sql.SQL("{} {} ").format(
+            sql.SQL(normalized_object_type.upper()),
+            sql.Identifier(*object_name_parts),
+        )
+
+    backup_path_sql = (
+        sql.SQL("LATEST")
+        if backup_path.upper() == "LATEST"
+        else sql.Literal(backup_path)
+    )
+    restore_query = sql.SQL("RESTORE {}FROM {} IN {}").format(
+        restore_target,
+        backup_path_sql,
+        sql.Literal(backup_location),
+    )
+    if restore_aost:
+        restore_query += sql.SQL(" AS OF SYSTEM TIME {}").format(
+            sql.Literal(restore_aost)
+        )
+
+    restore_options = []
+    if into_db:
+        restore_options.append(sql.SQL("into_db = {}").format(sql.Literal(into_db)))
+    if new_db_name:
+        restore_options.append(
+            sql.SQL("new_db_name = {}").format(sql.Literal(new_db_name))
+        )
+    restore_query += sql.SQL(" WITH ") + sql.SQL(", ").join(
+        restore_options + [sql.SQL("DETACHED")]
+    )
+
+    with connect_to_cluster_db(cluster) as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            row = cur.execute(restore_query).fetchone()
+
+    if row is None or row.get("job_id") is None:
+        raise RuntimeError("CockroachDB did not return a restore job id.")
+    return int(row["job_id"])
+
+
+def _record_restore_submission(
+    cp_job_id: int,
+    cluster_id: str,
+    cockroach_job_id: int,
+    requested_by: str,
+) -> None:
+    repo = get_repo()
+    repo.create_task(
+        cp_job_id,
+        0,
+        dt.datetime.now(dt.timezone.utc),
+        "RESTORE_SUBMITTED",
+        f"CockroachDB restore job {cockroach_job_id} was submitted.",
+    )
+    repo.enqueue_message(
+        CommandType.POLL_CLUSTER_RESTORE,
+        PollClusterRestoreRequest(
+            cluster_id=cluster_id,
+            cp_job_id=cp_job_id,
+            cockroach_job_id=cockroach_job_id,
+        ),
+        requested_by,
+        start_after_seconds=RESTORE_POLL_INTERVAL_SECONDS,
+    )
 
 
 def poll_cluster_restore(
