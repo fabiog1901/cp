@@ -60,7 +60,7 @@
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'dashboard' }"
               @click.prevent="setView('dashboard')">Dashboard</a>
 
-            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' || view === 'cluster_databases' || view === 'cluster_backups' }"
+            <a href="#" class="pill" :class="{ 'pill-accent': view === 'clusters' || view === 'cluster' || view === 'cluster_dashboard' || view === 'cluster_users' || view === 'cluster_databases' || view === 'cluster_backups' || view === 'cluster_recovery' }"
               @click.prevent="setView('clusters')">Clusters</a>
 
             <a href="#" class="pill" :class="{ 'pill-accent': view === 'jobs' || view === 'job' }"
@@ -668,6 +668,23 @@
                   </span>
                 </button>
 
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterRecovery()"
+                  title="Restore this cluster from a cataloged full backup."
+                  aria-label="Open cluster recovery">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M4 12a8 8 0 1 0 2.7-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M4 4v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M7 20h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Recovery</span>
+                    <span class="cluster-toolbar-sub">Restore from full backup</span>
+                  </span>
+                </button>
+
                 <button class="cluster-toolbar-btn" type="button" @click="openClusterJobs()"
                   title="Open jobs related to this cluster."
                   aria-label="Open cluster jobs">
@@ -994,6 +1011,166 @@
           </div>
         </section>
       </main>
+
+      <!-- CLUSTER RECOVERY VIEW -->
+      <main class="layout" x-show="view === 'cluster_recovery'">
+        <aside class="sidebar">
+          <div>
+            <h2>Target Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Restore Into</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterRecoveryBackups()" :disabled="clusterRecoveryLoading.list || !selectedClusterId">
+                <span x-show="!clusterRecoveryLoading.list">Refresh Catalog</span>
+                <span x-show="clusterRecoveryLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterRecoveryAutoRefreshEnabled" />
+                Auto-refresh (30s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-recovery-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Cluster Recovery</div>
+              <div class="main-subtitle">Choose a source cluster, then select a full-cluster backup path to restore into the selected target cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterRecoveryLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container cluster-recovery-table-container">
+            <div class="table-scroll">
+              <table class="cluster-recovery-table">
+                <thead>
+                  <tr>
+                    <th>Source Cluster</th>
+                    <th>Group</th>
+                    <th>Backups</th>
+                    <th>Latest Backup (UTC)</th>
+                    <th>Last Catalog Sync (UTC)</th>
+                  </tr>
+                </thead>
+                <template x-for="source in clusterRecoverySourceRows()" :key="source.cluster_id">
+                  <tbody>
+                    <tr class="cluster-recovery-source-row" @click="toggleClusterRecoverySource(source.cluster_id)">
+                      <td>
+                        <div class="cluster-recovery-source-cell">
+                          <span class="cluster-recovery-chevron" :class="{ 'is-open': isClusterRecoveryExpanded(source.cluster_id) }" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </span>
+                          <span class="ip-pill" x-text="source.cluster_id"></span>
+                          <span class="service-pill" x-show="source.cluster_id === selectedClusterId">target</span>
+                        </div>
+                      </td>
+                      <td><span x-text="source.grp || '-'"></span></td>
+                      <td><span x-text="clusterRecoveryBackupCountForSource(source)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(source.latest_end_time)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(source.latest_seen_at)"></span></td>
+                    </tr>
+                    <tr x-show="isClusterRecoveryExpanded(source.cluster_id)">
+                      <td colspan="5" class="cluster-recovery-expanded-cell">
+                        <div class="cluster-recovery-path-list">
+                          <template x-for="backup in source.backups" :key="`${backup.cluster_id}-${backup.backup_path}`">
+                            <div class="cluster-recovery-path-row">
+                              <div class="cluster-recovery-path-main">
+                                <div class="cluster-recovery-path" x-text="backup.backup_path || '-'"></div>
+                                <div class="cluster-recovery-path-meta">
+                                  <span>Start <strong x-text="toUtcStringMaybe(backup.start_time)"></strong></span>
+                                  <span>End <strong x-text="toUtcStringMaybe(backup.end_time)"></strong></span>
+                                  <span>Objects <strong x-text="backup.object_count ?? 0"></strong></span>
+                                  <span>Status <strong x-text="backup.status || '-'"></strong></span>
+                                </div>
+                              </div>
+                              <button class="btn btn-warn" type="button"
+                                x-show="canManageCompute()"
+                                :disabled="source.cluster_id === selectedClusterId || clusterRecoveryLoading.restore"
+                                :title="source.cluster_id === selectedClusterId ? 'Source and target clusters must be different.' : 'Restore this full backup into the selected target cluster.'"
+                                @click.stop="openClusterRecoveryRestoreConfirm(backup)">
+                                Restore
+                              </button>
+                            </div>
+                          </template>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </template>
+                <tbody>
+                  <tr x-show="!clusterRecoveryLoading.list && clusterRecoverySourceRows().length === 0">
+                    <td colspan="5" style="padding: 18px; color: var(--muted);">No available full-cluster backups found in the catalog.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Cluster Recovery Restore Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterRecoveryRestoreConfirm.open" x-transition
+        @keydown.escape.window="closeClusterRecoveryRestoreConfirm()">
+        <div class="modal" @click.outside="closeClusterRecoveryRestoreConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Restore Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterRecoveryRestoreConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body backup-restore-modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterRecoveryRestoreConfirm"
+              x-text="modalErrors.clusterRecoveryRestoreConfirm"></div>
+
+            <section class="backup-restore-section backup-restore-two-col">
+              <label class="field">
+                <span class="field-label">Source Cluster</span>
+                <div class="backup-restore-backup-path" x-text="modal.clusterRecoveryRestoreConfirm.source_cluster_id || '-'"></div>
+              </label>
+              <label class="field">
+                <span class="field-label">Target Cluster</span>
+                <div class="backup-restore-backup-path" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              </label>
+            </section>
+
+            <section class="backup-restore-section">
+              <label class="field">
+                <span class="field-label">Backup Path</span>
+                <div class="backup-restore-backup-path" x-text="modal.clusterRecoveryRestoreConfirm.backup_path || '-'"></div>
+              </label>
+            </section>
+
+            <section class="backup-restore-section">
+              <label class="field">
+                <span class="field-label">AOST (UTC)</span>
+                <input class="input" type="datetime-local" step="1"
+                  x-model="modal.clusterRecoveryRestoreConfirm.restore_aost" />
+              </label>
+            </section>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterRecoveryRestoreConfirm()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterRecoveryLoading.restore" @click="restoreClusterFromCatalogBackup()">
+              <span x-show="!clusterRecoveryLoading.restore">REQUEST RESTORE</span>
+              <span x-show="clusterRecoveryLoading.restore">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Cluster Backup Object Restore Modal -->
       <div class="modal-backdrop" x-show="modal.clusterBackupObjectRestore.open" x-transition

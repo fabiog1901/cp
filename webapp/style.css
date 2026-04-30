@@ -2214,6 +2214,96 @@ tbody tr:hover {
   min-width: 1040px;
 }
 
+.cluster-recovery-main {
+  overflow: hidden;
+}
+
+.cluster-recovery-table-container {
+  min-height: 0;
+}
+
+.cluster-recovery-table {
+  min-width: 980px;
+}
+
+.cluster-recovery-source-row {
+  cursor: pointer;
+}
+
+.cluster-recovery-source-row:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.cluster-recovery-source-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cluster-recovery-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  transition: transform 120ms ease, color 120ms ease;
+}
+
+.cluster-recovery-chevron.is-open {
+  transform: rotate(90deg);
+  color: #bae6fd;
+}
+
+.cluster-recovery-expanded-cell {
+  padding: 0;
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.cluster-recovery-path-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.cluster-recovery-path-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cluster-recovery-path-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cluster-recovery-path {
+  color: #f8fafc;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.cluster-recovery-path-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cluster-recovery-path-meta strong {
+  color: #f8fafc;
+  font-weight: 500;
+}
+
 .backup-object-type-icon {
   width: 32px;
   height: 32px;
