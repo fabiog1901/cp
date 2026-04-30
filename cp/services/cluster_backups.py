@@ -85,13 +85,13 @@ class ClusterBackupsService:
         try:
             try:
                 query = sql.SQL("""
-                    SELECT DISTINCT database_name, parent_schema_name, object_name,
-                        object_type, backup_type, start_time, end_time
-                    FROM [SHOW BACKUP {} IN 'external://backup']
-                    WHERE (
-                        database_name NOT IN ('system', 'postgres')
-                        and object_name NOT IN ('system', 'postgres')
-                    )
+                    SELECT distinct object_type, database_name, parent_schema_name, object_name,                              
+                         backup_type, start_time, end_time                                                
+                    FROM [SHOW BACKUP LATEST IN 'external://backup']                                      
+                    WHERE (                                                                               
+                        (database_name is null or database_name NOT IN ('system', 'postgres'))            
+                        AND object_name NOT IN ('system', 'postgres')                                     
+                    AND object_type != 'schema');  
                     """).format(sql.Literal(backup_path))
 
                 with connect_to_cluster_db(selected_cluster) as conn:

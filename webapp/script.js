@@ -102,6 +102,7 @@ window.app = function () {
     clusterBackupsLoading: {
       snapshot: false,
       details: false,
+      restore: false,
     },
     clusterConnectCopiedFor: "",
     clusterCreateOptions: {
@@ -456,6 +457,17 @@ window.app = function () {
         open: false,
         database_name: "",
       },
+      clusterBackupObjectRestore: {
+        open: false,
+        row: null,
+        object_type: "",
+        object_name: "",
+        backup_path: "",
+        restore_aost: "",
+        use_restore_option: false,
+        into_db: "",
+        new_db_name: "",
+      },
       clusterUserCreate: {
         open: false,
         username: "",
@@ -523,6 +535,7 @@ window.app = function () {
       clusterScale: "",
       clusterDatabaseObjectCreate: "",
       clusterDatabaseObjectDeleteConfirm: "",
+      clusterBackupObjectRestore: "",
       clusterUserCreate: "",
       clusterUserDeleteConfirm: "",
       clusterUserPassword: "",
@@ -4295,6 +4308,147 @@ window.app = function () {
         this.clusterBackupDetails = [];
       } finally {
         this.clusterBackupsLoading.details = false;
+      }
+    },
+
+    backupObjectType(objectType) {
+      return String(objectType || "").trim().toLowerCase();
+    },
+
+    backupObjectTypeLabel(objectType) {
+      const normalized = this.backupObjectType(objectType);
+      if (normalized === "database") return "Database";
+      if (normalized === "table") return "Table";
+      return normalized || "-";
+    },
+
+    backupRestoreObjectName(row) {
+      const objectType = this.backupObjectType(row?.object_type);
+      if (objectType === "table") {
+        return [row?.database_name, row?.parent_schema_name, row?.object_name]
+          .map((part) => String(part || "").trim())
+          .filter(Boolean)
+          .join(".");
+      }
+      if (objectType === "database") {
+        return String(row?.database_name || row?.object_name || "").trim();
+      }
+      return String(row?.object_name || "").trim();
+    },
+
+    backupRestoreAostInputValue(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) {
+        return raw.replace(" ", "T").slice(0, 19);
+      }
+
+      const pad = (part) => String(part).padStart(2, "0");
+      return [
+        parsed.getUTCFullYear(),
+        "-",
+        pad(parsed.getUTCMonth() + 1),
+        "-",
+        pad(parsed.getUTCDate()),
+        "T",
+        pad(parsed.getUTCHours()),
+        ":",
+        pad(parsed.getUTCMinutes()),
+        ":",
+        pad(parsed.getUTCSeconds()),
+      ].join("");
+    },
+
+    backupRestoreAostApiValue(value) {
+      return String(value || "").trim().replace("T", " ");
+    },
+
+    openClusterBackupObjectRestoreModal(row) {
+      const objectType = this.backupObjectType(row?.object_type);
+      const objectName = this.backupRestoreObjectName(row);
+      if (!["database", "table"].includes(objectType) || !objectName) return;
+
+      this.modal.clusterBackupObjectRestore.open = true;
+      this.modal.clusterBackupObjectRestore.row = row || null;
+      this.modal.clusterBackupObjectRestore.object_type = objectType;
+      this.modal.clusterBackupObjectRestore.object_name = objectName;
+      this.modal.clusterBackupObjectRestore.backup_path = String(
+        this.selectedClusterBackupPath || "",
+      ).trim();
+      this.modal.clusterBackupObjectRestore.restore_aost =
+        this.backupRestoreAostInputValue(row?.start_time);
+      this.modal.clusterBackupObjectRestore.use_restore_option = false;
+      this.modal.clusterBackupObjectRestore.into_db = "";
+      this.modal.clusterBackupObjectRestore.new_db_name = "";
+      this.clearModalError("clusterBackupObjectRestore");
+    },
+
+    closeClusterBackupObjectRestoreModal() {
+      this.modal.clusterBackupObjectRestore.open = false;
+      this.modal.clusterBackupObjectRestore.row = null;
+      this.modal.clusterBackupObjectRestore.object_type = "";
+      this.modal.clusterBackupObjectRestore.object_name = "";
+      this.modal.clusterBackupObjectRestore.backup_path = "";
+      this.modal.clusterBackupObjectRestore.restore_aost = "";
+      this.modal.clusterBackupObjectRestore.use_restore_option = false;
+      this.modal.clusterBackupObjectRestore.into_db = "";
+      this.modal.clusterBackupObjectRestore.new_db_name = "";
+      this.clearModalError("clusterBackupObjectRestore");
+    },
+
+    async restoreClusterBackupObject() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const restore = this.modal.clusterBackupObjectRestore;
+      const objectType = this.backupObjectType(restore.object_type);
+      const objectName = String(restore.object_name || "").trim();
+      const backupPath = String(restore.backup_path || "").trim();
+      const restoreAost = this.backupRestoreAostApiValue(restore.restore_aost);
+      const useRestoreOption = Boolean(restore.use_restore_option);
+      const intoDb = String(restore.into_db || "").trim();
+      const newDbName = String(restore.new_db_name || "").trim();
+
+      if (!clusterId || !backupPath || !objectType || !objectName) return;
+      this.clusterBackupsLoading.restore = true;
+      this.clearModalError("clusterBackupObjectRestore");
+      try {
+        const body = {
+          backup_path: backupPath,
+          restore_aost: restoreAost || null,
+          object_type: objectType,
+          object_name: objectName,
+          into_db:
+            useRestoreOption && objectType === "table" && intoDb
+              ? intoDb
+              : null,
+          new_db_name:
+            useRestoreOption && objectType === "database" && newDbName
+              ? newDbName
+              : null,
+        };
+        const result = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/restores/objects`,
+          {
+            method: "POST",
+            body,
+          },
+        );
+        this.closeClusterBackupObjectRestoreModal();
+        this.setActionNotice(
+          `Restore requested for ${this.backupObjectTypeLabel(objectType).toLowerCase()} '${objectName}'.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterBackupObjectRestore",
+          e,
+          "Failed to request object restore.",
+        );
+      } finally {
+        this.clusterBackupsLoading.restore = false;
       }
     },
 

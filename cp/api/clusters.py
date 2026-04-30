@@ -317,7 +317,7 @@ async def restore_cluster(
     return JobID(job_id=job_id)
 
 
-@router.post("/{cluster_id}/restores/objects", response_model=JobID)
+@router.post("/{cluster_id}/restore/objects", response_model=JobID)
 async def restore_cluster_object(
     cluster_id: str,
     request: ClusterObjectRestoreApiRequest,
