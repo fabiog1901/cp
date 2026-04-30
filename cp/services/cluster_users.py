@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from ..infra.db import get_repo, translate_database_error
 from ..infra.errors import RepositoryError
-from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
     AuditEvent,
     Cluster,
@@ -24,6 +23,7 @@ from ..models import (
 )
 from ..repos import Repo
 from .base import log_event
+from .cluster_db import connect_to_cluster_db
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 logger = logging.getLogger(__name__)
@@ -101,10 +101,7 @@ class ClusterUsersService:
         )
         try:
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             sql.SQL("CREATE DATABASE {}").format(
@@ -186,10 +183,7 @@ class ClusterUsersService:
                 normalized_database_name,
             )
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             sql.SQL("DROP DATABASE {} CASCADE").format(
@@ -252,10 +246,7 @@ class ClusterUsersService:
                 requested_by,
             )
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor(row_factory=class_row(DatabaseUser)) as cur:
                         database_users = cur.execute("""
                             SELECT username, options, member_of
@@ -316,10 +307,7 @@ class ClusterUsersService:
                 self._normalized_database_roles(request.database_roles)
             )
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             sql.SQL("CREATE USER {} WITH PASSWORD %s").format(
@@ -377,10 +365,7 @@ class ClusterUsersService:
         )
         try:
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             sql.SQL("DROP USER {}").format(sql.Identifier(username))
@@ -425,10 +410,7 @@ class ClusterUsersService:
                 self._normalized_database_roles(database_roles)
             )
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         for selected_database_role in selected_database_roles:
                             cur.execute(
@@ -486,10 +468,7 @@ class ClusterUsersService:
                 self._normalized_database_roles(database_roles)
             )
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         for selected_database_role in selected_database_roles:
                             self._grant_database_role(
@@ -537,10 +516,7 @@ class ClusterUsersService:
             synced = 0
             desired_database_roles = []
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         databases = self._list_user_databases(cur)
                         for database_name in databases:
@@ -625,10 +601,7 @@ class ClusterUsersService:
         )
         try:
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         cur.execute(
                             sql.SQL("ALTER USER {} WITH PASSWORD %s").format(
@@ -667,26 +640,6 @@ class ClusterUsersService:
         if selected_cluster is None:
             raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
         return selected_cluster
-
-    @staticmethod
-    def _get_primary_dns_address(cluster: Cluster) -> str:
-        if not cluster.lbs_inventory:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has no load balancer endpoint."
-            )
-        return cluster.lbs_inventory[0].dns_address
-
-    def _get_cluster_db_password(self, cluster: Cluster) -> str:
-        if cluster.password is None:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has no database password configured."
-            )
-        try:
-            return decrypt_secret(cluster.password).decode("utf-8")
-        except Exception as err:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has an invalid database password."
-            ) from err
 
     @staticmethod
     def _normalized_database_roles(

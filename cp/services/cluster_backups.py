@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from ..infra.db import get_repo, translate_database_error
 from ..infra.errors import RepositoryError
-from ..infra.util import connect_cluster_db, decrypt_secret
 from ..models import (
     AuditEvent,
     BackupDetails,
@@ -23,6 +22,7 @@ from ..models import (
 )
 from ..repos import Repo
 from .base import log_event
+from .cluster_db import connect_to_cluster_db
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 logger = logging.getLogger(__name__)
@@ -44,10 +44,7 @@ class ClusterBackupsService:
 
         try:
             try:
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor() as cur:
                         rows = cur.execute(
                             "SHOW BACKUPS IN 'external://backup';"
@@ -97,10 +94,7 @@ class ClusterBackupsService:
                     )
                     """).format(sql.Literal(backup_path))
 
-                with connect_cluster_db(
-                    self._get_primary_dns_address(selected_cluster),
-                    self._get_cluster_db_password(selected_cluster),
-                ) as conn:
+                with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor(row_factory=class_row(BackupDetails)) as cur:
                         return cur.execute(query).fetchall()
             except Exception as err:
@@ -194,17 +188,22 @@ class ClusterBackupsService:
             groups,
             is_admin,
         )
-        restore_request = self.validate_object_restore_request(
-            cluster_id=selected_cluster.cluster_id,
-            backup_path=backup_path,
-            restore_aost=restore_aost,
-            object_type=object_type,
-            object_name=object_name,
-            into_db=into_db,
-            new_db_name=new_db_name,
-        )
-
-        payload = RestoreClusterObjectRequest(**restore_request)
+        try:
+            payload = RestoreClusterObjectRequest(
+                cluster_id=selected_cluster.cluster_id,
+                backup_path=backup_path,
+                restore_aost=restore_aost,
+                object_type=object_type,
+                object_name=object_name,
+                into_db=into_db,
+                new_db_name=new_db_name,
+            )
+        except ValidationError as err:
+            msg = err.errors()[0].get("msg", "Object restore request is invalid.")
+            raise ServiceValidationError(
+                msg,
+                title="Invalid Object Restore Request",
+            ) from err
 
         try:
             msg_id: JobID = self.repo.enqueue_command(
@@ -251,35 +250,4 @@ class ClusterBackupsService:
             raise ServiceValidationError(
                 msg,
                 title="Invalid Restore Request",
-            ) from err
-
-    @staticmethod
-    def validate_object_restore_request(**kwargs) -> dict:
-        try:
-            return RestoreClusterObjectRequest(**kwargs).model_dump()
-        except ValidationError as err:
-            msg = err.errors()[0].get("msg", "Object restore request is invalid.")
-            raise ServiceValidationError(
-                msg,
-                title="Invalid Object Restore Request",
-            ) from err
-
-    @staticmethod
-    def _get_primary_dns_address(cluster: Cluster) -> str:
-        if not cluster.lbs_inventory:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has no load balancer endpoint."
-            )
-        return cluster.lbs_inventory[0].dns_address
-
-    def _get_cluster_db_password(self, cluster: Cluster) -> str:
-        if cluster.password is None:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has no database password configured."
-            )
-        try:
-            return decrypt_secret(cluster.password).decode("utf-8")
-        except Exception as err:
-            raise ServiceValidationError(
-                f"Cluster '{cluster.cluster_id}' has an invalid database password."
             ) from err
