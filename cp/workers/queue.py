@@ -18,6 +18,7 @@ from ..models import (
     Nodes,
     parse_command_payload,
 )
+from .clusters.backup_catalog import sync_backup_catalog, sync_cluster_backup_catalog
 from .clusters.create import create_cluster
 from .clusters.delete import delete_cluster
 from .clusters.healthcheck import healthcheck_clusters
@@ -53,6 +54,8 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     CommandType.RESTORE_CLUSTER: restore_cluster,
     CommandType.RESTORE_CLUSTER_OBJECT: restore_cluster_object,
     CommandType.POLL_CLUSTER_RESTORE: poll_cluster_restore,
+    CommandType.SYNC_BACKUP_CATALOG: sync_backup_catalog,
+    CommandType.SYNC_CLUSTER_BACKUP_CATALOG: sync_cluster_backup_catalog,
     CommandType.FAIL_ZOMBIE_JOBS: fail_zombie_jobs,
     CommandType.HEALTHCHECK_CLUSTERS: healthcheck_clusters,
 }

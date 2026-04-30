@@ -84,15 +84,20 @@ class ClusterBackupsService:
         )
         try:
             try:
+                backup_path_sql = (
+                    sql.SQL("LATEST")
+                    if backup_path.upper() == "LATEST"
+                    else sql.Literal(backup_path)
+                )
                 query = sql.SQL("""
-                    SELECT distinct object_type, database_name, parent_schema_name, object_name,                              
-                         backup_type, start_time, end_time                                                
-                    FROM [SHOW BACKUP LATEST IN 'external://backup']                                      
-                    WHERE (                                                                               
-                        (database_name is null or database_name NOT IN ('system', 'postgres'))            
-                        AND object_name NOT IN ('system', 'postgres')                                     
-                    AND object_type != 'schema');  
-                    """).format(sql.Literal(backup_path))
+                    SELECT distinct object_type, database_name, parent_schema_name, object_name,
+                         backup_type, start_time, end_time
+                    FROM [SHOW BACKUP FROM {} IN 'external://backup']
+                    WHERE (
+                        (database_name is null or database_name NOT IN ('system', 'postgres'))
+                        AND object_name NOT IN ('system', 'postgres')
+                    AND object_type != 'schema');
+                    """).format(backup_path_sql)
 
                 with connect_to_cluster_db(selected_cluster) as conn:
                     with conn.cursor(row_factory=class_row(BackupDetails)) as cur:

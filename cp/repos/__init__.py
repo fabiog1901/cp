@@ -12,6 +12,7 @@ from .admin import (
 )
 from .alerts import AlertsRepo
 from .auth import AuthRepo
+from .backup_catalog import BackupCatalogRepo
 from .cluster import ClusterRepo
 from .cluster_jobs import ClusterJobsRepo
 from .event import EventRepo
@@ -23,6 +24,7 @@ from .mq import MqRepo
 class Repo(
     ApiKeysRepo,
     AlertsRepo,
+    BackupCatalogRepo,
     ClusterOptionsRepo,
     ClusterJobsRepo,
     RegionsRepo,

@@ -137,6 +137,43 @@ CREATE TABLE public.cluster_database_roles (
     CONSTRAINT fk_cluster_database_roles_database_object_ref_cluster_database_objects FOREIGN KEY (cluster_id, database_name) REFERENCES public.cluster_database_objects(cluster_id, database_name) ON DELETE CASCADE,
     CONSTRAINT fk_cluster_database_roles_template_ref_database_role_templates FOREIGN KEY (database_role_template) REFERENCES public.database_role_templates(database_role_template)
 );
+CREATE TABLE public.cluster_backup_catalog (
+    cluster_id STRING NOT NULL,
+    backup_path STRING NOT NULL,
+    grp STRING NULL,
+    backup_type STRING NULL,
+    start_time TIMESTAMPTZ NULL,
+    end_time TIMESTAMPTZ NULL,
+    is_full_cluster BOOL NOT NULL DEFAULT false,
+    status STRING NOT NULL,
+    object_count INT8 NOT NULL DEFAULT 0,
+    last_seen_at TIMESTAMPTZ NULL,
+    sync_error STRING NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    CONSTRAINT pk_cluster_backup_catalog PRIMARY KEY (cluster_id ASC, backup_path ASC),
+    INDEX idx_cluster_backup_catalog_group_full (grp ASC, is_full_cluster ASC, end_time DESC),
+    CONSTRAINT fk_cluster_backup_catalog_cluster_id_ref_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE
+);
+CREATE TABLE public.cluster_backup_catalog_objects (
+    cluster_id STRING NOT NULL,
+    backup_path STRING NOT NULL,
+    ordinal INT8 NOT NULL,
+    database_name STRING NULL,
+    parent_schema_name STRING NULL,
+    object_name STRING NULL,
+    object_type STRING NULL,
+    backup_type STRING NULL,
+    start_time TIMESTAMPTZ NULL,
+    end_time TIMESTAMPTZ NULL,
+    size_bytes INT8 NULL,
+    row_count INT8 NULL,
+    is_full_cluster BOOL NULL,
+    regions STRING NULL,
+    last_seen_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_cluster_backup_catalog_objects PRIMARY KEY (cluster_id ASC, backup_path ASC, ordinal ASC),
+    CONSTRAINT fk_cluster_backup_catalog_objects_backup_ref_catalog FOREIGN KEY (cluster_id, backup_path) REFERENCES public.cluster_backup_catalog(cluster_id, backup_path) ON DELETE CASCADE
+);
 CREATE TABLE public.event_log (
     ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     user_id STRING NOT NULL,

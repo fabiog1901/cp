@@ -38,6 +38,8 @@ class CommandType(AutoNameStrEnum):
     RESTORE_CLUSTER = auto()
     RESTORE_CLUSTER_OBJECT = auto()
     POLL_CLUSTER_RESTORE = auto()
+    SYNC_BACKUP_CATALOG = auto()
+    SYNC_CLUSTER_BACKUP_CATALOG = auto()
     HEALTHCHECK_CLUSTERS = auto()
     FAIL_ZOMBIE_JOBS = auto()
 
@@ -397,6 +399,14 @@ class PollClusterRestoreRequest(CommandModel):
     poll_attempt: int = 1
 
 
+class SyncBackupCatalogRequest(CommandModel):
+    pass
+
+
+class SyncClusterBackupCatalogRequest(CommandModel):
+    cluster_id: str
+
+
 class ClusterScaleRequest(CommandModel):
     name: str
     node_count: int
@@ -423,6 +433,8 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.RESTORE_CLUSTER: RestoreRequest,
     CommandType.RESTORE_CLUSTER_OBJECT: RestoreClusterObjectRequest,
     CommandType.POLL_CLUSTER_RESTORE: PollClusterRestoreRequest,
+    CommandType.SYNC_BACKUP_CATALOG: SyncBackupCatalogRequest,
+    CommandType.SYNC_CLUSTER_BACKUP_CATALOG: SyncClusterBackupCatalogRequest,
     CommandType.HEALTHCHECK_CLUSTERS: HealthcheckClustersCommand,
     CommandType.FAIL_ZOMBIE_JOBS: FailZombieJobsCommand,
 }
@@ -451,6 +463,73 @@ class BackupDetails(BaseModel):
 
 class BackupPathOption(BaseModel):
     path: str
+
+
+class BackupCatalogObject(BaseModel):
+    cluster_id: str
+    backup_path: str
+    ordinal: int
+    database_name: str | None = None
+    parent_schema_name: str | None = None
+    object_name: str | None = None
+    object_type: str | None = None
+    backup_type: str | None = None
+    start_time: dt.datetime | None = None
+    end_time: dt.datetime | None = None
+    size_bytes: int | None = None
+    row_count: int | None = None
+    is_full_cluster: bool | None = None
+    regions: str | None = None
+    last_seen_at: dt.datetime
+
+
+class BackupCatalogEntry(BaseModel):
+    cluster_id: str
+    backup_path: str
+    grp: str | None = None
+    backup_type: str | None = None
+    start_time: dt.datetime | None = None
+    end_time: dt.datetime | None = None
+    is_full_cluster: bool = False
+    status: str
+    object_count: int = 0
+    last_seen_at: dt.datetime | None = None
+    sync_error: str | None = None
+    created_at: dt.datetime | None = None
+    updated_at: dt.datetime | None = None
+
+
+class BackupCatalogSnapshot(BaseModel):
+    backups: list[BackupCatalogEntry]
+
+
+class BackupCatalogObjectUpsert(BaseModel):
+    ordinal: int
+    database_name: str | None = None
+    parent_schema_name: str | None = None
+    object_name: str | None = None
+    object_type: str | None = None
+    backup_type: str | None = None
+    start_time: dt.datetime | None = None
+    end_time: dt.datetime | None = None
+    size_bytes: int | None = None
+    row_count: int | None = None
+    is_full_cluster: bool | None = None
+    regions: str | None = None
+
+
+class BackupCatalogEntryUpsert(BaseModel):
+    cluster_id: str
+    backup_path: str
+    grp: str | None = None
+    backup_type: str | None = None
+    start_time: dt.datetime | None = None
+    end_time: dt.datetime | None = None
+    is_full_cluster: bool = False
+    status: str = "AVAILABLE"
+    object_count: int = 0
+    sync_error: str | None = None
+    objects: list[BackupCatalogObjectUpsert] = Field(default_factory=list)
 
 
 class DatabaseUser(BaseModel):
