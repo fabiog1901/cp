@@ -4,6 +4,8 @@
 assets/external/
 __pycache__/
 local/
+!cp/workers/local/
+!cp/workers/local/**
 *.py[cod]
 .env
 .*

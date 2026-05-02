@@ -18,18 +18,18 @@ from ..models import (
     Nodes,
     parse_command_payload,
 )
-from .clusters.backup_catalog import sync_backup_catalog, sync_cluster_backup_catalog
-from .clusters.create import create_cluster
-from .clusters.delete import delete_cluster
-from .clusters.healthcheck import healthcheck_clusters
-from .clusters.restore import (
+from .local.backup_catalog import sync_backup_catalog, sync_cluster_backup_catalog
+from .local.restore import (
     poll_cluster_restore,
     restore_cluster,
     restore_full_cluster,
     restore_cluster_object,
 )
-from .clusters.scale import scale_cluster
-from .clusters.upgrade import upgrade_cluster
+from .remote.create import create_cluster
+from .remote.delete import delete_cluster
+from .remote.healthcheck import healthcheck_clusters
+from .remote.scale import scale_cluster
+from .remote.upgrade import upgrade_cluster
 
 logger = logging.getLogger(__name__)
 

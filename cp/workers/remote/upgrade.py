@@ -4,7 +4,7 @@ from threading import Thread
 
 from ...infra import get_repo
 from ...models import ClusterState, ClusterUpgradeRequest, JobState, PlaybookName
-from ..ansible import MyRunner
+from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 

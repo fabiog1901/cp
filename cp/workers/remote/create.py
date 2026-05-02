@@ -17,7 +17,7 @@ from ...models import (
     SettingKey,
 )
 from ...services.storage_broker import StorageBrokerService
-from ..ansible import MyRunner
+from .ansible import MyRunner
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)

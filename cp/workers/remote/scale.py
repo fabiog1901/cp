@@ -13,7 +13,7 @@ from ...models import (
     PlaybookName,
     Region,
 )
-from ..ansible import MyRunner
+from .ansible import MyRunner
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)

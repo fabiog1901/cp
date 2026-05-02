@@ -3,7 +3,7 @@ from threading import Thread
 
 from ...infra import get_repo
 from ...models import ClusterState, HealthcheckClustersCommand, PlaybookName
-from ..ansible import MyRunnerLite
+from .ansible import MyRunnerLite
 
 
 def healthcheck_clusters(
