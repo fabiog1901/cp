@@ -230,6 +230,8 @@ window.app = function () {
     _settingsAutoTimer: null,
     settingsDrafts: {},
     settingsError: "",
+    settingsToast: { message: "", ok: true },
+    _settingsToastTimer: null,
 
     // ---------- Versions state ----------
     versions: [],
@@ -1051,6 +1053,10 @@ window.app = function () {
       if (this._settingsAutoTimer) {
         clearInterval(this._settingsAutoTimer);
         this._settingsAutoTimer = null;
+      }
+      if (this._settingsToastTimer) {
+        clearTimeout(this._settingsToastTimer);
+        this._settingsToastTimer = null;
       }
       this.destroyClusterDashboardCharts();
     },
@@ -5664,6 +5670,18 @@ window.app = function () {
         : "Override";
     },
 
+    showSettingsToast(message, ok = true) {
+      if (this._settingsToastTimer) {
+        clearTimeout(this._settingsToastTimer);
+        this._settingsToastTimer = null;
+      }
+      this.settingsToast = { message, ok };
+      this._settingsToastTimer = setTimeout(() => {
+        this.settingsToast = { message: "", ok: true };
+        this._settingsToastTimer = null;
+      }, 2600);
+    },
+
     async refreshSettings() {
       this.settingsLoading.list = true;
       this.settingsError = "";
@@ -5722,21 +5740,30 @@ window.app = function () {
 
       this.settingsLoading.update = true;
       try {
+        const savedValue = this.settingDraftValue(row);
         const updated = await this.apiFetch(
           `/admin/settings/${encodeURIComponent(key)}`,
           {
             method: "PATCH",
-            body: { value: this.settingDraftValue(row) },
+            body: { value: savedValue },
           },
         );
+        const savedRow = updated && typeof updated === "object"
+          ? updated
+          : { ...row, key, value: savedValue };
         this.settings = this.settings.map((entry) =>
-          entry.key === updated.key ? updated : entry,
+          entry.key === key ? savedRow : entry,
         );
-        this.setSettingDraft(updated.key, updated.value || "");
+        this.setSettingDraft(key, savedRow.value || "");
         this.settingsLastUpdatedUtc = this.utcNowString();
         this.applySettingsFilterSort();
+        this.showSettingsToast(`Saved "${key}".`);
       } catch (e) {
         console.error(e);
+        this.showSettingsToast(
+          this.errorMessage(e, `Failed to save "${key}".`),
+          false,
+        );
       } finally {
         this.settingsLoading.update = false;
       }

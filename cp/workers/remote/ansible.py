@@ -9,8 +9,8 @@ import time
 import ansible_runner
 import yaml
 
-from ..infra import get_repo
-from ..models import JobState, Playbook
+from ...infra import get_repo
+from ...models import JobState, Playbook
 
 logger = logging.getLogger(__name__)
 

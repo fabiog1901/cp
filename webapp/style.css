@@ -340,22 +340,29 @@ body {
 }
 
 .cluster-detail-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  padding: 8px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(24, 19, 15, 0.98), rgba(16, 12, 9, 0.98));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: #f0fdfa;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.1;
+}
+
+.main-header .cluster-detail-version,
+.main-header .cluster-detail-status {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.main-header .cluster-detail-status {
+  gap: 10px;
+}
+
+.main-header .cluster-detail-status .status-dot {
+  width: 14px;
+  height: 14px;
 }
 
 .main-subtitle {
@@ -2467,7 +2474,7 @@ tbody tr:hover {
 
 .cluster-toolbar-card {
   min-height: auto;
-  gap: 14px;
+  gap: 10px;
   border-color: rgba(56, 189, 248, 0.18);
   background:
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 26%),
@@ -2488,18 +2495,18 @@ tbody tr:hover {
 
 .cluster-toolbar-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .cluster-toolbar-btn {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  min-height: 82px;
-  padding: 14px;
-  border-radius: 14px;
+  min-height: 58px;
+  padding: 10px;
+  border-radius: 10px;
   border: 1px solid rgba(184, 171, 157, 0.14);
   background: rgba(255, 255, 255, 0.025);
   color: #f8fafc;
@@ -2537,13 +2544,18 @@ tbody tr:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid rgba(184, 171, 157, 0.14);
   background: rgba(17, 24, 39, 0.4);
   color: #bae6fd;
+}
+
+.cluster-toolbar-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 .cluster-toolbar-btn-danger .cluster-toolbar-icon {
@@ -2553,20 +2565,20 @@ tbody tr:hover {
 
 .cluster-toolbar-copy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
 .cluster-toolbar-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
 }
 
 .cluster-toolbar-sub {
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .cluster-dashboard-card {

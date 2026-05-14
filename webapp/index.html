@@ -567,8 +567,8 @@
               <div class="main-title cluster-detail-title" x-text="selectedCluster?.cluster_id || selectedClusterId || 'Cluster'"></div>
             </div>
             <div class="main-actions">
-              <span class="ip-pill" x-text="selectedCluster?.version || '-'"></span>
-              <span class="status" :class="serversStatusClass(selectedCluster?.status)">
+              <span class="ip-pill cluster-detail-version" x-text="selectedCluster?.version || '-'"></span>
+              <span class="status cluster-detail-status" :class="serversStatusClass(selectedCluster?.status)">
                 <span class="status-dot"></span>
                 <span x-text="String(selectedCluster?.status || 'unknown').toUpperCase()"></span>
               </span>
@@ -3881,6 +3881,12 @@
           </div>
 
           <div class="modal-error-banner" x-show="settingsError" x-text="settingsError" style="margin-bottom: 14px;"></div>
+
+          <template x-if="settingsToast.message">
+            <div class="toast" :class="settingsToast.ok ? 'toast-ok' : 'toast-bad'" style="margin-bottom: 14px;">
+              <div x-text="settingsToast.message"></div>
+            </div>
+          </template>
 
           <div class="settings-tabs">
             <button type="button" class="settings-tab"
