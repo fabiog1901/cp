@@ -2169,6 +2169,106 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.cluster-databases-main {
+  overflow-y: auto;
+}
+
+.database-object-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding-bottom: 10px;
+}
+
+.database-object-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.database-object-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.database-object-card-title {
+  margin: 5px 0 0;
+  font-size: 19px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.database-object-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.database-object-meta strong {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.database-role-name {
+  display: inline-block;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.database-role-table-wrap {
+  min-width: 0;
+}
+
+.database-role-table-scroll {
+  overflow-x: auto;
+}
+
+.database-role-table {
+  min-width: 920px;
+}
+
+.database-role-table th,
+.database-role-table td {
+  vertical-align: middle;
+}
+
+.database-role-table th:nth-child(5),
+.database-role-table td:nth-child(5) {
+  width: 34%;
+}
+
+.database-role-group-editor {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  height: calc(1.45em * 3 + 18px);
+  max-height: calc(1.45em * 3 + 18px);
+  overflow-y: auto;
+  resize: none;
+  line-height: 1.45;
+}
+
+.database-role-empty,
+.database-object-empty {
+  padding: 16px;
+  color: var(--muted);
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
 .cluster-backup-list {
   max-height: 270px;
   overflow-y: auto;

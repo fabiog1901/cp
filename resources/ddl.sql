@@ -137,6 +137,17 @@ CREATE TABLE public.cluster_database_roles (
     CONSTRAINT fk_cluster_database_roles_database_object_ref_cluster_database_objects FOREIGN KEY (cluster_id, database_name) REFERENCES public.cluster_database_objects(cluster_id, database_name) ON DELETE CASCADE,
     CONSTRAINT fk_cluster_database_roles_template_ref_database_role_templates FOREIGN KEY (database_role_template) REFERENCES public.database_role_templates(database_role_template)
 );
+CREATE TABLE public.cluster_database_role_group_mappings (
+    cluster_id STRING NOT NULL,
+    database_role STRING NOT NULL,
+    group_name STRING NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    updated_by STRING NOT NULL,
+    CONSTRAINT pk_cluster_database_role_group_mappings PRIMARY KEY (cluster_id ASC, database_role ASC, group_name ASC),
+    CONSTRAINT fk_cluster_database_role_group_mappings_role_ref_cluster_database_roles FOREIGN KEY (cluster_id, database_role) REFERENCES public.cluster_database_roles(cluster_id, database_role) ON DELETE CASCADE
+);
 CREATE TABLE public.cluster_backup_catalog (
     cluster_id STRING NOT NULL,
     backup_path STRING NOT NULL,

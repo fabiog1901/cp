@@ -77,7 +77,10 @@ window.app = function () {
       list: false,
       create: false,
       delete: false,
+      groupMappings: false,
     },
+    clusterDatabaseRoleGroupDrafts: {},
+    clusterDatabaseRoleGroupSaving: {},
     clusterUsers: [],
     clusterUsersVisibleRows: [],
     clusterUsersClusterId: "",
@@ -3205,6 +3208,8 @@ window.app = function () {
     clearClusterDatabaseObjectsState() {
       this.clusterDatabaseObjects = [];
       this.clusterDatabaseObjectsVisibleRows = [];
+      this.clusterDatabaseRoleGroupDrafts = {};
+      this.clusterDatabaseRoleGroupSaving = {};
       this.clusterDatabaseObjectsLastUpdatedUtc = null;
       this.modal.clusterDatabaseObjectCreate.database_name = "";
       this.modal.clusterDatabaseObjectDeleteConfirm.database_name = "";
@@ -3218,10 +3223,23 @@ window.app = function () {
     },
 
     clusterDatabaseObjectRowText(row) {
+      const roleText = Array.isArray(row?.database_roles)
+        ? row.database_roles
+            .flatMap((databaseRole) => [
+              databaseRole?.database_role,
+              databaseRole?.database_role_template,
+              databaseRole?.scope_type,
+              databaseRole?.schema_name,
+              ...(Array.isArray(databaseRole?.groups) ? databaseRole.groups : []),
+            ])
+            .filter(Boolean)
+            .join(" ")
+        : "";
       return [
         row?.database_name,
         row?.created_by,
         row?.updated_by,
+        roleText,
         this.toUtcStringMaybe(row?.created_at),
         this.toUtcStringMaybe(row?.updated_at),
       ]
@@ -3258,13 +3276,26 @@ window.app = function () {
 
       this.clusterDatabaseObjectsLoading.list = true;
       try {
-        const rows = await this.apiFetch(
-          this.visibilityPath(
-            `/clusters/${encodeURIComponent(clusterId)}/database-objects`,
+        // Keep mappings as their own API resource; merge them into cards for display.
+        const [databaseObjects, groupMappings] = await Promise.all([
+          this.apiFetch(
+            this.visibilityPath(
+              `/clusters/${encodeURIComponent(clusterId)}/database-objects`,
+            ),
+            { method: "GET" },
           ),
-          { method: "GET" },
+          this.apiFetch(
+            this.visibilityPath(
+              `/clusters/${encodeURIComponent(clusterId)}/database-role-group-mappings`,
+            ),
+            { method: "GET" },
+          ),
+        ]);
+        this.clusterDatabaseObjects = this.applyDatabaseRoleGroupMappings(
+          Array.isArray(databaseObjects) ? databaseObjects : [],
+          Array.isArray(groupMappings) ? groupMappings : [],
         );
-        this.clusterDatabaseObjects = Array.isArray(rows) ? rows : [];
+        this.initializeClusterDatabaseRoleGroupDrafts();
         this.clusterDatabaseObjectsLastUpdatedUtc = this.utcNowString();
         this.applyClusterDatabaseObjectsFilter();
       } catch (e) {
@@ -3276,6 +3307,118 @@ window.app = function () {
         );
       } finally {
         this.clusterDatabaseObjectsLoading.list = false;
+      }
+    },
+
+    applyDatabaseRoleGroupMappings(databaseObjects, groupMappings) {
+      // The API returns raw mapping rows so playbooks and the UI consume one shape.
+      const groupsByRole = {};
+      for (const mapping of groupMappings) {
+        const roleName = String(mapping?.database_role || "").trim();
+        const groupName = String(mapping?.group_name || "").trim();
+        if (!roleName || !groupName) continue;
+        groupsByRole[roleName] = groupsByRole[roleName] || [];
+        if (!groupsByRole[roleName].includes(groupName)) {
+          groupsByRole[roleName].push(groupName);
+        }
+      }
+
+      return databaseObjects.map((databaseObject) => ({
+        ...databaseObject,
+        database_roles: Array.isArray(databaseObject?.database_roles)
+          ? databaseObject.database_roles.map((databaseRole) => {
+              const roleName = String(databaseRole?.database_role || "").trim();
+              return {
+                ...databaseRole,
+                groups: groupsByRole[roleName] || [],
+              };
+            })
+          : [],
+      }));
+    },
+
+    initializeClusterDatabaseRoleGroupDrafts() {
+      const drafts = {};
+      const databaseObjects = Array.isArray(this.clusterDatabaseObjects)
+        ? this.clusterDatabaseObjects
+        : [];
+      for (const databaseObject of databaseObjects) {
+        const databaseRoles = Array.isArray(databaseObject?.database_roles)
+          ? databaseObject.database_roles
+          : [];
+        for (const databaseRole of databaseRoles) {
+          const roleName = String(databaseRole?.database_role || "").trim();
+          if (!roleName) continue;
+          const groups = Array.isArray(databaseRole?.groups)
+            ? databaseRole.groups
+            : [];
+          drafts[roleName] = groups.join("\n");
+        }
+      }
+      this.clusterDatabaseRoleGroupDrafts = drafts;
+    },
+
+    databaseRoleGroupsFromDraft(databaseRole) {
+      const roleName = String(databaseRole?.database_role || "").trim();
+      const raw = String(this.clusterDatabaseRoleGroupDrafts[roleName] || "");
+      const groups = [];
+      for (const groupName of raw.split(/[\n,]+/)) {
+        const normalizedGroupName = String(groupName || "").trim();
+        if (normalizedGroupName && !groups.includes(normalizedGroupName)) {
+          groups.push(normalizedGroupName);
+        }
+      }
+      return groups;
+    },
+
+    databaseRoleGroupSummary(databaseRole) {
+      const groups = this.databaseRoleGroupsFromDraft(databaseRole);
+      if (!groups.length) return "No IdP groups mapped";
+      if (groups.length === 1) return "1 IdP group mapped";
+      return `${groups.length} IdP groups mapped`;
+    },
+
+    isDatabaseRoleGroupMappingSaving(databaseRole) {
+      const roleName = String(databaseRole?.database_role || "").trim();
+      return Boolean(this.clusterDatabaseRoleGroupSaving[roleName]);
+    },
+
+    async updateClusterDatabaseRoleGroups(databaseRole) {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const roleName = String(databaseRole?.database_role || "").trim();
+      if (!clusterId || !roleName) return;
+
+      const groups = this.databaseRoleGroupsFromDraft(databaseRole);
+      this.clusterDatabaseObjectsLoading.groupMappings = true;
+      this.clusterDatabaseRoleGroupSaving = {
+        ...this.clusterDatabaseRoleGroupSaving,
+        [roleName]: true,
+      };
+      try {
+        await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/database-role-group-mappings/${encodeURIComponent(roleName)}`,
+          {
+            method: "PUT",
+            body: { groups },
+          },
+        );
+        await this.refreshClusterDatabaseObjects();
+        this.setActionNotice(
+          `IdP group mapping updated for database role '${roleName}'.`,
+        );
+      } catch (e) {
+        console.error(e);
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to update IdP group mapping."),
+        );
+      } finally {
+        this.clusterDatabaseObjectsLoading.groupMappings = false;
+        this.clusterDatabaseRoleGroupSaving = {
+          ...this.clusterDatabaseRoleGroupSaving,
+          [roleName]: false,
+        };
       }
     },
 

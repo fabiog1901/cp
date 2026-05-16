@@ -86,6 +86,7 @@ class AuditEvent(AutoNameStrEnum):
     DATABASE_ROLE_DELETED = auto()
     DATABASE_OBJECT_CREATED = auto()
     DATABASE_OBJECT_DELETED = auto()
+    DATABASE_ROLE_GROUP_MAPPING_UPDATED = auto()
     DB_USER_ROLE_GRANTED = auto()
     DB_USER_PASSWORD_UPDATED = auto()
     DB_USER_ROLE_REVOKED = auto()
@@ -615,6 +616,25 @@ class ClusterDatabaseRole(BaseModel):
     sql_statement: str
 
 
+class ClusterDatabaseRoleDetails(BaseModel):
+    cluster_id: str
+    database_name: str
+    schema_name: str | None = None
+    database_role: str
+    database_role_template: str
+    scope_type: str
+
+
+class ClusterDatabaseRoleGroupMapping(BaseModel):
+    cluster_id: str
+    database_role: str
+    group_name: str
+    created_at: dt.datetime
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str
+
+
 class ClusterDatabaseObject(BaseModel):
     cluster_id: str
     database_name: str
@@ -622,6 +642,10 @@ class ClusterDatabaseObject(BaseModel):
     created_by: str
     updated_at: dt.datetime
     updated_by: str
+
+
+class ClusterDatabaseObjectDetails(ClusterDatabaseObject):
+    database_roles: list[ClusterDatabaseRoleDetails] = Field(default_factory=list)
 
 
 class CreateClusterDatabaseObjectRequest(BaseModel):
@@ -863,6 +887,10 @@ class ClusterObjectRestoreApiRequest(BaseModel):
 
 class ClusterDatabaseRolesUpdateRequest(BaseModel):
     database_roles: list[str] = Field(default_factory=list)
+
+
+class ClusterDatabaseRoleGroupsUpdateRequest(BaseModel):
+    groups: list[str] = Field(default_factory=list)
 
 
 class ClusterPasswordUpdateRequest(BaseModel):

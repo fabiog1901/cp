@@ -13,7 +13,9 @@ from ..models import (
     AuditEvent,
     Cluster,
     ClusterDatabaseObject,
+    ClusterDatabaseObjectDetails,
     ClusterDatabaseRole,
+    ClusterDatabaseRoleGroupMapping,
     ClusterUsersSnapshot,
     CreateClusterDatabaseObjectRequest,
     DatabaseRoleTemplateConfig,
@@ -42,12 +44,31 @@ class ClusterUsersService:
         cluster_id: str,
         groups: list[str],
         is_admin: bool,
-    ) -> list[ClusterDatabaseObject] | None:
+    ) -> list[ClusterDatabaseObjectDetails] | None:
+        """Return managed database objects with generated roles, but without mappings."""
         selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
         try:
-            return self.repo.list_cluster_database_objects(cluster_id)
+            # The database page needs role names for mapping, but not role SQL.
+            database_objects = self.repo.list_cluster_database_objects(cluster_id)
+            database_roles = self.repo.list_cluster_database_role_details(cluster_id)
+            roles_by_database = {}
+            for database_role in database_roles:
+                roles_by_database.setdefault(database_role.database_name, []).append(
+                    database_role
+                )
+
+            return [
+                ClusterDatabaseObjectDetails(
+                    **database_object.model_dump(),
+                    database_roles=roles_by_database.get(
+                        database_object.database_name,
+                        [],
+                    ),
+                )
+                for database_object in database_objects
+            ]
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -503,11 +524,91 @@ class ClusterUsersService:
                 fallback_message=f"Unable to grant roles to '{username}'.",
             ) from err
 
+    def update_database_role_group_mappings(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        database_role: str,
+        group_names: list[str],
+        requested_by: str,
+    ) -> list[ClusterDatabaseRoleGroupMapping]:
+        """Store the desired IdP groups for one generated database role."""
+        selected_cluster = self._get_cluster_or_raise(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+        normalized_database_role = str(database_role or "").strip()
+        if not normalized_database_role:
+            raise ServiceValidationError("Database role is required.")
+
+        normalized_group_names = self._normalized_idp_groups(group_names)
+        try:
+            if (
+                self.repo.get_cluster_database_role(
+                    selected_cluster.cluster_id,
+                    normalized_database_role,
+                )
+                is None
+            ):
+                raise ServiceValidationError(
+                    f"Database role '{normalized_database_role}' is not configured for this cluster."
+                )
+
+            self.repo.replace_cluster_database_role_groups(
+                selected_cluster.cluster_id,
+                normalized_database_role,
+                normalized_group_names,
+                requested_by,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.DATABASE_ROLE_GROUP_MAPPING_UPDATED,
+                {
+                    "cluster_id": selected_cluster.cluster_id,
+                    "database_role": normalized_database_role,
+                    "groups": normalized_group_names,
+                },
+            )
+            return self.repo.list_cluster_database_role_group_mappings_for_role(
+                selected_cluster.cluster_id,
+                normalized_database_role,
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database role group mappings are temporarily unavailable.",
+                validation_message="Database role group mappings are invalid.",
+                fallback_message=f"Unable to update group mappings for role '{normalized_database_role}'.",
+            ) from err
+
+    def list_database_role_group_mappings(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+    ) -> list[ClusterDatabaseRoleGroupMapping] | None:
+        """Return the raw IdP group mappings consumed by UI and automation."""
+        selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
+        if selected_cluster is None:
+            return None
+        try:
+            return self.repo.list_cluster_database_role_group_mappings(cluster_id)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Database role group mappings are temporarily unavailable.",
+                fallback_message=f"Unable to list group mappings for cluster '{cluster_id}'.",
+            ) from err
+
     def _materialize_cluster_database_roles(
         self,
         selected_cluster: Cluster,
         requested_by: str,
     ) -> int:
+        """Create/drop generated database roles so CP metadata matches the cluster."""
         try:
             templates = self.repo.list_database_role_templates()
             if not templates:
@@ -654,6 +755,21 @@ class ClusterUsersService:
             ):
                 normalized_database_roles.append(normalized_database_role)
         return normalized_database_roles
+
+    @staticmethod
+    def _normalized_idp_groups(group_names: list[str] | None) -> list[str]:
+        normalized_group_names = []
+        for group_name in group_names or []:
+            normalized_group_name = str(group_name or "").strip()
+            if not normalized_group_name:
+                continue
+            if len(normalized_group_name) > 255:
+                raise ServiceValidationError(
+                    "IdP group names must be 255 characters or less."
+                )
+            if normalized_group_name not in normalized_group_names:
+                normalized_group_names.append(normalized_group_name)
+        return normalized_group_names
 
     @staticmethod
     def _normalized_database_name(database_name: str) -> str:

@@ -4,6 +4,8 @@ from ...infra.db import execute_stmt, fetch_all
 from ...models import (
     ClusterDatabaseObject,
     ClusterDatabaseRole,
+    ClusterDatabaseRoleDetails,
+    ClusterDatabaseRoleGroupMapping,
     CpuCountOption,
     DatabaseRoleTemplateConfig,
     DiskSizeOption,
@@ -221,6 +223,22 @@ class ClusterOptionsRepo(AdminRepo):
             ClusterDatabaseRole,
         )
 
+    def list_cluster_database_role_details(
+        self, cluster_id: str
+    ) -> list[ClusterDatabaseRoleDetails]:
+        """Fetch role metadata needed for assignment UI without template SQL."""
+        return fetch_all(
+            """
+            SELECT cluster_id, database_name, schema_name, database_role,
+                database_role_template, scope_type
+            FROM cluster_database_roles
+            WHERE cluster_id = %s
+            ORDER BY database_name ASC, schema_name ASC, database_role ASC
+            """,
+            (cluster_id,),
+            ClusterDatabaseRoleDetails,
+        )
+
     def get_cluster_database_role(
         self, cluster_id: str, database_role: str
     ) -> ClusterDatabaseRole | None:
@@ -299,3 +317,82 @@ class ClusterOptionsRepo(AdminRepo):
             """,
             (cluster_id, *database_roles),
         )
+
+    def list_cluster_database_role_group_mappings(
+        self, cluster_id: str
+    ) -> list[ClusterDatabaseRoleGroupMapping]:
+        return fetch_all(
+            """
+            SELECT cluster_id, database_role, group_name, created_at, created_by,
+                updated_at, updated_by
+            FROM cluster_database_role_group_mappings
+            WHERE cluster_id = %s
+            ORDER BY database_role ASC, group_name ASC
+            """,
+            (cluster_id,),
+            ClusterDatabaseRoleGroupMapping,
+        )
+
+    def list_cluster_database_role_group_mappings_for_role(
+        self, cluster_id: str, database_role: str
+    ) -> list[ClusterDatabaseRoleGroupMapping]:
+        return fetch_all(
+            """
+            SELECT cluster_id, database_role, group_name, created_at, created_by,
+                updated_at, updated_by
+            FROM cluster_database_role_group_mappings
+            WHERE cluster_id = %s AND database_role = %s
+            ORDER BY group_name ASC
+            """,
+            (cluster_id, database_role),
+            ClusterDatabaseRoleGroupMapping,
+        )
+
+    def replace_cluster_database_role_groups(
+        self,
+        cluster_id: str,
+        database_role: str,
+        group_names: list[str],
+        updated_by: str,
+    ) -> None:
+        """Replace the full group set for a generated database role."""
+        if not group_names:
+            execute_stmt(
+                """
+                DELETE
+                FROM cluster_database_role_group_mappings
+                WHERE cluster_id = %s AND database_role = %s
+                """,
+                (cluster_id, database_role),
+            )
+            return
+
+        placeholders = ", ".join(["%s"] * len(group_names))
+        execute_stmt(
+            f"""
+            DELETE
+            FROM cluster_database_role_group_mappings
+            WHERE cluster_id = %s AND database_role = %s
+            AND group_name NOT IN ({placeholders})
+            """,
+            (cluster_id, database_role, *group_names),
+        )
+
+        for group_name in group_names:
+            execute_stmt(
+                """
+                INSERT INTO cluster_database_role_group_mappings (
+                    cluster_id,
+                    database_role,
+                    group_name,
+                    created_by,
+                    updated_by
+                )
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (cluster_id, database_role, group_name)
+                DO UPDATE SET
+                    updated_by = excluded.updated_by,
+                    updated_at = now():::TIMESTAMPTZ
+                """,
+                (cluster_id, database_role, group_name, updated_by, updated_by),
+            )

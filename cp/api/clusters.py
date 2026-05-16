@@ -14,6 +14,9 @@ from ..models import (
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
+    ClusterDatabaseObjectDetails,
+    ClusterDatabaseRoleGroupMapping,
+    ClusterDatabaseRoleGroupsUpdateRequest,
     ClusterDatabaseRolesUpdateRequest,
     ClusterDialogOptionsResponse,
     ClusterJobsSnapshot,
@@ -346,14 +349,15 @@ async def restore_cluster_object(
 
 @router.get(
     "/{cluster_id}/database-objects",
-    response_model=list[ClusterDatabaseObject],
+    response_model=list[ClusterDatabaseObjectDetails],
     responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
 )
 async def list_cluster_database_objects(
     cluster_id: str,
     claims: dict = Depends(require_user),
     service: ClusterUsersService = Depends(get_cluster_users_service),
-) -> list[ClusterDatabaseObject]:
+) -> list[ClusterDatabaseObjectDetails]:
+    """List database cards and their generated roles; mappings are read separately."""
     groups, is_admin = get_access_scope(claims)
     try:
         database_objects = service.list_database_objects(cluster_id, groups, is_admin)
@@ -437,6 +441,61 @@ async def delete_cluster_database_object(
             groups,
             is_admin,
             database_name,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+
+
+@router.get(
+    "/{cluster_id}/database-role-group-mappings",
+    response_model=list[ClusterDatabaseRoleGroupMapping],
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
+)
+async def list_cluster_database_role_group_mappings(
+    cluster_id: str,
+    claims: dict = Depends(require_user),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> list[ClusterDatabaseRoleGroupMapping]:
+    """List the stored IdP group to generated database role mappings."""
+    groups, is_admin = get_access_scope(claims)
+    try:
+        mappings = service.list_database_role_group_mappings(
+            cluster_id,
+            groups,
+            is_admin,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    if mappings is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cluster '{cluster_id}' was not found.",
+        )
+    return mappings
+
+
+@router.put(
+    "/{cluster_id}/database-role-group-mappings/{database_role}",
+    response_model=list[ClusterDatabaseRoleGroupMapping],
+)
+async def update_cluster_database_role_group_mappings(
+    cluster_id: str,
+    database_role: str,
+    request: ClusterDatabaseRoleGroupsUpdateRequest,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterUsersService = Depends(get_cluster_users_service),
+) -> list[ClusterDatabaseRoleGroupMapping]:
+    """Replace all IdP groups mapped to one generated database role."""
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.update_database_role_group_mappings(
+            cluster_id,
+            groups,
+            is_admin,
+            database_role,
+            request.groups,
             actor_id,
         )
     except ServiceError as err:
