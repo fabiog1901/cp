@@ -1,3 +1,9 @@
+"""Admin API key service.
+
+This service validates, creates, lists, and revokes CP API keys while keeping
+secret generation and audit logging out of the API layer.
+"""
+
 import secrets
 from datetime import datetime, timezone
 

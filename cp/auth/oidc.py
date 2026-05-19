@@ -1,3 +1,9 @@
+"""OIDC client helpers.
+
+This module handles provider discovery, token exchange, ID token validation, and
+claim normalization for CP web sessions.
+"""
+
 import json
 import time
 import urllib.parse

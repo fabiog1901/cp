@@ -1,3 +1,9 @@
+"""Cluster recovery API routes.
+
+This router exposes backup catalog views and restore entry points used by the
+cluster recovery page. Restore orchestration is delegated to BackupCatalogService.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user

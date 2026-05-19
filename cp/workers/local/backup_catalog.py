@@ -1,3 +1,9 @@
+"""Local backup catalog worker.
+
+This worker scans backup storage/cluster backup metadata and persists catalog
+entries that power backup browsing and recovery flows.
+"""
+
 import logging
 
 from psycopg import sql

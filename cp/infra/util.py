@@ -1,3 +1,9 @@
+"""Shared operational utilities.
+
+This module contains encryption helpers, request context utilities, and
+managed-cluster connection helpers used by services and workers.
+"""
+
 import base64
 import json
 import logging

@@ -1,3 +1,9 @@
+"""Event API routes.
+
+This router exposes CP audit and operational event reads. Event writes happen in
+service workflows through shared audit helpers.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_access_scope, require_readonly

@@ -1,3 +1,9 @@
+"""Queue worker entry point.
+
+This module claims CockroachDB-backed MQ messages, dispatches command payloads to
+local or remote workers, and records job/task progress.
+"""
+
 import asyncio
 import datetime as dt
 import logging
@@ -39,6 +45,7 @@ def fail_zombie_jobs(
     _command: FailZombieJobsCommand,
     _requested_by: str,
 ):
+    """Mark stale running jobs as failed from a scheduled queue command."""
     get_repo().fail_zombie_jobs()
 
 
@@ -64,6 +71,7 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
 
 
 def get_nodes():
+    """Return Prometheus scrape targets for active cluster nodes."""
 
     rs: list[Nodes] = []
     active_cluster_ids: set[str] = set()
@@ -90,6 +98,7 @@ def get_nodes():
 
 
 async def pull_from_mq():
+    """Continuously claim due MQ messages and dispatch them to command handlers."""
     try:
         while True:
             await asyncio.sleep(5 * random.uniform(0.7, 1.3))

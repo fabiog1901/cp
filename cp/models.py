@@ -1,3 +1,10 @@
+"""Shared CP domain, API, command, and persistence models.
+
+This module intentionally centralizes Pydantic models and enums used across API,
+service, repo, and worker layers. Keep names aligned with the domain language in
+docs/CODEMAP.md so large changes are searchable.
+"""
+
 import datetime as dt
 from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional

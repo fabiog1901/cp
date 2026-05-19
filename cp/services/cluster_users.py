@@ -1,4 +1,9 @@
-"""Business logic for the cluster users vertical."""
+"""Database access workflows for managed clusters.
+
+This service owns database objects, generated database roles, database users,
+direct user-role grants, password changes, and IdP group-to-role mappings. It is
+the main place where CP metadata is coordinated with SQL executed on a cluster.
+"""
 
 import logging
 import re
@@ -83,6 +88,7 @@ class ClusterUsersService:
         is_admin: bool,
         database_name: str,
     ) -> ClusterDatabaseObject | None:
+        """Return one managed database object after access and name validation."""
         selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
@@ -107,6 +113,14 @@ class ClusterUsersService:
         database_name: str,
         requested_by: str,
     ) -> ClusterDatabaseObject:
+        """Create a managed database object and its default generated roles.
+
+        Side effects:
+        - executes `CREATE DATABASE` against the selected cluster;
+        - records the database object in CP metadata;
+        - materializes generated roles from database role templates;
+        - writes a database-object-created audit event.
+        """
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -181,6 +195,12 @@ class ClusterUsersService:
         database_name: str,
         requested_by: str,
     ) -> None:
+        """Drop a managed database object and its generated roles.
+
+        The database is dropped from the cluster with `CASCADE`, generated roles
+        for that database are revoked from members and dropped, and CP metadata
+        is removed through cascading table relationships.
+        """
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -257,6 +277,11 @@ class ClusterUsersService:
         is_admin: bool,
         requested_by: str,
     ) -> ClusterUsersSnapshot | None:
+        """Load database users and role options for the User Management page.
+
+        This refreshes generated role metadata before reading users so the UI can
+        grant roles that exist in the managed cluster.
+        """
         selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
@@ -306,6 +331,12 @@ class ClusterUsersService:
         database_roles: list[str] | None,
         requested_by: str,
     ) -> None:
+        """Create a database user and grant selected generated roles.
+
+        This path is for direct database-user management. It is separate from
+        IdP group mappings, which only store desired group-to-role relationships
+        for automation to apply.
+        """
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -379,6 +410,7 @@ class ClusterUsersService:
         username: str,
         requested_by: str,
     ) -> None:
+        """Drop a database user from the managed cluster and audit the action."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -420,6 +452,7 @@ class ClusterUsersService:
         database_roles: list[str],
         requested_by: str,
     ) -> None:
+        """Revoke generated database roles directly from a database user."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -478,6 +511,7 @@ class ClusterUsersService:
         database_roles: list[str],
         requested_by: str,
     ) -> None:
+        """Grant generated database roles directly to a database user."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -692,6 +726,7 @@ class ClusterUsersService:
         password: str,
         requested_by: str,
     ) -> None:
+        """Update a database user's password inside the managed cluster."""
         if not password:
             raise ServiceValidationError("Password is required.")
 

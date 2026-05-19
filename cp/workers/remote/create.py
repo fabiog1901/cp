@@ -1,3 +1,9 @@
+"""Remote cluster creation worker.
+
+This worker prepares create-cluster command context and runs the Ansible-backed
+remote workflow that provisions a managed CockroachDB cluster.
+"""
+
 import datetime as dt
 import logging
 import secrets
@@ -29,6 +35,7 @@ def create_cluster(
     created_by: str,
     recreate: bool = False,
 ) -> None:
+    """Prepare CP metadata and start the threaded remote create workflow."""
     repo = get_repo()
     cluster_request = ClusterRequest.model_validate(command.model_dump())
     cluster_db_password = secrets.token_urlsafe(32)
@@ -86,6 +93,7 @@ def create_cluster_worker(
     created_by: str,
     cluster_db_password: str,
 ):
+    """Run the Ansible-backed cluster creation workflow and update job state."""
     repo = get_repo()
     try:
         storage_broker = StorageBrokerService(repo)

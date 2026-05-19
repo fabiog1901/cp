@@ -1,4 +1,8 @@
-"""Business logic for the admin playbooks vertical."""
+"""Admin playbook service.
+
+This service reads and writes versioned playbook content used by worker-driven
+cluster lifecycle automation.
+"""
 
 import gzip
 

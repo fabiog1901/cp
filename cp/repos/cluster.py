@@ -1,4 +1,8 @@
-"""Cluster repository."""
+"""Cluster metadata repository.
+
+This repo reads and writes CP metadata for managed clusters, including
+visibility-scoped cluster listings used by the API and webapp.
+"""
 
 from pydantic import TypeAdapter
 

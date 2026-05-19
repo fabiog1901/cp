@@ -1,4 +1,8 @@
-"""Business logic for the clusters vertical."""
+"""Cluster lifecycle service.
+
+This service validates cluster create/delete/scale/upgrade/debug commands,
+coordinates CP metadata, and enqueues worker jobs for long-running operations.
+"""
 
 from pydantic import ValidationError
 
@@ -28,6 +32,7 @@ class ClusterService:
         self.repo = repo or get_repo()
 
     def list_visible_clusters(self, groups: list[str], is_admin: bool) -> list:
+        """Return clusters visible under the caller's CP access scope."""
         try:
             return self.repo.list_clusters(groups, is_admin)
         except RepositoryError as err:
@@ -40,6 +45,7 @@ class ClusterService:
     def get_visible_cluster_stats(
         self, groups: list[str], is_admin: bool
     ) -> ClusterStatsResponse:
+        """Return aggregate status counts for clusters visible to the caller."""
         try:
             return self.repo.get_cluster_stats(groups, is_admin)
         except RepositoryError as err:
@@ -55,6 +61,7 @@ class ClusterService:
         groups: list[str],
         is_admin: bool,
     ) -> ClusterPublic | None:
+        """Return one visible cluster as its public API model."""
         try:
             cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
             if cluster is None:
@@ -73,6 +80,7 @@ class ClusterService:
         groups: list[str],
         is_admin: bool,
     ) -> tuple[ClusterPublic | None, list]:
+        """Return jobs linked to one cluster if the caller can see it."""
         selected_cluster = self.get_cluster_for_user(
             cluster_id,
             groups,
@@ -90,6 +98,7 @@ class ClusterService:
             ) from err
 
     def get_create_dialog_options(self) -> dict:
+        """Return admin-configured option lists for cluster creation."""
         try:
             return {
                 "versions": [x.version for x in self.repo.list_versions()],
@@ -106,6 +115,7 @@ class ClusterService:
             ) from err
 
     def get_cluster_dialog_options(self, selected_cluster: Cluster) -> dict:
+        """Return option lists for modifying an existing cluster."""
         all_new_versions = [
             x.version
             for x in self.repo.list_upgrade_versions(selected_cluster.version[:5])
@@ -161,6 +171,7 @@ class ClusterService:
         selected_group: str,
         requested_by: str,
     ) -> int:
+        """Create a queued command for provisioning a new managed cluster."""
         payload = CreateClusterCommand(
             name=self._normalize_cluster_name(form_data["name"]),
             node_cpus=selected_cpus_per_node,
@@ -193,6 +204,7 @@ class ClusterService:
             ) from err
 
     def enqueue_cluster_deletion(self, cluster_id: str, requested_by: str) -> int:
+        """Create a queued command for deleting a managed cluster."""
         try:
             msg_id: JobID = self.repo.enqueue_command(
                 CommandType.DELETE_CLUSTER,
@@ -218,6 +230,7 @@ class ClusterService:
         request: ClusterScaleRequest,
         requested_by: str,
     ) -> int:
+        """Create a queued command for changing cluster size or placement."""
         payload = request
 
         try:
@@ -246,6 +259,7 @@ class ClusterService:
         request: ClusterUpgradeRequest,
         requested_by: str,
     ) -> int:
+        """Create a queued command for upgrading a cluster version."""
         payload = request
 
         try:
@@ -280,6 +294,7 @@ class ClusterService:
         backup_into: str | None,
         requested_by: str,
     ) -> int:
+        """Create a queued command for restoring from a cluster backup."""
         payload = RestoreRequest(
             name=cluster_id,
             backup_path=backup_path,
@@ -313,6 +328,7 @@ class ClusterService:
 
     @staticmethod
     def validate_restore_request(**kwargs) -> dict:
+        """Validate restore payloads before queueing a restore command."""
         try:
             return RestoreRequest(**kwargs).model_dump()
         except ValidationError as err:

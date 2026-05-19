@@ -1,0 +1,118 @@
+site_name: CP
+site_description: Control plane for a CockroachDB DBaaS platform.
+repo_name: fabiog1901/cp
+repo_url: https://github.com/fabiog1901/cp
+
+docs_dir: docs
+
+plugins:
+  - search
+  # Enable after adding `mkdocstrings[python]` to the dev dependencies and
+  # deciding which generated/reference pages should render live API docs.
+  # - mkdocstrings:
+  #     handlers:
+  #       python:
+  #         options:
+  #           docstring_style: google
+  #           show_source: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+theme:
+  name: material
+  icon:
+    logo: material/database-cog
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/lightbulb-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: brown
+      accent: brown
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: brown
+      accent: brown
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to system preference
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - content.footnote.tooltips
+    - content.tabs.link
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Code Map: CODEMAP.md
+  - Architecture:
+      - Documentation System: architecture/documentation-system.md
+  # Add these sections as their pages are created:
+  # - Architecture:
+  #     - Overview: architecture/overview.md
+  #     - Request Flow: architecture/request-flow.md
+  #     - Layers: architecture/layers.md
+  #     - Jobs and Workers: architecture/jobs-and-workers.md
+  #     - Auth: architecture/auth.md
+  # - Domains:
+  #     - Cluster Lifecycle: domains/cluster-lifecycle.md
+  #     - Database Access: domains/database-access.md
+  #     - Backups and Recovery: domains/backups-and-recovery.md
+  #     - Admin Configuration: domains/admin-configuration.md
+  #     - Events, Alerts, Dashboard: domains/events-alerts-dashboard.md
+  # - API:
+  #     - Overview: api/overview.md
+  #     - Clusters: api/clusters.md
+  #     - Jobs: api/jobs.md
+  #     - Admin: api/admin.md
+  # - Development:
+  #     - Local Setup: development/local-setup.md
+  #     - Testing: development/testing.md
+  #     - Conventions: development/conventions.md
+  #     - Adding a Feature: development/adding-a-feature.md
+  #     - Troubleshooting: development/troubleshooting.md
+  # - Decisions:
+  #     - ADR Index: adr/index.md
+  #     - Database Role Templates: adr/0001-database-role-template-model.md
+  #     - IdP Group Role Mappings: adr/0002-idp-group-role-mappings.md
+  # - Reference:
+  #     - Tables: reference/tables.md
+  #     - Command Types: reference/command-types.md
+  #     - Audit Events: reference/audit-events.md
+  #     - Glossary: reference/glossary.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/fabiog1901/cp

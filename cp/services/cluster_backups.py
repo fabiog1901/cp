@@ -1,4 +1,8 @@
-"""Business logic for the cluster backups vertical."""
+"""Backup and restore service for individual clusters.
+
+This service reads backup information from managed clusters/storage, prepares
+restore commands, and coordinates backup-related metadata with worker flows.
+"""
 
 import logging
 
@@ -38,6 +42,7 @@ class ClusterBackupsService:
         groups: list[str],
         is_admin: bool,
     ) -> ClusterBackupsSnapshot | None:
+        """Load backup paths for a visible cluster without scanning backup contents."""
         selected_cluster = self.repo.get_cluster(cluster_id, groups, is_admin)
         if selected_cluster is None:
             return None
@@ -77,6 +82,7 @@ class ClusterBackupsService:
         is_admin: bool,
         backup_path: str,
     ) -> list[BackupDetails]:
+        """Read backup contents for one backup path from the managed cluster."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -129,6 +135,7 @@ class ClusterBackupsService:
         backup_into: str | None,
         requested_by: str,
     ) -> int:
+        """Validate and enqueue a restore request for a visible cluster."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -188,6 +195,7 @@ class ClusterBackupsService:
         new_db_name: str | None,
         requested_by: str,
     ) -> int:
+        """Validate and enqueue a restore request for one database or table."""
         selected_cluster = self._get_cluster_or_raise(
             cluster_id,
             groups,
@@ -247,6 +255,7 @@ class ClusterBackupsService:
 
     @staticmethod
     def validate_restore_request(**kwargs) -> dict:
+        """Validate restore payloads before queueing a restore command."""
 
         try:
             return RestoreRequest(**kwargs).model_dump()

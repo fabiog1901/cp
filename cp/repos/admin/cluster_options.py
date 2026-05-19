@@ -1,4 +1,9 @@
-"""Admin cluster options repository."""
+"""Admin option and cluster database-access metadata repository.
+
+This repo persists admin-configured options plus the CP metadata for managed
+database objects, generated database roles, and IdP group mappings. It should
+not execute SQL against managed clusters.
+"""
 
 from ...infra.db import execute_stmt, fetch_all
 from ...models import (

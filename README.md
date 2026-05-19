@@ -13,6 +13,8 @@ CP serves two API clients:
 
 Users do not talk to workers, databases, Prometheus, Alertmanager, or managed clusters directly through CP internals. All user interaction enters through the HTTP API layer, either via the SSO-protected webapp or through API keys.
 
+For a code-oriented navigation map, start with [`docs/CODEMAP.md`](docs/CODEMAP.md). It indexes the main layers, domains, entry points, and search patterns used by humans and coding agents.
+
 ```mermaid
 flowchart TD
     User[User] --> Webapp[SSO-protected AlpineJS SPA]
@@ -65,6 +67,40 @@ Jobs have two execution modes:
 
 CP also schedules internal background work. These jobs are not directly initiated by an end-user action every time they run. Examples include polling CockroachDB restore job status and periodically building the backup catalog for live clusters.
 
+## Code Organization
+
+The backend is organized in layers. The intended dependency direction is API to service to repository, with infrastructure helpers used by each layer where appropriate.
+
+- `cp/api/` contains FastAPI routers. Route handlers should stay thin: enforce authentication and authorization dependencies, call services, and translate service errors into HTTP responses.
+- `cp/services/` contains business workflows. Services validate domain input, coordinate repositories, execute managed-cluster SQL when needed, enqueue jobs, and write audit events.
+- `cp/repos/` contains CP metadata persistence. Repositories should read and write CP tables only; they should not contain business decisions or connect to managed clusters.
+- `cp/infra/` contains shared infrastructure such as DB helpers, dependency factories, logging, and cluster connection utilities.
+- `cp/workers/` contains queued and background execution paths.
+- `webapp/` contains the AlpineJS SPA, including UI state, hash routing, API calls, HTML templates, and CSS.
+- `resources/` contains the canonical CP schema, seed/dev SQL, and playbook examples.
+
+When adding a feature, prefer following the existing vertical slice:
+
+1. Add or update models in `cp/models.py`.
+2. Add CP metadata SQL in `resources/ddl.sql` when persistence changes.
+3. Add repository methods for metadata access.
+4. Add service methods for business behavior.
+5. Add API routes that delegate to the service.
+6. Add or update webapp state, markup, and styles if the feature is user-facing.
+
+## Domain Map
+
+The current major domains are:
+
+- Cluster lifecycle: create, delete, scale, upgrade, debug, health checks, and job tracking.
+- Database access management: database objects, generated database roles, database users, direct grants, and IdP group mappings.
+- Backups and recovery: backup catalog sync, backup details, object restore, and full-cluster recovery.
+- Admin configuration: versions, regions, compute/disk options, settings, playbooks, API keys, and database role templates.
+- Auth and authorization: OIDC/session auth, API-key auth, CP access scope, and cluster visibility.
+- Events, alerts, and dashboard: audit events, Alertmanager data, and Prometheus-backed metrics.
+
+See [`docs/CODEMAP.md`](docs/CODEMAP.md) for the file-level entry points for each domain.
+
 ## Metadata, MQ, and Audit
 
 CP uses CockroachDB as its metadata store. The same database also powers the internal message queue used by the job framework.
@@ -95,3 +131,7 @@ CP configures managed clusters to take scheduled backups into the S3-compatible 
 - Alertmanager-backed alert visibility.
 - Auditing of user actions through an internal event log.
 - Administrative management for settings, regions, versions, playbooks, and API keys.
+
+## Testing
+
+Placeholder. This section will document the project test strategy, useful commands, local dependencies, and expectations for backend, worker, and webapp changes.

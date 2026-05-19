@@ -1,4 +1,8 @@
-// cp SPA (tabs, no routing) using Alpine + Fetch + Ace for Playbooks editor (no YAML linter yet).
+// CP webapp state and interaction layer.
+//
+// This file owns Alpine state, hash routing, API calls, filtering/sorting, and
+// UI-specific data shaping. Backend authorization and business rules must remain
+// enforced by the API/service layer.
 
 window.app = function () {
   return {

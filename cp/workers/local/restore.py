@@ -1,3 +1,9 @@
+"""Local restore worker.
+
+This worker runs inside CP to start or poll CockroachDB restore jobs and update
+CP job/task metadata without using remote SSH.
+"""
+
 import datetime as dt
 import logging
 
@@ -38,6 +44,7 @@ def restore_cluster(
     command: RestoreRequest,
     requested_by: str,
 ) -> None:
+    """Validate target cluster state and run an in-place restore workflow."""
     repo = get_repo()
 
     rr = command
@@ -81,6 +88,7 @@ def restore_full_cluster(
     command: RestoreFullClusterRequest,
     requested_by: str,
 ) -> None:
+    """Validate recovery target state and start a full-cluster recovery workflow."""
     repo = get_repo()
 
     rr = command
@@ -116,6 +124,7 @@ def restore_cluster_object(
     command: RestoreClusterObjectRequest,
     requested_by: str,
 ) -> None:
+    """Validate target cluster state and restore one database or table object."""
     repo = get_repo()
 
     rr = command
@@ -188,6 +197,7 @@ def restore_full_cluster_worker(
     rr: RestoreFullClusterRequest,
     requested_by: str,
 ):
+    """Submit a detached full-cluster restore and schedule restore polling."""
     repo = get_repo()
     try:
         target_cluster = repo.get_cluster(rr.target_cluster_id, [], True)
@@ -263,6 +273,7 @@ def restore_cluster_worker(
     rr: RestoreRequest,
     requested_by: str,
 ):
+    """Execute an in-place restore workflow and update job/cluster state."""
     repo = get_repo()
     try:
         cluster = repo.get_cluster(rr.name, [], True)
@@ -407,6 +418,7 @@ def poll_cluster_restore(
     command: PollClusterRestoreRequest,
     requested_by: str,
 ) -> None:
+    """Poll a CockroachDB restore job and update the CP job/cluster state."""
     repo = get_repo()
     rr = command
     try:

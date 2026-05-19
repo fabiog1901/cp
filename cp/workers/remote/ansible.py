@@ -1,3 +1,9 @@
+"""Shared Ansible runner helpers for remote workers.
+
+This module builds playbook inventories, executes Ansible, captures output, and
+records task progress for remote cluster lifecycle operations.
+"""
+
 import datetime as dt
 import gzip
 import json

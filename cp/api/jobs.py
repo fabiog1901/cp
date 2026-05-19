@@ -1,3 +1,10 @@
+"""Job API routes.
+
+This router exposes CP job listing, detail, statistics, cancellation, and
+reschedule operations. It should stay thin and delegate job behavior to
+JobsService.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user

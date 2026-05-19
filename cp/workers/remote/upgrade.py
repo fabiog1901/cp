@@ -1,3 +1,9 @@
+"""Remote cluster upgrade worker.
+
+This worker runs the Ansible-backed upgrade workflow and updates CP cluster/job
+metadata after a version change.
+"""
+
 import datetime as dt
 import logging
 from threading import Thread

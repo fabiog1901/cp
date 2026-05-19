@@ -1,61 +1,52 @@
-# 👋 Welcome to the CP Web App!
+# Webapp
 
-This directory is home to the web user interface for the **Κλοηγός API server**. We’ve kept things intentionally simple and "dependency-light."
+This directory contains the browser UI served by CP. It is a dependency-light
+AlpineJS single-page application with no frontend build step.
 
-Our goal? A UI that is easy to read, easy to debug, and easy for both humans and AI to understand. 🧠✨
+For the broader map, see [`../docs/CODEMAP.md`](../docs/CODEMAP.md).
 
-## 🌟 Why you’ll love this design:
+## What Belongs Here
 
-* **Zero Build Steps:** No bundlers, no compilers, no waiting. 🚀
-* **FastAPI Friendly:** Served directly as a static file.
-* **LLM-Ready:** The code structure is clean enough for AI to reason about easily.
-* **Pure Power:** High readability and low mental overhead.
+- Browser markup and Alpine template bindings.
+- UI state, hash routing, API calls, and client-side data shaping.
+- CSS for page layout, tables, modals, cards, and responsive behavior.
+- Static images used by the UI.
 
----
+## What Does Not Belong Here
 
-## 🏗️ High-Level Architecture
+- Backend business rules.
+- CP metadata SQL.
+- Managed-cluster SQL.
+- Security decisions that must be enforced by the API/service layer.
 
-The app is a **Single-Page Application (SPA)** contained within a single HTML file. No complex routing or hidden project structures here!
+## Entry Points
 
-**The Flow:**
+| File | Purpose |
+| --- | --- |
+| `index.html` | Main UI shell, route sections, modals, and Alpine bindings. |
+| `script.js` | `app()` state object, hash routing, API calls, filtering, sorting, and UI actions. |
+| `style.css` | Layout, components, tables, cards, dialogs, and responsive rules. |
+| `static/` | Logo, favicon, and cloud/provider images. |
 
-1. **Browser** loads `index.html` (Structure + Style + Logic).
-2. **JavaScript** handles the state and behavior.
-3. **FastAPI** receives HTTP calls via `/api` endpoints.
+## Common Pattern
 
----
+Most user-facing features touch all three main files:
 
-## 🛠️ The Tech Stack
+1. Add state and API methods in `script.js`.
+2. Add or update markup in `index.html`.
+3. Add focused styles in `style.css`.
 
-We’ve chosen a "Back to Basics" approach to keep things fast and maintainable:
+Prefer explicit API calls in `script.js`; it should be easy to search for an
+endpoint path and find the UI code that uses it.
 
-* **HTML5:** Standard, semantic markup. 🏷️
-* **CSS:** Plain CSS kept close to the markup for easy reading. 🎨
-* **JavaScript:** Vanilla JS using modern browser APIs. 🍦
-* **Alpine.js:** Our secret sauce for reactivity! We use it for state management (`x-data`), event handling (`@click`), and simple loops (`x-for`) without the bulk of React or Vue.
+## Routing
 
----
+The UI uses hash-based routing controlled from `script.js`. Search for
+`setView`, `handleHashRoute`, and the `view === ...` sections in `index.html`
+when adding or changing a page.
 
-## 📱 Application Structure
+## API Boundaries
 
-The app toggles between two main "modes" using a simple tab system:
-
-1. **Dashboard View 🖥️**
-
-    * Manage compute units (allocate, deallocate, initialize).
-    * **API Inspector:** See live HTTP requests and responses as they happen!
-
-2. **Playbooks View 📜**
-
-* Browse and edit available playbooks.
-* Save changes directly back to the backend.
-
----
-
-## 🧠 JavaScript & State Design
-
-Everything happens inside a single `<script>` tag using a central Alpine component: `x-data="app()"`.
-
-* **Explicit State:** UI flags, loading icons, and data are all in one place.
-* **Clean API:** Helper functions handle fetch calls and base64 encoding.
-* **No Magic:** State changes are driven by user actions, making debugging a breeze. 🐛🚫
+The webapp may reshape API data for display, such as merging database role group
+mappings into database cards. It should not duplicate backend validation or rely
+on hidden assumptions that are not enforced by the API.

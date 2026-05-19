@@ -1,3 +1,9 @@
+"""FastAPI application entry point.
+
+This module wires routers, middleware, startup/shutdown behavior, static webapp
+serving, request IDs, and top-level exception handling.
+"""
+
 import asyncio
 import logging
 import time

@@ -1,4 +1,8 @@
-"""Business logic for the backup catalog."""
+"""Backup catalog service.
+
+This service manages catalog sync and recovery views for backups discovered in
+object storage. It bridges API requests, catalog metadata, and worker jobs.
+"""
 
 from ..infra.db import get_repo
 from ..infra.errors import RepositoryError

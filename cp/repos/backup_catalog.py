@@ -1,4 +1,8 @@
-"""Backup catalog repository."""
+"""Backup catalog metadata repository.
+
+This repo stores discovered backup paths and backup contents so recovery views
+can be served without scanning object storage on every request.
+"""
 
 import datetime as dt
 

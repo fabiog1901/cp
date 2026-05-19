@@ -1,4 +1,8 @@
-"""Business logic for admin-managed cluster sizing options."""
+"""Admin cluster option service.
+
+This service validates and audits admin-managed options such as node counts,
+CPU counts, disk sizes, and database role templates.
+"""
 
 from pydantic import ValidationError
 

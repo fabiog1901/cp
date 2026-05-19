@@ -1,4 +1,8 @@
-"""Jobs repository."""
+"""Job and task metadata repository.
+
+This repo persists queued command state, task progress, and job history for the
+CP worker framework.
+"""
 
 from ..infra.db import execute_stmt, fetch_all, fetch_one
 from ..models import (

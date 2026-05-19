@@ -1,3 +1,9 @@
+"""Remote cluster scale worker.
+
+This worker runs Ansible-backed scale workflows and updates CP metadata/job state
+after node, CPU, or disk-size changes.
+"""
+
 import datetime as dt
 import logging
 from threading import Thread
@@ -24,6 +30,7 @@ def scale_cluster(
     command: ClusterScaleRequest,
     requested_by: str,
 ) -> None:
+    """Prepare CP metadata and start the threaded remote scale workflow."""
     repo = get_repo()
     cluster_scale_request = command
 
@@ -58,6 +65,7 @@ def scale_cluster_worker_entry(
     current_cluster: Cluster,
     requested_by: str,
 ):
+    """Run the scale worker with failure handling that updates job/cluster state."""
     repo = get_repo()
     try:
         scale_cluster_worker(job_id, csr, current_cluster, requested_by)
@@ -111,6 +119,7 @@ def scale_cluster_worker(
     current_cluster: Cluster,
     requested_by: str,
 ):
+    """Run the Ansible-backed scale workflow for disk, CPU, node, or region changes."""
     repo = get_repo()
     deployment = []
     task_id_counter = 0

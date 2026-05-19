@@ -1,4 +1,8 @@
-"""Low-level database infrastructure."""
+"""Low-level CP metadata database infrastructure.
+
+This module owns connection pool access, query helpers, and translation from
+database driver errors into repository/service-friendly error classes.
+"""
 
 import logging
 import os

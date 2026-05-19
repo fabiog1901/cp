@@ -1,3 +1,9 @@
+"""Shared authentication primitives.
+
+This module contains session/API-key helpers, signed cookie utilities, and
+normalized auth configuration used by dependencies and auth routes.
+"""
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256

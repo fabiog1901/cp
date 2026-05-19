@@ -1,4 +1,8 @@
-"""Business logic for the cluster dashboard vertical."""
+"""Cluster dashboard service.
+
+This service builds dashboard snapshots by combining visible cluster metadata
+with external metrics data, keeping the API layer free of metrics plumbing.
+"""
 
 import logging
 import time

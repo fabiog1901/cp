@@ -1,3 +1,11 @@
+/*
+ * CP webapp styles.
+ *
+ * This file owns the visual system, page layouts, tables, cards, modals,
+ * responsive behavior, and domain-specific UI surfaces for the dependency-light
+ * Alpine SPA.
+ */
+
 :root {
   --bg: #0b0907;
   --bg-elevated: #15110d;

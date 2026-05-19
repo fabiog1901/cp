@@ -1,3 +1,9 @@
+"""Alert API routes.
+
+This router exposes Alertmanager-backed alert data for the webapp and API
+clients. Alert retrieval and filtering live in AlertsService.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import require_readonly

@@ -1,3 +1,9 @@
+"""Authentication and authorization dependencies.
+
+This module exposes FastAPI dependencies for resolving sessions/API keys,
+enforcing access levels, and converting auth context into CP access scope.
+"""
+
 from typing import Any
 
 from fastapi import Depends, Request, Security

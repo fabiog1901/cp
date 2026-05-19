@@ -1,3 +1,9 @@
+"""Remote cluster deletion worker.
+
+This worker runs the Ansible-backed delete workflow and updates CP cluster/job
+metadata after a managed cluster is removed.
+"""
+
 import datetime as dt
 import logging
 from threading import Thread

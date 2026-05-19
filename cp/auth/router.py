@@ -1,3 +1,9 @@
+"""Authentication HTTP routes.
+
+This router owns login, callback, logout, and session inspection endpoints for
+the SSO-protected webapp flow.
+"""
+
 import secrets
 from typing import Any
 

@@ -1,3 +1,9 @@
+"""Remote cluster healthcheck worker.
+
+This worker runs lightweight remote checks and records cluster health state in
+CP metadata.
+"""
+
 import os
 from threading import Thread
 
