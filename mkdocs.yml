@@ -7,14 +7,12 @@ docs_dir: docs
 
 plugins:
   - search
-  # Enable after adding `mkdocstrings[python]` to the dev dependencies and
-  # deciding which generated/reference pages should render live API docs.
-  # - mkdocstrings:
-  #     handlers:
-  #       python:
-  #         options:
-  #           docstring_style: google
-  #           show_source: true
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
 
 markdown_extensions:
   - admonition
@@ -76,6 +74,11 @@ theme:
 nav:
   - Home: index.md
   - Code Map: CODEMAP.md
+  - Generated:
+      - Code Map: generated/code-map.md
+      - Package Index: generated/package-index.md
+      - API Routes: generated/api/routes.md
+      - LLM Index: generated/llm-index.md
   - Architecture:
       - Documentation System: architecture/documentation-system.md
   # Add these sections as their pages are created:

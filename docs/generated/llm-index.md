@@ -1,0 +1,42 @@
+<!-- GENERATED FILE: DO NOT EDIT -->
+
+# Generated LLM Index
+
+Use this file as a compact starting point before opening source files.
+
+## Source Roots
+
+- `cp`
+- `tools`
+
+## Packages
+
+- `cp`: 86 modules, 163 classes, 149 functions, 73 routes
+- `tools`: 1 modules, 5 classes, 30 functions, 0 routes
+
+## API Route Count
+
+- `73` FastAPI routes
+
+## Command Handlers
+
+- `CommandType.CREATE_CLUSTER` -> `cp.workers.queue.create_cluster`
+- `CommandType.DELETE_CLUSTER` -> `cp.workers.queue.delete_cluster`
+- `CommandType.FAIL_ZOMBIE_JOBS` -> `cp.workers.queue.fail_zombie_jobs`
+- `CommandType.HEALTHCHECK_CLUSTERS` -> `cp.workers.queue.healthcheck_clusters`
+- `CommandType.POLL_CLUSTER_RESTORE` -> `cp.workers.queue.poll_cluster_restore`
+- `CommandType.RECREATE_CLUSTER` -> `cp.workers.queue.lambda job_id, command, requested_by: create_cluster(job_id, command, requested_by, True)`
+- `CommandType.RESTORE_CLUSTER` -> `cp.workers.queue.restore_cluster`
+- `CommandType.RESTORE_CLUSTER_OBJECT` -> `cp.workers.queue.restore_cluster_object`
+- `CommandType.RESTORE_FULL_CLUSTER` -> `cp.workers.queue.restore_full_cluster`
+- `CommandType.SCALE_CLUSTER` -> `cp.workers.queue.scale_cluster`
+- `CommandType.SYNC_BACKUP_CATALOG` -> `cp.workers.queue.sync_backup_catalog`
+- `CommandType.SYNC_CLUSTER_BACKUP_CATALOG` -> `cp.workers.queue.sync_cluster_backup_catalog`
+- `CommandType.UPGRADE_CLUSTER` -> `cp.workers.queue.upgrade_cluster`
+
+## Generated Files
+
+- `docs/generated/code-map.md`
+- `docs/generated/package-index.md`
+- `docs/generated/api/routes.md`
+- `.build/project-index.json`
