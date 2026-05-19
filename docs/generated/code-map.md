@@ -31,6 +31,7 @@ Path: `cp/api/admin/api_keys.py`
 _No docstring._
 
 Functions:
+
 - `async list_api_keys(access_key: str | None=None, service: ApiKeysService=Depends(get_api_keys_service)) -> list[ApiKeySummary]` — line 19: _No docstring._
 - `async create_api_key(request: ApiKeyCreateRequest, actor_id: str=Depends(get_audit_actor), service: ApiKeysService=Depends(get_api_keys_service)) -> ApiKeyCreateResponse` — line 39: _No docstring._
 - `async delete_api_key(access_key: str, actor_id: str=Depends(get_audit_actor), service: ApiKeysService=Depends(get_api_keys_service)) -> None` — line 59: _No docstring._
@@ -47,6 +48,7 @@ Path: `cp/api/admin/common.py`
 _No docstring._
 
 Functions:
+
 - `raise_http_from_service_error(err: ServiceError) -> None` — line 12: _No docstring._
 
 ### `cp.api.admin.cpu_counts`
@@ -56,6 +58,7 @@ Path: `cp/api/admin/cpu_counts.py`
 _No docstring._
 
 Functions:
+
 - `async list_cpu_counts(service: ClusterOptionsService=Depends(get_cluster_options_service)) -> list[CpuCountOption]` — line 14: _No docstring._
 - `async create_cpu_count(request: CpuCountOption, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> CpuCountOption` — line 24: _No docstring._
 - `async delete_cpu_count(cpu_count: int, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> None` — line 36: _No docstring._
@@ -72,6 +75,7 @@ Path: `cp/api/admin/database_role_templates.py`
 _No docstring._
 
 Functions:
+
 - `async list_database_role_templates(service: ClusterOptionsService=Depends(get_cluster_options_service)) -> list[DatabaseRoleTemplateConfig]` — line 14: _No docstring._
 - `async create_database_role_template(request: DatabaseRoleTemplateConfig, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> DatabaseRoleTemplateConfig` — line 24: _No docstring._
 - `async delete_database_role_template(database_role_template: str, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> None` — line 41: _No docstring._
@@ -88,6 +92,7 @@ Path: `cp/api/admin/disk_sizes.py`
 _No docstring._
 
 Functions:
+
 - `async list_disk_sizes(service: ClusterOptionsService=Depends(get_cluster_options_service)) -> list[DiskSizeOption]` — line 14: _No docstring._
 - `async create_disk_size(request: DiskSizeOption, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> DiskSizeOption` — line 24: _No docstring._
 - `async delete_disk_size(size_gb: int, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> None` — line 36: _No docstring._
@@ -104,6 +109,7 @@ Path: `cp/api/admin/node_counts.py`
 _No docstring._
 
 Functions:
+
 - `async list_node_counts(service: ClusterOptionsService=Depends(get_cluster_options_service)) -> list[NodeCountOption]` — line 14: _No docstring._
 - `async create_node_count(request: NodeCountOption, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> NodeCountOption` — line 24: _No docstring._
 - `async delete_node_count(node_count: int, actor_id: str=Depends(get_audit_actor), service: ClusterOptionsService=Depends(get_cluster_options_service)) -> None` — line 36: _No docstring._
@@ -120,6 +126,7 @@ Path: `cp/api/admin/playbooks.py`
 _No docstring._
 
 Functions:
+
 - `async get_playbook(name: PlaybookName, service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookResponse` — line 19: _No docstring._
 - `async get_playbook_version(name: PlaybookName, version: str, service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookVersionResponse` — line 30: _No docstring._
 - `async save_playbook(name: PlaybookName, request: PlaybookSaveRequest, actor_id: str=Depends(get_audit_actor), service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookVersionResponse` — line 42: _No docstring._
@@ -140,6 +147,7 @@ Path: `cp/api/admin/regions.py`
 _No docstring._
 
 Functions:
+
 - `async list_regions(service: RegionsService=Depends(get_regions_service)) -> list[Region]` — line 16: _No docstring._
 - `async create_region(request: Region, actor_id: str=Depends(get_audit_actor), service: RegionsService=Depends(get_regions_service)) -> Region` — line 26: _No docstring._
 - `async delete_region(cloud: str, region: str, zone: str, actor_id: str=Depends(get_audit_actor), service: RegionsService=Depends(get_regions_service)) -> None` — line 48: _No docstring._
@@ -156,6 +164,7 @@ Path: `cp/api/admin/settings.py`
 _No docstring._
 
 Functions:
+
 - `async list_settings(service: SettingsService=Depends(get_settings_service)) -> list[SettingRecord]` — line 14: _No docstring._
 - `async get_setting(setting_id: str, service: SettingsService=Depends(get_settings_service)) -> str` — line 24: _No docstring._
 - `async update_setting(setting_id: str, request: SettingUpdateRequest, actor_id: str=Depends(get_audit_actor), service: SettingsService=Depends(get_settings_service)) -> None` — line 35: _No docstring._
@@ -174,6 +183,7 @@ Path: `cp/api/admin/versions.py`
 _No docstring._
 
 Functions:
+
 - `async list_versions(service: VersionsService=Depends(get_versions_service)) -> list[Version]` — line 14: _No docstring._
 - `async create_version(request: Version, actor_id: str=Depends(get_audit_actor), service: VersionsService=Depends(get_versions_service)) -> Version` — line 24: _No docstring._
 - `async delete_version(version: str, actor_id: str=Depends(get_audit_actor), service: VersionsService=Depends(get_versions_service)) -> None` — line 36: _No docstring._
@@ -190,6 +200,7 @@ Path: `cp/api/alerts.py`
 Alert API routes.
 
 Functions:
+
 - `async list_alerts(limit: int | None=Query(default=None, ge=1, le=200), claims: dict=Depends(require_readonly), service: AlertsService=Depends(get_alerts_service)) -> list[LiveAlert]` — line 49: _No docstring._
 - `async receive_alert(payload: AlertmanagerPayload, service: AlertsService=Depends(get_alerts_service)) -> dict[str, str]` — line 62: _No docstring._
 
@@ -204,6 +215,7 @@ Path: `cp/api/cluster_recovery.py`
 Cluster recovery API routes.
 
 Functions:
+
 - `async list_recovery_backups(full_cluster_only: bool=Query(default=True), claims: dict=Depends(require_readonly), service: BackupCatalogService=Depends(get_backup_catalog_service)) -> BackupCatalogSnapshot` — line 55: _No docstring._
 - `async sync_recovery_backups(cluster_id: str | None=Query(default=None), claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: BackupCatalogService=Depends(get_backup_catalog_service)) -> dict[str, str]` — line 73: _No docstring._
 - `async restore_full_cluster(request: ClusterRecoveryRestoreApiRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: BackupCatalogService=Depends(get_backup_catalog_service)) -> JobID` — line 88: _No docstring._
@@ -220,6 +232,7 @@ Path: `cp/api/clusters.py`
 Cluster API routes.
 
 Functions:
+
 - `async list_clusters(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> list[ClusterOverview]` — line 87: List clusters visible to the current CP principal.
 - `async get_cluster_stats(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterStatsResponse` — line 100: Return aggregate status counts for visible clusters.
 - `async get_cluster_create_options(_claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterCreateOptionsResponse` — line 113: Return admin-configured options used by the create-cluster dialog.
@@ -284,6 +297,7 @@ Path: `cp/api/events.py`
 Event API routes.
 
 Functions:
+
 - `async list_events(limit: int=Query(default=20, ge=1, le=200), offset: int=Query(default=0, ge=0), claims: dict=Depends(require_readonly), service: EventsService=Depends(get_events_service)) -> list[LogMsg]` — line 55: _No docstring._
 - `async get_event_count(service: EventsService=Depends(get_events_service)) -> EventCountResponse` — line 69: _No docstring._
 
@@ -298,6 +312,7 @@ Path: `cp/api/jobs.py`
 Job API routes.
 
 Functions:
+
 - `async list_jobs(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> list[Job]` — line 62: _No docstring._
 - `async get_job_stats(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> JobStatsResponse` — line 74: _No docstring._
 - `async get_job(job_id: int, claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> Job` — line 94: _No docstring._
@@ -327,6 +342,7 @@ Classes:
 - `OIDCConfig` — line 118: Configuration derived from settings for OIDC login and authz.
 
 Functions:
+
 - `claim_groups(claim_value: Any) -> set[str]` — line 25: Normalize a groups claim into a trimmed set of group names.
 - `claims_groups(claims: dict[str, Any], groups_claim_name: str='groups') -> set[str]` — line 40: Extract the configured groups claim from a JWT or synthetic claims payload.
 - `jsonable_role_groups(role_groups: dict[str, Any]) -> dict[str, list[str]]` — line 47: Convert role-to-groups mappings into JSON-friendly sorted lists.
@@ -342,6 +358,7 @@ Path: `cp/auth/dependencies.py`
 Authentication and authorization dependencies.
 
 Functions:
+
 - `async require_authenticated(request: Request, repo: Repo=Depends(get_repo), access_key: str | None=Security(access_key_scheme), signature: str | None=Security(signature_scheme), timestamp: str | None=Security(timestamp_scheme)) -> dict[str, Any]` — line 35: Return claims for the current caller, regardless of auth transport.
 - `require_user(claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 55: Require a role that permits mutating compute-unit operations.
 - `require_readonly(request: Request, claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 62: Allow read-only users on GET, and require user/admin on write operations.
@@ -365,6 +382,7 @@ Path: `cp/auth/router.py`
 Authentication HTTP routes.
 
 Functions:
+
 - `oidc_cookie_kwargs() -> dict[str, Any]` — line 28: Return the shared cookie settings used across the OIDC browser flow.
 - `log_auth_event(repo: Repo, actor_id: str, action: AuditEvent, details: dict[str, Any] | None=None) -> None` — line 39: Persist a login or logout event using the current request id context.
 - `oidc_login(request: Request, next: str='/', repo: Repo=Depends(get_repo))` — line 57: Start the browser OIDC login flow and store anti-CSRF cookies.
@@ -395,6 +413,7 @@ Classes:
 - `SelectorDumper` — line 39: Choose the correct dumper for list payloads.
 
 Functions:
+
 - `execute_stmt(stmt: str, bind_args: tuple=(), *, operation: str | None=None) -> None` — line 54: _No docstring._
 - `fetch_all(stmt: str, bind_args: tuple, row_type, *, operation: str | None=None) -> list[Any]` — line 71: _No docstring._
 - `fetch_one(stmt: str, bind_args: tuple, row_type, *, operation: str | None=None) -> Any | None` — line 90: _No docstring._
@@ -412,6 +431,7 @@ Path: `cp/infra/dependencies.py`
 _No docstring._
 
 Functions:
+
 - `get_repo()` — line 42: _No docstring._
 - `get_compute_unit_service()` — line 46: Legacy placeholder for an unfinished compute-unit API slice on this branch.
 - `get_admin_service() -> AuthService` — line 77: _No docstring._
@@ -436,6 +456,7 @@ Path: `cp/infra/logging.py`
 Logging configuration for operational messages.
 
 Functions:
+
 - `configure_logging(repo=None, *, force: bool=False) -> None` — line 11: Configure app logging with journald when available.
 
 ### `cp.infra.util`
@@ -450,6 +471,7 @@ Classes:
 - `ShorthandFormatter` — line 175: _No docstring._
 
 Functions:
+
 - `as_bool(value: str | None, default: bool=False) -> bool` — line 34: Parse common truthy environment-style values into a boolean.
 - `safe_json_string_dict(value: str | None, *, default: dict[str, str] | None=None) -> dict[str, str]` — line 41: Parse a JSON object and coerce its keys and values to strings.
 - `safe_next_path(next_path: str | None) -> str` — line 55: Normalize redirect targets so only in-app absolute paths are allowed.
@@ -469,6 +491,7 @@ Path: `cp/main.py`
 FastAPI application entry point.
 
 Functions:
+
 - `async lifespan(_app: FastAPI)` — line 27: _No docstring._
 - `async get_targets()` — line 68: _No docstring._
 - `async dispatch(request: Request, call_next)` — line 81: _No docstring._
@@ -590,6 +613,7 @@ Classes:
 - `LiveAlert` — line 1026: _No docstring._
 
 Functions:
+
 - `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 271: _No docstring._
 - `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 482: _No docstring._
 - `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 486: _No docstring._
@@ -724,6 +748,7 @@ Path: `cp/repos/common.py`
 Shared helpers for repository models.
 
 Functions:
+
 - `convert_model_to_sql(table: str, model: BaseModel)` — line 6: _No docstring._
 
 ### `cp.repos.event`
@@ -871,6 +896,7 @@ Path: `cp/services/base.py`
 Shared service-layer helpers.
 
 Functions:
+
 - `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 12: Best-effort audit logging for service-layer actions.
 
 ### `cp.services.cluster`
@@ -898,6 +924,7 @@ Path: `cp/services/cluster_db.py`
 Shared helpers for connecting to a cluster SQL endpoint.
 
 Functions:
+
 - `get_primary_dns_address(cluster: Cluster) -> str` — line 8: _No docstring._
 - `get_cluster_db_password(cluster: Cluster) -> str` — line 16: _No docstring._
 - `connect_to_cluster_db(cluster: Cluster)` — line 29: _No docstring._
@@ -944,6 +971,7 @@ Classes:
 - `ServiceNotFoundError` — line 49: _No docstring._
 
 Functions:
+
 - `from_repository_error(err: RepositoryError, *, unavailable_message: str | None=None, conflict_message: str | None=None, validation_message: str | None=None, permission_message: str | None=None, fallback_message: str | None=None, fallback_title: str | None=None) -> ServiceError` — line 54: Translate a repository exception into a service exception.
 
 ### `cp.services.events`
@@ -992,6 +1020,7 @@ Path: `cp/workers/local/backup_catalog.py`
 Local backup catalog worker.
 
 Functions:
+
 - `sync_backup_catalog(_msg_id: int, _command: SyncBackupCatalogRequest, requested_by: str) -> None` — line 29: _No docstring._
 - `sync_cluster_backup_catalog(_msg_id: int, command: SyncClusterBackupCatalogRequest, requested_by: str) -> None` — line 54: _No docstring._
 
@@ -1002,6 +1031,7 @@ Path: `cp/workers/local/restore.py`
 Local restore worker.
 
 Functions:
+
 - `restore_cluster(job_id: int, command: RestoreRequest, requested_by: str) -> None` — line 42: Validate target cluster state and run an in-place restore workflow.
 - `restore_full_cluster(job_id: int, command: RestoreFullClusterRequest, requested_by: str) -> None` — line 86: Validate recovery target state and start a full-cluster recovery workflow.
 - `restore_cluster_object(job_id: int, command: RestoreClusterObjectRequest, requested_by: str) -> None` — line 122: Validate target cluster state and restore one database or table object.
@@ -1016,6 +1046,7 @@ Path: `cp/workers/queue.py`
 Queue worker entry point.
 
 Functions:
+
 - `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 43: Mark stale running jobs as failed from a scheduled queue command.
 - `get_nodes()` — line 73: Return Prometheus scrape targets for active cluster nodes.
 - `async pull_from_mq()` — line 100: Continuously claim due MQ messages and dispatch them to command handlers.
@@ -1043,6 +1074,7 @@ Path: `cp/workers/remote/common.py`
 Shared helpers for cluster workers.
 
 Functions:
+
 - `get_node_count_per_zone(zone_count: int, node_count: int) -> list[int]` — line 4: Distribute nodes across zones as evenly as possible.
 
 ### `cp.workers.remote.create`
@@ -1052,6 +1084,7 @@ Path: `cp/workers/remote/create.py`
 Remote cluster creation worker.
 
 Functions:
+
 - `create_cluster(job_id: int, command: CreateClusterCommand, created_by: str, recreate: bool=False) -> None` — line 32: Prepare CP metadata and start the threaded remote create workflow.
 - `create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str, cluster_db_password: str)` — line 90: Run the Ansible-backed cluster creation workflow and update job state.
 
@@ -1062,6 +1095,7 @@ Path: `cp/workers/remote/delete.py`
 Remote cluster deletion worker.
 
 Functions:
+
 - `delete_cluster(job_id: int, command: DeleteClusterCommand, requested_by: str) -> None` — line 18: _No docstring._
 - `delete_cluster_worker(job_id: int, cluster_id: str, requested_by: str)` — line 77: _No docstring._
 
@@ -1072,6 +1106,7 @@ Path: `cp/workers/remote/healthcheck.py`
 Remote cluster healthcheck worker.
 
 Functions:
+
 - `healthcheck_clusters(job_id: int, _command: HealthcheckClustersCommand, _requested_by: str) -> None` — line 15: _No docstring._
 - `healthcheck_clusters_worker(job_id: int, cluster_id: str, cockroachdb_nodes: list[str], ssh_key: str)` — line 47: _No docstring._
 
@@ -1082,6 +1117,7 @@ Path: `cp/workers/remote/scale.py`
 Remote cluster scale worker.
 
 Functions:
+
 - `scale_cluster(job_id: int, command: ClusterScaleRequest, requested_by: str) -> None` — line 28: Prepare CP metadata and start the threaded remote scale workflow.
 - `scale_cluster_worker_entry(job_id: int, csr: ClusterScaleRequest, current_cluster: Cluster, requested_by: str)` — line 62: Run the scale worker with failure handling that updates job/cluster state.
 - `parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster)` — line 86: _No docstring._
@@ -1094,6 +1130,7 @@ Path: `cp/workers/remote/upgrade.py`
 Remote cluster upgrade worker.
 
 Functions:
+
 - `upgrade_cluster(job_id: int, command: ClusterUpgradeRequest, requested_by: str) -> None` — line 18: _No docstring._
 - `upgrade_cluster_worker(job_id: int, cur: ClusterUpgradeRequest, requested_by: str)` — line 76: _No docstring._
 
@@ -1113,6 +1150,7 @@ Classes:
 - `ModuleInfo` — line 71: _No docstring._
 
 Functions:
+
 - `ast_to_str(node: ast.AST | None) -> str` — line 83: Return a deterministic source-like representation for an AST node.
 - `literal_string(node: ast.AST | None) -> str | None` — line 93: Return a string literal value when an AST node is a string constant.
 - `module_name_from_path(path: Path) -> str` — line 100: Convert a Python file path under the repo into an import-style name.
@@ -1138,8 +1176,9 @@ Functions:
 - `render_package_index(index: dict[str, Any]) -> str` — line 461: Render package/module summary tables.
 - `render_api_routes(index: dict[str, Any]) -> str` — line 488: Render FastAPI route inventory.
 - `render_llm_index(index: dict[str, Any]) -> str` — line 506: Render a compact agent-facing navigation index.
-- `json_dumps(data: dict[str, Any]) -> str` — line 552: Serialize JSON deterministically with a trailing newline.
-- `file_hash(content: str) -> str` — line 557: Return a stable content hash.
-- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 562: Write a generated file or report it stale in check mode.
-- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 578: Return all deterministic generated outputs.
-- `main() -> int` — line 589: CLI entry point.
+- `render_python_reference(index: dict[str, Any]) -> str` — line 553: Render a MkDocstrings reference page for importable Python modules.
+- `json_dumps(data: dict[str, Any]) -> str` — line 589: Serialize JSON deterministically with a trailing newline.
+- `file_hash(content: str) -> str` — line 594: Return a stable content hash.
+- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 599: Write a generated file or report it stale in check mode.
+- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 615: Return all deterministic generated outputs.
+- `main() -> int` — line 627: CLI entry point.

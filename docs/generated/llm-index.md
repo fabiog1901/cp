@@ -12,7 +12,7 @@ Use this file as a compact starting point before opening source files.
 ## Packages
 
 - `cp`: 86 modules, 163 classes, 149 functions, 73 routes
-- `tools`: 1 modules, 5 classes, 30 functions, 0 routes
+- `tools`: 1 modules, 5 classes, 31 functions, 0 routes
 
 ## API Route Count
 
@@ -39,4 +39,5 @@ Use this file as a compact starting point before opening source files.
 - `docs/generated/code-map.md`
 - `docs/generated/package-index.md`
 - `docs/generated/api/routes.md`
+- `docs/generated/python-reference.md`
 - `.build/project-index.json`

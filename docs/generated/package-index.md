@@ -5,7 +5,7 @@
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
 | `cp` | 86 | 163 | 149 | 73 |
-| `tools` | 1 | 5 | 30 | 0 |
+| `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
 

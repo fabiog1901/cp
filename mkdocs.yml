@@ -73,14 +73,23 @@ theme:
 
 nav:
   - Home: index.md
-  - Code Map: CODEMAP.md
+  - Curated Code Map: CODEMAP.md
   - Generated:
       - Code Map: generated/code-map.md
       - Package Index: generated/package-index.md
       - API Routes: generated/api/routes.md
       - LLM Index: generated/llm-index.md
+      - Python Reference: generated/python-reference.md
   - Architecture:
       - Documentation System: architecture/documentation-system.md
+  - Domains:
+      - Overview: domains/index.md
+      - Cluster Lifecycle: domains/cluster-lifecycle.md
+      - Database Access: domains/database-access.md
+      - Backups and Recovery: domains/backups-and-recovery.md
+      - Admin Configuration: domains/admin-configuration.md
+      - Auth and Authorization: domains/auth-and-authorization.md
+      - Events, Alerts, Dashboard: domains/events-alerts-dashboard.md
   # Add these sections as their pages are created:
   # - Architecture:
   #     - Overview: architecture/overview.md
@@ -88,12 +97,6 @@ nav:
   #     - Layers: architecture/layers.md
   #     - Jobs and Workers: architecture/jobs-and-workers.md
   #     - Auth: architecture/auth.md
-  # - Domains:
-  #     - Cluster Lifecycle: domains/cluster-lifecycle.md
-  #     - Database Access: domains/database-access.md
-  #     - Backups and Recovery: domains/backups-and-recovery.md
-  #     - Admin Configuration: domains/admin-configuration.md
-  #     - Events, Alerts, Dashboard: domains/events-alerts-dashboard.md
   # - API:
   #     - Overview: api/overview.md
   #     - Clusters: api/clusters.md
