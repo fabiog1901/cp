@@ -1505,7 +1505,7 @@
           </div>
         </aside>
 
-        <section class="main job-detail-main">
+        <section class="main cluster-dashboard-main">
           <div class="main-header">
             <div class="main-header-left">
               <div class="main-title">Cluster Dashboard</div>
@@ -1517,16 +1517,7 @@
             </div>
           </div>
 
-          <div class="dashboard-home" x-show="clusterDashboardSnapshot">
-            <section class="dashboard-hero">
-              <div class="eyebrow">Time-series metrics</div>
-              <h2 x-text="clusterDashboardSnapshot?.cluster?.cluster_id || selectedClusterId || '-'"></h2>
-              <p>
-                This dashboard queries <span class="ip-pill">/api/clusters/{cluster_id}/dashboard</span> and renders
-                three chart types from Prometheus-backed metrics: gauge, counter, and histogram.
-              </p>
-            </section>
-
+          <div class="dashboard-home cluster-dashboard-home" x-show="clusterDashboardSnapshot">
             <section class="dashboard-grid">
               <article class="dashboard-card cluster-dashboard-card">
                 <div class="dashboard-card-head">
@@ -4270,20 +4261,21 @@
               <div class="main-subtitle">Select a playbook, edit YAML, then save.</div>
             </div>
 
-            <div class="main-actions">
-              <select class="select" x-model="selectedPlaybook" @change="onSelectPlaybook()"
-                :disabled="pbLoading.list || !pbEditorReady">
-                <option value="" disabled>Select playbook…</option>
-                <template x-for="p in playbooks" :key="p">
-                  <option :value="p" x-text="p"></option>
-                </template>
-              </select>
-
-            </div>
+            <div class="main-actions"></div>
           </div>
 
           <div class="editor-toolbar">
             <div class="playbook-meta-grid">
+              <div class="playbook-meta-card">
+                <label class="hint" for="playbook-select">Playbook</label>
+                <select id="playbook-select" class="select playbook-version-select" x-model="selectedPlaybook"
+                  @change="onSelectPlaybook()" :disabled="pbLoading.list || !pbEditorReady">
+                  <option value="" disabled>Select playbook…</option>
+                  <template x-for="p in playbooks" :key="p">
+                    <option :value="p" x-text="p"></option>
+                  </template>
+                </select>
+              </div>
               <div class="playbook-meta-card">
                 <div class="hint">Default version</div>
                 <div class="playbook-meta-value" x-text="pbDefaultVersion || '-'"></div>

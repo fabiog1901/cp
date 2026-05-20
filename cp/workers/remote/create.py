@@ -247,6 +247,9 @@ def create_cluster_worker(
             cluster_inventory=cluster_inventory,
             lbs_inventory=lbs_inventory,
         )
+
+        # TODO: should we log to the events table if the cluster was created?
+        #  
     except Exception as err:
         logger.exception(
             "Unhandled error while creating cluster '%s'", cluster_request.name

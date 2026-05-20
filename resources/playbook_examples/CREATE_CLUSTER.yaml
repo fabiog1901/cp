@@ -746,7 +746,7 @@
           --certs-dir=/var/lib/cockroach/certs \
           -e "SET CLUSTER SETTING enterprise.license = '{{ cockroachdb_enterprise_license }}';"
 
-    - name: CockroachDB - create user
+    - name: CockroachDB - create admin user
       run_once: yes
       shell: |
         cockroach sql \
@@ -756,8 +756,8 @@
       loop: "{{ dbusers }}"
       failed_when: result.rc != 0 and 'already exists' not in result.stderr
       register: result
-    
-    - name: CockroachDB - reset user password
+      
+    - name: CockroachDB - idempotently reset password for admin user
       run_once: yes
       shell: |
         cockroach sql \
@@ -792,7 +792,7 @@
           --certs-dir=/var/lib/cockroach/certs \
           -e "CREATE SCHEDULE IF NOT EXISTS main_backup 
               FOR BACKUP INTO 'external://backup' 
-              WITH revision_history, incremental_location = 'external://backup' 
+              WITH revision_history 
               RECURRING '@hourly' 
               FULL BACKUP '@daily' 
               WITH SCHEDULE OPTIONS 

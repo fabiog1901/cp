@@ -1380,9 +1380,9 @@ td:first-child {
 
 .playbook-meta-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 12px;
-  width: min(100%, 720px);
+  width: min(100%, 1040px);
 }
 
 .playbook-meta-card {
@@ -2693,20 +2693,34 @@ tbody tr:hover {
   min-height: auto;
 }
 
+.cluster-dashboard-main {
+  overflow-y: auto;
+}
+
+.cluster-dashboard-home {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 12px;
+  padding-right: 4px;
+}
+
 .cluster-dashboard-chart {
   width: 100%;
   min-height: 320px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .cluster-dashboard-chart .uplot {
+  max-width: 100%;
   color: #e5e7eb;
   font-family: inherit;
 }
 
 .cluster-dashboard-chart .u-title {
-  color: #fff7ed;
-  font-size: 16px;
+  display: none;
 }
 
 .cluster-dashboard-chart .u-legend {

@@ -3882,10 +3882,15 @@ window.app = function () {
     },
 
     clusterDashboardChartWidth(containerId) {
-      if (typeof document === "undefined") return 960;
+      if (typeof document === "undefined") return 320;
       const el = document.getElementById(containerId);
-      const width = Number(el?.clientWidth || el?.offsetWidth || 0);
-      return Math.max(width || 960, 320);
+      const width = Number(
+        el?.clientWidth ||
+          el?.offsetWidth ||
+          el?.parentElement?.clientWidth ||
+          0,
+      );
+      return Math.max(Math.floor(width || 320), 240);
     },
 
     clusterDashboardAlignedData(seriesKeys) {
@@ -3906,9 +3911,8 @@ window.app = function () {
       ];
     },
 
-    clusterDashboardChartOptions({ title, yLabel, containerId, series }) {
+    clusterDashboardChartOptions({ yLabel, containerId, series }) {
       return {
-        title,
         width: this.clusterDashboardChartWidth(containerId),
         height: 320,
         legend: { show: true },
@@ -3925,7 +3929,9 @@ window.app = function () {
             stroke: "#94a3b8",
             grid: { stroke: "rgba(148, 163, 184, 0.12)" },
             label: yLabel,
-            size: 74,
+            size: 48,
+            labelSize: 11,
+            labelGap: 4,
           },
         ],
         series: [
@@ -4015,7 +4021,6 @@ window.app = function () {
 
         this._clusterDashboardCharts[config.key] = new window.uPlot(
           this.clusterDashboardChartOptions({
-            title: config.title,
             yLabel: config.yLabel,
             containerId: config.id,
             series: config.series,
