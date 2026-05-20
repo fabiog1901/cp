@@ -1,31 +1,56 @@
 ---
-- name: RECREATE INVENTORY
+##############
+#   INFRA    #
+##############
+- name: GATHER DEPLOYMENT INSTANCES
   hosts: localhost
   connection: local
   gather_facts: no
   become: no
   tasks:
+    - name: Gather current deployment instances
+      shell: |
+        cloud_instance gather -d {{ deployment_id }}
+      register: instances
+
     - name: Build ansible inventory dynamically
       add_host:
-        name: "{{ item }}"
-        group: cockroachdb
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ ssh_key }}"
-      loop: "{{ cockroachdb_nodes }}"
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
 
-- name: HEALTHCHECK CLUSTERS
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+        
+      loop: "{{ instances.stdout | from_json }}"
+
+- name: UPGRADE LICENSE
   hosts: cockroachdb
   gather_facts: no
+  run_once: yes
   become: yes
   tasks:
-    - name: CockroachDB - get node status
+    - name: CockroachDB - set enterprise.license
       run_once: yes
       shell: |
-        cockroach node status --format json \
+        cockroach sql \
+          --host={{ cockroachdb_advertise_addr }} \
           --certs-dir=/var/lib/cockroach/certs \
-      register: out
+          -e "SET CLUSTER SETTING enterprise.license = 'crl-0-EJXl29EGGAIiCFdvcmtzaG9w';"
 
-    - name: Data
-      debug:
-        msg:
-          data: "{{ out.stdout | from_json }}"

@@ -11,19 +11,19 @@ Use this file as a compact starting point before opening source files.
 
 ## Packages
 
-- `cp`: 86 modules, 163 classes, 149 functions, 73 routes
+- `cp`: 86 modules, 163 classes, 150 functions, 74 routes
 - `tools`: 1 modules, 5 classes, 31 functions, 0 routes
 
 ## API Route Count
 
-- `73` FastAPI routes
+- `74` FastAPI routes
 
 ## Command Handlers
 
 - `CommandType.CREATE_CLUSTER` -> `cp.workers.queue.create_cluster`
 - `CommandType.DELETE_CLUSTER` -> `cp.workers.queue.delete_cluster`
 - `CommandType.FAIL_ZOMBIE_JOBS` -> `cp.workers.queue.fail_zombie_jobs`
-- `CommandType.HEALTHCHECK_CLUSTERS` -> `cp.workers.queue.healthcheck_clusters`
+- `CommandType.HEALTHCHECK_CLUSTER` -> `cp.workers.queue.healthcheck_cluster`
 - `CommandType.POLL_CLUSTER_RESTORE` -> `cp.workers.queue.poll_cluster_restore`
 - `CommandType.RECREATE_CLUSTER` -> `cp.workers.queue.lambda job_id, command, requested_by: create_cluster(job_id, command, requested_by, True)`
 - `CommandType.RESTORE_CLUSTER` -> `cp.workers.queue.restore_cluster`

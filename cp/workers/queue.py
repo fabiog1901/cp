@@ -28,12 +28,12 @@ from .local.backup_catalog import sync_backup_catalog, sync_cluster_backup_catal
 from .local.restore import (
     poll_cluster_restore,
     restore_cluster,
-    restore_full_cluster,
     restore_cluster_object,
+    restore_full_cluster,
 )
 from .remote.create import create_cluster
 from .remote.delete import delete_cluster
-from .remote.healthcheck import healthcheck_clusters
+from .remote.healthcheck import healthcheck_cluster
 from .remote.scale import scale_cluster
 from .remote.upgrade import upgrade_cluster
 
@@ -57,6 +57,7 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
         job_id, command, requested_by, True
     ),
     CommandType.DELETE_CLUSTER: delete_cluster,
+    CommandType.HEALTHCHECK_CLUSTER: healthcheck_cluster,
     CommandType.SCALE_CLUSTER: scale_cluster,
     CommandType.UPGRADE_CLUSTER: upgrade_cluster,
     CommandType.RESTORE_CLUSTER: restore_cluster,
@@ -66,7 +67,6 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     CommandType.SYNC_BACKUP_CATALOG: sync_backup_catalog,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: sync_cluster_backup_catalog,
     CommandType.FAIL_ZOMBIE_JOBS: fail_zombie_jobs,
-    CommandType.HEALTHCHECK_CLUSTERS: healthcheck_clusters,
 }
 
 
@@ -137,14 +137,6 @@ async def pull_from_mq():
                                 )
                                 handler(msg.msg_id, command, msg.created_by)
 
-                                if msg.msg_type == CommandType.HEALTHCHECK_CLUSTERS:
-                                    cur.execute(
-                                        """
-                                        INSERT INTO mq (msg_type, start_after) 
-                                        VALUES (%s, now() + INTERVAL '60s' + (random()*10)::INTERVAL)
-                                        """,
-                                        (CommandType.HEALTHCHECK_CLUSTERS.value,),
-                                    )
                             except Exception as err:
                                 logger.exception(
                                     "MQ message %s failed during dispatch",

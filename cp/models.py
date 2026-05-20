@@ -47,7 +47,7 @@ class CommandType(AutoNameStrEnum):
     POLL_CLUSTER_RESTORE = auto()
     SYNC_BACKUP_CATALOG = auto()
     SYNC_CLUSTER_BACKUP_CATALOG = auto()
-    HEALTHCHECK_CLUSTERS = auto()
+    HEALTHCHECK_CLUSTER = auto()
     FAIL_ZOMBIE_JOBS = auto()
 
 
@@ -106,6 +106,7 @@ class AuditEvent(AutoNameStrEnum):
     PLAYBOOK_DEFAULT_SET = auto()
     CLUSTER_CREATE_REQUESTED = auto()
     CLUSTER_DELETE_REQUESTED = auto()
+    CLUSTER_HEALTHCHECK_REQUESTED = auto()
     CLUSTER_SCALE_REQUESTED = auto()
     CLUSTER_UPGRADE_REQUESTED = auto()
     CLUSTER_RESTORE_REQUESTED = auto()
@@ -336,6 +337,10 @@ class DeleteClusterCommand(CommandModel):
     cluster_id: str
 
 
+class HealthcheckClusterCommand(CommandModel):
+    cluster_id: str
+
+
 class DebugClusterCommand(CommandModel):
     pass
 
@@ -453,10 +458,6 @@ class ClusterScaleRequest(CommandModel):
     regions: List[str]
 
 
-class HealthcheckClustersCommand(CommandModel):
-    pass
-
-
 class FailZombieJobsCommand(CommandModel):
     pass
 
@@ -465,6 +466,7 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.CREATE_CLUSTER: CreateClusterCommand,
     CommandType.RECREATE_CLUSTER: CreateClusterCommand,
     CommandType.DELETE_CLUSTER: DeleteClusterCommand,
+    CommandType.HEALTHCHECK_CLUSTER: HealthcheckClusterCommand,
     CommandType.SCALE_CLUSTER: ClusterScaleRequest,
     CommandType.UPGRADE_CLUSTER: ClusterUpgradeRequest,
     CommandType.DEBUG_CLUSTER: DebugClusterCommand,
@@ -474,7 +476,6 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.POLL_CLUSTER_RESTORE: PollClusterRestoreRequest,
     CommandType.SYNC_BACKUP_CATALOG: SyncBackupCatalogRequest,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: SyncClusterBackupCatalogRequest,
-    CommandType.HEALTHCHECK_CLUSTERS: HealthcheckClustersCommand,
     CommandType.FAIL_ZOMBIE_JOBS: FailZombieJobsCommand,
 }
 
@@ -800,7 +801,9 @@ class ClusterJobsSnapshot(BaseModel):
 class ClusterUsersSnapshot(BaseModel):
     cluster: ClusterPublic
     database_users: list[DatabaseUser]
-    database_role_templates: list[DatabaseRoleTemplateConfig] = Field(default_factory=list)
+    database_role_templates: list[DatabaseRoleTemplateConfig] = Field(
+        default_factory=list
+    )
     database_roles: list[ClusterDatabaseRole] = Field(default_factory=list)
 
 

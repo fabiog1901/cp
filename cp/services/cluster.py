@@ -18,6 +18,7 @@ from ..models import (
     CommandType,
     CreateClusterCommand,
     DeleteClusterCommand,
+    HealthcheckClusterCommand,
     JobID,
     RestoreRequest,
     to_public_cluster,
@@ -223,6 +224,28 @@ class ClusterService:
                 err,
                 unavailable_message="Cluster deletion could not be requested right now.",
                 fallback_message=f"Unable to request deletion of cluster '{cluster_id}'.",
+            ) from err
+
+    def enqueue_cluster_healthcheck(self, cluster_id: str, requested_by: str) -> int:
+        """Create a queued command for running the cluster healthcheck playbook."""
+        try:
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.HEALTHCHECK_CLUSTER,
+                HealthcheckClusterCommand(cluster_id=cluster_id),
+                requested_by,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.CLUSTER_HEALTHCHECK_REQUESTED,
+                {"cluster_id": cluster_id, "job_id": msg_id.job_id},
+            )
+            return msg_id.job_id
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Cluster healthcheck could not be requested right now.",
+                fallback_message=f"Unable to request healthcheck for cluster '{cluster_id}'.",
             ) from err
 
     def enqueue_cluster_scale(

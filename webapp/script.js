@@ -67,6 +67,7 @@ window.app = function () {
     clusterLoading: {
       details: false,
       delete: false,
+      healthcheck: false,
       create: false,
       upgrade: false,
       scale: false,
@@ -434,6 +435,10 @@ window.app = function () {
         open: false,
         cluster_id: "",
       },
+      clusterHealthcheckConfirm: {
+        open: false,
+        cluster_id: "",
+      },
       jobRescheduleConfirm: {
         open: false,
         job_id: "",
@@ -555,6 +560,7 @@ window.app = function () {
       regionCreate: "",
       regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
+      clusterHealthcheckConfirm: "",
       clusterCreate: "",
       clusterUpgrade: "",
       clusterScale: "",
@@ -3692,6 +3698,22 @@ window.app = function () {
       this.clearModalError("clusterDeleteConfirm");
     },
 
+    openClusterHealthcheckConfirm() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+      this.modal.clusterHealthcheckConfirm.cluster_id = clusterId;
+      this.clearModalError("clusterHealthcheckConfirm");
+      this.modal.clusterHealthcheckConfirm.open = true;
+    },
+
+    closeClusterHealthcheckConfirm() {
+      this.modal.clusterHealthcheckConfirm.open = false;
+      this.modal.clusterHealthcheckConfirm.cluster_id = "";
+      this.clearModalError("clusterHealthcheckConfirm");
+    },
+
     async openClusterUpgradeModal() {
       const clusterId = String(
         this.selectedCluster?.cluster_id || this.selectedClusterId || "",
@@ -3838,6 +3860,37 @@ window.app = function () {
         );
       } finally {
         this.clusterLoading.delete = false;
+      }
+    },
+
+    async confirmClusterHealthcheck() {
+      const clusterId = String(
+        this.modal.clusterHealthcheckConfirm.cluster_id || "",
+      ).trim();
+      if (!clusterId) return;
+
+      this.clusterLoading.healthcheck = true;
+      this.clearModalError("clusterHealthcheckConfirm");
+      try {
+        const result = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/healthcheck`,
+          {
+            method: "POST",
+          },
+        );
+        this.closeClusterHealthcheckConfirm();
+        this.setActionNotice(
+          `Cluster '${clusterId}' healthcheck requested.`,
+          result?.job_id,
+        );
+      } catch (e) {
+        this.setModalError(
+          "clusterHealthcheckConfirm",
+          e,
+          "Failed to request cluster healthcheck.",
+        );
+      } finally {
+        this.clusterLoading.healthcheck = false;
       }
     },
 

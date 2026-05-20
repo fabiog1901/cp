@@ -17,10 +17,10 @@ from ..infra import (
 )
 from ..models import (
     BackupDetails,
-    ClusterDatabaseObject,
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
+    ClusterDatabaseObject,
     ClusterDatabaseObjectDetails,
     ClusterDatabaseRoleGroupMapping,
     ClusterDatabaseRoleGroupsUpdateRequest,
@@ -182,6 +182,25 @@ async def delete_cluster(
     """Enqueue a delete-cluster workflow for an existing managed cluster."""
     try:
         job_id = service.enqueue_cluster_deletion(cluster_id, actor_id)
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    return JobID(job_id=job_id)
+
+
+@router.post(
+    "/{cluster_id}/healthcheck",
+    response_model=JobID,
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
+)
+async def healthcheck_cluster(
+    cluster_id: str,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
+    service: ClusterService = Depends(get_cluster_service),
+) -> JobID:
+    """Enqueue the configured healthcheck playbook for an existing cluster."""
+    try:
+        job_id = service.enqueue_cluster_healthcheck(cluster_id, actor_id)
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)

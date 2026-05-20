@@ -692,6 +692,23 @@
                   </span>
                 </button>
 
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterHealthcheckConfirm()"
+                  :disabled="clusterLoading.healthcheck"
+                  title="Run the configured healthcheck playbook for this cluster."
+                  aria-label="Run cluster healthcheck">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M20 12a8 8 0 1 1-4-6.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M20 5v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Healthcheck</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.healthcheck ? 'Submitting request…' : 'Run playbook checks'"></span>
+                  </span>
+                </button>
+
                 <button class="cluster-toolbar-btn" type="button" @click="openClusterJobs()"
                   title="Open jobs related to this cluster."
                   aria-label="Open cluster jobs">
@@ -1752,6 +1769,34 @@
               @click="confirmClusterUpgrade()">
               <span x-show="!clusterLoading.upgrade">REQUEST UPGRADE</span>
               <span x-show="clusterLoading.upgrade">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cluster Healthcheck Confirm Modal -->
+      <div class="modal-backdrop" x-show="modal.clusterHealthcheckConfirm.open" x-transition
+        @keydown.escape.window="closeClusterHealthcheckConfirm()">
+        <div class="modal" @click.outside="closeClusterHealthcheckConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Cluster Healthcheck</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterHealthcheckConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterHealthcheckConfirm"
+              x-text="modalErrors.clusterHealthcheckConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will request the configured healthcheck playbook for cluster
+              <span class="ip-pill" x-text="modal.clusterHealthcheckConfirm.cluster_id"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterHealthcheckConfirm()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.healthcheck" @click="confirmClusterHealthcheck()">
+              <span x-show="!clusterLoading.healthcheck">RUN HEALTHCHECK</span>
+              <span x-show="clusterLoading.healthcheck">WORKING…</span>
             </button>
           </div>
         </div>

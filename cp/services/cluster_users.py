@@ -356,7 +356,7 @@ class ClusterUsersService:
         try:
             selected_database_roles = self._get_database_roles_or_raise(
                 selected_cluster.cluster_id,
-                self._normalized_database_roles(request.database_roles)
+                self._normalized_database_roles(request.database_roles),
             )
             try:
                 with connect_to_cluster_db(selected_cluster) as conn:
@@ -461,7 +461,7 @@ class ClusterUsersService:
         try:
             selected_database_roles = self._get_database_roles_or_raise(
                 selected_cluster.cluster_id,
-                self._normalized_database_roles(database_roles)
+                self._normalized_database_roles(database_roles),
             )
             try:
                 with connect_to_cluster_db(selected_cluster) as conn:
@@ -520,7 +520,7 @@ class ClusterUsersService:
         try:
             selected_database_roles = self._get_database_roles_or_raise(
                 selected_cluster.cluster_id,
-                self._normalized_database_roles(database_roles)
+                self._normalized_database_roles(database_roles),
             )
             try:
                 with connect_to_cluster_db(selected_cluster) as conn:
@@ -674,12 +674,16 @@ class ClusterUsersService:
                                         role=sql.Identifier(database_role),
                                         database_name=sql.Identifier(database_name),
                                         database=sql.Identifier(database_name),
-                                        schema_name=sql.Identifier(schema_name)
-                                        if schema_name
-                                        else sql.SQL(""),
-                                        schema=sql.Identifier(schema_name)
-                                        if schema_name
-                                        else sql.SQL(""),
+                                        schema_name=(
+                                            sql.Identifier(schema_name)
+                                            if schema_name
+                                            else sql.SQL("")
+                                        ),
+                                        schema=(
+                                            sql.Identifier(schema_name)
+                                            if schema_name
+                                            else sql.SQL("")
+                                        ),
                                     )
                                     cur.execute(stmt)
                                     self.repo.upsert_cluster_database_role(
@@ -850,9 +854,7 @@ class ClusterUsersService:
     @staticmethod
     def _list_user_schemas(cur, database_name: str) -> list[str]:
         cur.execute(
-            sql.SQL("SHOW SCHEMAS FROM {}").format(
-                sql.Identifier(database_name)
-            )
+            sql.SQL("SHOW SCHEMAS FROM {}").format(sql.Identifier(database_name))
         )
         rows = cur.fetchall()
         schemas = []

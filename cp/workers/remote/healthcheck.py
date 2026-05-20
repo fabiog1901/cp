@@ -1,77 +1,106 @@
 """Remote cluster healthcheck worker.
 
-This worker runs lightweight remote checks and records cluster health state in
-CP metadata.
+This worker runs the configured Ansible healthcheck playbook for one managed
+cluster and records task output on the requested CP job.
 """
 
-import os
+import datetime as dt
+import logging
 from threading import Thread
 
 from ...infra import get_repo
-from ...models import ClusterState, HealthcheckClustersCommand, PlaybookName
-from .ansible import MyRunnerLite
+from ...models import ClusterState, HealthcheckClusterCommand, JobState, PlaybookName
+from .ansible import MyRunner
+
+logger = logging.getLogger(__name__)
 
 
-def healthcheck_clusters(
+def healthcheck_cluster(
     job_id: int,
-    _command: HealthcheckClustersCommand,
-    _requested_by: str,
+    command: HealthcheckClusterCommand,
+    requested_by: str,
 ) -> None:
     repo = get_repo()
-    active_clusters = repo.list_active_clusters()
+    cluster_id = command.cluster_id
 
-    for cluster in active_clusters:
-        ssh_key_name = cluster.description["ssh_key"]
+    cluster = repo.get_cluster(cluster_id, [], True)
+    if not cluster:
+        repo.update_job(job_id, JobState.FAILED)
+        repo.create_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The cluster was not found.",
+        )
+        return
 
-        if not os.path.exists(f"/tmp/{ssh_key_name}"):
-            ssh_key = repo.get_secret(ssh_key_name)
+    if cluster.status in {ClusterState.DELETED, ClusterState.DELETING}:
+        repo.update_job(job_id, JobState.FAILED)
+        repo.create_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            "The cluster does not exist or is being deleted.",
+        )
+        return
 
-            with open(f"/tmp/{ssh_key_name}", "w") as f:
-                f.write(ssh_key)
-
-        cockroachdb_nodes = []
-        for region in cluster.description["cluster"]:
-            cockroachdb_nodes += region["nodes"]
-
-        Thread(
-            target=healthcheck_clusters_worker,
-            args=(
-                job_id,
-                cluster.cluster_id,
-                cockroachdb_nodes,
-                f"/tmp/{ssh_key_name}",
-            ),
-        ).start()
-
-
-def healthcheck_clusters_worker(
-    job_id: int,
-    cluster_id: str,
-    cockroachdb_nodes: list[str],
-    ssh_key: str,
-):
-    repo = get_repo()
-    extra_vars = {
-        "deployment_id": cluster_id,
-        "cockroachdb_nodes": cockroachdb_nodes,
-        "ssh_key": ssh_key,
-    }
-
-    job_status, data = MyRunnerLite(job_id).launch_runner(
-        PlaybookName.HEALTHCHECK_CLUSTER, extra_vars
+    repo.link_job_to_cluster(
+        cluster_id,
+        job_id,
+        JobState.QUEUED,
     )
 
-    if not data or job_status != "successful":
-        repo.update_cluster(
-            cluster_id,
-            "system",
-            status=ClusterState.UNHEALTHY,
-        )
+    Thread(
+        target=healthcheck_cluster_worker,
+        args=(
+            job_id,
+            command,
+            requested_by,
+        ),
+    ).start()
 
-    for node in data.get("data", []):
-        if node["is_live"] == "false":
-            repo.update_cluster(
-                cluster_id,
-                "system",
-                status=ClusterState.UNHEALTHY,
-            )
+
+def healthcheck_cluster_worker(
+    job_id: int,
+    command: HealthcheckClusterCommand,
+    requested_by: str,
+) -> None:
+    repo = get_repo()
+    cluster_id = command.cluster_id
+
+    try:
+        cluster = repo.get_cluster(cluster_id, [], True)
+        if not cluster:
+            raise RuntimeError("The cluster was not found.")
+
+        extra_vars = {
+            "deployment_id": cluster_id,
+            "cluster_id": cluster_id,
+            "cluster_inventory": [
+                region.model_dump() for region in cluster.cluster_inventory
+            ],
+            "lbs_inventory": [lb.model_dump() for lb in cluster.lbs_inventory],
+            "cockroachdb_nodes": [
+                node for region in cluster.cluster_inventory for node in region.nodes
+            ],
+            "requested_by": requested_by,
+        }
+
+        MyRunner(job_id).launch_runner(
+            PlaybookName.HEALTHCHECK_CLUSTER,
+            extra_vars,
+        )
+    except Exception as err:
+        logger.exception(
+            "Unhandled error while healthchecking cluster '%s'", cluster_id
+        )
+        repo.update_job(job_id, JobState.FAILED)
+        repo.create_task(
+            job_id,
+            0,
+            dt.datetime.now(dt.timezone.utc),
+            "FAILURE",
+            str(err),
+        )

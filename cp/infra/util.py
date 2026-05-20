@@ -12,8 +12,8 @@ import secrets
 from contextvars import ContextVar
 
 import psycopg
-from psycopg import OperationalError
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from psycopg import OperationalError
 
 ENCRYPTED_SECRET_VERSION = b"\x01"
 CONNECT_TIMEOUT_SECS = 2
@@ -151,7 +151,9 @@ def connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection:
             connect_timeout=CONNECT_TIMEOUT_SECS,
         )
     except TimeoutError as exc:
-        raise ClusterDatabaseConnectionError(dns_address, "connection timed out") from exc
+        raise ClusterDatabaseConnectionError(
+            dns_address, "connection timed out"
+        ) from exc
     except OperationalError as exc:
         if _is_cluster_connection_timeout(exc):
             raise ClusterDatabaseConnectionError(
