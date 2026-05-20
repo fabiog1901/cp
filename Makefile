@@ -18,6 +18,9 @@ MKDOCS_SITE_DIR ?= /private/tmp/cp-mkdocs-site
 help: ## Show this help message.
 	@awk 'BEGIN {FS = ":.*##"; printf "Available targets:\n"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+run: ## Run in development mode.
+	poetry run fastapi run --reload cp/main.py
+
 docs-write: ## Regenerate deterministic docs under docs/generated/ and .build/.
 	poetry run python tools/docsync.py --write
 
