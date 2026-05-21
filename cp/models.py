@@ -746,6 +746,22 @@ class Task(BaseModel):
     task_desc: Optional[str]
 
 
+class JobArtifactUpsert(BaseModel):
+    artifact_id: str
+    job_id: int
+    cluster_id: str
+    kind: str
+    artifact_name: str
+    bucket: str | None = None
+    object_key: str
+    size_bytes: int | None = None
+    sha256: str | None = None
+    redacted: bool = True
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expires_at: dt.datetime | None = None
+    created_by: str
+
+
 class JobDetailsResponse(BaseModel):
     job: Job
     description_yaml: str

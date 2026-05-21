@@ -74,6 +74,25 @@ CREATE TABLE public.tasks (
     task_desc STRING NULL,
     CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC)
 );
+CREATE TABLE public.job_artifact (
+    artifact_id STRING NOT NULL,
+    job_id INT8 NOT NULL,
+    cluster_id STRING NOT NULL,
+    kind STRING NOT NULL,
+    artifact_name STRING NOT NULL,
+    bucket STRING NULL,
+    object_key STRING NOT NULL,
+    size_bytes INT8 NULL,
+    sha256 STRING NULL,
+    redacted BOOL NOT NULL DEFAULT true,
+    metadata JSONB NOT NULL DEFAULT '{}':::JSONB,
+    expires_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NOT NULL,
+    CONSTRAINT pk_job_artifact PRIMARY KEY (artifact_id ASC),
+    INDEX job_artifact_job_idx (job_id ASC),
+    INDEX job_artifact_cluster_idx (cluster_id ASC)
+);
 CREATE TABLE public.regions (
     cloud STRING NOT NULL,
     region STRING NOT NULL,
@@ -251,3 +270,5 @@ ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREI
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.tasks ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
+ALTER TABLE public.job_artifact ADD CONSTRAINT job_id_in_job_artifact FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
+ALTER TABLE public.job_artifact ADD CONSTRAINT cluster_id_in_job_artifact FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;

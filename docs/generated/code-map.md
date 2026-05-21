@@ -569,54 +569,55 @@ Classes:
 - `Msg` — line 722: _No docstring._
 - `Job` — line 731: _No docstring._
 - `Task` — line 741: _No docstring._
-- `JobDetailsResponse` — line 749: _No docstring._
-- `JobRescheduleResponse` — line 756: _No docstring._
-- `Region` — line 763: _No docstring._
-- `Version` — line 774: _No docstring._
-- `RegionOption` — line 778: _No docstring._
-- `NodeCountOption` — line 782: _No docstring._
-- `CpuCountOption` — line 786: _No docstring._
-- `DiskSizeOption` — line 790: _No docstring._
-- `Nodes` — line 794: _No docstring._
-- `PlaybookOverview` — line 802: _No docstring._
-- `Playbook` — line 811: _No docstring._
-- `PlaybookResponse` — line 815: _No docstring._
-- `PlaybookVersionResponse` — line 824: _No docstring._
-- `PlaybookSaveRequest` — line 832: _No docstring._
-- `DashboardMetrics` — line 836: _No docstring._
-- `DashboardSnapshot` — line 841: _No docstring._
-- `ClusterJobsSnapshot` — line 846: _No docstring._
-- `ClusterUsersSnapshot` — line 851: _No docstring._
-- `ClusterBackupsSnapshot` — line 860: _No docstring._
-- `ClusterCreateOptionsResponse` — line 865: _No docstring._
-- `ClusterDialogOptionsResponse` — line 873: _No docstring._
-- `ClusterCreateApiRequest` — line 881: _No docstring._
-- `ClusterRestoreApiRequest` — line 891: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 900: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 948: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 952: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 956: _No docstring._
-- `NoFreeComputeUnitError` — line 960: _No docstring._
-- `ComputeUnitNotFoundError` — line 964: _No docstring._
-- `ComputeUnitStateError` — line 968: _No docstring._
-- `ComputeUnitOperationError` — line 972: _No docstring._
-- `AllocatePlaybookError` — line 976: _No docstring._
-- `ApiKeyNotFoundError` — line 980: _No docstring._
-- `InvalidApiKeyValidityError` — line 984: _No docstring._
-- `SettingNotFoundError` — line 988: _No docstring._
-- `SettingRecord` — line 992: _No docstring._
-- `SettingUpdateRequest` — line 1004: _No docstring._
-- `LogMsg` — line 1008: _No docstring._
-- `ApiKeyRecord` — line 1016: _No docstring._
-- `ApiKeySummary` — line 1024: _No docstring._
-- `OIDCSessionRecord` — line 1031: _No docstring._
-- `ApiKeyCreateRequest` — line 1041: _No docstring._
-- `ApiKeyCreateRequestInDB` — line 1046: _No docstring._
-- `ApiKeyCreateResponse` — line 1050: _No docstring._
-- `DeferredTask` — line 1054: _No docstring._
-- `Alert` — line 1060: _No docstring._
-- `AlertmanagerPayload` — line 1069: _No docstring._
-- `LiveAlert` — line 1079: _No docstring._
+- `JobArtifactUpsert` — line 749: _No docstring._
+- `JobDetailsResponse` — line 765: _No docstring._
+- `JobRescheduleResponse` — line 772: _No docstring._
+- `Region` — line 779: _No docstring._
+- `Version` — line 790: _No docstring._
+- `RegionOption` — line 794: _No docstring._
+- `NodeCountOption` — line 798: _No docstring._
+- `CpuCountOption` — line 802: _No docstring._
+- `DiskSizeOption` — line 806: _No docstring._
+- `Nodes` — line 810: _No docstring._
+- `PlaybookOverview` — line 818: _No docstring._
+- `Playbook` — line 827: _No docstring._
+- `PlaybookResponse` — line 831: _No docstring._
+- `PlaybookVersionResponse` — line 840: _No docstring._
+- `PlaybookSaveRequest` — line 848: _No docstring._
+- `DashboardMetrics` — line 852: _No docstring._
+- `DashboardSnapshot` — line 857: _No docstring._
+- `ClusterJobsSnapshot` — line 862: _No docstring._
+- `ClusterUsersSnapshot` — line 867: _No docstring._
+- `ClusterBackupsSnapshot` — line 876: _No docstring._
+- `ClusterCreateOptionsResponse` — line 881: _No docstring._
+- `ClusterDialogOptionsResponse` — line 889: _No docstring._
+- `ClusterCreateApiRequest` — line 897: _No docstring._
+- `ClusterRestoreApiRequest` — line 907: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 916: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 964: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 968: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 972: _No docstring._
+- `NoFreeComputeUnitError` — line 976: _No docstring._
+- `ComputeUnitNotFoundError` — line 980: _No docstring._
+- `ComputeUnitStateError` — line 984: _No docstring._
+- `ComputeUnitOperationError` — line 988: _No docstring._
+- `AllocatePlaybookError` — line 992: _No docstring._
+- `ApiKeyNotFoundError` — line 996: _No docstring._
+- `InvalidApiKeyValidityError` — line 1000: _No docstring._
+- `SettingNotFoundError` — line 1004: _No docstring._
+- `SettingRecord` — line 1008: _No docstring._
+- `SettingUpdateRequest` — line 1020: _No docstring._
+- `LogMsg` — line 1024: _No docstring._
+- `ApiKeyRecord` — line 1032: _No docstring._
+- `ApiKeySummary` — line 1040: _No docstring._
+- `OIDCSessionRecord` — line 1047: _No docstring._
+- `ApiKeyCreateRequest` — line 1057: _No docstring._
+- `ApiKeyCreateRequestInDB` — line 1062: _No docstring._
+- `ApiKeyCreateResponse` — line 1066: _No docstring._
+- `DeferredTask` — line 1070: _No docstring._
+- `Alert` — line 1076: _No docstring._
+- `AlertmanagerPayload` — line 1085: _No docstring._
+- `LiveAlert` — line 1095: _No docstring._
 
 Functions:
 
@@ -782,7 +783,7 @@ Path: `cp/repos/jobs.py`
 Job and task metadata repository.
 
 Classes:
-- `JobsRepo` — line 19: _No docstring._
+- `JobsRepo` — line 20: _No docstring._
 
 ### `cp.repos.mq`
 
@@ -1104,8 +1105,8 @@ Remote cluster debug zip worker.
 
 Functions:
 
-- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 18: _No docstring._
-- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 65: _No docstring._
+- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 25: _No docstring._
+- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 72: _No docstring._
 
 ### `cp.workers.remote.delete`
 

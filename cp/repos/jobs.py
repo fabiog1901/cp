@@ -10,6 +10,7 @@ from ..models import (
     CommandType,
     IntID,
     Job,
+    JobArtifactUpsert,
     JobState,
     JobStatsResponse,
     Task,
@@ -234,4 +235,42 @@ class JobsRepo:
             VALUES (%s, %s, %s, %s, %s)
             """,
             (job_id, task_id, created_at, task_name, task_desc),
+        )
+
+    def create_job_artifact(self, artifact: JobArtifactUpsert) -> None:
+        execute_stmt(
+            """
+            INSERT INTO job_artifact (
+                artifact_id,
+                job_id,
+                cluster_id,
+                kind,
+                artifact_name,
+                bucket,
+                object_key,
+                size_bytes,
+                sha256,
+                redacted,
+                metadata,
+                expires_at,
+                created_by
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                artifact.artifact_id,
+                artifact.job_id,
+                artifact.cluster_id,
+                artifact.kind,
+                artifact.artifact_name,
+                artifact.bucket,
+                artifact.object_key,
+                artifact.size_bytes,
+                artifact.sha256,
+                artifact.redacted,
+                artifact.metadata,
+                artifact.expires_at,
+                artifact.created_by,
+            ),
+            operation="jobs.create_job_artifact",
         )
