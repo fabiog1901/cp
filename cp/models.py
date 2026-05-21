@@ -106,6 +106,7 @@ class AuditEvent(AutoNameStrEnum):
     PLAYBOOK_DEFAULT_SET = auto()
     CLUSTER_CREATE_REQUESTED = auto()
     CLUSTER_DELETE_REQUESTED = auto()
+    CLUSTER_DEBUG_ZIP_REQUESTED = auto()
     CLUSTER_HEALTHCHECK_REQUESTED = auto()
     CLUSTER_SCALE_REQUESTED = auto()
     CLUSTER_UPGRADE_REQUESTED = auto()
@@ -341,7 +342,55 @@ class HealthcheckClusterCommand(CommandModel):
     cluster_id: str
 
 
-class DebugClusterCommand(CommandModel):
+class DebugZipOptions(CommandModel):
+    cpu_profile_duration: str | None = None
+    concurrency: int | None = Field(default=None, ge=1, le=15)
+    include_files: list[str] = Field(default_factory=list)
+    exclude_files: list[str] = Field(default_factory=list)
+    nodes: str | None = None
+    exclude_nodes: str | None = None
+    files_from: str | None = None
+    files_until: str | None = None
+    include_goroutine_stacks: bool = False
+    include_range_info: bool = True
+    include_running_job_traces: bool = True
+    redact: bool = True
+    timeout: str | None = None
+    validate_zip_file: bool = True
+
+    @field_validator(
+        "cpu_profile_duration",
+        "nodes",
+        "exclude_nodes",
+        "files_from",
+        "files_until",
+        "timeout",
+        mode="before",
+    )
+    @classmethod
+    def empty_strings_to_none(cls, value):
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("include_files", "exclude_files", mode="before")
+    @classmethod
+    def normalize_file_patterns(cls, value):
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+
+class DebugZipRequest(DebugZipOptions):
+    cluster_id: str
+
+
+class DebugClusterCommand(DebugZipRequest):
     pass
 
 

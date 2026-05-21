@@ -233,34 +233,35 @@ Cluster API routes.
 
 Functions:
 
-- `async list_clusters(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> list[ClusterOverview]` — line 87: List clusters visible to the current CP principal.
-- `async get_cluster_stats(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterStatsResponse` — line 100: Return aggregate status counts for visible clusters.
-- `async get_cluster_create_options(_claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterCreateOptionsResponse` — line 113: Return admin-configured options used by the create-cluster dialog.
-- `async create_cluster(request: ClusterCreateApiRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 125: Enqueue a create-cluster workflow and return the job id.
-- `async get_cluster(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterPublic` — line 152: Return one cluster when it is visible to the current CP principal.
-- `async delete_cluster(cluster_id: str, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 176: Enqueue a delete-cluster workflow for an existing managed cluster.
-- `async healthcheck_cluster(cluster_id: str, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 195: Enqueue the configured healthcheck playbook for an existing cluster.
-- `async get_cluster_options(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterDialogOptionsResponse` — line 214: Return dialog options for changing an existing visible cluster.
-- `async scale_cluster(request: ClusterScaleRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 236: Enqueue a scale workflow for node count, CPU, disk, or region changes.
-- `async upgrade_cluster(request: ClusterUpgradeRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 254: Enqueue a cluster version upgrade workflow.
-- `async get_cluster_jobs(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterJobsService=Depends(get_cluster_jobs_service)) -> ClusterJobsSnapshot` — line 276: Return jobs linked to one visible cluster.
-- `async get_cluster_backups(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> ClusterBackupsSnapshot` — line 300: Return backup path options for one visible cluster.
-- `async get_cluster_backup_details(cluster_id: str, backup_path: str, claims: dict=Depends(require_readonly), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> list[BackupDetails]` — line 320: Return the object contents for one backup path.
-- `async restore_cluster(cluster_id: str, request: ClusterRestoreApiRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> JobID` — line 335: Enqueue a restore workflow from a selected cluster backup path.
-- `async restore_cluster_object(cluster_id: str, request: ClusterObjectRestoreApiRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> JobID` — line 363: Enqueue a restore workflow for one database or table object.
-- `async list_cluster_database_objects(cluster_id: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseObjectDetails]` — line 395: List database cards and their generated roles; mappings are read separately.
-- `async create_cluster_database_object(cluster_id: str, request: CreateClusterDatabaseObjectRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterDatabaseObject` — line 418: Create a database in the cluster and materialize default generated roles.
-- `async get_cluster_database_object(cluster_id: str, database_name: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterDatabaseObject` — line 446: Return one managed database object recorded by CP.
-- `async delete_cluster_database_object(cluster_id: str, database_name: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 472: Drop a managed database object and remove its generated roles from CP.
-- `async list_cluster_database_role_group_mappings(cluster_id: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseRoleGroupMapping]` — line 498: List the stored IdP group to generated database role mappings.
-- `async update_cluster_database_role_group_mappings(cluster_id: str, database_role: str, request: ClusterDatabaseRoleGroupsUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseRoleGroupMapping]` — line 525: Replace all IdP groups mapped to one generated database role.
-- `async get_cluster_users(cluster_id: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterUsersSnapshot` — line 553: Return database users plus role options for User Management.
-- `async create_cluster_user(cluster_id: str, request: NewDatabaseUserRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 579: Create a database user and optionally grant generated database roles.
-- `async delete_cluster_user(cluster_id: str, username: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 603: Drop a database user from the managed cluster.
-- `async grant_cluster_user_database_roles(cluster_id: str, username: str, request: ClusterDatabaseRolesUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 625: Grant one or more generated database roles directly to a database user.
-- `async revoke_cluster_user_database_roles(cluster_id: str, username: str, request: ClusterDatabaseRolesUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 649: Revoke one or more generated database roles directly from a database user.
-- `async update_cluster_user_password(cluster_id: str, username: str, request: ClusterPasswordUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 673: Update the password for a database user in the managed cluster.
-- `async get_cluster_dashboard(cluster_id: str, start: int=0, end: int=0, interval_secs: int=10, claims: dict=Depends(require_readonly), service: DashboardService=Depends(get_dashboard_service)) -> DashboardSnapshot` — line 701: Return metadata and metrics for the Cluster Dashboard page.
+- `async list_clusters(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> list[ClusterOverview]` — line 89: List clusters visible to the current CP principal.
+- `async get_cluster_stats(claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterStatsResponse` — line 102: Return aggregate status counts for visible clusters.
+- `async get_cluster_create_options(_claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterCreateOptionsResponse` — line 115: Return admin-configured options used by the create-cluster dialog.
+- `async create_cluster(request: ClusterCreateApiRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 127: Enqueue a create-cluster workflow and return the job id.
+- `async get_cluster(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterPublic` — line 154: Return one cluster when it is visible to the current CP principal.
+- `async delete_cluster(cluster_id: str, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 178: Enqueue a delete-cluster workflow for an existing managed cluster.
+- `async create_cluster_debug_zip(cluster_id: str, request: DebugZipOptions | None=None, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 197: Enqueue a CockroachDB debug zip collection job for an existing cluster.
+- `async healthcheck_cluster(cluster_id: str, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 221: Enqueue the configured healthcheck playbook for an existing cluster.
+- `async get_cluster_options(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterService=Depends(get_cluster_service)) -> ClusterDialogOptionsResponse` — line 240: Return dialog options for changing an existing visible cluster.
+- `async scale_cluster(request: ClusterScaleRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 262: Enqueue a scale workflow for node count, CPU, disk, or region changes.
+- `async upgrade_cluster(request: ClusterUpgradeRequest, actor_id: str=Depends(get_audit_actor), _claims: dict=Depends(require_user), service: ClusterService=Depends(get_cluster_service)) -> JobID` — line 280: Enqueue a cluster version upgrade workflow.
+- `async get_cluster_jobs(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterJobsService=Depends(get_cluster_jobs_service)) -> ClusterJobsSnapshot` — line 302: Return jobs linked to one visible cluster.
+- `async get_cluster_backups(cluster_id: str, claims: dict=Depends(require_readonly), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> ClusterBackupsSnapshot` — line 326: Return backup path options for one visible cluster.
+- `async get_cluster_backup_details(cluster_id: str, backup_path: str, claims: dict=Depends(require_readonly), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> list[BackupDetails]` — line 346: Return the object contents for one backup path.
+- `async restore_cluster(cluster_id: str, request: ClusterRestoreApiRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> JobID` — line 361: Enqueue a restore workflow from a selected cluster backup path.
+- `async restore_cluster_object(cluster_id: str, request: ClusterObjectRestoreApiRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterBackupsService=Depends(get_cluster_backups_service)) -> JobID` — line 389: Enqueue a restore workflow for one database or table object.
+- `async list_cluster_database_objects(cluster_id: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseObjectDetails]` — line 421: List database cards and their generated roles; mappings are read separately.
+- `async create_cluster_database_object(cluster_id: str, request: CreateClusterDatabaseObjectRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterDatabaseObject` — line 444: Create a database in the cluster and materialize default generated roles.
+- `async get_cluster_database_object(cluster_id: str, database_name: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterDatabaseObject` — line 472: Return one managed database object recorded by CP.
+- `async delete_cluster_database_object(cluster_id: str, database_name: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 498: Drop a managed database object and remove its generated roles from CP.
+- `async list_cluster_database_role_group_mappings(cluster_id: str, claims: dict=Depends(require_user), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseRoleGroupMapping]` — line 524: List the stored IdP group to generated database role mappings.
+- `async update_cluster_database_role_group_mappings(cluster_id: str, database_role: str, request: ClusterDatabaseRoleGroupsUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> list[ClusterDatabaseRoleGroupMapping]` — line 551: Replace all IdP groups mapped to one generated database role.
+- `async get_cluster_users(cluster_id: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> ClusterUsersSnapshot` — line 579: Return database users plus role options for User Management.
+- `async create_cluster_user(cluster_id: str, request: NewDatabaseUserRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 605: Create a database user and optionally grant generated database roles.
+- `async delete_cluster_user(cluster_id: str, username: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 629: Drop a database user from the managed cluster.
+- `async grant_cluster_user_database_roles(cluster_id: str, username: str, request: ClusterDatabaseRolesUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 651: Grant one or more generated database roles directly to a database user.
+- `async revoke_cluster_user_database_roles(cluster_id: str, username: str, request: ClusterDatabaseRolesUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 675: Revoke one or more generated database roles directly from a database user.
+- `async update_cluster_user_password(cluster_id: str, username: str, request: ClusterPasswordUpdateRequest, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: ClusterUsersService=Depends(get_cluster_users_service)) -> None` — line 699: Update the password for a database user in the managed cluster.
+- `async get_cluster_dashboard(cluster_id: str, start: int=0, end: int=0, interval_secs: int=10, claims: dict=Depends(require_readonly), service: DashboardService=Depends(get_dashboard_service)) -> DashboardSnapshot` — line 727: Return metadata and metrics for the Cluster Dashboard page.
 
 Routes:
 - `GET /clusters` -> `list_clusters()`
@@ -269,6 +270,7 @@ Routes:
 - `POST /clusters` -> `create_cluster()`
 - `GET /clusters/{cluster_id}` -> `get_cluster()`
 - `DELETE /clusters/{cluster_id}` -> `delete_cluster()`
+- `POST /clusters/{cluster_id}/debug-zip` -> `create_cluster_debug_zip()`
 - `POST /clusters/{cluster_id}/healthcheck` -> `healthcheck_cluster()`
 - `GET /clusters/{cluster_id}/options` -> `get_cluster_options()`
 - `POST /clusters/scale` -> `scale_cluster()`
@@ -469,8 +471,8 @@ Shared operational utilities.
 
 Classes:
 - `ClusterDatabaseConnectionError` — line 25: Raised when a cluster database cannot be reached in normal operation.
-- `RequestIDFilter` — line 169: _No docstring._
-- `ShorthandFormatter` — line 175: _No docstring._
+- `RequestIDFilter` — line 171: _No docstring._
+- `ShorthandFormatter` — line 177: _No docstring._
 
 Functions:
 
@@ -511,114 +513,116 @@ Classes:
 - `ClusterState` — line 54: _No docstring._
 - `JobState` — line 70: _No docstring._
 - `AuditEvent` — line 77: _No docstring._
-- `CPRole` — line 116: _No docstring._
-- `SettingKey` — line 122: _No docstring._
-- `JobID` — line 160: _No docstring._
-- `ClusterIDRef` — line 164: _No docstring._
-- `StrID` — line 168: _No docstring._
-- `IntID` — line 172: _No docstring._
-- `WebUser` — line 179: _No docstring._
-- `RoleGroupMap` — line 185: _No docstring._
-- `EventCountResponse` — line 190: _No docstring._
-- `ClusterStatsResponse` — line 194: _No docstring._
-- `JobStatsResponse` — line 202: _No docstring._
-- `ErrorResponse` — line 209: _No docstring._
-- `ClusterOverview` — line 216: _No docstring._
-- `InventoryRegion` — line 227: _No docstring._
-- `InventoryLB` — line 233: _No docstring._
-- `ClusterPublic` — line 239: _No docstring._
-- `Cluster` — line 255: _No docstring._
-- `ExternalConnection` — line 276: _No docstring._
-- `ExternalConnectionUpsert` — line 293: _No docstring._
-- `ClusterRequest` — line 306: _No docstring._
-- `CommandModel` — line 316: _No docstring._
-- `CreateClusterCommand` — line 320: _No docstring._
-- `ClusterUpgradeRequest` — line 330: _No docstring._
-- `DeleteClusterCommand` — line 336: _No docstring._
-- `HealthcheckClusterCommand` — line 340: _No docstring._
-- `DebugClusterCommand` — line 344: _No docstring._
-- `RestoreRequest` — line 348: _No docstring._
-- `RestoreClusterObjectRequest` — line 358: _No docstring._
-- `RestoreFullClusterRequest` — line 408: _No docstring._
-- `PollClusterRestoreRequest` — line 438: _No docstring._
-- `SyncBackupCatalogRequest` — line 445: _No docstring._
-- `SyncClusterBackupCatalogRequest` — line 449: _No docstring._
-- `ClusterScaleRequest` — line 453: _No docstring._
-- `FailZombieJobsCommand` — line 461: _No docstring._
-- `BackupDetails` — line 494: _No docstring._
-- `BackupPathOption` — line 504: _No docstring._
-- `BackupCatalogObject` — line 508: _No docstring._
-- `BackupCatalogEntry` — line 526: _No docstring._
-- `BackupCatalogSnapshot` — line 542: _No docstring._
-- `ClusterRecoveryRestoreApiRequest` — line 546: _No docstring._
-- `BackupCatalogObjectUpsert` — line 576: _No docstring._
-- `BackupCatalogEntryUpsert` — line 591: _No docstring._
-- `DatabaseUser` — line 605: _No docstring._
-- `DatabaseRoleTemplateConfig` — line 611: _No docstring._
-- `ClusterDatabaseRole` — line 617: _No docstring._
-- `ClusterDatabaseRoleDetails` — line 627: _No docstring._
-- `ClusterDatabaseRoleGroupMapping` — line 636: _No docstring._
-- `ClusterDatabaseObject` — line 646: _No docstring._
-- `ClusterDatabaseObjectDetails` — line 655: _No docstring._
-- `CreateClusterDatabaseObjectRequest` — line 659: _No docstring._
-- `NewDatabaseUserRequest` — line 663: _No docstring._
-- `Msg` — line 672: _No docstring._
-- `Job` — line 681: _No docstring._
-- `Task` — line 691: _No docstring._
-- `JobDetailsResponse` — line 699: _No docstring._
-- `JobRescheduleResponse` — line 706: _No docstring._
-- `Region` — line 713: _No docstring._
-- `Version` — line 724: _No docstring._
-- `RegionOption` — line 728: _No docstring._
-- `NodeCountOption` — line 732: _No docstring._
-- `CpuCountOption` — line 736: _No docstring._
-- `DiskSizeOption` — line 740: _No docstring._
-- `Nodes` — line 744: _No docstring._
-- `PlaybookOverview` — line 752: _No docstring._
-- `Playbook` — line 761: _No docstring._
-- `PlaybookResponse` — line 765: _No docstring._
-- `PlaybookVersionResponse` — line 774: _No docstring._
-- `PlaybookSaveRequest` — line 782: _No docstring._
-- `DashboardMetrics` — line 786: _No docstring._
-- `DashboardSnapshot` — line 791: _No docstring._
-- `ClusterJobsSnapshot` — line 796: _No docstring._
-- `ClusterUsersSnapshot` — line 801: _No docstring._
-- `ClusterBackupsSnapshot` — line 808: _No docstring._
-- `ClusterCreateOptionsResponse` — line 813: _No docstring._
-- `ClusterDialogOptionsResponse` — line 821: _No docstring._
-- `ClusterCreateApiRequest` — line 829: _No docstring._
-- `ClusterRestoreApiRequest` — line 839: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 848: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 896: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 900: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 904: _No docstring._
-- `NoFreeComputeUnitError` — line 908: _No docstring._
-- `ComputeUnitNotFoundError` — line 912: _No docstring._
-- `ComputeUnitStateError` — line 916: _No docstring._
-- `ComputeUnitOperationError` — line 920: _No docstring._
-- `AllocatePlaybookError` — line 924: _No docstring._
-- `ApiKeyNotFoundError` — line 928: _No docstring._
-- `InvalidApiKeyValidityError` — line 932: _No docstring._
-- `SettingNotFoundError` — line 936: _No docstring._
-- `SettingRecord` — line 940: _No docstring._
-- `SettingUpdateRequest` — line 952: _No docstring._
-- `LogMsg` — line 956: _No docstring._
-- `ApiKeyRecord` — line 964: _No docstring._
-- `ApiKeySummary` — line 972: _No docstring._
-- `OIDCSessionRecord` — line 979: _No docstring._
-- `ApiKeyCreateRequest` — line 989: _No docstring._
-- `ApiKeyCreateRequestInDB` — line 994: _No docstring._
-- `ApiKeyCreateResponse` — line 998: _No docstring._
-- `DeferredTask` — line 1002: _No docstring._
-- `Alert` — line 1008: _No docstring._
-- `AlertmanagerPayload` — line 1017: _No docstring._
-- `LiveAlert` — line 1027: _No docstring._
+- `CPRole` — line 117: _No docstring._
+- `SettingKey` — line 123: _No docstring._
+- `JobID` — line 161: _No docstring._
+- `ClusterIDRef` — line 165: _No docstring._
+- `StrID` — line 169: _No docstring._
+- `IntID` — line 173: _No docstring._
+- `WebUser` — line 180: _No docstring._
+- `RoleGroupMap` — line 186: _No docstring._
+- `EventCountResponse` — line 191: _No docstring._
+- `ClusterStatsResponse` — line 195: _No docstring._
+- `JobStatsResponse` — line 203: _No docstring._
+- `ErrorResponse` — line 210: _No docstring._
+- `ClusterOverview` — line 217: _No docstring._
+- `InventoryRegion` — line 228: _No docstring._
+- `InventoryLB` — line 234: _No docstring._
+- `ClusterPublic` — line 240: _No docstring._
+- `Cluster` — line 256: _No docstring._
+- `ExternalConnection` — line 277: _No docstring._
+- `ExternalConnectionUpsert` — line 294: _No docstring._
+- `ClusterRequest` — line 307: _No docstring._
+- `CommandModel` — line 317: _No docstring._
+- `CreateClusterCommand` — line 321: _No docstring._
+- `ClusterUpgradeRequest` — line 331: _No docstring._
+- `DeleteClusterCommand` — line 337: _No docstring._
+- `HealthcheckClusterCommand` — line 341: _No docstring._
+- `DebugZipOptions` — line 345: _No docstring._
+- `DebugZipRequest` — line 389: _No docstring._
+- `DebugClusterCommand` — line 393: _No docstring._
+- `RestoreRequest` — line 397: _No docstring._
+- `RestoreClusterObjectRequest` — line 407: _No docstring._
+- `RestoreFullClusterRequest` — line 457: _No docstring._
+- `PollClusterRestoreRequest` — line 487: _No docstring._
+- `SyncBackupCatalogRequest` — line 494: _No docstring._
+- `SyncClusterBackupCatalogRequest` — line 498: _No docstring._
+- `ClusterScaleRequest` — line 502: _No docstring._
+- `FailZombieJobsCommand` — line 510: _No docstring._
+- `BackupDetails` — line 543: _No docstring._
+- `BackupPathOption` — line 553: _No docstring._
+- `BackupCatalogObject` — line 557: _No docstring._
+- `BackupCatalogEntry` — line 575: _No docstring._
+- `BackupCatalogSnapshot` — line 591: _No docstring._
+- `ClusterRecoveryRestoreApiRequest` — line 595: _No docstring._
+- `BackupCatalogObjectUpsert` — line 625: _No docstring._
+- `BackupCatalogEntryUpsert` — line 640: _No docstring._
+- `DatabaseUser` — line 654: _No docstring._
+- `DatabaseRoleTemplateConfig` — line 660: _No docstring._
+- `ClusterDatabaseRole` — line 666: _No docstring._
+- `ClusterDatabaseRoleDetails` — line 676: _No docstring._
+- `ClusterDatabaseRoleGroupMapping` — line 685: _No docstring._
+- `ClusterDatabaseObject` — line 695: _No docstring._
+- `ClusterDatabaseObjectDetails` — line 704: _No docstring._
+- `CreateClusterDatabaseObjectRequest` — line 708: _No docstring._
+- `NewDatabaseUserRequest` — line 712: _No docstring._
+- `Msg` — line 721: _No docstring._
+- `Job` — line 730: _No docstring._
+- `Task` — line 740: _No docstring._
+- `JobDetailsResponse` — line 748: _No docstring._
+- `JobRescheduleResponse` — line 755: _No docstring._
+- `Region` — line 762: _No docstring._
+- `Version` — line 773: _No docstring._
+- `RegionOption` — line 777: _No docstring._
+- `NodeCountOption` — line 781: _No docstring._
+- `CpuCountOption` — line 785: _No docstring._
+- `DiskSizeOption` — line 789: _No docstring._
+- `Nodes` — line 793: _No docstring._
+- `PlaybookOverview` — line 801: _No docstring._
+- `Playbook` — line 810: _No docstring._
+- `PlaybookResponse` — line 814: _No docstring._
+- `PlaybookVersionResponse` — line 823: _No docstring._
+- `PlaybookSaveRequest` — line 831: _No docstring._
+- `DashboardMetrics` — line 835: _No docstring._
+- `DashboardSnapshot` — line 840: _No docstring._
+- `ClusterJobsSnapshot` — line 845: _No docstring._
+- `ClusterUsersSnapshot` — line 850: _No docstring._
+- `ClusterBackupsSnapshot` — line 859: _No docstring._
+- `ClusterCreateOptionsResponse` — line 864: _No docstring._
+- `ClusterDialogOptionsResponse` — line 872: _No docstring._
+- `ClusterCreateApiRequest` — line 880: _No docstring._
+- `ClusterRestoreApiRequest` — line 890: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 899: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 947: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 951: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 955: _No docstring._
+- `NoFreeComputeUnitError` — line 959: _No docstring._
+- `ComputeUnitNotFoundError` — line 963: _No docstring._
+- `ComputeUnitStateError` — line 967: _No docstring._
+- `ComputeUnitOperationError` — line 971: _No docstring._
+- `AllocatePlaybookError` — line 975: _No docstring._
+- `ApiKeyNotFoundError` — line 979: _No docstring._
+- `InvalidApiKeyValidityError` — line 983: _No docstring._
+- `SettingNotFoundError` — line 987: _No docstring._
+- `SettingRecord` — line 991: _No docstring._
+- `SettingUpdateRequest` — line 1003: _No docstring._
+- `LogMsg` — line 1007: _No docstring._
+- `ApiKeyRecord` — line 1015: _No docstring._
+- `ApiKeySummary` — line 1023: _No docstring._
+- `OIDCSessionRecord` — line 1030: _No docstring._
+- `ApiKeyCreateRequest` — line 1040: _No docstring._
+- `ApiKeyCreateRequestInDB` — line 1045: _No docstring._
+- `ApiKeyCreateResponse` — line 1049: _No docstring._
+- `DeferredTask` — line 1053: _No docstring._
+- `Alert` — line 1059: _No docstring._
+- `AlertmanagerPayload` — line 1068: _No docstring._
+- `LiveAlert` — line 1078: _No docstring._
 
 Functions:
 
-- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 272: _No docstring._
-- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 483: _No docstring._
-- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 487: _No docstring._
+- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 273: _No docstring._
+- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 532: _No docstring._
+- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 536: _No docstring._
 
 ### `cp.repos`
 
@@ -908,7 +912,7 @@ Path: `cp/services/cluster.py`
 Cluster lifecycle service.
 
 Classes:
-- `ClusterService` — line 31: _No docstring._
+- `ClusterService` — line 33: _No docstring._
 
 ### `cp.services.cluster_backups`
 
@@ -1145,42 +1149,42 @@ Path: `tools/docsync.py`
 Generate deterministic documentation indexes from the CP codebase.
 
 Classes:
-- `ImportInfo` — line 34: _No docstring._
-- `RouteInfo` — line 41: _No docstring._
-- `FunctionInfo` — line 52: _No docstring._
-- `ClassInfo` — line 62: _No docstring._
-- `ModuleInfo` — line 71: _No docstring._
+- `ImportInfo` — line 33: _No docstring._
+- `RouteInfo` — line 40: _No docstring._
+- `FunctionInfo` — line 51: _No docstring._
+- `ClassInfo` — line 61: _No docstring._
+- `ModuleInfo` — line 70: _No docstring._
 
 Functions:
 
-- `ast_to_str(node: ast.AST | None) -> str` — line 83: Return a deterministic source-like representation for an AST node.
-- `literal_string(node: ast.AST | None) -> str | None` — line 93: Return a string literal value when an AST node is a string constant.
-- `module_name_from_path(path: Path) -> str` — line 100: Convert a Python file path under the repo into an import-style name.
-- `iter_python_files() -> list[Path]` — line 108: Return all Python source files that should be part of the docs index.
-- `extract_imports(tree: ast.Module) -> list[ImportInfo]` — line 121: Extract top-level imports from a module.
-- `join_paths(prefix: str, path: str) -> str` — line 144: Join FastAPI router prefix and route path into one normalized path.
-- `extract_router_prefix(tree: ast.Module) -> str` — line 153: Extract `APIRouter(prefix=...)` when a module defines a router.
-- `function_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str` — line 173: Build a readable signature for a function without importing the module.
-- `decorator_strings(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]` — line 180: Return decorators as source-like strings.
-- `public_function_info(node: ast.FunctionDef | ast.AsyncFunctionDef) -> FunctionInfo | None` — line 185: Return function metadata for public functions and methods.
-- `extract_classes(tree: ast.Module) -> list[ClassInfo]` — line 201: Extract public classes and their public methods.
-- `extract_functions(tree: ast.Module) -> list[FunctionInfo]` — line 226: Extract public top-level functions.
-- `route_from_decorator(decorator: ast.AST, function_name: str, lineno: int, router_prefix: str) -> RouteInfo | None` — line 237: Extract FastAPI route metadata from `@router.<method>(...)` decorators.
-- `extract_routes(tree: ast.Module) -> list[RouteInfo]` — line 276: Extract FastAPI routes from public top-level route handlers.
-- `extract_command_handlers(tree: ast.Module) -> dict[str, str]` — line 295: Extract `COMMAND_HANDLERS` mappings from worker dispatch modules.
-- `parse_python_file(path: Path) -> ModuleInfo` — line 324: Parse one Python file into deterministic metadata.
-- `scan_project() -> list[ModuleInfo]` — line 342: Scan Python source roots and return sorted module metadata.
-- `first_sentence(text: str | None) -> str` — line 347: Return a short docstring summary suitable for tables.
-- `route_sort_key(route: dict[str, Any]) -> tuple[str, str, str]` — line 355: Sort routes by path, method, then handler.
-- `build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]` — line 360: Build the machine-readable project index consumed by docs and agents.
-- `generated_header(title: str) -> list[str]` — line 404: Return a standard generated Markdown header.
-- `render_code_map(index: dict[str, Any]) -> str` — line 409: Render a module-oriented generated code map.
-- `render_package_index(index: dict[str, Any]) -> str` — line 461: Render package/module summary tables.
-- `render_api_routes(index: dict[str, Any]) -> str` — line 488: Render FastAPI route inventory.
-- `render_llm_index(index: dict[str, Any]) -> str` — line 506: Render a compact agent-facing navigation index.
-- `render_python_reference(index: dict[str, Any]) -> str` — line 553: Render a MkDocstrings reference page for importable Python modules.
-- `json_dumps(data: dict[str, Any]) -> str` — line 589: Serialize JSON deterministically with a trailing newline.
-- `file_hash(content: str) -> str` — line 594: Return a stable content hash.
-- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 599: Write a generated file or report it stale in check mode.
-- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 615: Return all deterministic generated outputs.
-- `main() -> int` — line 627: CLI entry point.
+- `ast_to_str(node: ast.AST | None) -> str` — line 82: Return a deterministic source-like representation for an AST node.
+- `literal_string(node: ast.AST | None) -> str | None` — line 92: Return a string literal value when an AST node is a string constant.
+- `module_name_from_path(path: Path) -> str` — line 99: Convert a Python file path under the repo into an import-style name.
+- `iter_python_files() -> list[Path]` — line 107: Return all Python source files that should be part of the docs index.
+- `extract_imports(tree: ast.Module) -> list[ImportInfo]` — line 120: Extract top-level imports from a module.
+- `join_paths(prefix: str, path: str) -> str` — line 143: Join FastAPI router prefix and route path into one normalized path.
+- `extract_router_prefix(tree: ast.Module) -> str` — line 152: Extract `APIRouter(prefix=...)` when a module defines a router.
+- `function_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str` — line 172: Build a readable signature for a function without importing the module.
+- `decorator_strings(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]` — line 179: Return decorators as source-like strings.
+- `public_function_info(node: ast.FunctionDef | ast.AsyncFunctionDef) -> FunctionInfo | None` — line 184: Return function metadata for public functions and methods.
+- `extract_classes(tree: ast.Module) -> list[ClassInfo]` — line 200: Extract public classes and their public methods.
+- `extract_functions(tree: ast.Module) -> list[FunctionInfo]` — line 225: Extract public top-level functions.
+- `route_from_decorator(decorator: ast.AST, function_name: str, lineno: int, router_prefix: str) -> RouteInfo | None` — line 236: Extract FastAPI route metadata from `@router.<method>(...)` decorators.
+- `extract_routes(tree: ast.Module) -> list[RouteInfo]` — line 275: Extract FastAPI routes from public top-level route handlers.
+- `extract_command_handlers(tree: ast.Module) -> dict[str, str]` — line 294: Extract `COMMAND_HANDLERS` mappings from worker dispatch modules.
+- `parse_python_file(path: Path) -> ModuleInfo` — line 323: Parse one Python file into deterministic metadata.
+- `scan_project() -> list[ModuleInfo]` — line 341: Scan Python source roots and return sorted module metadata.
+- `first_sentence(text: str | None) -> str` — line 346: Return a short docstring summary suitable for tables.
+- `route_sort_key(route: dict[str, Any]) -> tuple[str, str, str]` — line 354: Sort routes by path, method, then handler.
+- `build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]` — line 359: Build the machine-readable project index consumed by docs and agents.
+- `generated_header(title: str) -> list[str]` — line 403: Return a standard generated Markdown header.
+- `render_code_map(index: dict[str, Any]) -> str` — line 408: Render a module-oriented generated code map.
+- `render_package_index(index: dict[str, Any]) -> str` — line 460: Render package/module summary tables.
+- `render_api_routes(index: dict[str, Any]) -> str` — line 487: Render FastAPI route inventory.
+- `render_llm_index(index: dict[str, Any]) -> str` — line 505: Render a compact agent-facing navigation index.
+- `render_python_reference(index: dict[str, Any]) -> str` — line 552: Render a MkDocstrings reference page for importable Python modules.
+- `json_dumps(data: dict[str, Any]) -> str` — line 588: Serialize JSON deterministically with a trailing newline.
+- `file_hash(content: str) -> str` — line 593: Return a stable content hash.
+- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 598: Write a generated file or report it stale in check mode.
+- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 614: Return all deterministic generated outputs.
+- `main() -> int` — line 626: CLI entry point.

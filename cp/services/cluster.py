@@ -18,6 +18,8 @@ from ..models import (
     CommandType,
     CreateClusterCommand,
     DeleteClusterCommand,
+    DebugClusterCommand,
+    DebugZipRequest,
     HealthcheckClusterCommand,
     JobID,
     RestoreRequest,
@@ -246,6 +248,35 @@ class ClusterService:
                 err,
                 unavailable_message="Cluster healthcheck could not be requested right now.",
                 fallback_message=f"Unable to request healthcheck for cluster '{cluster_id}'.",
+            ) from err
+
+    def enqueue_cluster_debug_zip(
+        self,
+        request: DebugZipRequest,
+        requested_by: str,
+    ) -> int:
+        """Create a queued command for collecting a CockroachDB debug zip."""
+        payload = DebugClusterCommand.model_validate(request.model_dump())
+        try:
+            msg_id: JobID = self.repo.enqueue_command(
+                CommandType.DEBUG_CLUSTER,
+                payload,
+                requested_by,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.CLUSTER_DEBUG_ZIP_REQUESTED,
+                payload.model_dump() | {"job_id": msg_id.job_id},
+            )
+            return msg_id.job_id
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Debug zip collection could not be requested right now.",
+                fallback_message=(
+                    f"Unable to request debug zip for cluster '{request.cluster_id}'."
+                ),
             ) from err
 
     def enqueue_cluster_scale(

@@ -38,6 +38,8 @@ from ..models import (
     ClusterUsersSnapshot,
     CreateClusterDatabaseObjectRequest,
     DashboardSnapshot,
+    DebugZipOptions,
+    DebugZipRequest,
     ErrorResponse,
     JobID,
     NewDatabaseUserRequest,
@@ -182,6 +184,30 @@ async def delete_cluster(
     """Enqueue a delete-cluster workflow for an existing managed cluster."""
     try:
         job_id = service.enqueue_cluster_deletion(cluster_id, actor_id)
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    return JobID(job_id=job_id)
+
+
+@router.post(
+    "/{cluster_id}/debug-zip",
+    response_model=JobID,
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
+)
+async def create_cluster_debug_zip(
+    cluster_id: str,
+    request: DebugZipOptions | None = None,
+    actor_id: str = Depends(get_audit_actor),
+    _claims: dict = Depends(require_user),
+    service: ClusterService = Depends(get_cluster_service),
+) -> JobID:
+    """Enqueue a CockroachDB debug zip collection job for an existing cluster."""
+    payload = DebugZipRequest(
+        cluster_id=cluster_id,
+        **(request.model_dump() if request else {}),
+    )
+    try:
+        job_id = service.enqueue_cluster_debug_zip(payload, actor_id)
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)

@@ -34,6 +34,7 @@
 | `GET` | `/clusters/{cluster_id}/database-objects/{database_name}` | `cp.api.clusters.get_cluster_database_object` | `ClusterDatabaseObject` |
 | `GET` | `/clusters/{cluster_id}/database-role-group-mappings` | `cp.api.clusters.list_cluster_database_role_group_mappings` | `list[ClusterDatabaseRoleGroupMapping]` |
 | `PUT` | `/clusters/{cluster_id}/database-role-group-mappings/{database_role}` | `cp.api.clusters.update_cluster_database_role_group_mappings` | `list[ClusterDatabaseRoleGroupMapping]` |
+| `POST` | `/clusters/{cluster_id}/debug-zip` | `cp.api.clusters.create_cluster_debug_zip` | `JobID` |
 | `POST` | `/clusters/{cluster_id}/healthcheck` | `cp.api.clusters.healthcheck_cluster` | `JobID` |
 | `GET` | `/clusters/{cluster_id}/jobs` | `cp.api.clusters.get_cluster_jobs` | `ClusterJobsSnapshot` |
 | `GET` | `/clusters/{cluster_id}/options` | `cp.api.clusters.get_cluster_options` | `ClusterDialogOptionsResponse` |
