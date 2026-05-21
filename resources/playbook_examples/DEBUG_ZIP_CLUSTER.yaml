@@ -1,0 +1,18 @@
+---
+- name: DEBUG ZIP CLUSTER
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Debug zip placeholder
+      debug:
+        msg:
+          deployment_id: "{{ deployment_id | default('') }}"
+          artifact_name: "{{ artifact_name | default('') }}"
+          artifact_uri: "{{ artifact_uri | default('') }}"
+          debug_zip_options: "{{ debug_zip_options | default({}) }}"
+
+    - name: Stop until debug zip collection is implemented
+      fail:
+        msg: "DEBUG_ZIP_CLUSTER is a placeholder playbook. Implement cockroach debug zip collection and artifact upload before using it."

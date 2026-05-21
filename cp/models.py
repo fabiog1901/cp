@@ -32,6 +32,7 @@ class PlaybookName(AutoNameStrEnum):
     SCALE_NODE_CPUS = auto()
     UPGRADE_CLUSTER = auto()
     HEALTHCHECK_CLUSTER = auto()
+    DEBUG_ZIP_CLUSTER = auto()
 
 
 class CommandType(AutoNameStrEnum):

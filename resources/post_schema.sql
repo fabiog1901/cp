@@ -44,3 +44,15 @@ INSERT INTO public.settings (
     ('oidc.authz_user_groups', '', 'csv', 'oidc', false, 'Comma-delimited OIDC groups that map to the standard user control-plane role.'),
     ('oidc.authz_admin_groups', '', 'csv', 'oidc', false, 'Comma-delimited OIDC groups that map to the admin control-plane role.'),
     ('oidc.authz_groups_claim', 'groups', 'string', 'oidc', false, 'OIDC claim that contains the user''s group memberships.');
+
+INSERT INTO public.playbooks (name, content, created_by, default_version, updated_by)
+VALUES
+    ('CREATE_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('DELETE_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_CLUSTER_IN', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_CLUSTER_OUT', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_DISK_SIZE', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_NODE_CPUS', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('UPGRADE_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('HEALTHCHECK_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('DEBUG_ZIP_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system');

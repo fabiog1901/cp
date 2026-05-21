@@ -585,6 +585,7 @@ window.app = function () {
       "SCALE_NODE_CPUS",
       "UPGRADE_CLUSTER",
       "HEALTHCHECK_CLUSTER",
+      "DEBUG_ZIP_CLUSTER",
     ],
     selectedPlaybook: "",
     pbEditorReady: false,
