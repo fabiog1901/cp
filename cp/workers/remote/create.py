@@ -206,11 +206,11 @@ def create_cluster_worker(
             "backup_external_connection_uri": backup_external_connection_uri,
         }
 
-        job_status, raw_data, _ = MyRunner(job_id).launch_runner(
+        runner_result = MyRunner(job_id).launch_runner(
             PlaybookName.CREATE_CLUSTER, extra_vars
         )
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 cluster_request.name, created_by, status=ClusterState.CREATE_FAILED
             )
@@ -222,7 +222,7 @@ def create_cluster_worker(
             cloud, region = cloud_region.split(":")
             region_nodes = []
 
-            for x in raw_data.get("cockroachdb", []):
+            for x in runner_result.data.get("cockroachdb", []):
                 if x["cloud"] == cloud and x["region"] == region:
                     region_nodes.append(x["public_ip"])
 
@@ -230,7 +230,7 @@ def create_cluster_worker(
                 InventoryRegion(cloud=cloud, region=region, nodes=region_nodes)
             )
 
-            for x in raw_data.get("haproxy", []):
+            for x in runner_result.data.get("haproxy", []):
                 if x["cloud"] == cloud and x["region"] == region:
                     lbs_inventory.append(
                         InventoryLB(

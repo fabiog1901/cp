@@ -11,6 +11,7 @@ import logging
 import os
 import shutil
 import time
+from dataclasses import dataclass
 
 import ansible_runner
 import yaml
@@ -19,6 +20,19 @@ from ...infra import get_repo
 from ...models import JobState, Playbook
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RunnerResult:
+    status: str
+    data: dict
+    task_id_counter: int
+
+
+@dataclass(frozen=True)
+class LiteRunnerResult:
+    status: str
+    data: dict
 
 
 class MyRunner:
@@ -99,9 +113,7 @@ class MyRunner:
 
         self.counter += 1
 
-    def launch_runner(
-        self, playbook_name: str, extra_vars: dict
-    ) -> tuple[str, dict, int]:
+    def launch_runner(self, playbook_name: str, extra_vars: dict) -> RunnerResult:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
             p: Playbook = self.repo.get_default_playbook(playbook_name)
@@ -138,7 +150,7 @@ class MyRunner:
                 self.job_id,
             )
             shutil.rmtree(job_dir, ignore_errors=True)
-            return "failed", self.data, self.counter + 1
+            return RunnerResult("failed", self.data, self.counter + 1)
 
         heartbeat_ts = time.time() + 60
         try:
@@ -160,11 +172,11 @@ class MyRunner:
                 playbook_name,
                 self.job_id,
             )
-            return "failed", self.data, self.counter
+            return RunnerResult("failed", self.data, self.counter)
         finally:
             shutil.rmtree(job_dir, ignore_errors=True)
 
-        return runner.status, self.data, self.counter
+        return RunnerResult(runner.status, self.data, self.counter)
 
 
 class MyRunnerLite:
@@ -184,7 +196,7 @@ class MyRunnerLite:
             if e.get("event_data")["task"] == "Data":
                 self.data = e["event_data"]["res"]["msg"]
 
-    def launch_runner(self, playbook_name: str, extra_vars: dict) -> tuple[str, dict]:
+    def launch_runner(self, playbook_name: str, extra_vars: dict) -> LiteRunnerResult:
         job_dir = f"/tmp/job-{self.job_id}"
         try:
             p: Playbook = self.repo.get_default_playbook(playbook_name)
@@ -212,11 +224,11 @@ class MyRunnerLite:
                 self.job_id,
             )
             shutil.rmtree(job_dir, ignore_errors=True)
-            return "failed", self.data
+            return LiteRunnerResult("failed", self.data)
 
         try:
             thread.join()
         finally:
             shutil.rmtree(job_dir, ignore_errors=True)
 
-        return runner.status, self.data
+        return LiteRunnerResult(runner.status, self.data)

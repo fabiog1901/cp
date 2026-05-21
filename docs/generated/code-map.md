@@ -1070,8 +1070,10 @@ Path: `cp/workers/remote/ansible.py`
 Shared Ansible runner helpers for remote workers.
 
 Classes:
-- `MyRunner` — line 24: _No docstring._
-- `MyRunnerLite` — line 170: _No docstring._
+- `RunnerResult` — line 26: _No docstring._
+- `LiteRunnerResult` — line 33: _No docstring._
+- `MyRunner` — line 38: _No docstring._
+- `MyRunnerLite` — line 182: _No docstring._
 
 ### `cp.workers.remote.common`
 

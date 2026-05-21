@@ -85,11 +85,11 @@ def delete_cluster_worker(
             "deployment_id": cluster_id,
         }
 
-        job_status, _, _ = MyRunner(job_id).launch_runner(
+        runner_result = MyRunner(job_id).launch_runner(
             PlaybookName.DELETE_CLUSTER, extra_vars
         )
 
-        if job_status == "successful":
+        if runner_result.status == "successful":
             repo.update_cluster(
                 cluster_id,
                 requested_by,

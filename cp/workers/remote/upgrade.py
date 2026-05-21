@@ -86,11 +86,11 @@ def upgrade_cluster_worker(
             "cockroachdb_autofinalize": cur.auto_finalize,
         }
 
-        job_status, _, _ = MyRunner(job_id).launch_runner(
+        runner_result = MyRunner(job_id).launch_runner(
             PlaybookName.UPGRADE_CLUSTER, extra_vars
         )
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 cur.name,
                 requested_by,

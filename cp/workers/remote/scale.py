@@ -136,12 +136,13 @@ def scale_cluster_worker(
             "disk_size": csr.disk_size,
         }
 
-        job_status, _, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_DISK_SIZE, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name,
                 requested_by,
@@ -165,12 +166,13 @@ def scale_cluster_worker(
             "node_cpus": csr.node_cpus,
         }
 
-        job_status, _, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_NODE_CPUS, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name, requested_by, status=ClusterState.SCALE_FAILED
             )
@@ -275,18 +277,23 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        job_status, raw_data, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name, requested_by, status=ClusterState.SCALE_FAILED
             )
             return
 
-        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
+        current_cluster = parse_raw_data(
+            current_regions,
+            runner_result.data,
+            current_cluster,
+        )
 
         repo.update_cluster(
             csr.name,
@@ -387,12 +394,13 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        job_status, raw_data, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name,
                 requested_by,
@@ -400,7 +408,11 @@ def scale_cluster_worker(
             )
             return
 
-        current_cluster = parse_raw_data(current_regions, raw_data, current_cluster)
+        current_cluster = parse_raw_data(
+            current_regions,
+            runner_result.data,
+            current_cluster,
+        )
 
         repo.update_cluster(
             csr.name,
@@ -511,18 +523,23 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        job_status, raw_data, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name, requested_by, status=ClusterState.SCALE_FAILED
             )
             return
 
-        current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
+        current_cluster = parse_raw_data(
+            csr.regions,
+            runner_result.data,
+            current_cluster,
+        )
 
         repo.update_cluster(
             csr.name,
@@ -627,12 +644,13 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        job_status, raw_data, task_id_counter = MyRunner(
+        runner_result = MyRunner(
             job_id,
             task_id_counter,
         ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
+        task_id_counter = runner_result.task_id_counter
 
-        if job_status != "successful":
+        if runner_result.status != "successful":
             repo.update_cluster(
                 csr.name,
                 requested_by,
@@ -640,7 +658,11 @@ def scale_cluster_worker(
             )
             return
 
-        current_cluster = parse_raw_data(csr.regions, raw_data, current_cluster)
+        current_cluster = parse_raw_data(
+            csr.regions,
+            runner_result.data,
+            current_cluster,
+        )
 
         repo.update_cluster(
             csr.name,
