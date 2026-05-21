@@ -41,7 +41,7 @@ class CommandType(AutoNameStrEnum):
     DELETE_CLUSTER = auto()
     SCALE_CLUSTER = auto()
     UPGRADE_CLUSTER = auto()
-    DEBUG_CLUSTER = auto()
+    DEBUG_ZIP_CLUSTER = auto()
     RESTORE_CLUSTER = auto()
     RESTORE_CLUSTER_OBJECT = auto()
     RESTORE_FULL_CLUSTER = auto()
@@ -391,7 +391,7 @@ class DebugZipRequest(DebugZipOptions):
     cluster_id: str
 
 
-class DebugClusterCommand(DebugZipRequest):
+class DebugZipClusterCommand(DebugZipRequest):
     pass
 
 
@@ -519,7 +519,7 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.HEALTHCHECK_CLUSTER: HealthcheckClusterCommand,
     CommandType.SCALE_CLUSTER: ClusterScaleRequest,
     CommandType.UPGRADE_CLUSTER: ClusterUpgradeRequest,
-    CommandType.DEBUG_CLUSTER: DebugClusterCommand,
+    CommandType.DEBUG_ZIP_CLUSTER: DebugZipClusterCommand,
     CommandType.RESTORE_CLUSTER: RestoreRequest,
     CommandType.RESTORE_CLUSTER_OBJECT: RestoreClusterObjectRequest,
     CommandType.RESTORE_FULL_CLUSTER: RestoreFullClusterRequest,

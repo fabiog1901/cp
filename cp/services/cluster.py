@@ -18,7 +18,7 @@ from ..models import (
     CommandType,
     CreateClusterCommand,
     DeleteClusterCommand,
-    DebugClusterCommand,
+    DebugZipClusterCommand,
     DebugZipRequest,
     HealthcheckClusterCommand,
     JobID,
@@ -256,10 +256,10 @@ class ClusterService:
         requested_by: str,
     ) -> int:
         """Create a queued command for collecting a CockroachDB debug zip."""
-        payload = DebugClusterCommand.model_validate(request.model_dump())
+        payload = DebugZipClusterCommand.model_validate(request.model_dump())
         try:
             msg_id: JobID = self.repo.enqueue_command(
-                CommandType.DEBUG_CLUSTER,
+                CommandType.DEBUG_ZIP_CLUSTER,
                 payload,
                 requested_by,
             )

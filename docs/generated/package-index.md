@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 86 | 165 | 151 | 75 |
+| `cp` | 87 | 165 | 153 | 75 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -93,6 +93,7 @@
 | `cp.workers.remote.ansible` | `cp/workers/remote/ansible.py` | Shared Ansible runner helpers for remote workers. |
 | `cp.workers.remote.common` | `cp/workers/remote/common.py` | Shared helpers for cluster workers. |
 | `cp.workers.remote.create` | `cp/workers/remote/create.py` | Remote cluster creation worker. |
+| `cp.workers.remote.debug_zip` | `cp/workers/remote/debug_zip.py` | Remote cluster debug zip worker. |
 | `cp.workers.remote.delete` | `cp/workers/remote/delete.py` | Remote cluster deletion worker. |
 | `cp.workers.remote.healthcheck` | `cp/workers/remote/healthcheck.py` | Remote cluster healthcheck worker. |
 | `cp.workers.remote.scale` | `cp/workers/remote/scale.py` | Remote cluster scale worker. |

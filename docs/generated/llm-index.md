@@ -11,7 +11,7 @@ Use this file as a compact starting point before opening source files.
 
 ## Packages
 
-- `cp`: 86 modules, 165 classes, 151 functions, 75 routes
+- `cp`: 87 modules, 165 classes, 153 functions, 75 routes
 - `tools`: 1 modules, 5 classes, 31 functions, 0 routes
 
 ## API Route Count
@@ -21,6 +21,7 @@ Use this file as a compact starting point before opening source files.
 ## Command Handlers
 
 - `CommandType.CREATE_CLUSTER` -> `cp.workers.queue.create_cluster`
+- `CommandType.DEBUG_ZIP_CLUSTER` -> `cp.workers.queue.debug_zip_cluster`
 - `CommandType.DELETE_CLUSTER` -> `cp.workers.queue.delete_cluster`
 - `CommandType.FAIL_ZOMBIE_JOBS` -> `cp.workers.queue.fail_zombie_jobs`
 - `CommandType.HEALTHCHECK_CLUSTER` -> `cp.workers.queue.healthcheck_cluster`

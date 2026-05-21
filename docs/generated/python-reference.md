@@ -668,6 +668,14 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+### `cp.workers.remote.debug_zip`
+
+::: cp.workers.remote.debug_zip
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ### `cp.workers.remote.delete`
 
 ::: cp.workers.remote.delete

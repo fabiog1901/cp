@@ -32,6 +32,7 @@ from .local.restore import (
     restore_full_cluster,
 )
 from .remote.create import create_cluster
+from .remote.debug_zip import debug_zip_cluster
 from .remote.delete import delete_cluster
 from .remote.healthcheck import healthcheck_cluster
 from .remote.scale import scale_cluster
@@ -57,6 +58,7 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
         job_id, command, requested_by, True
     ),
     CommandType.DELETE_CLUSTER: delete_cluster,
+    CommandType.DEBUG_ZIP_CLUSTER: debug_zip_cluster,
     CommandType.HEALTHCHECK_CLUSTER: healthcheck_cluster,
     CommandType.SCALE_CLUSTER: scale_cluster,
     CommandType.UPGRADE_CLUSTER: upgrade_cluster,

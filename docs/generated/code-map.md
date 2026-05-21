@@ -540,7 +540,7 @@ Classes:
 - `HealthcheckClusterCommand` — line 342: _No docstring._
 - `DebugZipOptions` — line 346: _No docstring._
 - `DebugZipRequest` — line 390: _No docstring._
-- `DebugClusterCommand` — line 394: _No docstring._
+- `DebugZipClusterCommand` — line 394: _No docstring._
 - `RestoreRequest` — line 398: _No docstring._
 - `RestoreClusterObjectRequest` — line 408: _No docstring._
 - `RestoreFullClusterRequest` — line 458: _No docstring._
@@ -1053,9 +1053,9 @@ Queue worker entry point.
 
 Functions:
 
-- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 43: Mark stale running jobs as failed from a scheduled queue command.
-- `get_nodes()` — line 73: Return Prometheus scrape targets for active cluster nodes.
-- `async pull_from_mq()` — line 100: Continuously claim due MQ messages and dispatch them to command handlers.
+- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 44: Mark stale running jobs as failed from a scheduled queue command.
+- `get_nodes()` — line 75: Return Prometheus scrape targets for active cluster nodes.
+- `async pull_from_mq()` — line 102: Continuously claim due MQ messages and dispatch them to command handlers.
 
 ### `cp.workers.remote`
 
@@ -1093,6 +1093,17 @@ Functions:
 
 - `create_cluster(job_id: int, command: CreateClusterCommand, created_by: str, recreate: bool=False) -> None` — line 32: Prepare CP metadata and start the threaded remote create workflow.
 - `create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str, cluster_db_password: str)` — line 90: Run the Ansible-backed cluster creation workflow and update job state.
+
+### `cp.workers.remote.debug_zip`
+
+Path: `cp/workers/remote/debug_zip.py`
+
+Remote cluster debug zip worker.
+
+Functions:
+
+- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 18: _No docstring._
+- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 65: _No docstring._
 
 ### `cp.workers.remote.delete`
 
