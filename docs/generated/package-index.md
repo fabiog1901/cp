@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 87 | 171 | 153 | 75 |
+| `cp` | 88 | 172 | 154 | 75 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -96,6 +96,7 @@
 | `cp.workers.remote.debug_zip` | `cp/workers/remote/debug_zip.py` | Remote cluster debug zip worker. |
 | `cp.workers.remote.delete` | `cp/workers/remote/delete.py` | Remote cluster deletion worker. |
 | `cp.workers.remote.healthcheck` | `cp/workers/remote/healthcheck.py` | Remote cluster healthcheck worker. |
+| `cp.workers.remote.poll_debug_zip` | `cp/workers/remote/poll_debug_zip.py` | Remote debug zip polling worker. |
 | `cp.workers.remote.scale` | `cp/workers/remote/scale.py` | Remote cluster scale worker. |
 | `cp.workers.remote.upgrade` | `cp/workers/remote/upgrade.py` | Remote cluster upgrade worker. |
 | `tools.docsync` | `tools/docsync.py` | Generate deterministic documentation indexes from the CP codebase. |

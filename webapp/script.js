@@ -586,6 +586,7 @@ window.app = function () {
       "UPGRADE_CLUSTER",
       "HEALTHCHECK_CLUSTER",
       "DEBUG_ZIP_CLUSTER",
+      "POLL_DEBUG_ZIP",
     ],
     selectedPlaybook: "",
     pbEditorReady: false,

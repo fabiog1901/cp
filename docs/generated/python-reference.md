@@ -692,6 +692,14 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+### `cp.workers.remote.poll_debug_zip`
+
+::: cp.workers.remote.poll_debug_zip
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ### `cp.workers.remote.scale`
 
 ::: cp.workers.remote.scale

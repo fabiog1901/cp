@@ -33,6 +33,7 @@ class PlaybookName(AutoNameStrEnum):
     UPGRADE_CLUSTER = auto()
     HEALTHCHECK_CLUSTER = auto()
     DEBUG_ZIP_CLUSTER = auto()
+    POLL_DEBUG_ZIP = auto()
 
 
 class CommandType(AutoNameStrEnum):
@@ -42,6 +43,7 @@ class CommandType(AutoNameStrEnum):
     SCALE_CLUSTER = auto()
     UPGRADE_CLUSTER = auto()
     DEBUG_ZIP_CLUSTER = auto()
+    POLL_DEBUG_ZIP = auto()
     RESTORE_CLUSTER = auto()
     RESTORE_CLUSTER_OBJECT = auto()
     RESTORE_FULL_CLUSTER = auto()
@@ -401,6 +403,15 @@ class DebugZipClusterCommand(DebugZipRequest):
     pass
 
 
+class PollDebugZipCommand(CommandModel):
+    cluster_id: str
+    cp_job_id: int
+    artifact_id: str
+    remote_host: str
+    remote_status_path: str
+    poll_attempt: int = 1
+
+
 class RestoreRequest(CommandModel):
     name: str
     backup_path: str
@@ -526,6 +537,7 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.SCALE_CLUSTER: ClusterScaleRequest,
     CommandType.UPGRADE_CLUSTER: ClusterUpgradeRequest,
     CommandType.DEBUG_ZIP_CLUSTER: DebugZipClusterCommand,
+    CommandType.POLL_DEBUG_ZIP: PollDebugZipCommand,
     CommandType.RESTORE_CLUSTER: RestoreRequest,
     CommandType.RESTORE_CLUSTER_OBJECT: RestoreClusterObjectRequest,
     CommandType.RESTORE_FULL_CLUSTER: RestoreFullClusterRequest,

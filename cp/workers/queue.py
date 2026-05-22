@@ -35,6 +35,7 @@ from .remote.create import create_cluster
 from .remote.debug_zip import debug_zip_cluster
 from .remote.delete import delete_cluster
 from .remote.healthcheck import healthcheck_cluster
+from .remote.poll_debug_zip import poll_debug_zip
 from .remote.scale import scale_cluster
 from .remote.upgrade import upgrade_cluster
 
@@ -59,6 +60,7 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     ),
     CommandType.DELETE_CLUSTER: delete_cluster,
     CommandType.DEBUG_ZIP_CLUSTER: debug_zip_cluster,
+    CommandType.POLL_DEBUG_ZIP: poll_debug_zip,
     CommandType.HEALTHCHECK_CLUSTER: healthcheck_cluster,
     CommandType.SCALE_CLUSTER: scale_cluster,
     CommandType.UPGRADE_CLUSTER: upgrade_cluster,

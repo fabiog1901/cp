@@ -55,4 +55,5 @@ VALUES
     ('SCALE_NODE_CPUS', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
     ('UPGRADE_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
     ('HEALTHCHECK_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
-    ('DEBUG_ZIP_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system');
+    ('DEBUG_ZIP_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('POLL_DEBUG_ZIP', NULL, 'system', now():::TIMESTAMPTZ, 'system');

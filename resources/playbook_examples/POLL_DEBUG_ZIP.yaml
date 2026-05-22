@@ -1,0 +1,20 @@
+---
+- name: POLL DEBUG ZIP
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Poll debug zip placeholder
+      debug:
+        msg:
+          cluster_id: "{{ cluster_id | default('') }}"
+          cp_job_id: "{{ cp_job_id | default('') }}"
+          artifact_id: "{{ artifact_id | default('') }}"
+          remote_host: "{{ remote_host | default('') }}"
+          remote_status_path: "{{ remote_status_path | default('') }}"
+          poll_attempt: "{{ poll_attempt | default(1) }}"
+
+    - name: Stop until debug zip polling is implemented
+      fail:
+        msg: "POLL_DEBUG_ZIP is a placeholder playbook. Implement remote status polling before using it."
