@@ -75,6 +75,12 @@ class JobState(AutoNameStrEnum):
     COMPLETED = auto()
 
 
+class JobArtifactState(AutoNameStrEnum):
+    RUNNING = auto()
+    READY = auto()
+    FAILED = auto()
+
+
 class AuditEvent(AutoNameStrEnum):
     LOGIN = auto()
     LOGOUT = auto()
@@ -751,6 +757,7 @@ class JobArtifactUpsert(BaseModel):
     job_id: int
     cluster_id: str
     kind: str
+    status: str = JobArtifactState.RUNNING
     artifact_name: str
     bucket: str | None = None
     object_key: str
@@ -760,6 +767,20 @@ class JobArtifactUpsert(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     expires_at: dt.datetime | None = None
     created_by: str
+    updated_by: str | None = None
+
+
+class JobArtifactUpdate(BaseModel):
+    status: str | None = None
+    artifact_name: str | None = None
+    bucket: str | None = None
+    object_key: str | None = None
+    size_bytes: int | None = None
+    sha256: str | None = None
+    redacted: bool | None = None
+    metadata: dict[str, Any] | None = None
+    expires_at: dt.datetime | None = None
+    updated_by: str
 
 
 class JobDetailsResponse(BaseModel):

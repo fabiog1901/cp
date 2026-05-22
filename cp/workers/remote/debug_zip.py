@@ -184,6 +184,7 @@ def _job_artifact_from_runner_data(
         job_id=job_id,
         cluster_id=cluster_id,
         kind=str(data.get("kind") or "debug_zip"),
+        status=str(data.get("status") or "RUNNING"),
         artifact_name=str(artifact_name),
         bucket=data.get("bucket") or data.get("bucket_name"),
         object_key=str(object_key),
@@ -193,6 +194,7 @@ def _job_artifact_from_runner_data(
         metadata=metadata | {"runner_data": data},
         expires_at=data.get("expires_at"),
         created_by=requested_by,
+        updated_by=requested_by,
     )
 
 

@@ -79,6 +79,7 @@ CREATE TABLE public.job_artifact (
     job_id INT8 NOT NULL,
     cluster_id STRING NOT NULL,
     kind STRING NOT NULL,
+    status STRING NOT NULL DEFAULT 'RUNNING':::STRING,
     artifact_name STRING NOT NULL,
     bucket STRING NULL,
     object_key STRING NOT NULL,
@@ -89,6 +90,8 @@ CREATE TABLE public.job_artifact (
     expires_at TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
     created_by STRING NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    updated_by STRING NULL,
     CONSTRAINT pk_job_artifact PRIMARY KEY (artifact_id ASC),
     INDEX job_artifact_job_idx (job_id ASC),
     INDEX job_artifact_cluster_idx (cluster_id ASC)

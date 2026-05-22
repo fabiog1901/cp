@@ -10,6 +10,7 @@ from ..models import (
     CommandType,
     IntID,
     Job,
+    JobArtifactUpdate,
     JobArtifactUpsert,
     JobState,
     JobStatsResponse,
@@ -245,6 +246,7 @@ class JobsRepo:
                 job_id,
                 cluster_id,
                 kind,
+                status,
                 artifact_name,
                 bucket,
                 object_key,
@@ -253,15 +255,17 @@ class JobsRepo:
                 redacted,
                 metadata,
                 expires_at,
-                created_by
+                created_by,
+                updated_by
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 artifact.artifact_id,
                 artifact.job_id,
                 artifact.cluster_id,
                 artifact.kind,
+                artifact.status,
                 artifact.artifact_name,
                 artifact.bucket,
                 artifact.object_key,
@@ -271,6 +275,44 @@ class JobsRepo:
                 artifact.metadata,
                 artifact.expires_at,
                 artifact.created_by,
+                artifact.updated_by or artifact.created_by,
             ),
             operation="jobs.create_job_artifact",
+        )
+
+    def update_job_artifact(
+        self,
+        artifact_id: str,
+        update: JobArtifactUpdate,
+    ) -> None:
+        execute_stmt(
+            """
+            UPDATE job_artifact
+            SET
+                status = coalesce(%s, status),
+                artifact_name = coalesce(%s, artifact_name),
+                bucket = coalesce(%s, bucket),
+                object_key = coalesce(%s, object_key),
+                size_bytes = coalesce(%s, size_bytes),
+                sha256 = coalesce(%s, sha256),
+                redacted = coalesce(%s, redacted),
+                metadata = coalesce(%s, metadata),
+                expires_at = coalesce(%s, expires_at),
+                updated_by = %s
+            WHERE artifact_id = %s
+            """,
+            (
+                update.status,
+                update.artifact_name,
+                update.bucket,
+                update.object_key,
+                update.size_bytes,
+                update.sha256,
+                update.redacted,
+                update.metadata,
+                update.expires_at,
+                update.updated_by,
+                artifact_id,
+            ),
+            operation="jobs.update_job_artifact",
         )
