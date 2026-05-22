@@ -54,6 +54,7 @@ def poll_debug_zip(
                 "artifact_id": command.artifact_id,
                 "remote_host": command.remote_host,
                 "remote_status_path": command.remote_status_path,
+                "remote_user": command.remote_user,
                 "poll_attempt": command.poll_attempt,
             },
         )
@@ -69,10 +70,12 @@ def poll_debug_zip(
                 command.artifact_id,
                 JobArtifactUpdate(
                     status=JobArtifactState.READY,
-                    size_bytes=runner_result.data.get("size_bytes"),
-                    sha256=runner_result.data.get("sha256"),
+                    size_bytes=_optional_int(runner_result.data.get("size_bytes")),
+                    sha256=_optional_str(runner_result.data.get("sha256")),
                     metadata=_artifact_metadata(command, runner_result.data),
-                    expires_at=runner_result.data.get("expires_at"),
+                    expires_at=_optional_datetime(
+                        runner_result.data.get("expires_at")
+                    ),
                     updated_by=requested_by,
                 ),
             )
@@ -90,7 +93,8 @@ def poll_debug_zip(
             _fail_debug_zip(
                 command,
                 requested_by,
-                runner_result.data.get("error") or "Debug zip collection failed.",
+                _optional_str(runner_result.data.get("error"))
+                or "Debug zip collection failed.",
                 runner_result.data,
                 runner_result.task_id_counter,
             )
@@ -140,6 +144,7 @@ def _requeue_poll(
             artifact_id=command.artifact_id,
             remote_host=command.remote_host,
             remote_status_path=command.remote_status_path,
+            remote_user=command.remote_user,
             poll_attempt=command.poll_attempt + 1,
         ),
         requested_by,
@@ -192,8 +197,32 @@ def _artifact_metadata(
         "runner_data": runner_data,
         "remote_host": command.remote_host,
         "remote_status_path": command.remote_status_path,
+        "remote_user": command.remote_user,
         "poll_attempt": command.poll_attempt,
     }
     if error:
         result["error"] = error
     return result
+
+
+def _optional_str(value) -> str | None:
+    if value is None:
+        return None
+    value = str(value).strip()
+    if value == "" or value.lower() in {"none", "null"}:
+        return None
+    return value
+
+
+def _optional_int(value) -> int | None:
+    value = _optional_str(value)
+    if value is None:
+        return None
+    return int(value)
+
+
+def _optional_datetime(value) -> dt.datetime | None:
+    value = _optional_str(value)
+    if value is None:
+        return None
+    return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))

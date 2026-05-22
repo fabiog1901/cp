@@ -229,6 +229,7 @@ def _poll_command_from_runner_data(
     data: dict,
 ) -> PollDebugZipCommand:
     remote_host = data.get("remote_host") or data.get("host")
+    remote_user = data.get("remote_user") or data.get("ansible_user")
     remote_status_path = data.get("remote_status_path") or data.get("status_path")
 
     if not remote_host:
@@ -244,6 +245,7 @@ def _poll_command_from_runner_data(
         artifact_id=str(data.get("artifact_id") or artifact_id),
         remote_host=str(remote_host),
         remote_status_path=str(remote_status_path),
+        remote_user=str(remote_user) if remote_user else None,
         poll_attempt=1,
     )
 

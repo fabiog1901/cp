@@ -1,20 +1,69 @@
 ---
-- name: POLL DEBUG ZIP
+- name: PREPARE DEBUG ZIP POLL TARGET
   hosts: localhost
   connection: local
   gather_facts: no
   become: no
   tasks:
-    - name: Poll debug zip placeholder
+    - name: Build debug zip poll inventory
+      add_host:
+        name: "{{ remote_host }}"
+        ansible_host: "{{ remote_host }}"
+        ansible_user: "{{ remote_user | default(omit, true) }}"
+        groups: debug_zip_poll_target
+
+- name: POLL DEBUG ZIP
+  hosts: debug_zip_poll_target
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Check debug zip status file
+      stat:
+        path: "{{ remote_status_path }}"
+      register: debug_zip_status_file
+
+    - name: Read debug zip status file
+      slurp:
+        src: "{{ remote_status_path }}"
+      register: debug_zip_status_payload
+      when: debug_zip_status_file.stat.exists
+
+    - name: Parse debug zip status
+      set_fact:
+        debug_zip_status: >-
+          {{
+            (
+              debug_zip_status_payload.content
+              | b64decode
+              | from_json
+            )
+            if debug_zip_status_file.stat.exists
+            else {
+              'status': 'RUNNING',
+              'metadata': {
+                'status_file_exists': false,
+                'message': 'Debug zip status file does not exist yet.'
+              }
+            }
+          }}
+
+    - name: Data
       debug:
         msg:
-          cluster_id: "{{ cluster_id | default('') }}"
-          cp_job_id: "{{ cp_job_id | default('') }}"
-          artifact_id: "{{ artifact_id | default('') }}"
-          remote_host: "{{ remote_host | default('') }}"
-          remote_status_path: "{{ remote_status_path | default('') }}"
-          poll_attempt: "{{ poll_attempt | default(1) }}"
-
-    - name: Stop until debug zip polling is implemented
-      fail:
-        msg: "POLL_DEBUG_ZIP is a placeholder playbook. Implement remote status polling before using it."
+          artifact_id: "{{ artifact_id }}"
+          status: "{{ debug_zip_status.get('status', 'RUNNING') }}"
+          size_bytes: "{{ debug_zip_status.get('size_bytes') }}"
+          sha256: "{{ debug_zip_status.get('sha256') }}"
+          expires_at: "{{ debug_zip_status.get('expires_at') }}"
+          error: "{{ debug_zip_status.get('error') }}"
+          remote_host: "{{ remote_host }}"
+          remote_status_path: "{{ remote_status_path }}"
+          metadata: >-
+            {{
+              debug_zip_status.get('metadata', {})
+              | combine({
+                'status_file_exists': debug_zip_status_file.stat.exists,
+                'status_file_size': debug_zip_status_file.stat.size | default(0),
+                'poll_attempt': poll_attempt | int
+              })
+            }}

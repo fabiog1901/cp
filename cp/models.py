@@ -409,6 +409,7 @@ class PollDebugZipCommand(CommandModel):
     artifact_id: str
     remote_host: str
     remote_status_path: str
+    remote_user: str | None = None
     poll_attempt: int = 1
 
 
