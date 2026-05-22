@@ -77,7 +77,7 @@ class JobState(AutoNameStrEnum):
     COMPLETED = auto()
 
 
-class JobArtifactState(AutoNameStrEnum):
+class ClusterArtifactState(AutoNameStrEnum):
     RUNNING = auto()
     READY = auto()
     FAILED = auto()
@@ -766,12 +766,12 @@ class Task(BaseModel):
     task_desc: Optional[str]
 
 
-class JobArtifactUpsert(BaseModel):
+class ClusterArtifactUpsert(BaseModel):
     artifact_id: str
     job_id: int
     cluster_id: str
     kind: str
-    status: str = JobArtifactState.RUNNING
+    status: str = ClusterArtifactState.RUNNING
     artifact_name: str
     bucket: str | None = None
     object_key: str
@@ -784,7 +784,7 @@ class JobArtifactUpsert(BaseModel):
     updated_by: str | None = None
 
 
-class JobArtifactUpdate(BaseModel):
+class ClusterArtifactUpdate(BaseModel):
     status: str | None = None
     artifact_name: str | None = None
     bucket: str | None = None
@@ -797,7 +797,7 @@ class JobArtifactUpdate(BaseModel):
     updated_by: str
 
 
-class JobArtifact(BaseModel):
+class ClusterArtifact(BaseModel):
     artifact_id: str
     job_id: int
     cluster_id: str

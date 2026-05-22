@@ -74,7 +74,7 @@ CREATE TABLE public.tasks (
     task_desc STRING NULL,
     CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC)
 );
-CREATE TABLE public.job_artifact (
+CREATE TABLE public.cluster_artifact_catalog (
     artifact_id STRING NOT NULL,
     job_id INT8 NOT NULL,
     cluster_id STRING NOT NULL,
@@ -92,9 +92,9 @@ CREATE TABLE public.job_artifact (
     created_by STRING NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     updated_by STRING NULL,
-    CONSTRAINT pk_job_artifact PRIMARY KEY (artifact_id ASC),
-    INDEX job_artifact_job_idx (job_id ASC),
-    INDEX job_artifact_cluster_idx (cluster_id ASC)
+    CONSTRAINT pk_cluster_artifact_catalog PRIMARY KEY (artifact_id ASC),
+    INDEX cluster_artifact_catalog_job_idx (job_id ASC),
+    INDEX cluster_artifact_catalog_cluster_idx (cluster_id ASC)
 );
 CREATE TABLE public.regions (
     cloud STRING NOT NULL,
@@ -273,5 +273,5 @@ ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREI
 ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.tasks ADD CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
-ALTER TABLE public.job_artifact ADD CONSTRAINT job_id_in_job_artifact FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
-ALTER TABLE public.job_artifact ADD CONSTRAINT cluster_id_in_job_artifact FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
+ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT job_id_in_cluster_artifact_catalog FOREIGN KEY (job_id) REFERENCES public.jobs(job_id) ON DELETE CASCADE;
+ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT cluster_id_in_cluster_artifact_catalog FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;

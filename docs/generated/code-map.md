@@ -514,7 +514,7 @@ Classes:
 - `CommandType` — line 39: _No docstring._
 - `ClusterState` — line 57: _No docstring._
 - `JobState` — line 73: _No docstring._
-- `JobArtifactState` — line 80: _No docstring._
+- `ClusterArtifactState` — line 80: _No docstring._
 - `AuditEvent` — line 86: _No docstring._
 - `CPRole` — line 127: _No docstring._
 - `SettingKey` — line 133: _No docstring._
@@ -573,9 +573,9 @@ Classes:
 - `Msg` — line 742: _No docstring._
 - `Job` — line 751: _No docstring._
 - `Task` — line 761: _No docstring._
-- `JobArtifactUpsert` — line 769: _No docstring._
-- `JobArtifactUpdate` — line 787: _No docstring._
-- `JobArtifact` — line 800: _No docstring._
+- `ClusterArtifactUpsert` — line 769: _No docstring._
+- `ClusterArtifactUpdate` — line 787: _No docstring._
+- `ClusterArtifact` — line 800: _No docstring._
 - `ArtifactDownloadUrlResponse` — line 820: _No docstring._
 - `JobDetailsResponse` — line 831: _No docstring._
 - `JobRescheduleResponse` — line 838: _No docstring._

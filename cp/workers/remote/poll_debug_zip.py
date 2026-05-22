@@ -10,8 +10,8 @@ import logging
 from ...infra import get_repo
 from ...models import (
     CommandType,
-    JobArtifactState,
-    JobArtifactUpdate,
+    ClusterArtifactState,
+    ClusterArtifactUpdate,
     JobState,
     PlaybookName,
     PollDebugZipCommand,
@@ -66,10 +66,10 @@ def poll_debug_zip(
         status = _status_from_runner_data(runner_result.data)
 
         if status in DEBUG_ZIP_READY_STATES:
-            repo.update_job_artifact(
+            repo.update_cluster_artifact(
                 command.artifact_id,
-                JobArtifactUpdate(
-                    status=JobArtifactState.READY,
+                ClusterArtifactUpdate(
+                    status=ClusterArtifactState.READY,
                     size_bytes=_optional_int(runner_result.data.get("size_bytes")),
                     sha256=_optional_str(runner_result.data.get("sha256")),
                     metadata=_artifact_metadata(command, runner_result.data),
@@ -128,10 +128,10 @@ def _requeue_poll(
 ) -> None:
     repo = get_repo()
     repo.update_job(command.cp_job_id, JobState.RUNNING)
-    repo.update_job_artifact(
+    repo.update_cluster_artifact(
         command.artifact_id,
-        JobArtifactUpdate(
-            status=JobArtifactState.RUNNING,
+        ClusterArtifactUpdate(
+            status=ClusterArtifactState.RUNNING,
             metadata=_artifact_metadata(command, runner_data),
             updated_by=requested_by,
         ),
@@ -160,10 +160,10 @@ def _fail_debug_zip(
     task_id_counter: int = 0,
 ) -> None:
     repo = get_repo()
-    repo.update_job_artifact(
+    repo.update_cluster_artifact(
         command.artifact_id,
-        JobArtifactUpdate(
-            status=JobArtifactState.FAILED,
+        ClusterArtifactUpdate(
+            status=ClusterArtifactState.FAILED,
             metadata=_artifact_metadata(command, runner_data or {}, error=message),
             updated_by=requested_by,
         ),

@@ -10,9 +10,9 @@ from ..models import (
     CommandType,
     IntID,
     Job,
-    JobArtifact,
-    JobArtifactUpdate,
-    JobArtifactUpsert,
+    ClusterArtifact,
+    ClusterArtifactUpdate,
+    ClusterArtifactUpsert,
     JobState,
     JobStatsResponse,
     Task,
@@ -239,10 +239,10 @@ class JobsRepo:
             (job_id, task_id, created_at, task_name, task_desc),
         )
 
-    def create_job_artifact(self, artifact: JobArtifactUpsert) -> None:
+    def create_cluster_artifact(self, artifact: ClusterArtifactUpsert) -> None:
         execute_stmt(
             """
-            INSERT INTO job_artifact (
+            INSERT INTO cluster_artifact_catalog (
                 artifact_id,
                 job_id,
                 cluster_id,
@@ -278,17 +278,17 @@ class JobsRepo:
                 artifact.created_by,
                 artifact.updated_by or artifact.created_by,
             ),
-            operation="jobs.create_job_artifact",
+            operation="jobs.create_cluster_artifact",
         )
 
-    def update_job_artifact(
+    def update_cluster_artifact(
         self,
         artifact_id: str,
-        update: JobArtifactUpdate,
+        update: ClusterArtifactUpdate,
     ) -> None:
         execute_stmt(
             """
-            UPDATE job_artifact
+            UPDATE cluster_artifact_catalog
             SET
                 status = coalesce(%s, status),
                 artifact_name = coalesce(%s, artifact_name),
@@ -315,22 +315,22 @@ class JobsRepo:
                 update.updated_by,
                 artifact_id,
             ),
-            operation="jobs.update_job_artifact",
+            operation="jobs.update_cluster_artifact",
         )
 
     def get_cluster_artifact(
         self,
         cluster_id: str,
         artifact_id: str,
-    ) -> JobArtifact | None:
+    ) -> ClusterArtifact | None:
         return fetch_one(
             """
             SELECT *
-            FROM job_artifact
+            FROM cluster_artifact_catalog
             WHERE cluster_id = %s
                 AND artifact_id = %s
             """,
             (cluster_id, artifact_id),
-            JobArtifact,
+            ClusterArtifact,
             operation="jobs.get_cluster_artifact",
         )

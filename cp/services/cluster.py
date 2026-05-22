@@ -22,7 +22,7 @@ from ..models import (
     DebugZipClusterCommand,
     DebugZipRequest,
     HealthcheckClusterCommand,
-    JobArtifactState,
+    ClusterArtifactState,
     JobID,
     RestoreRequest,
     to_public_cluster,
@@ -313,7 +313,7 @@ class ClusterService:
         if artifact is None:
             raise ServiceNotFoundError(f"Artifact '{artifact_id}' was not found.")
 
-        if artifact.status != JobArtifactState.READY.value:
+        if artifact.status != ClusterArtifactState.READY.value:
             raise ServiceConflictError(
                 f"Artifact '{artifact_id}' is not ready for download."
             )

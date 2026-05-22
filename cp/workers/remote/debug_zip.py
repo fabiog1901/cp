@@ -14,8 +14,8 @@ from ...models import (
     ClusterState,
     CommandType,
     DebugZipClusterCommand,
-    JobArtifactUpsert,
-    JobArtifactState,
+    ClusterArtifactUpsert,
+    ClusterArtifactState,
     JobState,
     PlaybookName,
     PollDebugZipCommand,
@@ -132,8 +132,8 @@ def debug_zip_cluster_worker(
         if runner_result.status != "successful":
             return
 
-        repo.create_job_artifact(
-            _job_artifact_from_runner_data(
+        repo.create_cluster_artifact(
+            _cluster_artifact_from_runner_data(
                 job_id,
                 cluster_id,
                 artifact_id,
@@ -173,7 +173,7 @@ def debug_zip_cluster_worker(
         )
 
 
-def _job_artifact_from_runner_data(
+def _cluster_artifact_from_runner_data(
     job_id: int,
     cluster_id: str,
     artifact_id: str,
@@ -184,7 +184,7 @@ def _job_artifact_from_runner_data(
     fallback_redacted: bool,
     requested_by: str,
     data: dict,
-) -> JobArtifactUpsert:
+) -> ClusterArtifactUpsert:
     if not data:
         raise RuntimeError("Debug zip playbook did not return artifact metadata.")
 
@@ -204,12 +204,12 @@ def _job_artifact_from_runner_data(
     )
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
 
-    return JobArtifactUpsert(
+    return ClusterArtifactUpsert(
         artifact_id=str(data.get("artifact_id") or artifact_id),
         job_id=job_id,
         cluster_id=cluster_id,
         kind=str(data.get("kind") or "debug_zip"),
-        status=str(data.get("status") or JobArtifactState.RUNNING),
+        status=str(data.get("status") or ClusterArtifactState.RUNNING),
         artifact_name=str(artifact_name),
         bucket=data.get("bucket") or data.get("bucket_name") or fallback_bucket,
         object_key=str(object_key),
