@@ -8,13 +8,16 @@ from ..models import (
     AuditEvent,
     CommandType,
     Job,
+    JobArtifactDownloadUrlResponse,
+    JobArtifactState,
     JobID,
     JobStatsResponse,
     parse_command_payload,
 )
 from ..repos import Repo
 from .base import log_event
-from .errors import ServiceNotFoundError, from_repository_error
+from .errors import ServiceConflictError, ServiceNotFoundError, from_repository_error
+from .storage_broker import StorageBrokerService
 
 
 class JobsService:
@@ -119,4 +122,70 @@ class JobsService:
                 unavailable_message="Job rescheduling is temporarily unavailable.",
                 validation_message="The job could not be rescheduled with its current payload.",
                 fallback_message=f"Unable to reschedule job '{job_id}'.",
+            ) from err
+
+    def create_artifact_download_url(
+        self,
+        job_id: int,
+        artifact_id: str,
+        groups: list[str],
+        is_admin: bool,
+        requested_by: str,
+    ) -> JobArtifactDownloadUrlResponse:
+        selected_job = self.get_job_for_user(job_id, groups, is_admin)
+        if selected_job is None:
+            raise ServiceNotFoundError(f"Job '{job_id}' was not found.")
+
+        try:
+            artifact = self.repo.get_job_artifact(job_id, artifact_id)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Job artifacts are temporarily unavailable.",
+                fallback_message=f"Unable to load artifact '{artifact_id}'.",
+            ) from err
+
+        if artifact is None:
+            raise ServiceNotFoundError(f"Artifact '{artifact_id}' was not found.")
+
+        if artifact.status != JobArtifactState.READY.value:
+            raise ServiceConflictError(
+                f"Artifact '{artifact_id}' is not ready for download."
+            )
+
+        try:
+            download = StorageBrokerService(self.repo).create_presigned_get_url(
+                artifact.cluster_id,
+                artifact.object_key,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.JOB_ARTIFACT_DOWNLOAD_URL_CREATED,
+                {
+                    "job_id": job_id,
+                    "artifact_id": artifact.artifact_id,
+                    "cluster_id": artifact.cluster_id,
+                    "kind": artifact.kind,
+                    "object_key": artifact.object_key,
+                    "expires_at": download.expires_at.isoformat(),
+                },
+            )
+            return JobArtifactDownloadUrlResponse(
+                artifact_id=artifact.artifact_id,
+                artifact_name=artifact.artifact_name,
+                url=download.url,
+                expires_at=download.expires_at,
+                bucket=download.bucket,
+                object_key=download.object_key,
+                size_bytes=artifact.size_bytes,
+                sha256=artifact.sha256,
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Artifact download URLs are temporarily unavailable.",
+                fallback_message=(
+                    f"Unable to create download URL for artifact '{artifact_id}'."
+                ),
             ) from err

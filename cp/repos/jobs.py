@@ -10,6 +10,7 @@ from ..models import (
     CommandType,
     IntID,
     Job,
+    JobArtifact,
     JobArtifactUpdate,
     JobArtifactUpsert,
     JobState,
@@ -315,4 +316,17 @@ class JobsRepo:
                 artifact_id,
             ),
             operation="jobs.update_job_artifact",
+        )
+
+    def get_job_artifact(self, job_id: int, artifact_id: str) -> JobArtifact | None:
+        return fetch_one(
+            """
+            SELECT *
+            FROM job_artifact
+            WHERE job_id = %s
+                AND artifact_id = %s
+            """,
+            (job_id, artifact_id),
+            JobArtifact,
+            operation="jobs.get_job_artifact",
         )

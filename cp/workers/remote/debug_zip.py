@@ -105,6 +105,7 @@ def debug_zip_cluster_worker(
         extra_vars = {
             "deployment_id": cluster_id,
             "cluster_id": cluster_id,
+            "cp_job_id": job_id,
             "cluster_inventory": [
                 region.model_dump() for region in cluster.cluster_inventory
             ],

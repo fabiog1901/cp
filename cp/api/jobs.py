@@ -12,12 +12,14 @@ from ..infra import get_jobs_service
 from ..models import (
     ErrorResponse,
     Job,
+    JobArtifactDownloadUrlResponse,
     JobDetailsResponse,
     JobRescheduleResponse,
     JobStatsResponse,
 )
 from ..services.errors import (
     ServiceAuthorizationError,
+    ServiceConflictError,
     ServiceError,
     ServiceNotFoundError,
     ServiceUnavailableError,
@@ -40,6 +42,11 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
     if isinstance(err, ServiceValidationError):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=err.user_message,
+        )
+    if isinstance(err, ServiceConflictError):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
             detail=err.user_message,
         )
     if isinstance(err, ServiceAuthorizationError):
@@ -139,6 +146,40 @@ async def get_job_details(
         )
 
     return JobDetailsResponse(**details)
+
+
+@router.post(
+    "/{job_id}/artifacts/{artifact_id}/download-url",
+    response_model=JobArtifactDownloadUrlResponse,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": "Job artifact not found.",
+        },
+        409: {
+            "model": ErrorResponse,
+            "description": "Job artifact is not ready for download.",
+        },
+    },
+)
+async def create_job_artifact_download_url(
+    job_id: int,
+    artifact_id: str,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: JobsService = Depends(get_jobs_service),
+) -> JobArtifactDownloadUrlResponse:
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.create_artifact_download_url(
+            job_id,
+            artifact_id,
+            groups,
+            is_admin,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
 
 
 @router.post(

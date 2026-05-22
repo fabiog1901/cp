@@ -120,6 +120,7 @@ class AuditEvent(AutoNameStrEnum):
     CLUSTER_SCALE_REQUESTED = auto()
     CLUSTER_UPGRADE_REQUESTED = auto()
     CLUSTER_RESTORE_REQUESTED = auto()
+    JOB_ARTIFACT_DOWNLOAD_URL_CREATED = auto()
     JOB_RESCHEDULE_REQUESTED = auto()
 
 
@@ -794,6 +795,37 @@ class JobArtifactUpdate(BaseModel):
     metadata: dict[str, Any] | None = None
     expires_at: dt.datetime | None = None
     updated_by: str
+
+
+class JobArtifact(BaseModel):
+    artifact_id: str
+    job_id: int
+    cluster_id: str
+    kind: str
+    status: str
+    artifact_name: str
+    bucket: str | None = None
+    object_key: str
+    size_bytes: int | None = None
+    sha256: str | None = None
+    redacted: bool
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expires_at: dt.datetime | None = None
+    created_at: dt.datetime
+    created_by: str
+    updated_at: dt.datetime
+    updated_by: str | None = None
+
+
+class JobArtifactDownloadUrlResponse(BaseModel):
+    artifact_id: str
+    artifact_name: str
+    url: str
+    expires_at: dt.datetime
+    bucket: str
+    object_key: str
+    size_bytes: int | None = None
+    sha256: str | None = None
 
 
 class JobDetailsResponse(BaseModel):

@@ -1,18 +1,223 @@
 ---
-- name: DEBUG ZIP CLUSTER
+##############
+#   INFRA    #
+##############
+- name: GATHER DEPLOYMENT INSTANCES
   hosts: localhost
   connection: local
   gather_facts: no
   become: no
   tasks:
-    - name: Debug zip placeholder
+    - name: Gather current deployment instances
+      shell: |
+        cloud_instance gather -d {{ deployment_id }}
+      register: instances
+
+    - name: Build ansible inventory dynamically
+      add_host:
+        # id
+        name: "{{ item.public_ip }}"
+        id: "{{ item.id }}"
+
+        # locality
+        cloud: "{{ item.cloud }}"
+        region: "{{ item.region }}"
+        zone: "{{ item.zone }}"
+
+        # addresses
+        public_hostname: "{{ item.public_hostname }}"
+        public_ip: "{{ item.public_ip }}"
+        private_hostname: "{{ item.private_hostname }}"
+        private_ip: "{{ item.private_ip }}"
+
+        # tags
+        ansible_user: "{{ item.ansible_user }}"
+        ansible_host: "{{ item.public_ip }}"
+        groups: "{{ item.inventory_groups }}"
+        cluster_name: "{{ item.cluster_name }}"
+        group_name: "{{ item.group_name }}"
+        extra_vars: "{{ item.extra_vars }}"
+      loop: "{{ instances.stdout | from_json }}"
+
+- name: START DEBUG ZIP COLLECTION
+  hosts: cockroachdb
+  gather_facts: no
+  run_once: yes
+  become: yes
+  vars:
+    debug_zip_work_dir: "/tmp/cp-debug-zip-{{ cp_job_id }}-{{ artifact_id }}"
+    debug_zip_path: "{{ debug_zip_work_dir }}/{{ artifact_name }}"
+    debug_zip_status_path: "{{ debug_zip_work_dir }}/status.json"
+    debug_zip_log_path: "{{ debug_zip_work_dir }}/debug-zip.log"
+    debug_zip_script_path: "{{ debug_zip_work_dir }}/run-debug-zip.sh"
+    cockroachdb_advertise_addr: "{{ public_ip | default(ansible_host) }}"
+    cockroachdb_certs_dir: /var/lib/cockroach/certs
+  tasks:
+    - name: Create debug zip work directory
+      file:
+        path: "{{ debug_zip_work_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Install debug zip launcher script
+      copy:
+        dest: "{{ debug_zip_script_path }}"
+        mode: "0700"
+        content: |
+          #!/usr/bin/env bash
+          set -u
+
+          status_path={{ debug_zip_status_path | quote }}
+          zip_path={{ debug_zip_path | quote }}
+          log_path={{ debug_zip_log_path | quote }}
+          upload_url={{ artifact_put_url | quote }}
+
+          write_status() {
+            local status="$1"
+            local size_bytes="${2:-}"
+            local sha256="${3:-}"
+            local error="${4:-}"
+
+            python3 - "$status_path" "$status" "$size_bytes" "$sha256" "$error" <<'PY'
+          import datetime as dt
+          import json
+          import sys
+
+          path, status, size_bytes, sha256, error = sys.argv[1:6]
+          payload = {
+              "artifact_id": "{{ artifact_id }}",
+              "artifact_name": "{{ artifact_name }}",
+              "bucket": "{{ artifact_bucket }}",
+              "object_key": "{{ artifact_object_key }}",
+              "expires_at": "{{ artifact_expires_at }}",
+              "kind": "debug_zip",
+              "redacted": {{ (debug_zip_options.redact | default(true)) | to_json }},
+              "status": status,
+              "metadata": {
+                  "artifact_uri": "{{ artifact_uri }}",
+                  "log_path": "{{ debug_zip_log_path }}",
+                  "remote_started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+              },
+          }
+          if size_bytes:
+              payload["size_bytes"] = int(size_bytes)
+          if sha256:
+              payload["sha256"] = sha256
+          if error:
+              payload["error"] = error
+          with open(path, "w", encoding="utf-8") as status_file:
+              json.dump(payload, status_file)
+          PY
+          }
+
+          write_status RUNNING
+
+          {
+            echo "Starting cockroach debug zip at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            debug_zip_args=(
+              --host={{ cockroachdb_advertise_addr | quote }}
+              --certs-dir={{ cockroachdb_certs_dir | quote }}
+              --include-range-info={{ (debug_zip_options.include_range_info | default(true)) | ternary('true', 'false') }}
+              --include-running-job-traces={{ (debug_zip_options.include_running_job_traces | default(true)) | ternary('true', 'false') }}
+              --validate-zip-file={{ (debug_zip_options.validate_zip_file | default(true)) | ternary('true', 'false') }}
+            )
+            {% if debug_zip_options.cpu_profile_duration is defined %}
+            debug_zip_args+=(--cpu-profile-duration={{ debug_zip_options.cpu_profile_duration | quote }})
+            {% endif %}
+            {% if debug_zip_options.concurrency is defined %}
+            debug_zip_args+=(--concurrency={{ debug_zip_options.concurrency }})
+            {% endif %}
+            {% if debug_zip_options.include_files is defined and debug_zip_options.include_files | length > 0 %}
+            debug_zip_args+=(--include-files={{ debug_zip_options.include_files | join(',') | quote }})
+            {% endif %}
+            {% if debug_zip_options.exclude_files is defined and debug_zip_options.exclude_files | length > 0 %}
+            debug_zip_args+=(--exclude-files={{ debug_zip_options.exclude_files | join(',') | quote }})
+            {% endif %}
+            {% if debug_zip_options.nodes is defined %}
+            debug_zip_args+=(--nodes={{ debug_zip_options.nodes | quote }})
+            {% endif %}
+            {% if debug_zip_options.exclude_nodes is defined %}
+            debug_zip_args+=(--exclude-nodes={{ debug_zip_options.exclude_nodes | quote }})
+            {% endif %}
+            {% if debug_zip_options.files_from is defined %}
+            debug_zip_args+=(--files-from={{ debug_zip_options.files_from | quote }})
+            {% endif %}
+            {% if debug_zip_options.files_until is defined %}
+            debug_zip_args+=(--files-until={{ debug_zip_options.files_until | quote }})
+            {% endif %}
+            {% if debug_zip_options.include_goroutine_stacks | default(false) %}
+            debug_zip_args+=(--include-goroutine-stacks)
+            {% endif %}
+            {% if debug_zip_options.redact | default(true) %}
+            debug_zip_args+=(--redact)
+            {% endif %}
+
+            cockroach debug zip "$zip_path" "${debug_zip_args[@]}"
+            debug_zip_rc=$?
+            if [ "$debug_zip_rc" -ne 0 ]; then
+              write_status FAILED "" "" "cockroach debug zip failed with exit code ${debug_zip_rc}"
+              exit 0
+            fi
+
+            size_bytes=$(wc -c < "$zip_path" | tr -d '[:space:]')
+            sha256=$(sha256sum "$zip_path" | awk '{print $1}')
+
+            echo "Uploading debug zip at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            curl --fail --silent --show-error \
+              --request PUT \
+              --upload-file "$zip_path" \
+              "$upload_url"
+            upload_rc=$?
+            if [ "$upload_rc" -ne 0 ]; then
+              write_status FAILED "$size_bytes" "$sha256" "debug zip upload failed with exit code ${upload_rc}"
+              exit 0
+            fi
+
+            rm -f "$zip_path"
+            write_status READY "$size_bytes" "$sha256"
+          } >> "$log_path" 2>&1
+      no_log: true
+
+    - name: Write initial debug zip status
+      copy:
+        dest: "{{ debug_zip_status_path }}"
+        mode: "0600"
+        content: |
+          {
+            "artifact_id": "{{ artifact_id }}",
+            "artifact_name": "{{ artifact_name }}",
+            "bucket": "{{ artifact_bucket }}",
+            "object_key": "{{ artifact_object_key }}",
+            "expires_at": "{{ artifact_expires_at }}",
+            "kind": "debug_zip",
+            "redacted": {{ (debug_zip_options.redact | default(true)) | to_json }},
+            "status": "RUNNING",
+            "metadata": {
+              "artifact_uri": "{{ artifact_uri }}",
+              "log_path": "{{ debug_zip_log_path }}"
+            }
+          }
+
+    - name: Start debug zip launcher in background
+      shell: |
+        nohup {{ debug_zip_script_path | quote }} >/dev/null 2>&1 &
+      no_log: true
+
+    - name: Data
       debug:
         msg:
-          deployment_id: "{{ deployment_id | default('') }}"
-          artifact_name: "{{ artifact_name | default('') }}"
-          artifact_uri: "{{ artifact_uri | default('') }}"
-          debug_zip_options: "{{ debug_zip_options | default({}) }}"
-
-    - name: Stop until debug zip collection is implemented
-      fail:
-        msg: "DEBUG_ZIP_CLUSTER is a placeholder playbook. Implement cockroach debug zip collection and artifact upload before using it."
+          artifact_id: "{{ artifact_id }}"
+          artifact_name: "{{ artifact_name }}"
+          bucket: "{{ artifact_bucket }}"
+          object_key: "{{ artifact_object_key }}"
+          expires_at: "{{ artifact_expires_at }}"
+          kind: debug_zip
+          redacted: "{{ debug_zip_options.redact | default(true) }}"
+          status: RUNNING
+          remote_host: "{{ ansible_host | default(inventory_hostname) }}"
+          remote_user: "{{ ansible_user | default('') }}"
+          remote_status_path: "{{ debug_zip_status_path }}"
+          metadata:
+            artifact_uri: "{{ artifact_uri }}"
+            log_path: "{{ debug_zip_log_path }}"
+            launcher_script_path: "{{ debug_zip_script_path }}"

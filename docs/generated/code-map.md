@@ -317,17 +317,19 @@ Job API routes.
 
 Functions:
 
-- `async list_jobs(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> list[Job]` — line 62: _No docstring._
-- `async get_job_stats(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> JobStatsResponse` — line 74: _No docstring._
-- `async get_job(job_id: int, claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> Job` — line 94: _No docstring._
-- `async get_job_details(job_id: int, claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> JobDetailsResponse` — line 124: _No docstring._
-- `async reschedule_job(job_id: int, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: JobsService=Depends(get_jobs_service)) -> JobRescheduleResponse` — line 154: _No docstring._
+- `async list_jobs(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> list[Job]` — line 69: _No docstring._
+- `async get_job_stats(claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> JobStatsResponse` — line 81: _No docstring._
+- `async get_job(job_id: int, claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> Job` — line 101: _No docstring._
+- `async get_job_details(job_id: int, claims: dict=Depends(require_readonly), service: JobsService=Depends(get_jobs_service)) -> JobDetailsResponse` — line 131: _No docstring._
+- `async create_job_artifact_download_url(job_id: int, artifact_id: str, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: JobsService=Depends(get_jobs_service)) -> JobArtifactDownloadUrlResponse` — line 165: _No docstring._
+- `async reschedule_job(job_id: int, claims: dict=Depends(require_user), actor_id: str=Depends(get_audit_actor), service: JobsService=Depends(get_jobs_service)) -> JobRescheduleResponse` — line 195: _No docstring._
 
 Routes:
 - `GET /jobs` -> `list_jobs()`
 - `GET /jobs/stats` -> `get_job_stats()`
 - `GET /jobs/{job_id}` -> `get_job()`
 - `GET /jobs/{job_id}/details` -> `get_job_details()`
+- `POST /jobs/{job_id}/artifacts/{artifact_id}/download-url` -> `create_job_artifact_download_url()`
 - `POST /jobs/{job_id}/reschedule` -> `reschedule_job()`
 
 ### `cp.auth`
@@ -514,119 +516,121 @@ Classes:
 - `JobState` — line 73: _No docstring._
 - `JobArtifactState` — line 80: _No docstring._
 - `AuditEvent` — line 86: _No docstring._
-- `CPRole` — line 126: _No docstring._
-- `SettingKey` — line 132: _No docstring._
-- `JobID` — line 170: _No docstring._
-- `ClusterIDRef` — line 174: _No docstring._
-- `StrID` — line 178: _No docstring._
-- `IntID` — line 182: _No docstring._
-- `WebUser` — line 189: _No docstring._
-- `RoleGroupMap` — line 195: _No docstring._
-- `EventCountResponse` — line 200: _No docstring._
-- `ClusterStatsResponse` — line 204: _No docstring._
-- `JobStatsResponse` — line 212: _No docstring._
-- `ErrorResponse` — line 219: _No docstring._
-- `ClusterOverview` — line 226: _No docstring._
-- `InventoryRegion` — line 237: _No docstring._
-- `InventoryLB` — line 243: _No docstring._
-- `ClusterPublic` — line 249: _No docstring._
-- `Cluster` — line 265: _No docstring._
-- `ExternalConnection` — line 286: _No docstring._
-- `ExternalConnectionUpsert` — line 303: _No docstring._
-- `ClusterRequest` — line 316: _No docstring._
-- `CommandModel` — line 326: _No docstring._
-- `CreateClusterCommand` — line 330: _No docstring._
-- `ClusterUpgradeRequest` — line 340: _No docstring._
-- `DeleteClusterCommand` — line 346: _No docstring._
-- `HealthcheckClusterCommand` — line 350: _No docstring._
-- `DebugZipOptions` — line 354: _No docstring._
-- `DebugZipRequest` — line 398: _No docstring._
-- `DebugZipClusterCommand` — line 402: _No docstring._
-- `PollDebugZipCommand` — line 406: _No docstring._
-- `RestoreRequest` — line 416: _No docstring._
-- `RestoreClusterObjectRequest` — line 426: _No docstring._
-- `RestoreFullClusterRequest` — line 476: _No docstring._
-- `PollClusterRestoreRequest` — line 506: _No docstring._
-- `SyncBackupCatalogRequest` — line 513: _No docstring._
-- `SyncClusterBackupCatalogRequest` — line 517: _No docstring._
-- `ClusterScaleRequest` — line 521: _No docstring._
-- `FailZombieJobsCommand` — line 529: _No docstring._
-- `BackupDetails` — line 563: _No docstring._
-- `BackupPathOption` — line 573: _No docstring._
-- `BackupCatalogObject` — line 577: _No docstring._
-- `BackupCatalogEntry` — line 595: _No docstring._
-- `BackupCatalogSnapshot` — line 611: _No docstring._
-- `ClusterRecoveryRestoreApiRequest` — line 615: _No docstring._
-- `BackupCatalogObjectUpsert` — line 645: _No docstring._
-- `BackupCatalogEntryUpsert` — line 660: _No docstring._
-- `DatabaseUser` — line 674: _No docstring._
-- `DatabaseRoleTemplateConfig` — line 680: _No docstring._
-- `ClusterDatabaseRole` — line 686: _No docstring._
-- `ClusterDatabaseRoleDetails` — line 696: _No docstring._
-- `ClusterDatabaseRoleGroupMapping` — line 705: _No docstring._
-- `ClusterDatabaseObject` — line 715: _No docstring._
-- `ClusterDatabaseObjectDetails` — line 724: _No docstring._
-- `CreateClusterDatabaseObjectRequest` — line 728: _No docstring._
-- `NewDatabaseUserRequest` — line 732: _No docstring._
-- `Msg` — line 741: _No docstring._
-- `Job` — line 750: _No docstring._
-- `Task` — line 760: _No docstring._
-- `JobArtifactUpsert` — line 768: _No docstring._
-- `JobArtifactUpdate` — line 786: _No docstring._
-- `JobDetailsResponse` — line 799: _No docstring._
-- `JobRescheduleResponse` — line 806: _No docstring._
-- `Region` — line 813: _No docstring._
-- `Version` — line 824: _No docstring._
-- `RegionOption` — line 828: _No docstring._
-- `NodeCountOption` — line 832: _No docstring._
-- `CpuCountOption` — line 836: _No docstring._
-- `DiskSizeOption` — line 840: _No docstring._
-- `Nodes` — line 844: _No docstring._
-- `PlaybookOverview` — line 852: _No docstring._
-- `Playbook` — line 861: _No docstring._
-- `PlaybookResponse` — line 865: _No docstring._
-- `PlaybookVersionResponse` — line 874: _No docstring._
-- `PlaybookSaveRequest` — line 882: _No docstring._
-- `DashboardMetrics` — line 886: _No docstring._
-- `DashboardSnapshot` — line 891: _No docstring._
-- `ClusterJobsSnapshot` — line 896: _No docstring._
-- `ClusterUsersSnapshot` — line 901: _No docstring._
-- `ClusterBackupsSnapshot` — line 910: _No docstring._
-- `ClusterCreateOptionsResponse` — line 915: _No docstring._
-- `ClusterDialogOptionsResponse` — line 923: _No docstring._
-- `ClusterCreateApiRequest` — line 931: _No docstring._
-- `ClusterRestoreApiRequest` — line 941: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 950: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 998: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 1002: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 1006: _No docstring._
-- `NoFreeComputeUnitError` — line 1010: _No docstring._
-- `ComputeUnitNotFoundError` — line 1014: _No docstring._
-- `ComputeUnitStateError` — line 1018: _No docstring._
-- `ComputeUnitOperationError` — line 1022: _No docstring._
-- `AllocatePlaybookError` — line 1026: _No docstring._
-- `ApiKeyNotFoundError` — line 1030: _No docstring._
-- `InvalidApiKeyValidityError` — line 1034: _No docstring._
-- `SettingNotFoundError` — line 1038: _No docstring._
-- `SettingRecord` — line 1042: _No docstring._
-- `SettingUpdateRequest` — line 1054: _No docstring._
-- `LogMsg` — line 1058: _No docstring._
-- `ApiKeyRecord` — line 1066: _No docstring._
-- `ApiKeySummary` — line 1074: _No docstring._
-- `OIDCSessionRecord` — line 1081: _No docstring._
-- `ApiKeyCreateRequest` — line 1091: _No docstring._
-- `ApiKeyCreateRequestInDB` — line 1096: _No docstring._
-- `ApiKeyCreateResponse` — line 1100: _No docstring._
-- `DeferredTask` — line 1104: _No docstring._
-- `Alert` — line 1110: _No docstring._
-- `AlertmanagerPayload` — line 1119: _No docstring._
-- `LiveAlert` — line 1129: _No docstring._
+- `CPRole` — line 127: _No docstring._
+- `SettingKey` — line 133: _No docstring._
+- `JobID` — line 171: _No docstring._
+- `ClusterIDRef` — line 175: _No docstring._
+- `StrID` — line 179: _No docstring._
+- `IntID` — line 183: _No docstring._
+- `WebUser` — line 190: _No docstring._
+- `RoleGroupMap` — line 196: _No docstring._
+- `EventCountResponse` — line 201: _No docstring._
+- `ClusterStatsResponse` — line 205: _No docstring._
+- `JobStatsResponse` — line 213: _No docstring._
+- `ErrorResponse` — line 220: _No docstring._
+- `ClusterOverview` — line 227: _No docstring._
+- `InventoryRegion` — line 238: _No docstring._
+- `InventoryLB` — line 244: _No docstring._
+- `ClusterPublic` — line 250: _No docstring._
+- `Cluster` — line 266: _No docstring._
+- `ExternalConnection` — line 287: _No docstring._
+- `ExternalConnectionUpsert` — line 304: _No docstring._
+- `ClusterRequest` — line 317: _No docstring._
+- `CommandModel` — line 327: _No docstring._
+- `CreateClusterCommand` — line 331: _No docstring._
+- `ClusterUpgradeRequest` — line 341: _No docstring._
+- `DeleteClusterCommand` — line 347: _No docstring._
+- `HealthcheckClusterCommand` — line 351: _No docstring._
+- `DebugZipOptions` — line 355: _No docstring._
+- `DebugZipRequest` — line 399: _No docstring._
+- `DebugZipClusterCommand` — line 403: _No docstring._
+- `PollDebugZipCommand` — line 407: _No docstring._
+- `RestoreRequest` — line 417: _No docstring._
+- `RestoreClusterObjectRequest` — line 427: _No docstring._
+- `RestoreFullClusterRequest` — line 477: _No docstring._
+- `PollClusterRestoreRequest` — line 507: _No docstring._
+- `SyncBackupCatalogRequest` — line 514: _No docstring._
+- `SyncClusterBackupCatalogRequest` — line 518: _No docstring._
+- `ClusterScaleRequest` — line 522: _No docstring._
+- `FailZombieJobsCommand` — line 530: _No docstring._
+- `BackupDetails` — line 564: _No docstring._
+- `BackupPathOption` — line 574: _No docstring._
+- `BackupCatalogObject` — line 578: _No docstring._
+- `BackupCatalogEntry` — line 596: _No docstring._
+- `BackupCatalogSnapshot` — line 612: _No docstring._
+- `ClusterRecoveryRestoreApiRequest` — line 616: _No docstring._
+- `BackupCatalogObjectUpsert` — line 646: _No docstring._
+- `BackupCatalogEntryUpsert` — line 661: _No docstring._
+- `DatabaseUser` — line 675: _No docstring._
+- `DatabaseRoleTemplateConfig` — line 681: _No docstring._
+- `ClusterDatabaseRole` — line 687: _No docstring._
+- `ClusterDatabaseRoleDetails` — line 697: _No docstring._
+- `ClusterDatabaseRoleGroupMapping` — line 706: _No docstring._
+- `ClusterDatabaseObject` — line 716: _No docstring._
+- `ClusterDatabaseObjectDetails` — line 725: _No docstring._
+- `CreateClusterDatabaseObjectRequest` — line 729: _No docstring._
+- `NewDatabaseUserRequest` — line 733: _No docstring._
+- `Msg` — line 742: _No docstring._
+- `Job` — line 751: _No docstring._
+- `Task` — line 761: _No docstring._
+- `JobArtifactUpsert` — line 769: _No docstring._
+- `JobArtifactUpdate` — line 787: _No docstring._
+- `JobArtifact` — line 800: _No docstring._
+- `JobArtifactDownloadUrlResponse` — line 820: _No docstring._
+- `JobDetailsResponse` — line 831: _No docstring._
+- `JobRescheduleResponse` — line 838: _No docstring._
+- `Region` — line 845: _No docstring._
+- `Version` — line 856: _No docstring._
+- `RegionOption` — line 860: _No docstring._
+- `NodeCountOption` — line 864: _No docstring._
+- `CpuCountOption` — line 868: _No docstring._
+- `DiskSizeOption` — line 872: _No docstring._
+- `Nodes` — line 876: _No docstring._
+- `PlaybookOverview` — line 884: _No docstring._
+- `Playbook` — line 893: _No docstring._
+- `PlaybookResponse` — line 897: _No docstring._
+- `PlaybookVersionResponse` — line 906: _No docstring._
+- `PlaybookSaveRequest` — line 914: _No docstring._
+- `DashboardMetrics` — line 918: _No docstring._
+- `DashboardSnapshot` — line 923: _No docstring._
+- `ClusterJobsSnapshot` — line 928: _No docstring._
+- `ClusterUsersSnapshot` — line 933: _No docstring._
+- `ClusterBackupsSnapshot` — line 942: _No docstring._
+- `ClusterCreateOptionsResponse` — line 947: _No docstring._
+- `ClusterDialogOptionsResponse` — line 955: _No docstring._
+- `ClusterCreateApiRequest` — line 963: _No docstring._
+- `ClusterRestoreApiRequest` — line 973: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 982: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 1030: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 1034: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 1038: _No docstring._
+- `NoFreeComputeUnitError` — line 1042: _No docstring._
+- `ComputeUnitNotFoundError` — line 1046: _No docstring._
+- `ComputeUnitStateError` — line 1050: _No docstring._
+- `ComputeUnitOperationError` — line 1054: _No docstring._
+- `AllocatePlaybookError` — line 1058: _No docstring._
+- `ApiKeyNotFoundError` — line 1062: _No docstring._
+- `InvalidApiKeyValidityError` — line 1066: _No docstring._
+- `SettingNotFoundError` — line 1070: _No docstring._
+- `SettingRecord` — line 1074: _No docstring._
+- `SettingUpdateRequest` — line 1086: _No docstring._
+- `LogMsg` — line 1090: _No docstring._
+- `ApiKeyRecord` — line 1098: _No docstring._
+- `ApiKeySummary` — line 1106: _No docstring._
+- `OIDCSessionRecord` — line 1113: _No docstring._
+- `ApiKeyCreateRequest` — line 1123: _No docstring._
+- `ApiKeyCreateRequestInDB` — line 1128: _No docstring._
+- `ApiKeyCreateResponse` — line 1132: _No docstring._
+- `DeferredTask` — line 1136: _No docstring._
+- `Alert` — line 1142: _No docstring._
+- `AlertmanagerPayload` — line 1151: _No docstring._
+- `LiveAlert` — line 1161: _No docstring._
 
 Functions:
 
-- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 282: _No docstring._
-- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 552: _No docstring._
-- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 556: _No docstring._
+- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 283: _No docstring._
+- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 553: _No docstring._
+- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 557: _No docstring._
 
 ### `cp.repos`
 
@@ -786,7 +790,7 @@ Path: `cp/repos/jobs.py`
 Job and task metadata repository.
 
 Classes:
-- `JobsRepo` — line 21: _No docstring._
+- `JobsRepo` — line 22: _No docstring._
 
 ### `cp.repos.mq`
 
@@ -1000,7 +1004,7 @@ Path: `cp/services/jobs.py`
 Business logic for the jobs vertical.
 
 Classes:
-- `JobsService` — line 20: _No docstring._
+- `JobsService` — line 23: _No docstring._
 
 ### `cp.services.storage_broker`
 

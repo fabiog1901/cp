@@ -59,6 +59,7 @@
 | `GET` | `/jobs` | `cp.api.jobs.list_jobs` | `-` |
 | `GET` | `/jobs/stats` | `cp.api.jobs.get_job_stats` | `JobStatsResponse` |
 | `GET` | `/jobs/{job_id}` | `cp.api.jobs.get_job` | `-` |
+| `POST` | `/jobs/{job_id}/artifacts/{artifact_id}/download-url` | `cp.api.jobs.create_job_artifact_download_url` | `JobArtifactDownloadUrlResponse` |
 | `GET` | `/jobs/{job_id}/details` | `cp.api.jobs.get_job_details` | `JobDetailsResponse` |
 | `POST` | `/jobs/{job_id}/reschedule` | `cp.api.jobs.reschedule_job` | `JobRescheduleResponse` |
 | `GET` | `/node_counts` | `cp.api.admin.node_counts.list_node_counts` | `-` |
