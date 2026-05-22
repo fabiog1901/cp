@@ -24,6 +24,7 @@
 | `POST` | `/clusters/upgrade` | `cp.api.clusters.upgrade_cluster` | `JobID` |
 | `DELETE` | `/clusters/{cluster_id}` | `cp.api.clusters.delete_cluster` | `JobID` |
 | `GET` | `/clusters/{cluster_id}` | `cp.api.clusters.get_cluster` | `-` |
+| `GET` | `/clusters/{cluster_id}/artifacts` | `cp.api.clusters.list_cluster_artifacts` | `ClusterArtifactsSnapshot` |
 | `POST` | `/clusters/{cluster_id}/artifacts/{artifact_id}/download-url` | `cp.api.clusters.create_cluster_artifact_download_url` | `ArtifactDownloadUrlResponse` |
 | `GET` | `/clusters/{cluster_id}/backups` | `cp.api.clusters.get_cluster_backups` | `ClusterBackupsSnapshot` |
 | `GET` | `/clusters/{cluster_id}/backups/details` | `cp.api.clusters.get_cluster_backup_details` | `-` |

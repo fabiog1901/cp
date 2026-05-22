@@ -334,3 +334,34 @@ class JobsRepo:
             ClusterArtifact,
             operation="jobs.get_cluster_artifact",
         )
+
+    def list_cluster_artifacts(
+        self,
+        cluster_id: str,
+        kind: str | None = None,
+    ) -> list[ClusterArtifact]:
+        if kind:
+            return fetch_all(
+                """
+                SELECT *
+                FROM cluster_artifact_catalog
+                WHERE cluster_id = %s
+                    AND kind = %s
+                ORDER BY created_at DESC
+                """,
+                (cluster_id, kind),
+                ClusterArtifact,
+                operation="jobs.list_cluster_artifacts",
+            )
+
+        return fetch_all(
+            """
+            SELECT *
+            FROM cluster_artifact_catalog
+            WHERE cluster_id = %s
+            ORDER BY created_at DESC
+            """,
+            (cluster_id,),
+            ClusterArtifact,
+            operation="jobs.list_cluster_artifacts",
+        )

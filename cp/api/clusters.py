@@ -18,6 +18,7 @@ from ..infra import (
 from ..models import (
     ArtifactDownloadUrlResponse,
     BackupDetails,
+    ClusterArtifactsSnapshot,
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
     ClusterCreateOptionsResponse,
@@ -217,6 +218,36 @@ async def create_cluster_debug_zip(
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)
+
+
+@router.get(
+    "/{cluster_id}/artifacts",
+    response_model=ClusterArtifactsSnapshot,
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found."}},
+)
+async def list_cluster_artifacts(
+    cluster_id: str,
+    kind: str | None = None,
+    claims: dict = Depends(require_readonly),
+    service: ClusterService = Depends(get_cluster_service),
+) -> ClusterArtifactsSnapshot:
+    """Return artifact catalog entries for one visible cluster."""
+    groups, is_admin = get_access_scope(claims)
+    try:
+        snapshot = service.list_cluster_artifacts(
+            cluster_id,
+            groups,
+            is_admin,
+            kind=kind,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
+    if snapshot is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cluster '{cluster_id}' was not found.",
+        )
+    return snapshot
 
 
 @router.post(

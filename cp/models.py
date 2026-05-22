@@ -828,6 +828,12 @@ class ArtifactDownloadUrlResponse(BaseModel):
     sha256: str | None = None
 
 
+class ClusterArtifactsSnapshot(BaseModel):
+    cluster_id: str
+    artifacts: list[ClusterArtifact]
+    artifacts_by_kind: dict[str, list[ClusterArtifact]]
+
+
 class JobDetailsResponse(BaseModel):
     job: Job
     description_yaml: str

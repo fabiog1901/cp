@@ -12,6 +12,7 @@ from ..models import (
     AuditEvent,
     ArtifactDownloadUrlResponse,
     Cluster,
+    ClusterArtifactsSnapshot,
     ClusterPublic,
     ClusterScaleRequest,
     ClusterStatsResponse,
@@ -354,6 +355,41 @@ class ClusterService:
                     f"Unable to create download URL for artifact '{artifact_id}'."
                 ),
             ) from err
+
+    def list_cluster_artifacts(
+        self,
+        cluster_id: str,
+        groups: list[str],
+        is_admin: bool,
+        *,
+        kind: str | None = None,
+    ) -> ClusterArtifactsSnapshot | None:
+        selected_cluster = self.get_cluster_for_user(cluster_id, groups, is_admin)
+        if selected_cluster is None:
+            return None
+
+        normalized_kind = kind.strip() if kind else None
+        if normalized_kind == "":
+            normalized_kind = None
+
+        try:
+            artifacts = self.repo.list_cluster_artifacts(cluster_id, normalized_kind)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Cluster artifacts are temporarily unavailable.",
+                fallback_message=f"Unable to load artifacts for cluster '{cluster_id}'.",
+            ) from err
+
+        artifacts_by_kind: dict[str, list] = {}
+        for artifact in artifacts:
+            artifacts_by_kind.setdefault(artifact.kind, []).append(artifact)
+
+        return ClusterArtifactsSnapshot(
+            cluster_id=cluster_id,
+            artifacts=artifacts,
+            artifacts_by_kind=artifacts_by_kind,
+        )
 
     def enqueue_cluster_scale(
         self,
