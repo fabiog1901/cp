@@ -112,6 +112,30 @@ window.app = function () {
       details: false,
       restore: false,
     },
+    clusterArtifacts: [],
+    clusterArtifactsVisibleRows: [],
+    selectedClusterArtifactKind: "debug_zip",
+    clusterArtifactsFilterQuery: "",
+    clusterArtifactsLastUpdatedUtc: null,
+    clusterArtifactsAutoRefreshEnabled: true,
+    _clusterArtifactsAutoTimer: null,
+    clusterArtifactsSortIndex: 4,
+    clusterArtifactsSortDir: "desc",
+    clusterArtifactsSortTypeByIndex: {
+      0: "string", // artifact_name
+      1: "string", // status
+      2: "number", // size_bytes
+      3: "string", // redacted
+      4: "date", // created_at
+      5: "date", // expires_at
+      6: "number", // job_id
+      7: "string", // sha256
+    },
+    clusterArtifactsLoading: {
+      list: false,
+      download: false,
+    },
+    clusterArtifactDownloadingId: "",
     clusterRecoveryBackups: [],
     clusterRecoveryExpanded: {},
     clusterRecoveryLastUpdatedUtc: null,
@@ -1025,6 +1049,10 @@ window.app = function () {
         clearInterval(this._clusterBackupsAutoTimer);
         this._clusterBackupsAutoTimer = null;
       }
+      if (this._clusterArtifactsAutoTimer) {
+        clearInterval(this._clusterArtifactsAutoTimer);
+        this._clusterArtifactsAutoTimer = null;
+      }
       if (this._eventsAutoTimer) {
         clearInterval(this._eventsAutoTimer);
         this._eventsAutoTimer = null;
@@ -1491,6 +1519,12 @@ window.app = function () {
                 { path: this.selectedClusterBackupPath },
               )
             : this.routeHash("/clusters");
+        case "cluster_artifacts":
+          return this.selectedClusterId
+            ? this.routeHash(
+                `/clusters/${encodeURIComponent(this.selectedClusterId)}/artifacts/${encodeURIComponent(this.selectedClusterArtifactKind || "debug_zip")}`,
+              )
+            : this.routeHash("/clusters");
         case "cluster_recovery":
           return this.selectedClusterId
             ? this.routeHash(
@@ -1563,6 +1597,8 @@ window.app = function () {
         await this.ensureClusterDatabasesView();
       else if (this.view === "cluster_backups")
         await this.ensureClusterBackupsView();
+      else if (this.view === "cluster_artifacts")
+        await this.ensureClusterArtifactsView();
       else if (this.view === "cluster_recovery")
         await this.ensureClusterRecoveryView();
       else if (this.view === "jobs") await this.ensureJobsView();
@@ -1607,6 +1643,12 @@ window.app = function () {
           else if (parts[2] === "users") nextView = "cluster_users";
           else if (parts[2] === "databases") nextView = "cluster_databases";
           else if (parts[2] === "backups") nextView = "cluster_backups";
+          else if (parts[2] === "artifacts") {
+            nextView = "cluster_artifacts";
+            this.selectedClusterArtifactKind = String(
+              parts[3] || "debug_zip",
+            ).trim();
+          }
           else if (parts[2] === "recovery") nextView = "cluster_recovery";
           else nextView = "cluster";
         }
@@ -1667,6 +1709,7 @@ window.app = function () {
           this.clearClusterUsersState();
           this.clusterBackups = [];
           this.clusterBackupDetails = [];
+          this.clearClusterArtifactsState();
           this.clusterRecoveryBackups = [];
           this.clusterRecoveryExpanded = {};
           this.clusterRecoveryLastUpdatedUtc = null;
@@ -1793,6 +1836,7 @@ window.app = function () {
         cluster_dashboard: "Cluster dashboard and live time-series metrics",
         cluster_users: "Cluster database users and role management",
         cluster_backups: "Cluster backups and backup object details",
+        cluster_artifacts: "Cluster artifacts and diagnostic downloads",
         cluster_recovery: "Restore a cluster from cataloged full backups",
         jobs: "Queued and completed orchestration work",
         job: "Job details and task execution history",
@@ -2152,6 +2196,15 @@ window.app = function () {
           this.refreshClusterBackups();
       }, 20_000);
 
+      this.setManagedInterval("cluster_artifacts", "_clusterArtifactsAutoTimer", () => {
+        if (
+          this.clusterArtifactsAutoRefreshEnabled &&
+          this.view === "cluster_artifacts" &&
+          this.selectedClusterId
+        )
+          this.refreshClusterArtifacts();
+      }, 20_000);
+
       this.setManagedInterval("cluster_recovery", "_clusterRecoveryAutoTimer", () => {
         if (
           this.clusterRecoveryAutoRefreshEnabled &&
@@ -2454,6 +2507,21 @@ window.app = function () {
       } else if (!this.clusterBackupsLoading.details) {
         if (this.selectedClusterBackupPath) await this.refreshSelectedBackupDetails();
       }
+    },
+
+    async ensureClusterArtifactsView() {
+      if (!this.selectedClusterId) {
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.clearClusterArtifactsState();
+        this.view = "clusters";
+        localStorage.setItem("cp_view", this.view);
+        this.syncHashFromState(true);
+        return;
+      }
+      if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+      if (!this.clusterArtifactsLoading.list) await this.refreshClusterArtifacts();
+      else this.applyClusterArtifactsFilterSort();
     },
 
     async ensureClusterRecoveryView() {
@@ -3183,6 +3251,7 @@ window.app = function () {
       this.clusterConnectCopiedFor = "";
       this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
+      this.clearClusterArtifactsState();
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
       this.clearViewNotice();
@@ -3225,6 +3294,13 @@ window.app = function () {
       this.clusterDatabaseObjectsLastUpdatedUtc = null;
       this.modal.clusterDatabaseObjectCreate.database_name = "";
       this.modal.clusterDatabaseObjectDeleteConfirm.database_name = "";
+    },
+
+    clearClusterArtifactsState() {
+      this.clusterArtifacts = [];
+      this.clusterArtifactsVisibleRows = [];
+      this.clusterArtifactsLastUpdatedUtc = null;
+      this.clusterArtifactDownloadingId = "";
     },
 
     persistClusterDatabaseObjectsFilter() {
@@ -3667,6 +3743,22 @@ window.app = function () {
       this.clearViewNotice();
       this.syncHashFromState();
       this.ensureClusterBackupsView();
+    },
+
+    openClusterDebugZips() {
+      const clusterId =
+        this.selectedCluster?.cluster_id || this.selectedClusterId;
+      if (!clusterId) return;
+      this.selectedClusterId = String(clusterId).trim();
+      this.selectedClusterArtifactKind = "debug_zip";
+      localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+      this.clearClusterDatabaseObjectsState();
+      this.clearClusterUsersState();
+      this.view = "cluster_artifacts";
+      localStorage.setItem("cp_view", this.view);
+      this.clearViewNotice();
+      this.syncHashFromState();
+      this.ensureClusterArtifactsView();
     },
 
     openClusterRecovery() {
@@ -4755,6 +4847,189 @@ window.app = function () {
       if (normalized === "database") return "Database";
       if (normalized === "table") return "Table";
       return normalized || "-";
+    },
+
+    clusterArtifactKindLabel(kind = this.selectedClusterArtifactKind) {
+      const normalized = String(kind || "").trim().toLowerCase();
+      if (normalized === "debug_zip") return "Debug ZIPs";
+      return normalized ? normalized.replaceAll("_", " ") : "Artifacts";
+    },
+
+    formatBytes(bytes) {
+      const value = Number(bytes);
+      if (!Number.isFinite(value) || value <= 0) return "-";
+      const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+      const exponent = Math.min(
+        Math.floor(Math.log(value) / Math.log(1024)),
+        units.length - 1,
+      );
+      const scaled = value / 1024 ** exponent;
+      const rounded = exponent === 0 ? String(Math.round(scaled)) : scaled.toFixed(1);
+      return `${rounded.endsWith(".0") ? rounded.slice(0, -2) : rounded} ${units[exponent]}`;
+    },
+
+    clusterArtifactRowText(row) {
+      return [
+        row?.artifact_name,
+        row?.status,
+        row?.kind,
+        row?.job_id,
+        row?.created_by,
+        row?.sha256,
+        this.toUtcStringMaybe(row?.created_at),
+        this.toUtcStringMaybe(row?.expires_at),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    },
+
+    clusterArtifactCellText(row, colIndex) {
+      switch (colIndex) {
+        case 0:
+          return row?.artifact_name || "";
+        case 1:
+          return row?.status || "";
+        case 2:
+          return row?.size_bytes ?? "";
+        case 3:
+          return row?.redacted ? "yes" : "no";
+        case 4:
+          return row?.created_at || "";
+        case 5:
+          return row?.expires_at || "";
+        case 6:
+          return row?.job_id ?? "";
+        case 7:
+          return row?.sha256 || "";
+        default:
+          return "";
+      }
+    },
+
+    clusterArtifactsSortClass(index) {
+      if (this.clusterArtifactsSortIndex !== index) return "";
+      return this.clusterArtifactsSortDir === "asc" ? "sort-asc" : "sort-desc";
+    },
+
+    toggleClusterArtifactsSort(index) {
+      if (this.clusterArtifactsSortIndex === index)
+        this.clusterArtifactsSortDir =
+          this.clusterArtifactsSortDir === "asc" ? "desc" : "asc";
+      else {
+        this.clusterArtifactsSortIndex = index;
+        this.clusterArtifactsSortDir = index >= 4 ? "desc" : "asc";
+      }
+      this.applyClusterArtifactsFilterSort();
+    },
+
+    applyClusterArtifactsFilterSort() {
+      const q = String(this.clusterArtifactsFilterQuery || "")
+        .trim()
+        .toLowerCase();
+      let rows = Array.isArray(this.clusterArtifacts)
+        ? [...this.clusterArtifacts]
+        : [];
+      if (q) {
+        rows = rows.filter((row) => this.clusterArtifactRowText(row).includes(q));
+      }
+
+      if (this.clusterArtifactsSortIndex !== null) {
+        const type =
+          this.clusterArtifactsSortTypeByIndex[this.clusterArtifactsSortIndex] ||
+          "string";
+        const idx = this.clusterArtifactsSortIndex;
+        const dir = this.clusterArtifactsSortDir;
+        rows.sort((a, b) => {
+          const av = this.parseValue(type, this.clusterArtifactCellText(a, idx));
+          const bv = this.parseValue(type, this.clusterArtifactCellText(b, idx));
+          if (av < bv) return dir === "asc" ? -1 : 1;
+          if (av > bv) return dir === "asc" ? 1 : -1;
+          return 0;
+        });
+      }
+      this.clusterArtifactsVisibleRows = rows;
+    },
+
+    async refreshClusterArtifacts() {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      if (!clusterId) return;
+
+      const kind = String(this.selectedClusterArtifactKind || "debug_zip").trim();
+      this.clusterArtifactsLoading.list = true;
+      try {
+        const snapshot = await this.apiFetch(
+          this.visibilityPath(
+            `/clusters/${encodeURIComponent(clusterId)}/artifacts`,
+            { kind },
+          ),
+          { method: "GET" },
+        );
+        this.clusterArtifacts = Array.isArray(snapshot?.artifacts)
+          ? snapshot.artifacts
+          : [];
+        this.clusterArtifactsLastUpdatedUtc = this.utcNowString();
+        this.applyClusterArtifactsFilterSort();
+      } catch (e) {
+        console.error(e);
+        this.clearClusterArtifactsState();
+        this.clusterArtifactsLastUpdatedUtc = this.utcNowString();
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to load cluster artifacts."),
+        );
+      } finally {
+        this.clusterArtifactsLoading.list = false;
+      }
+    },
+
+    canDownloadClusterArtifact(row) {
+      return String(row?.status || "").toUpperCase() === "READY";
+    },
+
+    async downloadClusterArtifact(row) {
+      const clusterId = String(
+        this.selectedCluster?.cluster_id || this.selectedClusterId || "",
+      ).trim();
+      const artifactId = String(row?.artifact_id || "").trim();
+      if (!clusterId || !artifactId || !this.canDownloadClusterArtifact(row)) {
+        return;
+      }
+
+      this.clusterArtifactsLoading.download = true;
+      this.clusterArtifactDownloadingId = artifactId;
+      try {
+        const response = await this.apiFetch(
+          `/clusters/${encodeURIComponent(clusterId)}/artifacts/${encodeURIComponent(artifactId)}/download-url`,
+          { method: "POST" },
+        );
+        const url = String(response?.url || "").trim();
+        if (!url) throw new Error("Download URL was not returned.");
+
+        if (typeof document !== "undefined") {
+          const anchor = document.createElement("a");
+          anchor.href = url;
+          anchor.download = response?.artifact_name || row?.artifact_name || "";
+          anchor.rel = "noopener";
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+        } else if (typeof window !== "undefined") {
+          window.location.assign(url);
+        }
+        this.setActionNotice(
+          `Download started for '${response?.artifact_name || row?.artifact_name || artifactId}'.`,
+        );
+      } catch (e) {
+        console.error(e);
+        this.setActionNotice(
+          this.errorMessage(e, "Failed to create artifact download URL."),
+        );
+      } finally {
+        this.clusterArtifactsLoading.download = false;
+        this.clusterArtifactDownloadingId = "";
+      }
     },
 
     backupRestoreObjectName(row) {
