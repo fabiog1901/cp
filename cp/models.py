@@ -120,7 +120,7 @@ class AuditEvent(AutoNameStrEnum):
     CLUSTER_SCALE_REQUESTED = auto()
     CLUSTER_UPGRADE_REQUESTED = auto()
     CLUSTER_RESTORE_REQUESTED = auto()
-    JOB_ARTIFACT_DOWNLOAD_URL_CREATED = auto()
+    CLUSTER_ARTIFACT_DOWNLOAD_URL_CREATED = auto()
     JOB_RESCHEDULE_REQUESTED = auto()
 
 
@@ -817,7 +817,7 @@ class JobArtifact(BaseModel):
     updated_by: str | None = None
 
 
-class JobArtifactDownloadUrlResponse(BaseModel):
+class ArtifactDownloadUrlResponse(BaseModel):
     artifact_id: str
     artifact_name: str
     url: str

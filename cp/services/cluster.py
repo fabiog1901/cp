@@ -10,6 +10,7 @@ from ..infra.db import get_repo
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,
+    ArtifactDownloadUrlResponse,
     Cluster,
     ClusterPublic,
     ClusterScaleRequest,
@@ -21,13 +22,20 @@ from ..models import (
     DebugZipClusterCommand,
     DebugZipRequest,
     HealthcheckClusterCommand,
+    JobArtifactState,
     JobID,
     RestoreRequest,
     to_public_cluster,
 )
 from ..repos import Repo
 from .base import log_event
-from .errors import ServiceValidationError, from_repository_error
+from .errors import (
+    ServiceConflictError,
+    ServiceNotFoundError,
+    ServiceValidationError,
+    from_repository_error,
+)
+from .storage_broker import StorageBrokerService
 
 
 class ClusterService:
@@ -276,6 +284,74 @@ class ClusterService:
                 unavailable_message="Debug zip collection could not be requested right now.",
                 fallback_message=(
                     f"Unable to request debug zip for cluster '{request.cluster_id}'."
+                ),
+            ) from err
+
+    def create_artifact_download_url(
+        self,
+        cluster_id: str,
+        artifact_id: str,
+        groups: list[str],
+        is_admin: bool,
+        requested_by: str,
+    ) -> ArtifactDownloadUrlResponse:
+        selected_cluster = self.get_cluster_for_user(cluster_id, groups, is_admin)
+        if selected_cluster is None:
+            raise ServiceNotFoundError(f"Cluster '{cluster_id}' was not found.")
+
+        try:
+            artifact = self.repo.get_cluster_artifact(cluster_id, artifact_id)
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Cluster artifacts are temporarily unavailable.",
+                fallback_message=(
+                    f"Unable to load artifact '{artifact_id}' for cluster '{cluster_id}'."
+                ),
+            ) from err
+
+        if artifact is None:
+            raise ServiceNotFoundError(f"Artifact '{artifact_id}' was not found.")
+
+        if artifact.status != JobArtifactState.READY.value:
+            raise ServiceConflictError(
+                f"Artifact '{artifact_id}' is not ready for download."
+            )
+
+        try:
+            download = StorageBrokerService(self.repo).create_presigned_get_url(
+                cluster_id,
+                artifact.object_key,
+            )
+            log_event(
+                self.repo,
+                requested_by,
+                AuditEvent.CLUSTER_ARTIFACT_DOWNLOAD_URL_CREATED,
+                {
+                    "cluster_id": cluster_id,
+                    "job_id": artifact.job_id,
+                    "artifact_id": artifact.artifact_id,
+                    "kind": artifact.kind,
+                    "object_key": artifact.object_key,
+                    "expires_at": download.expires_at.isoformat(),
+                },
+            )
+            return ArtifactDownloadUrlResponse(
+                artifact_id=artifact.artifact_id,
+                artifact_name=artifact.artifact_name,
+                url=download.url,
+                expires_at=download.expires_at,
+                bucket=download.bucket,
+                object_key=download.object_key,
+                size_bytes=artifact.size_bytes,
+                sha256=artifact.sha256,
+            )
+        except RepositoryError as err:
+            raise from_repository_error(
+                err,
+                unavailable_message="Artifact download URLs are temporarily unavailable.",
+                fallback_message=(
+                    f"Unable to create download URL for artifact '{artifact_id}'."
                 ),
             ) from err
 

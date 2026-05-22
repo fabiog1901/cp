@@ -16,6 +16,7 @@ from ..infra import (
     get_dashboard_service,
 )
 from ..models import (
+    ArtifactDownloadUrlResponse,
     BackupDetails,
     ClusterBackupsSnapshot,
     ClusterCreateApiRequest,
@@ -51,6 +52,7 @@ from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
 from ..services.errors import (
     ServiceAuthorizationError,
+    ServiceConflictError,
     ServiceError,
     ServiceNotFoundError,
     ServiceUnavailableError,
@@ -71,6 +73,10 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
     if isinstance(err, ServiceValidationError):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=err.user_message
+        )
+    if isinstance(err, ServiceConflictError):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=err.user_message
         )
     if isinstance(err, ServiceAuthorizationError):
         raise HTTPException(
@@ -211,6 +217,41 @@ async def create_cluster_debug_zip(
     except ServiceError as err:
         _raise_http_from_service_error(err)
     return JobID(job_id=job_id)
+
+
+@router.post(
+    "/{cluster_id}/artifacts/{artifact_id}/download-url",
+    response_model=ArtifactDownloadUrlResponse,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": "Cluster artifact not found.",
+        },
+        409: {
+            "model": ErrorResponse,
+            "description": "Cluster artifact is not ready for download.",
+        },
+    },
+)
+async def create_cluster_artifact_download_url(
+    cluster_id: str,
+    artifact_id: str,
+    claims: dict = Depends(require_user),
+    actor_id: str = Depends(get_audit_actor),
+    service: ClusterService = Depends(get_cluster_service),
+) -> ArtifactDownloadUrlResponse:
+    """Create a presigned download URL for a ready cluster artifact."""
+    groups, is_admin = get_access_scope(claims)
+    try:
+        return service.create_artifact_download_url(
+            cluster_id,
+            artifact_id,
+            groups,
+            is_admin,
+            actor_id,
+        )
+    except ServiceError as err:
+        _raise_http_from_service_error(err)
 
 
 @router.post(

@@ -24,6 +24,7 @@
 | `POST` | `/clusters/upgrade` | `cp.api.clusters.upgrade_cluster` | `JobID` |
 | `DELETE` | `/clusters/{cluster_id}` | `cp.api.clusters.delete_cluster` | `JobID` |
 | `GET` | `/clusters/{cluster_id}` | `cp.api.clusters.get_cluster` | `-` |
+| `POST` | `/clusters/{cluster_id}/artifacts/{artifact_id}/download-url` | `cp.api.clusters.create_cluster_artifact_download_url` | `ArtifactDownloadUrlResponse` |
 | `GET` | `/clusters/{cluster_id}/backups` | `cp.api.clusters.get_cluster_backups` | `ClusterBackupsSnapshot` |
 | `GET` | `/clusters/{cluster_id}/backups/details` | `cp.api.clusters.get_cluster_backup_details` | `-` |
 | `POST` | `/clusters/{cluster_id}/backups/restore` | `cp.api.clusters.restore_cluster` | `JobID` |
@@ -59,7 +60,6 @@
 | `GET` | `/jobs` | `cp.api.jobs.list_jobs` | `-` |
 | `GET` | `/jobs/stats` | `cp.api.jobs.get_job_stats` | `JobStatsResponse` |
 | `GET` | `/jobs/{job_id}` | `cp.api.jobs.get_job` | `-` |
-| `POST` | `/jobs/{job_id}/artifacts/{artifact_id}/download-url` | `cp.api.jobs.create_job_artifact_download_url` | `JobArtifactDownloadUrlResponse` |
 | `GET` | `/jobs/{job_id}/details` | `cp.api.jobs.get_job_details` | `JobDetailsResponse` |
 | `POST` | `/jobs/{job_id}/reschedule` | `cp.api.jobs.reschedule_job` | `JobRescheduleResponse` |
 | `GET` | `/node_counts` | `cp.api.admin.node_counts.list_node_counts` | `-` |
