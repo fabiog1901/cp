@@ -1109,8 +1109,8 @@ Remote cluster debug zip worker.
 
 Functions:
 
-- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 26: _No docstring._
-- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 73: _No docstring._
+- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 29: _No docstring._
+- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 76: _No docstring._
 
 ### `cp.workers.remote.delete`
 
