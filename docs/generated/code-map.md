@@ -1006,7 +1006,8 @@ Path: `cp/services/storage_broker.py`
 Provision and resolve external storage connections for clusters.
 
 Classes:
-- `StorageBrokerService` — line 21: _No docstring._
+- `PresignedS3Url` — line 25: _No docstring._
+- `StorageBrokerService` — line 32: _No docstring._
 
 ### `cp.workers`
 
@@ -1105,8 +1106,8 @@ Remote cluster debug zip worker.
 
 Functions:
 
-- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 25: _No docstring._
-- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 72: _No docstring._
+- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 26: _No docstring._
+- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 73: _No docstring._
 
 ### `cp.workers.remote.delete`
 

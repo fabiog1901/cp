@@ -17,6 +17,7 @@ from ...models import (
     JobState,
     PlaybookName,
 )
+from ...services.storage_broker import StorageBrokerService
 from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,14 @@ def debug_zip_cluster_worker(
 
         now = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         artifact_name = f"debug-zip-{cluster_id}-job-{job_id}-{now}.zip"
+        artifact_object_key = (
+            f"diagnostics/debug-zip/{cluster_id}/{job_id}/{artifact_name}"
+        )
+        upload = StorageBrokerService(repo).create_presigned_put_url(
+            cluster_id,
+            artifact_object_key,
+            created_by=requested_by,
+        )
         debug_zip_options = command.model_dump(
             exclude={"cluster_id"},
             exclude_none=True,
@@ -101,6 +110,11 @@ def debug_zip_cluster_worker(
             ],
             "debug_zip_options": debug_zip_options,
             "artifact_name": artifact_name,
+            "artifact_bucket": upload.bucket,
+            "artifact_object_key": upload.object_key,
+            "artifact_put_url": upload.url,
+            "artifact_expires_at": upload.expires_at.isoformat(),
+            "artifact_uri": f"s3://{upload.bucket}/{upload.object_key}",
             "requested_by": requested_by,
         }
 

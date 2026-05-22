@@ -1,8 +1,10 @@
 """Provision and resolve external storage connections for clusters."""
 
+import datetime as dt
 import json
 import secrets
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -16,6 +18,15 @@ BACKUP_CONNECTION_NAME = "backup"
 BACKUP_CONNECTION_TYPE = "s3"
 BACKUP_PROVIDER = "s3"
 BACKUP_CONNECTION_STATUS_READY = "READY"
+S3_REGION = "us-east-1"
+
+
+@dataclass(frozen=True)
+class PresignedS3Url:
+    url: str
+    bucket: str
+    object_key: str
+    expires_at: dt.datetime
 
 
 class StorageBrokerService:
@@ -256,6 +267,113 @@ class StorageBrokerService:
         )
         return (
             f"s3://{connection.bucket_name}?{query}&AWS_ENDPOINT={connection.endpoint}"
+        )
+
+    def create_presigned_put_url(
+        self,
+        cluster_id: str,
+        object_key: str,
+        *,
+        created_by: str = "system",
+        expires_seconds: int = 86400,
+    ) -> PresignedS3Url:
+        return self._create_presigned_url(
+            "put_object",
+            cluster_id,
+            object_key,
+            created_by=created_by,
+            expires_seconds=expires_seconds,
+        )
+
+    def create_presigned_get_url(
+        self,
+        cluster_id: str,
+        object_key: str,
+        *,
+        expires_seconds: int = 3600,
+    ) -> PresignedS3Url:
+        return self._create_presigned_url(
+            "get_object",
+            cluster_id,
+            object_key,
+            expires_seconds=expires_seconds,
+        )
+
+    def _create_presigned_url(
+        self,
+        client_method: str,
+        cluster_id: str,
+        object_key: str,
+        *,
+        created_by: str = "system",
+        expires_seconds: int,
+    ) -> PresignedS3Url:
+        if not object_key.strip():
+            raise ServiceValidationError("Presigned S3 object key must not be empty.")
+        if expires_seconds < 1 or expires_seconds > 604800:
+            raise ServiceValidationError(
+                "Presigned S3 URL expiry must be between 1 and 604800 seconds."
+            )
+
+        connection = self.ensure_backup_external_connection(cluster_id, created_by)
+        if not connection.bucket_name:
+            raise ServiceValidationError("External connection is missing bucket_name.")
+        if not connection.access_key_id:
+            raise ServiceValidationError(
+                "External connection is missing access_key_id."
+            )
+        if not connection.encrypted_secret_access_key:
+            raise ServiceValidationError(
+                "External connection is missing encrypted_secret_access_key."
+            )
+
+        secret = decrypt_secret(connection.encrypted_secret_access_key).decode("utf-8")
+        now = dt.datetime.now(dt.timezone.utc)
+        expires_at = now + dt.timedelta(seconds=expires_seconds)
+        s3 = self._s3_client(
+            endpoint=connection.endpoint,
+            access_key=connection.access_key_id,
+            secret_key=secret,
+        )
+        return PresignedS3Url(
+            url=s3.generate_presigned_url(
+                client_method,
+                Params={
+                    "Bucket": connection.bucket_name,
+                    "Key": object_key,
+                },
+                ExpiresIn=expires_seconds,
+            ),
+            bucket=connection.bucket_name,
+            object_key=object_key,
+            expires_at=expires_at,
+        )
+
+    def _s3_client(
+        self,
+        *,
+        endpoint: str,
+        access_key: str,
+        secret_key: str,
+    ):
+        try:
+            import boto3
+            from botocore.client import Config
+        except ImportError as err:
+            raise ServiceValidationError(
+                "boto3 is required to generate presigned S3 URLs."
+            ) from err
+
+        return boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=S3_REGION,
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "path"},
+            ),
         )
 
     def _get_required_setting(self, key: SettingKey) -> str:
