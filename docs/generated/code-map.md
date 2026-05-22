@@ -1142,7 +1142,7 @@ Remote debug zip polling worker.
 
 Functions:
 
-- `poll_debug_zip(job_id: int, command: PollDebugZipCommand, _requested_by: str) -> None` — line 13: _No docstring._
+- `poll_debug_zip(_msg_id: int, command: PollDebugZipCommand, requested_by: str) -> None` — line 31: _No docstring._
 
 ### `cp.workers.remote.scale`
 
