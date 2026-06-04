@@ -44,7 +44,7 @@ def configure_logging(repo=None, *, force: bool = False) -> None:
         "%(asctime)s [%(levelname)s] [%(request_id)s] %(message)s"
     )
     formatter.converter = time.gmtime
-    formatter.default_msec_format = "%s.%06d"
+    formatter.default_msec_format = "%s.%03d"
 
     try:
         if sys.platform != "linux":
