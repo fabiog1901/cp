@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from cpkit.audit import emit_legacy_event_best_effort
+
 from ..models import AuditEvent, LogMsg
 from ..repos import Repo
 
@@ -18,14 +20,14 @@ def log_event(
     """Best-effort audit logging for service-layer actions."""
     from ..main import request_id_ctx
 
-    try:
-        repo.log_event(
-            LogMsg(
-                user_id=actor_id,
-                action=str(action),
-                details=details,
-                request_id=request_id_ctx.get(),
-            )
-        )
-    except Exception:
-        logger.exception("Failed to write audit event %s", action)
+    emit_legacy_event_best_effort(
+        repo,
+        LogMsg(
+            user_id=actor_id,
+            action=str(action),
+            details=details,
+            request_id=request_id_ctx.get(),
+        ),
+        event_type=str(action),
+        event_logger=logger,
+    )

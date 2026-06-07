@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import RedirectResponse
+from cpkit.audit import write_legacy_event
 
 from ..infra import get_repo, request_id_ctx, safe_next_path
 from ..models import AuditEvent, LogMsg
@@ -43,13 +44,14 @@ def log_auth_event(
     details: dict[str, Any] | None = None,
 ) -> None:
     """Persist a login or logout event using the current request id context."""
-    repo.log_event(
+    write_legacy_event(
+        repo,
         LogMsg(
             user_id=actor_id,
             action=str(action),
             details=details or {},
             request_id=request_id_ctx.get(),
-        )
+        ),
     )
 
 
