@@ -1,6 +1,6 @@
 """Compatibility exports for repository exception types."""
 
-from cpkit.cpkit.errors import (
+from cpkit.errors import (
     RepositoryConflictError,
     RepositoryError,
     RepositoryPermissionError,

@@ -7,6 +7,15 @@ from .repository import (
     RepositoryUnavailableError,
     RepositoryValidationError,
 )
+from .service import (
+    ServiceAuthorizationError,
+    ServiceConflictError,
+    ServiceError,
+    ServiceNotFoundError,
+    ServiceUnavailableError,
+    ServiceValidationError,
+    from_repository_error,
+)
 
 __all__ = [
     "RepositoryConflictError",
@@ -14,4 +23,11 @@ __all__ = [
     "RepositoryPermissionError",
     "RepositoryUnavailableError",
     "RepositoryValidationError",
+    "ServiceAuthorizationError",
+    "ServiceConflictError",
+    "ServiceError",
+    "ServiceNotFoundError",
+    "ServiceUnavailableError",
+    "ServiceValidationError",
+    "from_repository_error",
 ]

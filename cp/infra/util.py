@@ -8,8 +8,8 @@ import base64
 import os
 import secrets
 
-from cpkit.cpkit.config import as_bool, safe_csv_set, safe_json_string_dict
-from cpkit.cpkit.logging import RequestIDFilter, ShorthandFormatter, request_id_ctx
+from cpkit.config import as_bool, safe_csv_set, safe_json_string_dict
+from cpkit.logging import RequestIDFilter, ShorthandFormatter, request_id_ctx
 import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from psycopg import OperationalError
@@ -137,4 +137,3 @@ def connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection:
 def _is_cluster_connection_timeout(err: OperationalError) -> bool:
     message = str(err).lower()
     return "timeout" in message or "timed out" in message
-

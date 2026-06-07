@@ -2,7 +2,7 @@
 
 import os
 
-from cpkit.cpkit.db import (
+from cpkit.db import (
     close_db,
     execute_stmt,
     fetch_all,
@@ -11,7 +11,7 @@ from cpkit.cpkit.db import (
     get_pool,
     initialize_postgres,
 )
-from cpkit.cpkit.db import translate_database_error as _translate_database_error
+from cpkit.db import translate_database_error as _translate_database_error
 
 from .util import ClusterDatabaseConnectionError
 

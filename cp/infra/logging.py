@@ -1,6 +1,6 @@
 """CP logging configuration adapter."""
 
-from cpkit.cpkit.logging import configure_logging as _configure_logging
+from cpkit.logging import configure_logging as _configure_logging
 
 from ..models import SettingKey
 
