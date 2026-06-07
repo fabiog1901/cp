@@ -13,6 +13,7 @@ dependencies = [
     "psycopg-binary (>=3.3.3,<4.0.0)",
     "psycopg-pool (>=3.3.0,<4.0.0)",
     "pydantic (>=2.12.0,<3.0.0)",
+    "cryptography (>=46.0.7,<47.0.0)",
     "systemd-python (>=235,<236) ; sys_platform == \"linux\"",
 ]
 
