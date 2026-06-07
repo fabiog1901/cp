@@ -11,8 +11,9 @@ from cpkit.audit import AuditRecorder
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import RedirectResponse
 
+from ..audit import build_log_msg
 from ..infra import get_repo, request_id_ctx, safe_next_path
-from ..models import AuditEvent, LogMsg
+from ..models import AuditEvent
 from ..repos import Repo
 from .common import (
     OIDC_NEXT_COOKIE_NAME,
@@ -37,21 +38,6 @@ def oidc_cookie_kwargs() -> dict[str, Any]:
     }
 
 
-def _build_log_msg(
-    *,
-    actor_id: str,
-    event_type: str,
-    metadata: dict[str, Any] | None,
-    request_id: str | None,
-) -> LogMsg:
-    return LogMsg(
-        user_id=actor_id,
-        action=event_type,
-        details=metadata or {},
-        request_id=request_id,
-    )
-
-
 def log_auth_event(
     repo: Repo,
     actor_id: str,
@@ -61,7 +47,7 @@ def log_auth_event(
     """Persist a login or logout event using the current request id context."""
     AuditRecorder(
         repo,
-        _build_log_msg,
+        lambda **kwargs: build_log_msg(**kwargs, default_metadata={}),
         request_id_provider=request_id_ctx.get,
     ).emit(
         action,

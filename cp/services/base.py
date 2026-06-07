@@ -5,25 +5,11 @@ from typing import Any
 
 from cpkit.audit import AuditRecorder
 
-from ..models import AuditEvent, LogMsg
+from ..audit import build_log_msg
+from ..models import AuditEvent
 from ..repos import Repo
 
 logger = logging.getLogger(__name__)
-
-
-def _build_log_msg(
-    *,
-    actor_id: str,
-    event_type: str,
-    metadata: dict[str, Any] | None,
-    request_id: str | None,
-) -> LogMsg:
-    return LogMsg(
-        user_id=actor_id,
-        action=event_type,
-        details=metadata,
-        request_id=request_id,
-    )
 
 
 def log_event(
@@ -37,7 +23,7 @@ def log_event(
 
     AuditRecorder(
         repo,
-        _build_log_msg,
+        build_log_msg,
         request_id_provider=request_id_ctx.get,
         event_logger=logger,
     ).emit_best_effort(
