@@ -7,7 +7,12 @@ from .api_keys import (
     request_target_bytes,
 )
 from .redirects import safe_next_path
-from .oidc import OIDCAuthenticationError, OIDCProviderClient
+from .oidc import (
+    OIDCAuthenticationError,
+    OIDCProviderClient,
+    OIDCSessionManager,
+    OIDCSessionRepository,
+)
 from .secrets import (
     ENCRYPTED_SECRET_VERSION,
     decrypt_secret,
@@ -19,6 +24,8 @@ __all__ = [
     "ENCRYPTED_SECRET_VERSION",
     "OIDCAuthenticationError",
     "OIDCProviderClient",
+    "OIDCSessionManager",
+    "OIDCSessionRepository",
     "api_key_signature",
     "build_api_key_signature_payload",
     "decrypt_secret",

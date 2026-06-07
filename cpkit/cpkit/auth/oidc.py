@@ -4,8 +4,9 @@ import json
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
-from typing import Any
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+from typing import Any, Protocol
 
 import jwt
 
@@ -16,6 +17,23 @@ class OIDCAuthenticationError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
         super().__init__(detail)
+
+
+class OIDCSessionRepository(Protocol):
+    """Repository-like object that persists OIDC server-side sessions."""
+
+    def get_oidc_session(self, session_id: str) -> Any | None: ...
+
+    def delete_oidc_session(self, session_id: str) -> None: ...
+
+    def update_oidc_session(
+        self,
+        session_id: str,
+        *,
+        encrypted_id_token: bytes,
+        encrypted_refresh_token: bytes | None,
+        token_expires_at: datetime,
+    ) -> None: ...
 
 
 class OIDCProviderClient:
@@ -237,3 +255,138 @@ class OIDCProviderClient:
             raise OIDCAuthenticationError(
                 "Token has an invalid 'exp' claim."
             ) from exc
+
+
+class OIDCSessionManager:
+    """Manage encrypted server-side OIDC sessions and token refresh."""
+
+    def __init__(
+        self,
+        provider_client: OIDCProviderClient,
+        *,
+        encrypt_secret: Callable[[bytes | str], bytes],
+        decrypt_secret: Callable[[bytes | str], bytes],
+        session_record_factory: Callable[..., Any],
+    ) -> None:
+        self.provider_client = provider_client
+        self.encrypt_secret = encrypt_secret
+        self.decrypt_secret = decrypt_secret
+        self.session_record_factory = session_record_factory
+
+    def build_session_record(
+        self,
+        session_id: str,
+        *,
+        id_token: str,
+        refresh_token: str | None,
+        claims: dict[str, Any],
+    ) -> Any:
+        """Return an encrypted server-side session representation."""
+        now = datetime.now(timezone.utc)
+        return self.session_record_factory(
+            session_id=session_id,
+            encrypted_id_token=self.encrypt_secret(id_token),
+            encrypted_refresh_token=(
+                self.encrypt_secret(refresh_token) if refresh_token else None
+            ),
+            token_expires_at=self.provider_client.token_expires_at(claims),
+            session_expires_at=now
+            + timedelta(
+                seconds=self.provider_client.config.session_max_age_seconds,
+            ),
+        )
+
+    def claims_from_session(
+        self,
+        repo: OIDCSessionRepository,
+        session_id: str,
+        *,
+        authorize_claims: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Load a session and refresh token material when needed."""
+        session = repo.get_oidc_session(session_id)
+        if session is None:
+            raise OIDCAuthenticationError("Not authenticated.")
+
+        now = datetime.now(timezone.utc)
+        if session.session_expires_at <= now:
+            repo.delete_oidc_session(session_id)
+            raise OIDCAuthenticationError("OIDC session expired.")
+
+        refresh_deadline = session.token_expires_at - timedelta(
+            seconds=self.provider_client.config.refresh_leeway_seconds
+        )
+        if refresh_deadline <= now:
+            claims = self.refresh_session(
+                repo,
+                session,
+                authorize_claims=authorize_claims,
+            )
+        else:
+            try:
+                id_token = self.decrypt_secret(session.encrypted_id_token).decode(
+                    "utf-8"
+                )
+                claims = self.provider_client.validate_jwt(
+                    id_token,
+                    strict_client_audience=True,
+                )
+            except Exception:
+                claims = self.refresh_session(
+                    repo,
+                    session,
+                    authorize_claims=authorize_claims,
+                )
+
+        claims = authorize_claims(claims)
+        claims["_session_id"] = session_id
+        claims["auth_type"] = "oidc"
+        return claims
+
+    def refresh_session(
+        self,
+        repo: OIDCSessionRepository,
+        session: Any,
+        *,
+        authorize_claims: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Refresh an OIDC session using its stored refresh token."""
+        if not session.encrypted_refresh_token:
+            repo.delete_oidc_session(session.session_id)
+            raise OIDCAuthenticationError("OIDC session expired.")
+
+        try:
+            refresh_token = self.decrypt_secret(session.encrypted_refresh_token).decode(
+                "utf-8"
+            )
+            token_payload = self.provider_client.refresh_tokens(refresh_token)
+        except Exception:
+            repo.delete_oidc_session(session.session_id)
+            raise OIDCAuthenticationError("OIDC refresh failed. Please sign in again.")
+
+        id_token = token_payload.get("id_token")
+        if not id_token or not isinstance(id_token, str):
+            repo.delete_oidc_session(session.session_id)
+            raise OIDCAuthenticationError(
+                "OIDC refresh response missing id_token. Please sign in again."
+            )
+
+        claims = self.provider_client.validate_jwt(
+            id_token,
+            strict_client_audience=True,
+        )
+        authorize_claims(claims)
+
+        next_refresh_token = token_payload.get("refresh_token")
+        effective_refresh_token = (
+            next_refresh_token
+            if isinstance(next_refresh_token, str) and next_refresh_token
+            else refresh_token
+        )
+        repo.update_oidc_session(
+            session.session_id,
+            encrypted_id_token=self.encrypt_secret(id_token),
+            encrypted_refresh_token=self.encrypt_secret(effective_refresh_token),
+            token_expires_at=self.provider_client.token_expires_at(claims),
+        )
+        return claims

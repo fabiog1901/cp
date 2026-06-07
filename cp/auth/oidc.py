@@ -5,11 +5,11 @@ claim normalization for CP web sessions.
 """
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from hmac import compare_digest
 from typing import Any
 
-from cpkit.auth import OIDCAuthenticationError, OIDCProviderClient
+from cpkit.auth import OIDCAuthenticationError, OIDCProviderClient, OIDCSessionManager
 from fastapi import HTTPException, Request, status
 
 from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_config
@@ -30,6 +30,12 @@ class OIDCManager(OIDCProviderClient):
 
     def __init__(self) -> None:
         super().__init__(OIDCConfig())
+        self.sessions = OIDCSessionManager(
+            self,
+            encrypt_secret=encrypt_secret,
+            decrypt_secret=decrypt_secret,
+            session_record_factory=OIDCSessionRecord,
+        )
         self._config_loaded_at = 0.0
         self._config_cache_ttl_seconds = 300
 
@@ -94,16 +100,11 @@ class OIDCManager(OIDCProviderClient):
         claims: dict[str, Any],
     ) -> OIDCSessionRecord:
         """Return the encrypted server-side session representation for an OIDC login."""
-        now = datetime.now(timezone.utc)
-        return OIDCSessionRecord(
-            session_id=session_id,
-            encrypted_id_token=encrypt_secret(id_token),
-            encrypted_refresh_token=(
-                encrypt_secret(refresh_token) if refresh_token else None
-            ),
-            token_expires_at=self.token_expires_at(claims),
-            session_expires_at=now
-            + timedelta(seconds=self.config.session_max_age_seconds),
+        return self.sessions.build_session_record(
+            session_id,
+            id_token=id_token,
+            refresh_token=refresh_token,
+            claims=claims,
         )
 
     def ensure_authorized(self, claims: dict[str, Any]) -> dict[str, Any]:
@@ -283,31 +284,14 @@ class OIDCManager(OIDCProviderClient):
         session_id: str,
     ) -> dict[str, Any]:
         """Load a server-side OIDC session, refreshing token material when needed."""
-        session = repo.get_oidc_session(session_id)
-        if session is None:
-            raise self._not_authenticated()
-
-        now = datetime.now(timezone.utc)
-        if session.session_expires_at <= now:
-            repo.delete_oidc_session(session_id)
-            raise self._not_authenticated("OIDC session expired.")
-
-        refresh_deadline = session.token_expires_at - timedelta(
-            seconds=self.config.refresh_leeway_seconds
-        )
-        if refresh_deadline <= now:
-            claims = self._refresh_session(repo, session)
-        else:
-            try:
-                id_token = decrypt_secret(session.encrypted_id_token).decode("utf-8")
-                claims = self.validate_jwt(id_token, strict_client_audience=True)
-            except Exception:
-                claims = self._refresh_session(repo, session)
-
-        claims = self.ensure_authorized(claims)
-        claims["_session_id"] = session_id
-        claims["auth_type"] = "oidc"
-        return claims
+        try:
+            return self.sessions.claims_from_session(
+                repo,
+                session_id,
+                authorize_claims=self.ensure_authorized,
+            )
+        except OIDCAuthenticationError as exc:
+            raise self._not_authenticated(exc.detail) from exc
 
     def _refresh_session(
         self,
@@ -315,42 +299,14 @@ class OIDCManager(OIDCProviderClient):
         session: OIDCSessionRecord,
     ) -> dict[str, Any]:
         """Refresh an OIDC session using its stored refresh token."""
-        if not session.encrypted_refresh_token:
-            repo.delete_oidc_session(session.session_id)
-            raise self._not_authenticated("OIDC session expired.")
-
         try:
-            refresh_token = decrypt_secret(session.encrypted_refresh_token).decode(
-                "utf-8"
+            return self.sessions.refresh_session(
+                repo,
+                session,
+                authorize_claims=self.ensure_authorized,
             )
-            token_payload = self.refresh_tokens(refresh_token)
-        except Exception:
-            repo.delete_oidc_session(session.session_id)
-            raise self._not_authenticated("OIDC refresh failed. Please sign in again.")
-
-        id_token = token_payload.get("id_token")
-        if not id_token or not isinstance(id_token, str):
-            repo.delete_oidc_session(session.session_id)
-            raise self._not_authenticated(
-                "OIDC refresh response missing id_token. Please sign in again."
-            )
-
-        claims = self.validate_jwt(id_token, strict_client_audience=True)
-        self.ensure_authorized(claims)
-
-        next_refresh_token = token_payload.get("refresh_token")
-        effective_refresh_token = (
-            next_refresh_token
-            if isinstance(next_refresh_token, str) and next_refresh_token
-            else refresh_token
-        )
-        repo.update_oidc_session(
-            session.session_id,
-            encrypted_id_token=encrypt_secret(id_token),
-            encrypted_refresh_token=encrypt_secret(effective_refresh_token),
-            token_expires_at=self.token_expires_at(claims),
-        )
-        return claims
+        except OIDCAuthenticationError as exc:
+            raise self._not_authenticated(exc.detail) from exc
 
     def _not_authenticated(self, detail: str = "Not authenticated.") -> HTTPException:
         """Return the standard unauthenticated exception used by the OIDC session flow."""
