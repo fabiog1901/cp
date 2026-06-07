@@ -1,6 +1,9 @@
 """Reusable authentication helpers."""
 
 from .api_keys import (
+    APIKeyAuthenticationError,
+    APIKeyAuthenticator,
+    APIKeyRepository,
     api_key_signature,
     build_api_key_signature_payload,
     parse_api_key_timestamp,
@@ -26,6 +29,9 @@ __all__ = [
     "OIDCProviderClient",
     "OIDCSessionManager",
     "OIDCSessionRepository",
+    "APIKeyAuthenticationError",
+    "APIKeyAuthenticator",
+    "APIKeyRepository",
     "api_key_signature",
     "build_api_key_signature_payload",
     "decrypt_secret",

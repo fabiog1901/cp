@@ -5,11 +5,16 @@ claim normalization for CP web sessions.
 """
 
 import time
-from datetime import datetime, timezone
-from hmac import compare_digest
+from datetime import datetime
 from typing import Any
 
-from cpkit.auth import OIDCAuthenticationError, OIDCProviderClient, OIDCSessionManager
+from cpkit.auth import (
+    APIKeyAuthenticationError,
+    APIKeyAuthenticator,
+    OIDCAuthenticationError,
+    OIDCProviderClient,
+    OIDCSessionManager,
+)
 from fastapi import HTTPException, Request, status
 
 from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_config
@@ -18,10 +23,8 @@ from ..repos import Repo
 from .common import (
     OIDC_SESSION_COOKIE_NAME,
     OIDCConfig,
-    api_key_signature,
     claims_groups,
     jsonable_role_groups,
-    parse_api_key_timestamp,
 )
 
 
@@ -36,6 +39,7 @@ class OIDCManager(OIDCProviderClient):
             decrypt_secret=decrypt_secret,
             session_record_factory=OIDCSessionRecord,
         )
+        self.api_keys = APIKeyAuthenticator(decrypt_secret=decrypt_secret)
         self._config_loaded_at = 0.0
         self._config_cache_ttl_seconds = 300
 
@@ -191,55 +195,20 @@ class OIDCManager(OIDCProviderClient):
         timestamp: str,
     ) -> dict[str, Any]:
         """Authenticate an API request using the HMAC-signed API key headers."""
-        api_key = repo.get_api_key(access_key)
-        if api_key is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key.",
-            )
-
-        if datetime.now(timezone.utc) >= api_key.valid_until:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API key is expired.",
-            )
-
         try:
-            signed_at = parse_api_key_timestamp(timestamp)
-        except ValueError as exc:
+            return await self.api_keys.authenticate_request(
+                request,
+                repo,
+                access_key=access_key,
+                signature=signature,
+                timestamp=timestamp,
+                max_age_seconds=self.config.api_key_signature_ttl_seconds,
+            )
+        except APIKeyAuthenticationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid X-Timestamp header.",
+                detail=exc.detail,
             ) from exc
-
-        max_age_seconds = self.config.api_key_signature_ttl_seconds
-        age_seconds = abs((datetime.now(timezone.utc) - signed_at).total_seconds())
-        if age_seconds > max_age_seconds:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API request timestamp is expired.",
-            )
-
-        body = await request.body()
-        secret_key = decrypt_secret(api_key.encrypted_secret_access_key)
-        expected_signature = api_key_signature(secret_key, request, timestamp, body)
-
-        if not compare_digest(expected_signature, signature.strip().lower()):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key signature.",
-            )
-
-        roles = set(api_key.roles or [])
-        role_groups = {role: {role.value} for role in roles}
-        return {
-            "sub": api_key.owner,
-            "access_key": api_key.access_key,
-            "groups": [role.value for role in roles],
-            "_groups_claim_name": "groups",
-            "_role_groups": role_groups,
-            "auth_type": "api_key",
-        }
 
     async def current_claims(
         self,
