@@ -5,12 +5,11 @@ managed-cluster connection helpers used by services and workers.
 """
 
 import base64
-import json
-import logging
 import os
 import secrets
-from contextvars import ContextVar
 
+from cpkit.cpkit.config import as_bool, safe_csv_set, safe_json_string_dict
+from cpkit.cpkit.logging import RequestIDFilter, ShorthandFormatter, request_id_ctx
 import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from psycopg import OperationalError
@@ -31,27 +30,6 @@ class ClusterDatabaseConnectionError(Exception):
         super().__init__(f"Cluster database '{dns_address}' is unreachable: {reason}")
 
 
-def as_bool(value: str | None, default: bool = False) -> bool:
-    """Parse common truthy environment-style values into a boolean."""
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def safe_json_string_dict(
-    value: str | None, *, default: dict[str, str] | None = None
-) -> dict[str, str]:
-    """Parse a JSON object and coerce its keys and values to strings."""
-    if not value:
-        return default or {}
-
-    parsed = json.loads(value)
-    if not isinstance(parsed, dict):
-        raise ValueError("Expected a JSON object.")
-
-    return {str(k): str(v) for k, v in parsed.items()}
-
-
 def safe_next_path(next_path: str | None) -> str:
     """Normalize redirect targets so only in-app absolute paths are allowed."""
     if not next_path:
@@ -61,13 +39,6 @@ def safe_next_path(next_path: str | None) -> str:
     if next_path.startswith("//"):
         return "/"
     return next_path
-
-
-def safe_csv_set(raw_value: str | None) -> set[str]:
-    """Split a comma-delimited string into a trimmed set of values."""
-    if not raw_value:
-        return set()
-    return {part.strip() for part in raw_value.split(",") if part and part.strip()}
 
 
 def _secret_master_key() -> bytes:
@@ -167,28 +138,3 @@ def _is_cluster_connection_timeout(err: OperationalError) -> bool:
     message = str(err).lower()
     return "timeout" in message or "timed out" in message
 
-
-class RequestIDFilter(logging.Filter):
-    def filter(self, record):
-        record.request_id = request_id_ctx.get()
-        return True
-
-
-class ShorthandFormatter(logging.Formatter):
-    LEVEL_MAP = {
-        "DEBUG": "D",
-        "INFO": "I",
-        "WARNING": "W",
-        "ERROR": "E",
-        "CRITICAL": "C",
-    }
-
-    def format(self, record):
-        original_levelname = record.levelname
-        record.levelname = self.LEVEL_MAP.get(original_levelname, original_levelname)
-        result = super().format(record)
-        record.levelname = original_levelname
-        return result
-
-
-request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
