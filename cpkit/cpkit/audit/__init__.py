@@ -1,13 +1,20 @@
 """Generic audit record types and service helpers."""
 
-from .legacy import emit_legacy_event_best_effort, write_legacy_event
+from .recorder import (
+    AuditRecorder,
+    AuditRecordWriter,
+    write_audit_record,
+    write_audit_record_best_effort,
+)
 from .service import AuditService
 from .types import AuditOutcome, AuditRecordCreate
 
 __all__ = [
     "AuditOutcome",
+    "AuditRecorder",
     "AuditRecordCreate",
+    "AuditRecordWriter",
     "AuditService",
-    "emit_legacy_event_best_effort",
-    "write_legacy_event",
+    "write_audit_record",
+    "write_audit_record_best_effort",
 ]

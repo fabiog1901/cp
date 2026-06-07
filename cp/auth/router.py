@@ -7,9 +7,9 @@ the SSO-protected webapp flow.
 import secrets
 from typing import Any
 
+from cpkit.audit import AuditRecorder
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import RedirectResponse
-from cpkit.audit import write_legacy_event
 
 from ..infra import get_repo, request_id_ctx, safe_next_path
 from ..models import AuditEvent, LogMsg
@@ -37,6 +37,21 @@ def oidc_cookie_kwargs() -> dict[str, Any]:
     }
 
 
+def _build_log_msg(
+    *,
+    actor_id: str,
+    event_type: str,
+    metadata: dict[str, Any] | None,
+    request_id: str | None,
+) -> LogMsg:
+    return LogMsg(
+        user_id=actor_id,
+        action=event_type,
+        details=metadata or {},
+        request_id=request_id,
+    )
+
+
 def log_auth_event(
     repo: Repo,
     actor_id: str,
@@ -44,14 +59,14 @@ def log_auth_event(
     details: dict[str, Any] | None = None,
 ) -> None:
     """Persist a login or logout event using the current request id context."""
-    write_legacy_event(
+    AuditRecorder(
         repo,
-        LogMsg(
-            user_id=actor_id,
-            action=str(action),
-            details=details or {},
-            request_id=request_id_ctx.get(),
-        ),
+        _build_log_msg,
+        request_id_provider=request_id_ctx.get,
+    ).emit(
+        action,
+        actor_id=actor_id,
+        metadata=details,
     )
 
 

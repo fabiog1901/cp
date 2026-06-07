@@ -3,12 +3,27 @@
 import logging
 from typing import Any
 
-from cpkit.audit import emit_legacy_event_best_effort
+from cpkit.audit import AuditRecorder
 
 from ..models import AuditEvent, LogMsg
 from ..repos import Repo
 
 logger = logging.getLogger(__name__)
+
+
+def _build_log_msg(
+    *,
+    actor_id: str,
+    event_type: str,
+    metadata: dict[str, Any] | None,
+    request_id: str | None,
+) -> LogMsg:
+    return LogMsg(
+        user_id=actor_id,
+        action=event_type,
+        details=metadata,
+        request_id=request_id,
+    )
 
 
 def log_event(
@@ -20,14 +35,13 @@ def log_event(
     """Best-effort audit logging for service-layer actions."""
     from ..main import request_id_ctx
 
-    emit_legacy_event_best_effort(
+    AuditRecorder(
         repo,
-        LogMsg(
-            user_id=actor_id,
-            action=str(action),
-            details=details,
-            request_id=request_id_ctx.get(),
-        ),
-        event_type=str(action),
+        _build_log_msg,
+        request_id_provider=request_id_ctx.get,
         event_logger=logger,
+    ).emit_best_effort(
+        action,
+        actor_id=actor_id,
+        metadata=details,
     )
