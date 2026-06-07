@@ -4,7 +4,18 @@ import json
 import time
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from typing import Any
+
+import jwt
+
+
+class OIDCAuthenticationError(Exception):
+    """Raised when an OIDC token cannot be authenticated."""
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        super().__init__(detail)
 
 
 class OIDCProviderClient:
@@ -147,3 +158,82 @@ class OIDCProviderClient:
         }
 
         return self._http_json(token_endpoint, method="POST", data=payload)
+
+    def select_jwk_key(self, token: str) -> Any:
+        """Return the provider signing key that matches a JWT header."""
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if not kid:
+            raise OIDCAuthenticationError("Token header is missing 'kid'")
+
+        keys = self.get_jwks().get("keys", [])
+        for jwk in keys:
+            if jwk.get("kid") == kid:
+                return jwt.PyJWK.from_dict(jwk).key
+
+        self._jwks = None
+        keys = self.get_jwks().get("keys", [])
+        for jwk in keys:
+            if jwk.get("kid") == kid:
+                return jwt.PyJWK.from_dict(jwk).key
+
+        raise OIDCAuthenticationError(
+            "Unable to find a matching JWKS key for token"
+        )
+
+    def validate_jwt(
+        self,
+        token: str,
+        *,
+        expected_nonce: str | None = None,
+        strict_client_audience: bool = False,
+    ) -> dict[str, Any]:
+        """Validate a JWT against the provider configuration and optional nonce."""
+        key = self.select_jwk_key(token)
+
+        options = {
+            "verify_signature": True,
+            "verify_exp": True,
+            "verify_iat": True,
+            "verify_nbf": True,
+            "verify_iss": True,
+            "verify_aud": strict_client_audience
+            or self.config.verify_audience
+            or bool(self.config.audience),
+        }
+
+        audience = None
+        if strict_client_audience:
+            audience = self.config.client_id
+        elif self.config.audience:
+            audience = self.config.audience
+
+        try:
+            claims = jwt.decode(
+                token,
+                key=key,
+                algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
+                issuer=self.config.issuer_url,
+                audience=audience,
+                options=options,
+            )
+        except jwt.PyJWTError as exc:
+            raise OIDCAuthenticationError(f"Invalid token: {exc}") from exc
+
+        if expected_nonce is not None and claims.get("nonce") != expected_nonce:
+            raise OIDCAuthenticationError("Invalid token nonce")
+
+        return claims
+
+    @staticmethod
+    def token_expires_at(claims: dict[str, Any]) -> datetime:
+        """Return the UTC expiration timestamp encoded in JWT claims."""
+        raw_exp = claims.get("exp")
+        if raw_exp is None:
+            raise OIDCAuthenticationError("Token is missing 'exp'.")
+        try:
+            return datetime.fromtimestamp(float(raw_exp), tz=timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError) as exc:
+            raise OIDCAuthenticationError(
+                "Token has an invalid 'exp' claim."
+            ) from exc

@@ -1,7 +1,7 @@
 """Reusable authentication helpers."""
 
 from .redirects import safe_next_path
-from .oidc import OIDCProviderClient
+from .oidc import OIDCAuthenticationError, OIDCProviderClient
 from .secrets import (
     ENCRYPTED_SECRET_VERSION,
     decrypt_secret,
@@ -11,6 +11,7 @@ from .secrets import (
 
 __all__ = [
     "ENCRYPTED_SECRET_VERSION",
+    "OIDCAuthenticationError",
     "OIDCProviderClient",
     "decrypt_secret",
     "encrypt_secret",

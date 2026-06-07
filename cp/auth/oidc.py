@@ -9,8 +9,7 @@ from datetime import datetime, timedelta, timezone
 from hmac import compare_digest
 from typing import Any
 
-import jwt
-from cpkit.auth import OIDCProviderClient
+from cpkit.auth import OIDCAuthenticationError, OIDCProviderClient
 from fastapi import HTTPException, Request, status
 
 from ..infra import decrypt_secret, encrypt_secret, validate_secret_crypto_config
@@ -61,27 +60,6 @@ class OIDCManager(OIDCProviderClient):
         self.config.validate()
         validate_secret_crypto_config()
 
-    def _select_jwk(self, token: str) -> Any:
-        header = jwt.get_unverified_header(token)
-        kid = header.get("kid")
-        if not kid:
-            raise HTTPException(status_code=401, detail="Token header is missing 'kid'")
-
-        keys = self.get_jwks().get("keys", [])
-        for jwk in keys:
-            if jwk.get("kid") == kid:
-                return jwt.PyJWK.from_dict(jwk).key
-
-        self._jwks = None
-        keys = self.get_jwks().get("keys", [])
-        for jwk in keys:
-            if jwk.get("kid") == kid:
-                return jwt.PyJWK.from_dict(jwk).key
-
-        raise HTTPException(
-            status_code=401, detail="Unable to find a matching JWKS key for token"
-        )
-
     def validate_jwt(
         self,
         token: str,
@@ -89,57 +67,23 @@ class OIDCManager(OIDCProviderClient):
         expected_nonce: str | None = None,
         strict_client_audience: bool = False,
     ) -> dict[str, Any]:
-        """Validate a JWT against the provider configuration and optional nonce."""
-        key = self._select_jwk(token)
-
-        options = {
-            "verify_signature": True,
-            "verify_exp": True,
-            "verify_iat": True,
-            "verify_nbf": True,
-            "verify_iss": True,
-            "verify_aud": strict_client_audience
-            or self.config.verify_audience
-            or bool(self.config.audience),
-        }
-
-        audience = None
-        if strict_client_audience:
-            audience = self.config.client_id
-        elif self.config.audience:
-            audience = self.config.audience
-
+        """Validate a JWT and translate auth failures into FastAPI errors."""
         try:
-            claims = jwt.decode(
+            return super().validate_jwt(
                 token,
-                key=key,
-                algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
-                issuer=self.config.issuer_url,
-                audience=audience,
-                options=options,
+                expected_nonce=expected_nonce,
+                strict_client_audience=strict_client_audience,
             )
-        except jwt.PyJWTError as exc:
-            raise HTTPException(
-                status_code=401, detail=f"Invalid token: {exc}"
-            ) from exc
-
-        if expected_nonce is not None and claims.get("nonce") != expected_nonce:
-            raise HTTPException(status_code=401, detail="Invalid token nonce")
-
-        return claims
+        except OIDCAuthenticationError as exc:
+            raise HTTPException(status_code=401, detail=exc.detail) from exc
 
     @staticmethod
     def token_expires_at(claims: dict[str, Any]) -> datetime:
-        """Return the UTC expiration timestamp encoded in the JWT claims."""
-        raw_exp = claims.get("exp")
-        if raw_exp is None:
-            raise HTTPException(status_code=401, detail="Token is missing 'exp'.")
+        """Return a JWT expiration timestamp and translate auth failures."""
         try:
-            return datetime.fromtimestamp(float(raw_exp), tz=timezone.utc)
-        except (TypeError, ValueError, OSError, OverflowError) as exc:
-            raise HTTPException(
-                status_code=401, detail="Token has an invalid 'exp' claim."
-            ) from exc
+            return OIDCProviderClient.token_expires_at(claims)
+        except OIDCAuthenticationError as exc:
+            raise HTTPException(status_code=401, detail=exc.detail) from exc
 
     def build_session_record(
         self,
