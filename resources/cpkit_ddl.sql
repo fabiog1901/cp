@@ -12,6 +12,52 @@ CREATE TABLE cpkit.mq (
     CONSTRAINT pk PRIMARY KEY (msg_id ASC)
 );
 
+CREATE TABLE cpkit.jobs (
+    job_id INT8 NOT NULL,
+    job_type STRING NULL,
+    status STRING NULL,
+    description JSONB NULL,
+    created_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ,
+    created_by STRING NULL,
+    updated_at TIMESTAMPTZ NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
+    CONSTRAINT pk PRIMARY KEY (job_id ASC)
+) WITH (
+    ttl = 'on',
+    ttl_expiration_expression = e'(updated_at::TIMESTAMPTZ + \'90 days\'::INTERVAL)',
+    ttl_job_cron = '@daily'
+);
+
+CREATE TABLE cpkit.map_clusters_jobs (
+    cluster_id STRING NOT NULL,
+    job_id INT8 NOT NULL,
+    CONSTRAINT pk PRIMARY KEY (cluster_id ASC, job_id ASC),
+    INDEX map_jobs_clusters (job_id ASC),
+    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE
+);
+
+CREATE TABLE cpkit.tasks (
+    job_id INT8 NOT NULL,
+    task_id INT2 NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    task_name STRING NULL,
+    task_desc STRING NULL,
+    CONSTRAINT pk PRIMARY KEY (job_id ASC, task_id ASC),
+    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE
+);
+
+CREATE TABLE cpkit.event_log (
+    ts TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,
+    user_id STRING NOT NULL,
+    action STRING NOT NULL,
+    details JSONB NULL,
+    request_id UUID NULL,
+    CONSTRAINT pk PRIMARY KEY (ts ASC, user_id ASC)
+) WITH (
+    ttl = 'on',
+    ttl_expiration_expression = e'(ts::TIMESTAMPTZ + \'90 days\')',
+    ttl_job_cron = '@daily'
+);
+
 CREATE TABLE cpkit.settings (
     key STRING NOT NULL,
     value STRING NULL,

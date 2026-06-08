@@ -1,6 +1,8 @@
 """Event repository."""
 
+from cpkit.audit import EVENT_LOG_TABLE
 from cpkit.db import execute_stmt, fetch_all, fetch_scalar
+
 from ..models import LogMsg
 
 
@@ -14,9 +16,9 @@ class EventRepo:
     ) -> list[LogMsg]:
         if is_admin:
             return fetch_all(
-                """
+                f"""
                 SELECT ts, user_id, action, details, request_id::TEXT
-                FROM event_log
+                FROM {EVENT_LOG_TABLE}
                 ORDER BY ts DESC
                 LIMIT %s
                 OFFSET %s
@@ -30,9 +32,9 @@ class EventRepo:
 
     def get_event_count(self) -> int:
         return fetch_scalar(
-            """
+            f"""
             SELECT count(*) AS id
-            FROM event_log AS OF SYSTEM TIME follower_read_timestamp()
+            FROM {EVENT_LOG_TABLE} AS OF SYSTEM TIME follower_read_timestamp()
             """,
             (),
             operation="events.get_event_count",
@@ -40,8 +42,8 @@ class EventRepo:
 
     def log_event(self, log_msg: LogMsg):
         execute_stmt(
-            """
-            INSERT INTO event_log 
+            f"""
+            INSERT INTO {EVENT_LOG_TABLE}
                 (ts, user_id, action, details, request_id)
             VALUES (%s, %s, %s, %s, %s)
             """,

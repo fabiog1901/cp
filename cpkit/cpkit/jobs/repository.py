@@ -7,9 +7,9 @@ from cpkit.db import execute_stmt, fetch_all, fetch_one
 from .types import ClusterIDRef, IntID, Job, JobID, JobStatsResponse, Task
 
 QUEUE_TABLE = "cpkit.mq"
-JOBS_TABLE = "jobs"
-JOB_CLUSTER_MAP_TABLE = "map_clusters_jobs"
-TASKS_TABLE = "tasks"
+JOBS_TABLE = "cpkit.jobs"
+JOB_CLUSTER_MAP_TABLE = "cpkit.map_clusters_jobs"
+TASKS_TABLE = "cpkit.tasks"
 
 
 class QueueRepositoryMixin:

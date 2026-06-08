@@ -6,6 +6,7 @@ from .recorder import (
     write_audit_record,
     write_audit_record_best_effort,
 )
+from .repository import EVENT_LOG_TABLE
 from .service import AuditService
 from .types import AuditOutcome, AuditRecordCreate
 
@@ -15,6 +16,7 @@ __all__ = [
     "AuditRecordCreate",
     "AuditRecordWriter",
     "AuditService",
+    "EVENT_LOG_TABLE",
     "write_audit_record",
     "write_audit_record_best_effort",
 ]

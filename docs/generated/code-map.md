@@ -524,7 +524,7 @@ Path: `cp/repos/cluster_jobs.py`
 Cluster jobs repository.
 
 Classes:
-- `ClusterJobsRepo` — line 7: _No docstring._
+- `ClusterJobsRepo` — line 9: _No docstring._
 
 ### `cp.repos.common`
 
@@ -543,7 +543,7 @@ Path: `cp/repos/event.py`
 Event repository.
 
 Classes:
-- `EventRepo` — line 7: _No docstring._
+- `EventRepo` — line 9: _No docstring._
 
 ### `cp.repos.external_connections`
 
