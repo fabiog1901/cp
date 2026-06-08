@@ -258,14 +258,7 @@ Functions:
 
 Path: `cp/cpkit_integration.py`
 
-CP wiring for cpkit-provided capabilities.
-
-Functions:
-
-- `validate_auth_config() -> None` — line 54: Validate cpkit auth settings at startup.
-- `create_events_router()` — line 59: Create audit event routes owned by cpkit and wired to CP hooks.
-- `create_jobs_router()` — line 70: Create job management routes owned by cpkit and wired to CP hooks.
-- `create_queue_worker()` — line 83: Create the cpkit queue worker with CP command handlers.
+CP callbacks and auth dependencies supplied to cpkit.
 
 ### `cp.main`
 
@@ -275,7 +268,7 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 21: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 14: _No docstring._
 
 ### `cp.models`
 

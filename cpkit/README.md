@@ -14,55 +14,43 @@ Applications create their FastAPI app through `create_cpkit_app`. The framework
 owns the root app, `/api` subapp, database lifecycle, request logging middleware,
 static webapp mount, startup hooks, and background task cancellation.
 
-The application supplies its domain routers and lifecycle hooks:
+The application supplies its repository class, cpkit callback bundle, and domain
+routers:
 
 ```python
 from cp.repos import Repo
-from cpkit import create_cpkit_app
+from cpkit import create_cpkit_app, create_cpkit_bundle
+
+cpkit_bundle = create_cpkit_bundle(
+    audit_record_factory=build_log_msg,
+    audit_event_hook=log_event,
+    parse_job_payload=parse_job_payload,
+    reschedule_type_resolver=resolve_reschedule_type,
+    resolve_queue_handler=resolve_queue_handler,
+    parse_queue_message=parse_queue_message,
+)
 
 app = create_cpkit_app(
     title="my-control-plane",
     version="0.1.0",
     repo_class=Repo,
     db_url=DB_URL,
-    routers=(auth_router, admin_router, domain_router),
-    startup_hooks=(validate_oidc_config,),
-    background_tasks=(pull_from_queue,),
+    bundles=(cpkit_bundle,),
+    routers=(domain_router,),
     static_directory="webapp",
 )
 ```
 
 cpkit initializes the database pool from `db_url`, configures the repository
-factory, and exposes the configured repository through `cpkit.get_repo()`.
+factory, mounts its built-in routers, starts its background tasks, runs its
+startup validation, and exposes the configured repository through
+`cpkit.get_repo()`.
 
 ## OIDC Integration
 
 OIDC is configured through framework settings stored in the `cpkit.settings`
-table. A cpkit app can use the bundled auth wiring and supply only the pieces
-cpkit cannot know:
-
-- a repository dependency such as `get_repo`
-- the audit record factory used by the app repository
-
-The integration should fit in the app's cpkit bootstrap file:
-
-```python
-from cpkit import get_repo
-from cpkit.auth import create_auth_bundle
-
-auth = create_auth_bundle(
-    get_repo=get_repo,
-    audit_record_factory=build_log_msg,
-)
-
-router = auth.router
-require_authenticated = auth.require_authenticated
-require_readonly = auth.require_readonly
-require_user = auth.require_user
-require_admin = auth.require_admin
-get_access_scope = auth.get_access_scope
-get_audit_actor = auth.get_audit_actor
-```
+table. `create_cpkit_bundle` wires the OIDC/API-key auth router and exposes
+auth dependencies through the returned bundle for application routers.
 
 After wiring this router into the app, cpkit handles the `/auth/login`,
 `/auth/callback`, `/auth/logout`, and `/auth/me` flow, plus API-key header

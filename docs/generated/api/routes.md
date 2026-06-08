@@ -49,8 +49,6 @@
 | `GET` | `/disk_sizes` | `cp.api.admin.disk_sizes.list_disk_sizes` | `-` |
 | `POST` | `/disk_sizes` | `cp.api.admin.disk_sizes.create_disk_size` | `-` |
 | `DELETE` | `/disk_sizes/{size_gb}` | `cp.api.admin.disk_sizes.delete_disk_size` | `-` |
-| `GET` | `/events` | `cpkit.audit.router.list_events` | `-` |
-| `GET` | `/events/count` | `cpkit.audit.router.get_event_count` | `AuditEventCountResponse` |
 | `GET` | `/node_counts` | `cp.api.admin.node_counts.list_node_counts` | `-` |
 | `POST` | `/node_counts` | `cp.api.admin.node_counts.create_node_count` | `-` |
 | `DELETE` | `/node_counts/{node_count}` | `cp.api.admin.node_counts.delete_node_count` | `-` |

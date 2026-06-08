@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 62 | 113 | 95 | 54 |
+| `cp` | 62 | 113 | 91 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -25,7 +25,7 @@
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
-| `cp.cpkit_integration` | `cp/cpkit_integration.py` | CP wiring for cpkit-provided capabilities. |
+| `cp.cpkit_integration` | `cp/cpkit_integration.py` | CP callbacks and auth dependencies supplied to cpkit. |
 | `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
 | `cp.prometheus` | `cp/prometheus.py` | Prometheus scrape target helpers. |

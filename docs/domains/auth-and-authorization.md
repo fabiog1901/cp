@@ -34,7 +34,7 @@ authentication or authorization.
 
 | Layer | Files |
 | --- | --- |
-| App integration | `cp/cpkit_integration.py` |
+| App integration | `cpkit.create_cpkit_bundle` in `cp/cpkit_integration.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
 | Services | `cpkit/cpkit/auth/` |
 | Repos | `cpkit/cpkit/auth/` |
@@ -73,8 +73,8 @@ Important auth resources include:
 
 | Change | Start Here |
 | --- | --- |
-| Change app auth hooks | `cp/cpkit_integration.py` |
+| Change app auth callbacks | `cp/cpkit_integration.py` |
 | Change framework OIDC behavior | `cpkit/cpkit/auth/oidc.py`, `cpkit/cpkit/auth/router.py` |
 | Change route access dependencies | `cpkit/cpkit/auth/dependencies.py`, API routes |
 | Change cluster visibility | `cpkit/cpkit/auth/`, `cp/repos/cluster.py` |
-| Change API keys | `cpkit/cpkit/auth/`, then CP wiring in `cp/cpkit_integration.py` if audit hooks change |
+| Change API keys | `cpkit/cpkit/auth/`; CP supplies only bundle callbacks in `cp/cpkit_integration.py` |

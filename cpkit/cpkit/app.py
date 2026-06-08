@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
+from cpkit.bundle import CpkitBundle
 from cpkit.db import close_db, initialize_postgres
 from cpkit.logging import configure_logging, request_logging_middleware
 from cpkit.repository import configure_repository, get_repo as get_configured_repo
@@ -27,6 +28,7 @@ def create_cpkit_app(
     repo_class: RepoClass | None = None,
     get_repo: Callable[[], Any] | None = None,
     db_url: str | None,
+    bundles: Iterable[CpkitBundle] = (),
     routers: Iterable[APIRouter] = (),
     configure_api: ConfigureApi | None = None,
     startup_hooks: Iterable[StartupHook] = (),
@@ -36,6 +38,7 @@ def create_cpkit_app(
     default_journald_identifier: str = "cp",
 ) -> FastAPI:
     """Create a cpkit-managed FastAPI app with an application API subapp."""
+    bundle_tuple = tuple(bundles)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -55,13 +58,22 @@ def create_cpkit_app(
             force=True,
             default_journald_identifier=default_journald_identifier,
         )
-        for hook in startup_hooks:
+        effective_startup_hooks = (
+            *(hook for bundle in bundle_tuple for hook in bundle.startup_hooks),
+            *startup_hooks,
+        )
+        for hook in effective_startup_hooks:
             result = hook()
             if inspect.isawaitable(result):
                 await result
 
+        effective_background_tasks = (
+            *(task for bundle in bundle_tuple for task in bundle.background_tasks),
+            *background_tasks,
+        )
         running_tasks = [
-            asyncio.create_task(task_factory()) for task_factory in background_tasks
+            asyncio.create_task(task_factory())
+            for task_factory in effective_background_tasks
         ]
 
         yield
@@ -79,7 +91,11 @@ def create_cpkit_app(
     app = FastAPI(lifespan=lifespan)
     api = FastAPI(title=title, version=version)
 
-    for router in routers:
+    effective_routers = (
+        *(router for bundle in bundle_tuple for router in bundle.routers),
+        *routers,
+    )
+    for router in effective_routers:
         api.include_router(router)
 
     if configure_api is not None:

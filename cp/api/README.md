@@ -31,7 +31,7 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | `admin/` | Admin option CRUD routes. |
 
 Framework routes such as jobs, audit events, settings, playbooks, API keys, and
-auth are mounted through `cp/cpkit_integration.py`.
+auth are mounted by the cpkit bundle passed to `cpkit.create_cpkit_app`.
 
 ## Common Pattern
 
