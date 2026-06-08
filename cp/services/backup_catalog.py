@@ -4,6 +4,7 @@ This service manages catalog sync and recovery views for backups discovered in
 object storage. It bridges API requests, catalog metadata, and worker jobs.
 """
 
+from cpkit import get_repo
 from cpkit.errors import (
     RepositoryError,
     ServiceAuthorizationError,
@@ -11,7 +12,6 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
-from cpkit import get_repo
 
 from ..models import (
     AuditEvent,

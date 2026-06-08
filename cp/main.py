@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from cpkit import create_cpkit_app, create_cpkit_bundle
 
 from . import DB_URL
-from .audit import build_log_msg
 from .api import admin, alerts, cluster_recovery, clusters
+from .audit import build_log_msg
 from .models import CommandType, parse_command_payload
 from .prometheus import get_nodes
 from .repos import Repo

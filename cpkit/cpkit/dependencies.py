@@ -4,11 +4,7 @@ from typing import Any
 
 from fastapi import Depends, Request, Security
 
-from .auth import (
-    access_key_scheme,
-    signature_scheme,
-    timestamp_scheme,
-)
+from .auth import access_key_scheme, signature_scheme, timestamp_scheme
 from .repository import get_repo
 
 _active_bundle: Any | None = None

@@ -12,14 +12,15 @@ from psycopg import sql
 from psycopg.rows import class_row
 from pydantic import ValidationError
 
+from cpkit import get_repo
 from cpkit.errors import (
     RepositoryError,
     ServiceNotFoundError,
     ServiceValidationError,
     from_repository_error,
 )
-from cpkit import get_repo
 
+from ..cluster_database import translate_database_error
 from ..models import (
     AuditEvent,
     Cluster,
@@ -34,7 +35,6 @@ from ..models import (
     NewDatabaseUserRequest,
     to_public_cluster,
 )
-from ..cluster_database import translate_database_error
 from .base import log_event
 from .cluster_db import connect_to_cluster_db
 

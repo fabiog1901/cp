@@ -7,14 +7,12 @@ from typing import Any
 from fastapi import APIRouter, Security
 
 from .admin import create_cpkit_admin_router
-from .audit import AuditEventsService
-from .audit import create_events_router
+from .audit import AuditEventsService, create_events_router
 from .auth import ApiKeysService, AuthBundle, create_auth_bundle
 from .db import get_pool
 from .dependencies import configure_cpkit_dependencies
 from .errors import ServiceError, raise_http_from_service_error
-from .jobs import JobsService, QueueMessage
-from .jobs import create_jobs_router, create_queue_worker
+from .jobs import JobsService, QueueMessage, create_jobs_router, create_queue_worker
 from .jobs.worker import QueueHandler
 from .playbooks import PlaybooksService
 from .repository import get_repo

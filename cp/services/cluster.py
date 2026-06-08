@@ -6,6 +6,7 @@ coordinates CP metadata, and enqueues worker jobs for long-running operations.
 
 from pydantic import ValidationError
 
+from cpkit import get_repo
 from cpkit.errors import (
     RepositoryError,
     ServiceConflictError,
@@ -13,7 +14,6 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
-from cpkit import get_repo
 
 from ..models import (
     ArtifactDownloadUrlResponse,

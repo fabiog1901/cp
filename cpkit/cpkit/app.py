@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from cpkit.bundle import CpkitBundle
 from cpkit.db import close_db, initialize_postgres
 from cpkit.logging import configure_logging, request_logging_middleware
-from cpkit.repository import configure_repository, get_repo as get_configured_repo
+from cpkit.repository import configure_repository
+from cpkit.repository import get_repo as get_configured_repo
 
 StartupHook = Callable[[], Any]
 BackgroundTaskFactory = Callable[[], Awaitable[Any]]

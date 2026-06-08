@@ -10,6 +10,7 @@ from typing import Any
 
 import requests
 
+from cpkit import get_repo
 from cpkit.errors import (
     RepositoryError,
     RepositoryUnavailableError,
@@ -18,7 +19,6 @@ from cpkit.errors import (
 )
 
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
-from cpkit import get_repo
 
 PROMETHEUS_TIMEOUT_SECS = 10
 logger = logging.getLogger(__name__)
