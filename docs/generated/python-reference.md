@@ -140,19 +140,21 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.infra`
+## `cp.cpkit_integration`
 
-### `cp.infra`
+### `cp.cpkit_integration`
 
-::: cp.infra
+::: cp.cpkit_integration
     options:
       show_source: true
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.infra.dependencies`
+## `cp.infra`
 
-::: cp.infra.dependencies
+### `cp.infra`
+
+::: cp.infra
     options:
       show_source: true
       show_root_heading: false

@@ -292,24 +292,22 @@ Functions:
 
 - `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 21: _No docstring._
 
+### `cp.cpkit_integration`
+
+Path: `cp/cpkit_integration.py`
+
+CP wiring for cpkit-provided capabilities.
+
+Functions:
+
+- `create_admin_router()` — line 25: Create admin routes owned by cpkit and wired to CP hooks.
+- `create_jobs_router()` — line 37: Create job management routes owned by cpkit and wired to CP hooks.
+
 ### `cp.infra`
 
 Path: `cp/infra/__init__.py`
 
-Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies.
-
-### `cp.infra.dependencies`
-
-Path: `cp/infra/dependencies.py`
-
-_No docstring._
-
-Functions:
-
-- `get_api_keys_service()` — line 18: _No docstring._
-- `get_jobs_service()` — line 26: _No docstring._
-- `get_playbooks_service()` — line 35: _No docstring._
-- `get_settings_service()` — line 44: _No docstring._
+Shared infrastructure entrypoints for DB lifecycle.
 
 ### `cp.infra.errors`
 
@@ -325,8 +323,8 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 25: _No docstring._
-- `validate_oidc_config() -> None` — line 31: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 16: _No docstring._
+- `validate_oidc_config() -> None` — line 22: _No docstring._
 
 ### `cp.models`
 

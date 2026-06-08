@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 69 | 119 | 103 | 56 |
+| `cp` | 69 | 119 | 101 | 56 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -28,8 +28,8 @@
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth.py` | CP's cpkit OIDC integration. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
-| `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
-| `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
+| `cp.cpkit_integration` | `cp/cpkit_integration.py` | CP wiring for cpkit-provided capabilities. |
+| `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle. |
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
 | `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |

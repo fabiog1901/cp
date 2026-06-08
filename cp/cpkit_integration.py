@@ -1,0 +1,106 @@
+"""CP wiring for cpkit-provided capabilities."""
+
+from cpkit import create_cpkit_admin_router
+from cpkit.auth import ApiKeysService
+from cpkit.jobs import JobsService
+from cpkit.jobs import create_jobs_router as create_cpkit_jobs_router
+from cpkit.playbooks import PlaybooksService
+from cpkit.settings import SettingsService
+
+from .api.admin.common import raise_http_from_service_error
+from .auth import (
+    get_access_scope,
+    get_audit_actor,
+    require_readonly,
+    require_user,
+)
+from .models import AuditEvent, CommandType, parse_command_payload
+from .repository import get_repo
+from .services.base import log_event
+from .services.errors import ServiceError
+
+__all__ = ["create_admin_router", "create_jobs_router"]
+
+
+def create_admin_router():
+    """Create admin routes owned by cpkit and wired to CP hooks."""
+    return create_cpkit_admin_router(
+        get_api_keys_service=_get_api_keys_service,
+        get_settings_service=_get_settings_service,
+        get_playbooks_service=_get_playbooks_service,
+        get_audit_actor=get_audit_actor,
+        handle_service_error=raise_http_from_service_error,
+        service_error_type=ServiceError,
+    )
+
+
+def create_jobs_router():
+    """Create job management routes owned by cpkit and wired to CP hooks."""
+    return create_cpkit_jobs_router(
+        get_service=_get_jobs_service,
+        get_access_scope=get_access_scope,
+        get_audit_actor=get_audit_actor,
+        require_readonly=require_readonly,
+        require_user=require_user,
+        handle_service_error=raise_http_from_service_error,
+        service_error_type=ServiceError,
+    )
+
+
+def _get_api_keys_service():
+    return ApiKeysService(
+        get_repo(),
+        created_hook=log_event,
+        deleted_hook=log_event,
+    )
+
+
+def _get_jobs_service():
+    return JobsService(
+        get_repo(),
+        parse_payload=parse_command_payload,
+        reschedule_type_resolver=_resolve_reschedule_command_type,
+        rescheduled_hook=log_event,
+    )
+
+
+def _get_playbooks_service():
+    return PlaybooksService(
+        get_repo(),
+        version_created_hook=log_event,
+        version_deleted_hook=log_event,
+        default_set_hook=log_event,
+    )
+
+
+def _get_settings_service():
+    return SettingsService(
+        get_repo(),
+        setting_updated_hook=_log_setting_updated,
+        setting_reset_hook=_log_setting_reset,
+    )
+
+
+def _log_setting_updated(repo, setting_id: str, value: str, updated_by: str) -> None:
+    log_event(
+        repo,
+        updated_by,
+        AuditEvent.SETTING_UPDATED,
+        {"ID": setting_id, "value": value},
+    )
+
+
+def _log_setting_reset(repo, setting_id: str, updated_by: str) -> None:
+    log_event(
+        repo,
+        updated_by,
+        AuditEvent.SETTING_RESET,
+        {"ID": setting_id},
+    )
+
+
+def _resolve_reschedule_command_type(job_type: str) -> CommandType:
+    command_type = CommandType(job_type)
+    if command_type == CommandType.CREATE_CLUSTER:
+        return CommandType.RECREATE_CLUSTER
+    return command_type

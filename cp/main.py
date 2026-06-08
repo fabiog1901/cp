@@ -3,22 +3,13 @@
 from fastapi import FastAPI
 
 from cpkit import create_cpkit_app
-from cpkit.jobs import create_jobs_router
 
 from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events
-from .api.admin.common import raise_http_from_service_error
-from .auth import (
-    get_access_scope,
-    get_audit_actor,
-    oidc,
-    require_readonly,
-    require_user,
-)
+from .auth import oidc
 from .auth import router as auth_router
-from .infra import get_jobs_service
+from .cpkit_integration import create_jobs_router
 from .repository import get_repo
-from .services.errors import ServiceError
 from .workers.queue import get_nodes, pull_from_mq
 
 
@@ -44,15 +35,7 @@ app = create_cpkit_app(
         cluster_recovery.router,
         clusters.router,
         events.router,
-        create_jobs_router(
-            get_service=get_jobs_service,
-            get_access_scope=get_access_scope,
-            get_audit_actor=get_audit_actor,
-            require_readonly=require_readonly,
-            require_user=require_user,
-            handle_service_error=raise_http_from_service_error,
-            service_error_type=ServiceError,
-        ),
+        create_jobs_router(),
     ),
     configure_api=configure_api,
     startup_hooks=(validate_oidc_config,),
