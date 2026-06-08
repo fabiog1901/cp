@@ -7,16 +7,16 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 
 ## What Belongs Here
 
-- Queue message claim/execute loops.
+- CP command dispatch for queue messages.
 - Local worker implementations that operate from inside CP.
-- Remote worker implementations that run Ansible/SSH workflows.
+- Remote worker implementations that build vars and interpret Ansible/SSH workflows.
 - Job/task progress updates tied to command execution.
 
 ## Entry Points
 
 | Path | Purpose |
 | --- | --- |
-| `queue.py` | Queue worker loop and command dispatch. |
+| `queue.py` | CP command dispatch built on `cpkit.jobs`. |
 | `local/` | CP-local workers, such as backup catalog sync and restore polling. |
 | `remote/` | Ansible-backed remote cluster operations: create, delete, scale, upgrade, healthcheck. |
 
@@ -24,5 +24,7 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 
 The API/service layer should enqueue work and return a job id. `cpkit.jobs`
 owns queue polling and message claiming; CP workers resolve the queued command,
-execute it, and update job/task state. Keep direct user
-request concerns out of workers.
+execute it, and update job/task state. `cpkit.playbooks` owns stored playbook
+access and generic Ansible runner mechanics; CP remote workers build CP-specific
+extra vars and reconcile cluster/job state. Keep direct user request concerns
+out of workers.

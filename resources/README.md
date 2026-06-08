@@ -20,7 +20,8 @@ When adding a persisted feature:
 
 1. Add or modify tables in `ddl.sql`.
 2. Add seed/default rows to `init.sql` only when the application needs them.
-3. Add or update Pydantic models in `cp/models.py`.
+3. Add or update Pydantic models in `cp/models.py` or the relevant `cpkit`
+   package for framework-owned tables.
 4. Add repository methods for the new table.
 5. Wire service/API/webapp behavior as needed.
 

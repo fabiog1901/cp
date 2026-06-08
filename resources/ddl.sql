@@ -230,7 +230,7 @@ CREATE TABLE public.live_alerts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ ON UPDATE now():::TIMESTAMPTZ,
     CONSTRAINT pk_live_alerts PRIMARY KEY (fingerprint ASC)
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(updated_at::TIMESTAMPTZ + \'90 days\')', ttl_job_cron = '@daily');
-CREATE TABLE public.playbooks (
+CREATE TABLE cpkit.playbooks (
     name STRING NOT NULL,
     version TIMESTAMPTZ(0) NOT NULL DEFAULT now():::TIMESTAMPTZ,
     content BYTES NULL,

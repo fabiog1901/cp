@@ -10,6 +10,13 @@ from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from cpkit.playbooks import (
+    Playbook,
+    PlaybookOverview,
+    PlaybookResponse,
+    PlaybookSaveRequest,
+    PlaybookVersionResponse,
+)
 from cpkit.settings import SettingNotFoundError, SettingRecord, SettingUpdateRequest
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
@@ -859,43 +866,6 @@ class DiskSizeOption(BaseModel):
 class Nodes(BaseModel):
     cluster_id: str
     nodes: list[str]
-
-
-#
-# PLAYBOOK
-#
-class PlaybookOverview(BaseModel):
-    name: PlaybookName
-    version: dt.datetime
-    default_version: dt.datetime | None = None
-    created_at: dt.datetime
-    created_by: str
-    updated_by: str | None = None
-
-
-class Playbook(PlaybookOverview):
-    content: bytes | None = None
-
-
-class PlaybookResponse(BaseModel):
-    name: str
-    version: str
-    default_version: str
-    available_versions: list[str]
-    original_content: str
-    modified_content: str
-
-
-class PlaybookVersionResponse(BaseModel):
-    playbook_version: str
-    original_content: str
-    modified_content: str
-    available_versions: list[str] | None = None
-    default_version: str | None = None
-
-
-class PlaybookSaveRequest(BaseModel):
-    content: str
 
 
 class DashboardMetrics(BaseModel):

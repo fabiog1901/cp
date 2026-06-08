@@ -121,3 +121,37 @@ async def pull_from_queue():
 
 This keeps queue claiming, dispatch, deletion, polling jitter, and cancellation
 handling in cpkit while leaving job behavior to the consuming app.
+
+## Playbooks and Ansible
+
+The framework owns versioned playbook storage and the generic Ansible execution
+engine. The playbook table lives in `cpkit.playbooks`; applications use
+`PlaybooksRepositoryMixin` for default/versioned playbook lookup and writes.
+
+Applications still own the domain contract around playbooks:
+
+- allowed playbook names
+- admin API/service responses and audit events
+- extra vars construction
+- business state transitions after a playbook succeeds or fails
+
+Remote workers can wrap `AnsibleRunner` with application-specific repository
+and status values:
+
+```python
+from cpkit.playbooks import AnsibleRunner, PlaybooksRepositoryMixin
+
+
+class Repo(PlaybooksRepositoryMixin, ...):
+    ...
+
+
+runner = AnsibleRunner(
+    repo=repo,
+    job_id=job_id,
+    running_status="RUNNING",
+    completed_status="COMPLETED",
+    failed_status="FAILED",
+)
+runner.launch_runner(playbook_name, extra_vars)
+```

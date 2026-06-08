@@ -34,7 +34,7 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | `external_connections.py` | External connection metadata. |
 | `auth.py` | Auth/session/API-key persistence. |
 | `alerts.py` | Alert-related metadata, if any. |
-| `admin/` | Admin option persistence, including database role templates and cluster database access metadata. |
+| `admin/` | Admin option persistence, including database role templates, cluster database access metadata, and CP playbook admin wrappers over `cpkit.playbooks`. |
 
 ## Common Pattern
 

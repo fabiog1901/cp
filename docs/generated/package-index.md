@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 84 | 156 | 123 | 73 |
+| `cp` | 84 | 149 | 123 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -86,7 +86,7 @@
 | `cp.workers.local.restore` | `cp/workers/local/restore.py` | Local restore worker. |
 | `cp.workers.queue` | `cp/workers/queue.py` | Queue worker entry point. |
 | `cp.workers.remote` | `cp/workers/remote/__init__.py` | Remote workers that execute Ansible playbooks over SSH. |
-| `cp.workers.remote.ansible` | `cp/workers/remote/ansible.py` | Shared Ansible runner helpers for remote workers. |
+| `cp.workers.remote.ansible` | `cp/workers/remote/ansible.py` | CP remote worker adapters for cpkit Ansible playbook runners. |
 | `cp.workers.remote.common` | `cp/workers/remote/common.py` | Shared helpers for cluster workers. |
 | `cp.workers.remote.create` | `cp/workers/remote/create.py` | Remote cluster creation worker. |
 | `cp.workers.remote.debug_zip` | `cp/workers/remote/debug_zip.py` | Remote cluster debug zip worker. |
