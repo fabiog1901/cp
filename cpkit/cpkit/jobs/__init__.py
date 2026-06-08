@@ -22,7 +22,7 @@ from .types import (
     QueueMessage,
     Task,
 )
-from .worker import run_queue_worker
+from .worker import create_queue_worker, run_queue_worker
 
 __all__ = [
     "ClusterIDRef",
@@ -42,6 +42,7 @@ __all__ = [
     "QueueRepositoryMixin",
     "TASKS_TABLE",
     "Task",
+    "create_queue_worker",
     "create_jobs_router",
     "run_queue_worker",
 ]

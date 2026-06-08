@@ -8,9 +8,9 @@ from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events
 from .auth import oidc
 from .auth import router as auth_router
-from .cpkit_integration import create_jobs_router
+from .cpkit_integration import create_jobs_router, create_queue_worker
+from .prometheus import get_nodes
 from .repository import get_repo
-from .workers.queue import get_nodes, pull_from_mq
 
 
 def configure_api(api: FastAPI) -> None:
@@ -39,7 +39,7 @@ app = create_cpkit_app(
     ),
     configure_api=configure_api,
     startup_hooks=(validate_oidc_config,),
-    background_tasks=(pull_from_mq,),
+    background_tasks=(create_queue_worker(),),
     static_directory="webapp",
     default_journald_identifier="cp",
 )

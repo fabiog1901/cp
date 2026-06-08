@@ -16,15 +16,16 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 
 | Path | Purpose |
 | --- | --- |
-| `queue.py` | CP command dispatch built on `cpkit.jobs`. |
+| `commands.py` | CP command handlers registered with `cpkit.jobs`. |
 | `local/` | CP-local workers, such as backup catalog sync and restore polling. |
 | `remote/` | Playbook-backed remote cluster operations: create, delete, scale, upgrade, healthcheck. |
 
 ## Common Pattern
 
 The API/service layer should enqueue work and return a job id. `cpkit.jobs`
-owns queue polling and message claiming; CP workers resolve the queued command,
-execute it, and update job/task state. `cpkit.playbooks` owns stored playbook
+owns queue polling, message claiming, and failure bookkeeping; CP workers
+resolve the queued command, execute it, and update job/task state.
+`cpkit.playbooks` owns stored playbook
 access and execution mechanics; CP remote workers build CP-specific extra vars
 and reconcile cluster/job state. Keep direct user request concerns out of
 workers.

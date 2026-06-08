@@ -38,7 +38,7 @@ enqueues a command, returns a CP job id, and a worker later executes the command
 | API | `cp/api/clusters.py`, `cpkit/cpkit/jobs/` |
 | Services | `cp/services/cluster.py`, `cp/services/cluster_jobs.py`, `cpkit/cpkit/jobs/` |
 | Repos | `cp/repos/cluster.py`, `cp/repos/cluster_jobs.py`, `cp/repos/cluster_artifacts.py`, `cpkit/cpkit/jobs/` |
-| Workers | `cp/workers/queue.py`, `cp/workers/remote/*.py`, `cp/workers/local/*.py` |
+| Workers | `cp/workers/commands.py`, `cp/workers/remote/*.py`, `cp/workers/local/*.py`, `cpkit/cpkit/jobs/` |
 | Models | `Cluster*`, `Command*`, `Job*`, `Task*` in `cp/models.py` |
 
 ## API Resources
@@ -87,7 +87,7 @@ dashboard, jobs, and operation controls in:
 
 | Change | Start Here |
 | --- | --- |
-| Add a new cluster command | `cp/models.py`, `cp/services/cluster.py`, `cp/workers/queue.py` |
+| Add a new cluster command | `cp/models.py`, `cp/services/cluster.py`, `cp/workers/commands.py` |
 | Add a remote operation | `cp/workers/remote/`, then service enqueue path |
 | Add a job view field | `cpkit/cpkit/jobs/`, `webapp/` |
 | Change cluster visibility | `cp/repos/cluster.py`, `cp/services/cluster.py` |

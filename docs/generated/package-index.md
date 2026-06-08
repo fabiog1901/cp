@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 69 | 119 | 101 | 56 |
+| `cp` | 70 | 119 | 101 | 56 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -33,6 +33,7 @@
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
 | `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
+| `cp.prometheus` | `cp/prometheus.py` | Prometheus scrape target helpers. |
 | `cp.repos` | `cp/repos/__init__.py` | Repository-layer package. |
 | `cp.repos.admin` | `cp/repos/admin/__init__.py` | Admin repository package. |
 | `cp.repos.admin.base` | `cp/repos/admin/base.py` | Shared base for admin-oriented repositories. |
@@ -67,10 +68,10 @@
 | `cp.services.events` | `cp/services/events.py` | Business logic for the events vertical. |
 | `cp.services.storage_broker` | `cp/services/storage_broker.py` | Provision and resolve external storage connections for clusters. |
 | `cp.workers` | `cp/workers/__init__.py` | Worker runtime package. |
+| `cp.workers.commands` | `cp/workers/commands.py` | CP command handlers for queued framework jobs. |
 | `cp.workers.local` | `cp/workers/local/__init__.py` | Local CP workers that use CP-managed resources and SQL connections. |
 | `cp.workers.local.backup_catalog` | `cp/workers/local/backup_catalog.py` | Local backup catalog worker. |
 | `cp.workers.local.restore` | `cp/workers/local/restore.py` | Local restore worker. |
-| `cp.workers.queue` | `cp/workers/queue.py` | Queue worker entry point. |
 | `cp.workers.remote` | `cp/workers/remote/__init__.py` | Remote workers that prepare CP inputs for cpkit playbook execution. |
 | `cp.workers.remote.common` | `cp/workers/remote/common.py` | Shared helpers for cluster workers. |
 | `cp.workers.remote.create` | `cp/workers/remote/create.py` | Remote cluster creation worker. |

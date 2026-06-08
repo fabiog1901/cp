@@ -11,7 +11,7 @@ Use this file as a compact starting point before opening source files.
 
 ## Packages
 
-- `cp`: 69 modules, 119 classes, 101 functions, 56 routes
+- `cp`: 70 modules, 119 classes, 101 functions, 56 routes
 - `tools`: 1 modules, 5 classes, 32 functions, 0 routes
 
 ## API Route Count
@@ -20,21 +20,21 @@ Use this file as a compact starting point before opening source files.
 
 ## Command Handlers
 
-- `CommandType.CREATE_CLUSTER` -> `cp.workers.queue.create_cluster`
-- `CommandType.DEBUG_ZIP_CLUSTER` -> `cp.workers.queue.debug_zip_cluster`
-- `CommandType.DELETE_CLUSTER` -> `cp.workers.queue.delete_cluster`
-- `CommandType.FAIL_ZOMBIE_JOBS` -> `cp.workers.queue.fail_zombie_jobs`
-- `CommandType.HEALTHCHECK_CLUSTER` -> `cp.workers.queue.healthcheck_cluster`
-- `CommandType.POLL_CLUSTER_RESTORE` -> `cp.workers.queue.poll_cluster_restore`
-- `CommandType.POLL_DEBUG_ZIP` -> `cp.workers.queue.poll_debug_zip`
-- `CommandType.RECREATE_CLUSTER` -> `cp.workers.queue.lambda job_id, command, requested_by: create_cluster(job_id, command, requested_by, True)`
-- `CommandType.RESTORE_CLUSTER` -> `cp.workers.queue.restore_cluster`
-- `CommandType.RESTORE_CLUSTER_OBJECT` -> `cp.workers.queue.restore_cluster_object`
-- `CommandType.RESTORE_FULL_CLUSTER` -> `cp.workers.queue.restore_full_cluster`
-- `CommandType.SCALE_CLUSTER` -> `cp.workers.queue.scale_cluster`
-- `CommandType.SYNC_BACKUP_CATALOG` -> `cp.workers.queue.sync_backup_catalog`
-- `CommandType.SYNC_CLUSTER_BACKUP_CATALOG` -> `cp.workers.queue.sync_cluster_backup_catalog`
-- `CommandType.UPGRADE_CLUSTER` -> `cp.workers.queue.upgrade_cluster`
+- `CommandType.CREATE_CLUSTER` -> `cp.workers.commands.create_cluster`
+- `CommandType.DEBUG_ZIP_CLUSTER` -> `cp.workers.commands.debug_zip_cluster`
+- `CommandType.DELETE_CLUSTER` -> `cp.workers.commands.delete_cluster`
+- `CommandType.FAIL_ZOMBIE_JOBS` -> `cp.workers.commands.fail_zombie_jobs`
+- `CommandType.HEALTHCHECK_CLUSTER` -> `cp.workers.commands.healthcheck_cluster`
+- `CommandType.POLL_CLUSTER_RESTORE` -> `cp.workers.commands.poll_cluster_restore`
+- `CommandType.POLL_DEBUG_ZIP` -> `cp.workers.commands.poll_debug_zip`
+- `CommandType.RECREATE_CLUSTER` -> `cp.workers.commands.lambda job_id, command, requested_by: create_cluster(job_id, command, requested_by, True)`
+- `CommandType.RESTORE_CLUSTER` -> `cp.workers.commands.restore_cluster`
+- `CommandType.RESTORE_CLUSTER_OBJECT` -> `cp.workers.commands.restore_cluster_object`
+- `CommandType.RESTORE_FULL_CLUSTER` -> `cp.workers.commands.restore_full_cluster`
+- `CommandType.SCALE_CLUSTER` -> `cp.workers.commands.scale_cluster`
+- `CommandType.SYNC_BACKUP_CATALOG` -> `cp.workers.commands.sync_backup_catalog`
+- `CommandType.SYNC_CLUSTER_BACKUP_CATALOG` -> `cp.workers.commands.sync_cluster_backup_catalog`
+- `CommandType.UPGRADE_CLUSTER` -> `cp.workers.commands.upgrade_cluster`
 
 ## Generated Files
 

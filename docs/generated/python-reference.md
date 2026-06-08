@@ -188,6 +188,16 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+## `cp.prometheus`
+
+### `cp.prometheus`
+
+::: cp.prometheus
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ## `cp.repos`
 
 ### `cp.repos`
@@ -468,6 +478,14 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+### `cp.workers.commands`
+
+::: cp.workers.commands
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ### `cp.workers.local`
 
 ::: cp.workers.local
@@ -487,14 +505,6 @@
 ### `cp.workers.local.restore`
 
 ::: cp.workers.local.restore
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.workers.queue`
-
-::: cp.workers.queue
     options:
       show_source: true
       show_root_heading: false

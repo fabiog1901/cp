@@ -300,8 +300,9 @@ CP wiring for cpkit-provided capabilities.
 
 Functions:
 
-- `create_admin_router()` — line 25: Create admin routes owned by cpkit and wired to CP hooks.
-- `create_jobs_router()` — line 37: Create job management routes owned by cpkit and wired to CP hooks.
+- `create_admin_router()` — line 29: Create admin routes owned by cpkit and wired to CP hooks.
+- `create_jobs_router()` — line 41: Create job management routes owned by cpkit and wired to CP hooks.
+- `create_queue_worker()` — line 54: Create the cpkit queue worker with CP command handlers.
 
 ### `cp.infra`
 
@@ -430,6 +431,16 @@ Functions:
 - `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 259: _No docstring._
 - `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 529: _No docstring._
 - `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 533: _No docstring._
+
+### `cp.prometheus`
+
+Path: `cp/prometheus.py`
+
+Prometheus scrape target helpers.
+
+Functions:
+
+- `get_nodes()` — line 11: Return Prometheus scrape targets for active cluster nodes.
 
 ### `cp.repos`
 
@@ -730,6 +741,16 @@ Path: `cp/workers/__init__.py`
 
 Worker runtime package.
 
+### `cp.workers.commands`
+
+Path: `cp/workers/commands.py`
+
+CP command handlers for queued framework jobs.
+
+Functions:
+
+- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 23: Mark stale running jobs as failed from a scheduled queue command.
+
 ### `cp.workers.local`
 
 Path: `cp/workers/local/__init__.py`
@@ -761,18 +782,6 @@ Functions:
 - `restore_full_cluster_worker(job_id: int, rr: RestoreFullClusterRequest, requested_by: str)` — line 195: Submit a detached full-cluster restore and schedule restore polling.
 - `restore_cluster_worker(job_id: int, rr: RestoreRequest, requested_by: str)` — line 271: Execute an in-place restore workflow and update job/cluster state.
 - `poll_cluster_restore(_msg_id: int, command: PollClusterRestoreRequest, requested_by: str) -> None` — line 416: Poll a CockroachDB restore job and update the CP job/cluster state.
-
-### `cp.workers.queue`
-
-Path: `cp/workers/queue.py`
-
-Queue worker entry point.
-
-Functions:
-
-- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 41: Mark stale running jobs as failed from a scheduled queue command.
-- `get_nodes()` — line 73: Return Prometheus scrape targets for active cluster nodes.
-- `async pull_from_mq()` — line 100: Continuously claim due MQ messages and dispatch them to command handlers.
 
 ### `cp.workers.remote`
 

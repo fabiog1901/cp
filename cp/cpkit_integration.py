@@ -2,8 +2,11 @@
 
 from cpkit import create_cpkit_admin_router
 from cpkit.auth import ApiKeysService
+from cpkit.db import get_pool
 from cpkit.jobs import JobsService
+from cpkit.jobs import QueueMessage
 from cpkit.jobs import create_jobs_router as create_cpkit_jobs_router
+from cpkit.jobs import create_queue_worker as create_cpkit_queue_worker
 from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
 
@@ -18,8 +21,9 @@ from .models import AuditEvent, CommandType, parse_command_payload
 from .repository import get_repo
 from .services.base import log_event
 from .services.errors import ServiceError
+from .workers.commands import COMMAND_HANDLERS
 
-__all__ = ["create_admin_router", "create_jobs_router"]
+__all__ = ["create_admin_router", "create_jobs_router", "create_queue_worker"]
 
 
 def create_admin_router():
@@ -44,6 +48,16 @@ def create_jobs_router():
         require_user=require_user,
         handle_service_error=raise_http_from_service_error,
         service_error_type=ServiceError,
+    )
+
+
+def create_queue_worker():
+    """Create the cpkit queue worker with CP command handlers."""
+    return create_cpkit_queue_worker(
+        get_pool=get_pool,
+        get_repo=get_repo,
+        resolve_handler=_resolve_command_handler,
+        parse_message=_parse_queue_message,
     )
 
 
@@ -104,3 +118,14 @@ def _resolve_reschedule_command_type(job_type: str) -> CommandType:
     if command_type == CommandType.CREATE_CLUSTER:
         return CommandType.RECREATE_CLUSTER
     return command_type
+
+
+def _resolve_command_handler(message: QueueMessage):
+    return COMMAND_HANDLERS.get(CommandType(message.msg_type))
+
+
+def _parse_queue_message(message: QueueMessage):
+    return parse_command_payload(
+        CommandType(message.msg_type),
+        message.msg_data,
+    )
