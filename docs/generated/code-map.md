@@ -346,7 +346,7 @@ Functions:
 
 ### `cp.auth`
 
-Path: `cp/auth/__init__.py`
+Path: `cp/auth.py`
 
 CP's cpkit OIDC integration.
 

@@ -29,11 +29,11 @@ from cpkit.auth import (
     timestamp_scheme,
 )
 
-from ..audit import build_log_msg
-from ..infra import decrypt_secret, encrypt_secret, get_repo, request_id_ctx
-from ..infra import validate_secret_crypto_config
-from ..models import AuditEvent, CPRole, OIDCSessionRecord
-from ..repos import Repo
+from .audit import build_log_msg
+from .infra import decrypt_secret, encrypt_secret, get_repo, request_id_ctx
+from .infra import validate_secret_crypto_config
+from .models import AuditEvent, CPRole, OIDCSessionRecord
+from .repos import Repo
 
 OIDC_SESSION_COOKIE_NAME = "cp_session"
 

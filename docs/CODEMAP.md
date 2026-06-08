@@ -27,7 +27,7 @@ limited to persistence.
 | --- | --- |
 | `cp/api/` | FastAPI routers. Converts HTTP/auth context into service calls. |
 | `cp/api/admin/` | Admin option CRUD endpoints such as versions, regions, role templates, and playbooks. |
-| `cp/auth/__init__.py` | CP-specific cpkit OIDC wiring and exported auth dependencies. |
+| `cp/auth.py` | CP-specific cpkit OIDC wiring and exported auth dependencies. |
 | `cp/infra/` | Cross-cutting infrastructure: DB connection helpers, dependency factories, logging, errors, cluster connection utilities. |
 | `cp/repos/` | CP metadata persistence. Repos should not execute SQL against managed clusters. |
 | `cp/repos/admin/` | Persistence for admin-configured options and cluster database access metadata. |
@@ -192,7 +192,7 @@ This area controls web/API authentication and CP-level visibility.
 
 | Concern | Entry points |
 | --- | --- |
-| App auth wiring | `cp/auth/__init__.py` |
+| App auth wiring | `cp/auth.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
 | Services | `cp/services/auth.py` |
 | Repos | `cp/repos/auth.py` |

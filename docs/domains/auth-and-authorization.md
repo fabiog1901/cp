@@ -34,7 +34,7 @@ authentication or authorization.
 
 | Layer | Files |
 | --- | --- |
-| App integration | `cp/auth/__init__.py` |
+| App integration | `cp/auth.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
 | Services | `cp/services/auth.py`, `cp/services/admin/api_keys.py` |
 | Repos | `cp/repos/auth.py`, `cp/repos/admin/api_keys.py` |
@@ -73,8 +73,8 @@ Important auth resources include:
 
 | Change | Start Here |
 | --- | --- |
-| Change app auth wiring | `cp/auth/__init__.py` |
+| Change app auth wiring | `cp/auth.py` |
 | Change framework OIDC behavior | `cpkit/cpkit/auth/oidc.py`, `cpkit/cpkit/auth/router.py` |
 | Change route access dependencies | `cpkit/cpkit/auth/dependencies.py`, API routes |
-| Change cluster visibility | `cp/auth/__init__.py`, `cp/repos/cluster.py` |
+| Change cluster visibility | `cp/auth.py`, `cp/repos/cluster.py` |
 | Change API keys | `cp/services/admin/api_keys.py`, `cp/repos/admin/api_keys.py` |
