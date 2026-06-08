@@ -13,7 +13,7 @@ import requests
 from ..repository import get_repo
 from cpkit.errors import RepositoryError, RepositoryUnavailableError
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
-from .errors import ServiceValidationError, from_repository_error
+from cpkit.errors import ServiceValidationError, from_repository_error
 
 PROMETHEUS_TIMEOUT_SECS = 10
 logger = logging.getLogger(__name__)

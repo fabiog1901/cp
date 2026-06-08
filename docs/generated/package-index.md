@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 63 | 112 | 97 | 54 |
+| `cp` | 62 | 112 | 97 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -58,7 +58,6 @@
 | `cp.services.cluster_jobs` | `cp/services/cluster_jobs.py` | Business logic for the cluster jobs vertical. |
 | `cp.services.cluster_users` | `cp/services/cluster_users.py` | Database access workflows for managed clusters. |
 | `cp.services.dashboard` | `cp/services/dashboard.py` | Cluster dashboard service. |
-| `cp.services.errors` | `cp/services/errors.py` | Compatibility exports for service-layer exception types. |
 | `cp.services.storage_broker` | `cp/services/storage_broker.py` | Provision and resolve external storage connections for clusters. |
 | `cp.workers` | `cp/workers/__init__.py` | Worker runtime package. |
 | `cp.workers.commands` | `cp/workers/commands.py` | CP command handlers for queued framework jobs. |

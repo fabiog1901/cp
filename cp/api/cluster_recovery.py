@@ -15,7 +15,7 @@ from ..cpkit_integration import (
 )
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
-from ..services.errors import ServiceError
+from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/cluster-recovery",

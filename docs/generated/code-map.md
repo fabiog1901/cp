@@ -648,12 +648,6 @@ Cluster dashboard service.
 Classes:
 - `DashboardService` — line 22: _No docstring._
 
-### `cp.services.errors`
-
-Path: `cp/services/errors.py`
-
-Compatibility exports for service-layer exception types.
-
 ### `cp.services.storage_broker`
 
 Path: `cp/services/storage_broker.py`

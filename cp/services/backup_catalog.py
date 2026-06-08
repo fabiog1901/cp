@@ -18,7 +18,7 @@ from ..models import (
     SyncClusterBackupCatalogRequest,
 )
 from .base import log_event
-from .errors import (
+from cpkit.errors import (
     ServiceAuthorizationError,
     ServiceNotFoundError,
     ServiceValidationError,

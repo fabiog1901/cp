@@ -392,14 +392,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.services.errors`
-
-::: cp.services.errors
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.services.storage_broker`
 
 ::: cp.services.storage_broker

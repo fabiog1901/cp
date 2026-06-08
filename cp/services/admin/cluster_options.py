@@ -15,7 +15,7 @@ from ...models import (
     NodeCountOption,
 )
 from ..base import log_event
-from ..errors import ServiceValidationError, from_repository_error
+from cpkit.errors import ServiceValidationError, from_repository_error
 from .base import AdminService
 
 

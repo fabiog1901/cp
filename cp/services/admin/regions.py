@@ -6,7 +6,7 @@ from typing import Any
 from cpkit.errors import RepositoryError
 from ...models import AuditEvent, Region
 from ..base import log_event
-from ..errors import ServiceValidationError, from_repository_error
+from cpkit.errors import ServiceValidationError, from_repository_error
 from .base import AdminService
 
 

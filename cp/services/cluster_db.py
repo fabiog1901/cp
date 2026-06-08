@@ -4,7 +4,7 @@ from cpkit.auth import decrypt_secret
 
 from ..cluster_database import connect_cluster_db
 from ..models import Cluster
-from .errors import ServiceValidationError
+from cpkit.errors import ServiceValidationError
 
 
 def get_primary_dns_address(cluster: Cluster) -> str:

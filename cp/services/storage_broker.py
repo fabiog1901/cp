@@ -13,7 +13,7 @@ from cpkit.auth import decrypt_secret, encrypt_secret
 from ..repository import get_repo
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
 from ..repos import Repo
-from .errors import ServiceValidationError
+from cpkit.errors import ServiceValidationError
 
 BACKUP_CONNECTION_NAME = "backup"
 BACKUP_CONNECTION_TYPE = "s3"

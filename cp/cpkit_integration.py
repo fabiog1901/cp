@@ -16,7 +16,7 @@ from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
 from .repository import get_repo
 from .services.base import log_event
-from .services.errors import ServiceError
+from cpkit.errors import ServiceError
 from .workers.commands import COMMAND_HANDLERS
 
 auth = create_auth_bundle(

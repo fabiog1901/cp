@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from ...cpkit_integration import get_audit_actor
 from ...models import DatabaseRoleTemplateConfig
 from ...services.admin.cluster_options import ClusterOptionsService
-from ...services.errors import ServiceError
+from cpkit.errors import ServiceError
 from cpkit.errors import raise_http_from_service_error
 
 router = APIRouter(prefix="/database_role_templates", tags=["admin"])

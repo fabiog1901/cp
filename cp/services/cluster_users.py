@@ -30,7 +30,7 @@ from ..models import (
 )
 from .base import log_event
 from .cluster_db import connect_to_cluster_db
-from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
+from cpkit.errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
 
 logger = logging.getLogger(__name__)
 

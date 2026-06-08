@@ -50,7 +50,7 @@ from ..services.cluster_backups import ClusterBackupsService
 from ..services.cluster_jobs import ClusterJobsService
 from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
-from ..services.errors import ServiceError
+from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/clusters",

@@ -29,7 +29,7 @@ from ..models import (
     to_public_cluster,
 )
 from .base import log_event
-from .errors import (
+from cpkit.errors import (
     ServiceConflictError,
     ServiceNotFoundError,
     ServiceValidationError,

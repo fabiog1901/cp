@@ -10,7 +10,7 @@ from cpkit.errors import raise_http_from_service_error
 from ..cpkit_integration import require_readonly
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
-from ..services.errors import ServiceError
+from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/alerts",

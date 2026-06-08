@@ -3,7 +3,7 @@
 from ..repository import get_repo
 from cpkit.errors import RepositoryError
 from ..models import AlertmanagerPayload, LiveAlert
-from .errors import from_repository_error
+from cpkit.errors import from_repository_error
 
 
 class AlertsService:
