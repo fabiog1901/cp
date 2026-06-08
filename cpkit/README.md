@@ -34,45 +34,23 @@ app = create_cpkit_app(
 ## OIDC Integration
 
 OIDC is configured through framework settings stored in the `cpkit.settings`
-table. The application supplies only the pieces cpkit cannot know:
+table. A cpkit app can use the bundled auth wiring and supply only the pieces
+cpkit cannot know:
 
 - a repository dependency such as `get_repo`
-- the session record factory used by the app repository
-- secret encryption/decryption helpers
-- the app role names that map to readonly, user, and admin access
-- optional audit persistence for login/logout events
-- the browser session cookie name, when the app wants a custom one
+- the audit record factory used by the app repository
 
-The integration should fit in one application-owned file:
+The integration should fit in the app's cpkit bootstrap file:
 
 ```python
-from cpkit.auth import OIDCManager, create_auth_dependencies, create_oidc_router
+from cpkit.auth import create_auth_bundle
 
-oidc = OIDCManager(
-    encrypt_secret=encrypt_secret,
-    decrypt_secret=decrypt_secret,
-    session_record_factory=OIDCSessionRecord,
-    session_cookie_name="cp_session",
-    validate_secret_crypto_config=validate_secret_crypto_config,
-)
-
-auth = create_auth_dependencies(
-    oidc,
+auth = create_auth_bundle(
     get_repo=get_repo,
-    session_cookie_name="cp_session",
-    readonly_roles=(Role.READONLY,),
-    user_roles=(Role.USER, Role.ADMIN),
-    admin_roles=(Role.ADMIN,),
+    audit_record_factory=build_log_msg,
 )
 
-router = create_oidc_router(
-    oidc,
-    get_repo=get_repo,
-    require_authenticated=auth.require_authenticated,
-    get_audit_actor=auth.get_audit_actor,
-    audit_event_hook=log_auth_event,
-)
-
+router = auth.router
 require_authenticated = auth.require_authenticated
 require_readonly = auth.require_readonly
 require_user = auth.require_user

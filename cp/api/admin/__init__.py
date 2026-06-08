@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Security
 
-from ...auth import require_admin
+from ...cpkit_integration import require_admin
 from ...cpkit_integration import create_admin_router
 from . import (
     cpu_counts,

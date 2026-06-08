@@ -151,12 +151,6 @@ class AuditEvent(AutoNameStrEnum):
     JOB_RESCHEDULE_REQUESTED = auto()
 
 
-class CPRole(AutoNameStrEnum):
-    CP_READONLY = auto()
-    CP_USER = auto()
-    CP_ADMIN = auto()
-
-
 class SettingKey(AutoNameStrEnum):
     storage_s3_url = "storage.s3.url"
     storage_s3_admin_access_key = "storage.s3.admin_access_key"

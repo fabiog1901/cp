@@ -6,7 +6,7 @@ clients. Alert retrieval and filtering live in AlertsService.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..auth import require_readonly
+from ..cpkit_integration import require_readonly
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
 from ..services.errors import (

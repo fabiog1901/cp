@@ -11,6 +11,14 @@ from .api_keys import (
 )
 from .api_key_router import create_api_keys_router
 from .api_key_service import ApiKeysService
+from .bundle import (
+    DEFAULT_ADMIN_ROLES,
+    DEFAULT_OIDC_SESSION_COOKIE_NAME,
+    DEFAULT_READONLY_ROLES,
+    DEFAULT_USER_ROLES,
+    AuthBundle,
+    create_auth_bundle,
+)
 from .claims import claim_groups, claims_groups, jsonable_role_groups
 from .config import OIDCConfig
 from .dependencies import (
@@ -73,6 +81,11 @@ __all__ = [
     "APIKeyAuthenticator",
     "APIKeyRepository",
     "APIKeysRepositoryMixin",
+    "AuthBundle",
+    "DEFAULT_ADMIN_ROLES",
+    "DEFAULT_OIDC_SESSION_COOKIE_NAME",
+    "DEFAULT_READONLY_ROLES",
+    "DEFAULT_USER_ROLES",
     "ROLE_GROUP_MAPPINGS_TABLE",
     "ApiKeyCreateRequest",
     "ApiKeyCreateRequestInDB",
@@ -97,6 +110,7 @@ __all__ = [
     "create_oidc_router",
     "create_api_keys_router",
     "create_auth_dependencies",
+    "create_auth_bundle",
     "decrypt_secret",
     "encrypt_secret",
     "jsonable_role_groups",

@@ -7,7 +7,12 @@ grants, and IdP group mappings. Business behavior belongs in services.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
+from ..cpkit_integration import (
+    get_access_scope,
+    get_audit_actor,
+    require_readonly,
+    require_user,
+)
 from ..models import (
     ArtifactDownloadUrlResponse,
     BackupDetails,

@@ -6,7 +6,12 @@ cluster recovery page. Restore orchestration is delegated to BackupCatalogServic
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
+from ..cpkit_integration import (
+    get_access_scope,
+    get_audit_actor,
+    require_readonly,
+    require_user,
+)
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
 from ..services.errors import (

@@ -6,7 +6,7 @@ service workflows through shared audit helpers.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..auth import get_access_scope, require_readonly
+from ..cpkit_integration import get_access_scope, require_readonly
 from ..models import EventCountResponse, LogMsg
 from ..services.errors import (
     ServiceAuthorizationError,

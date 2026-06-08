@@ -1,7 +1,7 @@
 """CP wiring for cpkit-provided capabilities."""
 
 from cpkit import create_cpkit_admin_router
-from cpkit.auth import ApiKeysService
+from cpkit.auth import ApiKeysService, create_auth_bundle
 from cpkit.db import get_pool
 from cpkit.jobs import JobsService
 from cpkit.jobs import QueueMessage
@@ -11,19 +11,46 @@ from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
 
 from .api.admin.common import raise_http_from_service_error
-from .auth import (
-    get_access_scope,
-    get_audit_actor,
-    require_readonly,
-    require_user,
-)
+from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
 from .repository import get_repo
 from .services.base import log_event
 from .services.errors import ServiceError
 from .workers.commands import COMMAND_HANDLERS
 
-__all__ = ["create_admin_router", "create_jobs_router", "create_queue_worker"]
+auth = create_auth_bundle(
+    get_repo=get_repo,
+    audit_record_factory=build_log_msg,
+)
+auth_router = auth.router
+oidc = auth.oidc
+require_authenticated = auth.require_authenticated
+require_user = auth.require_user
+require_readonly = auth.require_readonly
+require_admin = auth.require_admin
+get_access_scope = auth.get_access_scope
+get_audit_actor = auth.get_audit_actor
+
+__all__ = [
+    "auth",
+    "auth_router",
+    "create_admin_router",
+    "create_jobs_router",
+    "create_queue_worker",
+    "get_access_scope",
+    "get_audit_actor",
+    "oidc",
+    "require_admin",
+    "require_authenticated",
+    "require_readonly",
+    "require_user",
+    "validate_auth_config",
+]
+
+
+def validate_auth_config() -> None:
+    """Validate cpkit auth settings at startup."""
+    oidc.validate_config(get_repo())
 
 
 def create_admin_router():

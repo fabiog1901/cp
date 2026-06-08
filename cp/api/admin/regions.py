@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter, Depends
 
-from ...auth import get_audit_actor
+from ...cpkit_integration import get_audit_actor
 from ...models import Region
 from ...services.admin.regions import RegionsService
 from ...services.errors import ServiceError

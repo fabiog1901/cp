@@ -6,9 +6,12 @@ from cpkit import create_cpkit_app
 
 from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events
-from .auth import oidc
-from .auth import router as auth_router
-from .cpkit_integration import create_jobs_router, create_queue_worker
+from .cpkit_integration import (
+    auth_router,
+    create_jobs_router,
+    create_queue_worker,
+    validate_auth_config,
+)
 from .prometheus import get_nodes
 from .repository import get_repo
 
@@ -17,10 +20,6 @@ def configure_api(api: FastAPI) -> None:
     @api.get("/prom-targets")
     async def get_targets():
         return get_nodes()
-
-
-def validate_oidc_config() -> None:
-    oidc.validate_config(get_repo())
 
 
 app = create_cpkit_app(
@@ -38,7 +37,7 @@ app = create_cpkit_app(
         create_jobs_router(),
     ),
     configure_api=configure_api,
-    startup_hooks=(validate_oidc_config,),
+    startup_hooks=(validate_auth_config,),
     background_tasks=(create_queue_worker(),),
     static_directory="webapp",
     default_journald_identifier="cp",

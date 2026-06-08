@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ...auth import get_audit_actor
+from ...cpkit_integration import get_audit_actor
 from ...models import Version
 from ...services.admin.versions import VersionsService
 from ...services.errors import ServiceError

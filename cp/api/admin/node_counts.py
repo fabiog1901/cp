@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ...auth import get_audit_actor
+from ...cpkit_integration import get_audit_actor
 from ...models import NodeCountOption
 from ...services.admin.cluster_options import ClusterOptionsService
 from ...services.errors import ServiceError

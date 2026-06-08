@@ -120,16 +120,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.auth`
-
-### `cp.auth`
-
-::: cp.auth
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.cluster_database`
 
 ### `cp.cluster_database`
