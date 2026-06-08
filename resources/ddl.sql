@@ -1,3 +1,4 @@
+CREATE SCHEMA cpkit;
 CREATE SEQUENCE public.mq_seq MINVALUE 1 MAXVALUE 9223372036854775807 INCREMENT 1 START 1 PER NODE CACHE 100;
 CREATE TABLE public.mq (
     msg_id INT8 NOT NULL DEFAULT nextval('public.mq_seq'::REGCLASS),
@@ -238,7 +239,7 @@ CREATE TABLE public.playbooks (
     updated_by STRING NULL,
     CONSTRAINT pk PRIMARY KEY (name ASC, version ASC)
 );
-CREATE TABLE public.settings (
+CREATE TABLE cpkit.settings (
     key STRING NOT NULL,
     value STRING NULL,
     default_value STRING NULL,

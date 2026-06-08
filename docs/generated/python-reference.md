@@ -142,6 +142,16 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+## `cp.audit`
+
+### `cp.audit`
+
+::: cp.audit
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ## `cp.auth`
 
 ### `cp.auth`

@@ -8,7 +8,7 @@ from .types import SettingRecord
 
 
 class SettingsRepositoryMixin:
-    settings_table_name = "settings"
+    settings_table_name = "cpkit.settings"
 
     def list_settings(self) -> list[SettingRecord]:
         return fetch_all(

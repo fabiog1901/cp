@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 88 | 175 | 156 | 77 |
+| `cp` | 89 | 157 | 138 | 77 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -29,16 +29,17 @@
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
 | `cp.api.events` | `cp/api/events.py` | Event API routes. |
 | `cp.api.jobs` | `cp/api/jobs.py` | Job API routes. |
+| `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth/__init__.py` | _No docstring._ |
 | `cp.auth.common` | `cp/auth/common.py` | Shared authentication primitives. |
 | `cp.auth.dependencies` | `cp/auth/dependencies.py` | Authentication and authorization dependencies. |
 | `cp.auth.oidc` | `cp/auth/oidc.py` | OIDC client helpers. |
 | `cp.auth.router` | `cp/auth/router.py` | Authentication HTTP routes. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
-| `cp.infra.db` | `cp/infra/db.py` | Low-level CP metadata database infrastructure. |
+| `cp.infra.db` | `cp/infra/db.py` | CP metadata database infrastructure adapter. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
-| `cp.infra.errors` | `cp/infra/errors.py` | Infrastructure-layer exception types. |
-| `cp.infra.logging` | `cp/infra/logging.py` | Logging configuration for operational messages. |
+| `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
+| `cp.infra.logging` | `cp/infra/logging.py` | CP logging configuration adapter. |
 | `cp.infra.util` | `cp/infra/util.py` | Shared operational utilities. |
 | `cp.main` | `cp/main.py` | FastAPI application entry point. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
@@ -80,7 +81,7 @@
 | `cp.services.cluster_jobs` | `cp/services/cluster_jobs.py` | Business logic for the cluster jobs vertical. |
 | `cp.services.cluster_users` | `cp/services/cluster_users.py` | Database access workflows for managed clusters. |
 | `cp.services.dashboard` | `cp/services/dashboard.py` | Cluster dashboard service. |
-| `cp.services.errors` | `cp/services/errors.py` | Service-layer exception types and repository error translation. |
+| `cp.services.errors` | `cp/services/errors.py` | Compatibility exports for service-layer exception types. |
 | `cp.services.events` | `cp/services/events.py` | Business logic for the events vertical. |
 | `cp.services.jobs` | `cp/services/jobs.py` | Business logic for the jobs vertical. |
 | `cp.services.storage_broker` | `cp/services/storage_broker.py` | Provision and resolve external storage connections for clusters. |

@@ -334,6 +334,16 @@ Routes:
 - `GET /jobs/{job_id}/details` -> `get_job_details()`
 - `POST /jobs/{job_id}/reschedule` -> `reschedule_job()`
 
+### `cp.audit`
+
+Path: `cp/audit.py`
+
+CP-specific audit record construction helpers.
+
+Functions:
+
+- `build_log_msg(*, actor_id: str, event_type: str, metadata: dict[str, Any] | None, request_id: str | None, default_metadata: dict[str, Any] | None=None) -> LogMsg` — line 8: _No docstring._
+
 ### `cp.auth`
 
 Path: `cp/auth/__init__.py`
@@ -347,17 +357,13 @@ Path: `cp/auth/common.py`
 Shared authentication primitives.
 
 Classes:
-- `OIDCConfig` — line 118: Configuration derived from settings for OIDC login and authz.
+- `OIDCConfig` — line 59: Configuration derived from settings for OIDC login and authz.
 
 Functions:
 
-- `claim_groups(claim_value: Any) -> set[str]` — line 25: Normalize a groups claim into a trimmed set of group names.
-- `claims_groups(claims: dict[str, Any], groups_claim_name: str='groups') -> set[str]` — line 40: Extract the configured groups claim from a JWT or synthetic claims payload.
-- `jsonable_role_groups(role_groups: dict[str, Any]) -> dict[str, list[str]]` — line 47: Convert role-to-groups mappings into JSON-friendly sorted lists.
-- `parse_api_key_timestamp(timestamp: str) -> datetime` — line 55: Parse either epoch seconds or an ISO-8601 timestamp into UTC.
-- `request_target_bytes(request: Request) -> bytes` — line 78: Return the exact path and query bytes that are covered by the request signature.
-- `build_api_key_signature_payload(request: Request, timestamp: str, body: bytes) -> bytes` — line 92: Build the canonical payload used for HMAC request signing.
-- `api_key_signature(secret_key: bytes, request: Request, timestamp: str, body: bytes) -> str` — line 106: Return the expected HMAC signature for an API-key-authenticated request.
+- `claim_groups(claim_value: Any) -> set[str]` — line 28: Normalize a groups claim into a trimmed set of group names.
+- `claims_groups(claims: dict[str, Any], groups_claim_name: str='groups') -> set[str]` — line 43: Extract the configured groups claim from a JWT or synthetic claims payload.
+- `jsonable_role_groups(role_groups: dict[str, Any]) -> dict[str, list[str]]` — line 50: Convert role-to-groups mappings into JSON-friendly sorted lists.
 
 ### `cp.auth.dependencies`
 
@@ -391,12 +397,12 @@ Authentication HTTP routes.
 
 Functions:
 
-- `oidc_cookie_kwargs() -> dict[str, Any]` — line 28: Return the shared cookie settings used across the OIDC browser flow.
-- `log_auth_event(repo: Repo, actor_id: str, action: AuditEvent, details: dict[str, Any] | None=None) -> None` — line 39: Persist a login or logout event using the current request id context.
-- `oidc_login(request: Request, next: str='/', repo: Repo=Depends(get_repo))` — line 57: Start the browser OIDC login flow and store anti-CSRF cookies.
-- `oidc_callback(request: Request, repo: Repo=Depends(get_repo), code: str | None=None, state: str | None=None, error: str | None=None, error_description: str | None=None)` — line 85: Finish the OIDC login flow, validate the ID token, and set the session cookie.
-- `oidc_logout(repo: Repo=Depends(get_repo), actor_id: str=Depends(get_audit_actor), claims: dict[str, Any]=Security(require_authenticated))` — line 176: Clear the OIDC session cookie and write a logout audit event.
-- `oidc_me(request: Request, claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 199: Return the current caller's claims plus CP-specific auth metadata.
+- `oidc_cookie_kwargs() -> dict[str, Any]` — line 30: Return the shared cookie settings used across the OIDC browser flow.
+- `log_auth_event(repo: Repo, actor_id: str, action: AuditEvent, details: dict[str, Any] | None=None) -> None` — line 41: Persist a login or logout event using the current request id context.
+- `oidc_login(request: Request, next: str='/', repo: Repo=Depends(get_repo))` — line 60: Start the browser OIDC login flow and store anti-CSRF cookies.
+- `oidc_callback(request: Request, repo: Repo=Depends(get_repo), code: str | None=None, state: str | None=None, error: str | None=None, error_description: str | None=None)` — line 88: Finish the OIDC login flow, validate the ID token, and set the session cookie.
+- `oidc_logout(repo: Repo=Depends(get_repo), actor_id: str=Depends(get_audit_actor), claims: dict[str, Any]=Security(require_authenticated))` — line 179: Clear the OIDC session cookie and write a logout audit event.
+- `oidc_me(request: Request, claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 202: Return the current caller's claims plus CP-specific auth metadata.
 
 Routes:
 - `GET /auth/login` -> `oidc_login()`
@@ -414,23 +420,12 @@ Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies.
 
 Path: `cp/infra/db.py`
 
-Low-level CP metadata database infrastructure.
-
-Classes:
-- `Dict2JsonbDumper` — line 34: _No docstring._
-- `SelectorDumper` — line 39: Choose the correct dumper for list payloads.
+CP metadata database infrastructure adapter.
 
 Functions:
 
-- `execute_stmt(stmt: str, bind_args: tuple=(), *, operation: str | None=None) -> None` — line 54: _No docstring._
-- `fetch_all(stmt: str, bind_args: tuple, row_type, *, operation: str | None=None) -> list[Any]` — line 71: _No docstring._
-- `fetch_one(stmt: str, bind_args: tuple, row_type, *, operation: str | None=None) -> Any | None` — line 90: _No docstring._
-- `fetch_scalar(stmt: str, bind_args: tuple=(), *, operation: str | None=None) -> Any | None` — line 109: _No docstring._
-- `initialize_postgres(db_url: str | None=None) -> None` — line 140: _No docstring._
-- `get_pool() -> ConnectionPool` — line 157: _No docstring._
-- `get_repo()` — line 163: _No docstring._
-- `close_db() -> None` — line 169: _No docstring._
-- `translate_database_error(err: Exception, operation: str | None) -> RepositoryError` — line 178: _No docstring._
+- `get_repo()` — line 21: _No docstring._
+- `translate_database_error(err: Exception, operation: str | None)` — line 27: _No docstring._
 
 ### `cp.infra.dependencies`
 
@@ -448,24 +443,17 @@ Functions:
 
 Path: `cp/infra/errors.py`
 
-Infrastructure-layer exception types.
-
-Classes:
-- `RepositoryError` — line 4: Base exception for repository and infrastructure failures.
-- `RepositoryUnavailableError` — line 19: Raised when the database is temporarily unavailable.
-- `RepositoryConflictError` — line 23: Raised when a write conflicts with existing data.
-- `RepositoryValidationError` — line 27: Raised when the database rejects invalid data.
-- `RepositoryPermissionError` — line 31: Raised when the database denies access to an operation.
+Compatibility exports for repository exception types.
 
 ### `cp.infra.logging`
 
 Path: `cp/infra/logging.py`
 
-Logging configuration for operational messages.
+CP logging configuration adapter.
 
 Functions:
 
-- `configure_logging(repo=None, *, force: bool=False) -> None` — line 11: Configure app logging with journald when available.
+- `configure_logging(repo=None, *, force: bool=False) -> None` — line 9: Configure app logging with CP's persisted logging settings.
 
 ### `cp.infra.util`
 
@@ -474,23 +462,14 @@ Path: `cp/infra/util.py`
 Shared operational utilities.
 
 Classes:
-- `ClusterDatabaseConnectionError` — line 25: Raised when a cluster database cannot be reached in normal operation.
-- `RequestIDFilter` — line 171: _No docstring._
-- `ShorthandFormatter` — line 177: _No docstring._
+- `ClusterDatabaseConnectionError` — line 24: Raised when a cluster database cannot be reached in normal operation.
 
 Functions:
 
-- `as_bool(value: str | None, default: bool=False) -> bool` — line 34: Parse common truthy environment-style values into a boolean.
-- `safe_json_string_dict(value: str | None, *, default: dict[str, str] | None=None) -> dict[str, str]` — line 41: Parse a JSON object and coerce its keys and values to strings.
-- `safe_next_path(next_path: str | None) -> str` — line 55: Normalize redirect targets so only in-app absolute paths are allowed.
-- `safe_csv_set(raw_value: str | None) -> set[str]` — line 66: Split a comma-delimited string into a trimmed set of values.
-- `validate_secret_crypto_config() -> None` — line 89: _No docstring._
-- `validate_api_key_crypto_config() -> None` — line 93: _No docstring._
-- `encrypt_secret(secret: bytes | str) -> bytes` — line 103: _No docstring._
-- `decrypt_secret(secret: bytes | str) -> bytes` — line 113: _No docstring._
-- `encrypt_api_key_secret(secret: bytes | str) -> bytes` — line 135: _No docstring._
-- `decrypt_api_key_secret(secret: bytes | str) -> bytes` — line 139: _No docstring._
-- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 143: _No docstring._
+- `validate_api_key_crypto_config() -> None` — line 33: _No docstring._
+- `encrypt_api_key_secret(secret: bytes | str) -> bytes` — line 37: _No docstring._
+- `decrypt_api_key_secret(secret: bytes | str) -> bytes` — line 41: _No docstring._
+- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 45: _No docstring._
 
 ### `cp.main`
 
@@ -511,129 +490,126 @@ Path: `cp/models.py`
 Shared CP domain, API, command, and persistence models.
 
 Classes:
-- `AutoNameStrEnum` — line 18: _No docstring._
-- `PlaybookName` — line 26: _No docstring._
-- `CommandType` — line 39: _No docstring._
-- `ClusterState` — line 57: _No docstring._
-- `JobState` — line 73: _No docstring._
-- `ClusterArtifactState` — line 80: _No docstring._
-- `AuditEvent` — line 86: _No docstring._
-- `CPRole` — line 127: _No docstring._
-- `SettingKey` — line 133: _No docstring._
-- `JobID` — line 171: _No docstring._
-- `ClusterIDRef` — line 175: _No docstring._
-- `StrID` — line 179: _No docstring._
-- `IntID` — line 183: _No docstring._
-- `WebUser` — line 190: _No docstring._
-- `RoleGroupMap` — line 196: _No docstring._
-- `EventCountResponse` — line 201: _No docstring._
-- `ClusterStatsResponse` — line 205: _No docstring._
-- `JobStatsResponse` — line 213: _No docstring._
-- `ErrorResponse` — line 220: _No docstring._
-- `ClusterOverview` — line 227: _No docstring._
-- `InventoryRegion` — line 238: _No docstring._
-- `InventoryLB` — line 244: _No docstring._
-- `ClusterPublic` — line 250: _No docstring._
-- `Cluster` — line 266: _No docstring._
-- `ExternalConnection` — line 287: _No docstring._
-- `ExternalConnectionUpsert` — line 304: _No docstring._
-- `ClusterRequest` — line 317: _No docstring._
-- `CommandModel` — line 327: _No docstring._
-- `CreateClusterCommand` — line 331: _No docstring._
-- `ClusterUpgradeRequest` — line 341: _No docstring._
-- `DeleteClusterCommand` — line 347: _No docstring._
-- `HealthcheckClusterCommand` — line 351: _No docstring._
-- `DebugZipOptions` — line 355: _No docstring._
-- `DebugZipRequest` — line 399: _No docstring._
-- `DebugZipClusterCommand` — line 403: _No docstring._
-- `PollDebugZipCommand` — line 407: _No docstring._
-- `RestoreRequest` — line 417: _No docstring._
-- `RestoreClusterObjectRequest` — line 427: _No docstring._
-- `RestoreFullClusterRequest` — line 477: _No docstring._
-- `PollClusterRestoreRequest` — line 507: _No docstring._
-- `SyncBackupCatalogRequest` — line 514: _No docstring._
-- `SyncClusterBackupCatalogRequest` — line 518: _No docstring._
-- `ClusterScaleRequest` — line 522: _No docstring._
-- `FailZombieJobsCommand` — line 530: _No docstring._
-- `BackupDetails` — line 564: _No docstring._
-- `BackupPathOption` — line 574: _No docstring._
-- `BackupCatalogObject` — line 578: _No docstring._
-- `BackupCatalogEntry` — line 596: _No docstring._
-- `BackupCatalogSnapshot` — line 612: _No docstring._
-- `ClusterRecoveryRestoreApiRequest` — line 616: _No docstring._
-- `BackupCatalogObjectUpsert` — line 646: _No docstring._
-- `BackupCatalogEntryUpsert` — line 661: _No docstring._
-- `DatabaseUser` — line 675: _No docstring._
-- `DatabaseRoleTemplateConfig` — line 681: _No docstring._
-- `ClusterDatabaseRole` — line 687: _No docstring._
-- `ClusterDatabaseRoleDetails` — line 697: _No docstring._
-- `ClusterDatabaseRoleGroupMapping` — line 706: _No docstring._
-- `ClusterDatabaseObject` — line 716: _No docstring._
-- `ClusterDatabaseObjectDetails` — line 725: _No docstring._
-- `CreateClusterDatabaseObjectRequest` — line 729: _No docstring._
-- `NewDatabaseUserRequest` — line 733: _No docstring._
-- `Msg` — line 742: _No docstring._
-- `Job` — line 751: _No docstring._
-- `Task` — line 761: _No docstring._
-- `ClusterArtifactUpsert` — line 769: _No docstring._
-- `ClusterArtifactUpdate` — line 787: _No docstring._
-- `ClusterArtifact` — line 800: _No docstring._
-- `ArtifactDownloadUrlResponse` — line 820: _No docstring._
-- `ClusterArtifactsSnapshot` — line 831: _No docstring._
-- `JobDetailsResponse` — line 837: _No docstring._
-- `JobRescheduleResponse` — line 844: _No docstring._
-- `Region` — line 851: _No docstring._
-- `Version` — line 862: _No docstring._
-- `RegionOption` — line 866: _No docstring._
-- `NodeCountOption` — line 870: _No docstring._
-- `CpuCountOption` — line 874: _No docstring._
-- `DiskSizeOption` — line 878: _No docstring._
-- `Nodes` — line 882: _No docstring._
-- `PlaybookOverview` — line 890: _No docstring._
-- `Playbook` — line 899: _No docstring._
-- `PlaybookResponse` — line 903: _No docstring._
-- `PlaybookVersionResponse` — line 912: _No docstring._
-- `PlaybookSaveRequest` — line 920: _No docstring._
-- `DashboardMetrics` — line 924: _No docstring._
-- `DashboardSnapshot` — line 929: _No docstring._
-- `ClusterJobsSnapshot` — line 934: _No docstring._
-- `ClusterUsersSnapshot` — line 939: _No docstring._
-- `ClusterBackupsSnapshot` — line 948: _No docstring._
-- `ClusterCreateOptionsResponse` — line 953: _No docstring._
-- `ClusterDialogOptionsResponse` — line 961: _No docstring._
-- `ClusterCreateApiRequest` — line 969: _No docstring._
-- `ClusterRestoreApiRequest` — line 979: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 988: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 1036: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 1040: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 1044: _No docstring._
-- `NoFreeComputeUnitError` — line 1048: _No docstring._
-- `ComputeUnitNotFoundError` — line 1052: _No docstring._
-- `ComputeUnitStateError` — line 1056: _No docstring._
-- `ComputeUnitOperationError` — line 1060: _No docstring._
-- `AllocatePlaybookError` — line 1064: _No docstring._
-- `ApiKeyNotFoundError` — line 1068: _No docstring._
-- `InvalidApiKeyValidityError` — line 1072: _No docstring._
-- `SettingNotFoundError` — line 1076: _No docstring._
-- `SettingRecord` — line 1080: _No docstring._
-- `SettingUpdateRequest` — line 1092: _No docstring._
-- `LogMsg` — line 1096: _No docstring._
-- `ApiKeyRecord` — line 1104: _No docstring._
-- `ApiKeySummary` — line 1112: _No docstring._
-- `OIDCSessionRecord` — line 1119: _No docstring._
-- `ApiKeyCreateRequest` — line 1129: _No docstring._
-- `ApiKeyCreateRequestInDB` — line 1134: _No docstring._
-- `ApiKeyCreateResponse` — line 1138: _No docstring._
-- `DeferredTask` — line 1142: _No docstring._
-- `Alert` — line 1148: _No docstring._
-- `AlertmanagerPayload` — line 1157: _No docstring._
-- `LiveAlert` — line 1167: _No docstring._
+- `AutoNameStrEnum` — line 19: _No docstring._
+- `PlaybookName` — line 27: _No docstring._
+- `CommandType` — line 40: _No docstring._
+- `ClusterState` — line 58: _No docstring._
+- `JobState` — line 74: _No docstring._
+- `ClusterArtifactState` — line 81: _No docstring._
+- `AuditEvent` — line 87: _No docstring._
+- `CPRole` — line 128: _No docstring._
+- `SettingKey` — line 134: _No docstring._
+- `JobID` — line 148: _No docstring._
+- `ClusterIDRef` — line 152: _No docstring._
+- `StrID` — line 156: _No docstring._
+- `IntID` — line 160: _No docstring._
+- `WebUser` — line 167: _No docstring._
+- `RoleGroupMap` — line 173: _No docstring._
+- `EventCountResponse` — line 178: _No docstring._
+- `ClusterStatsResponse` — line 182: _No docstring._
+- `JobStatsResponse` — line 190: _No docstring._
+- `ErrorResponse` — line 197: _No docstring._
+- `ClusterOverview` — line 204: _No docstring._
+- `InventoryRegion` — line 215: _No docstring._
+- `InventoryLB` — line 221: _No docstring._
+- `ClusterPublic` — line 227: _No docstring._
+- `Cluster` — line 243: _No docstring._
+- `ExternalConnection` — line 264: _No docstring._
+- `ExternalConnectionUpsert` — line 281: _No docstring._
+- `ClusterRequest` — line 294: _No docstring._
+- `CommandModel` — line 304: _No docstring._
+- `CreateClusterCommand` — line 308: _No docstring._
+- `ClusterUpgradeRequest` — line 318: _No docstring._
+- `DeleteClusterCommand` — line 324: _No docstring._
+- `HealthcheckClusterCommand` — line 328: _No docstring._
+- `DebugZipOptions` — line 332: _No docstring._
+- `DebugZipRequest` — line 376: _No docstring._
+- `DebugZipClusterCommand` — line 380: _No docstring._
+- `PollDebugZipCommand` — line 384: _No docstring._
+- `RestoreRequest` — line 394: _No docstring._
+- `RestoreClusterObjectRequest` — line 404: _No docstring._
+- `RestoreFullClusterRequest` — line 454: _No docstring._
+- `PollClusterRestoreRequest` — line 484: _No docstring._
+- `SyncBackupCatalogRequest` — line 491: _No docstring._
+- `SyncClusterBackupCatalogRequest` — line 495: _No docstring._
+- `ClusterScaleRequest` — line 499: _No docstring._
+- `FailZombieJobsCommand` — line 507: _No docstring._
+- `BackupDetails` — line 541: _No docstring._
+- `BackupPathOption` — line 551: _No docstring._
+- `BackupCatalogObject` — line 555: _No docstring._
+- `BackupCatalogEntry` — line 573: _No docstring._
+- `BackupCatalogSnapshot` — line 589: _No docstring._
+- `ClusterRecoveryRestoreApiRequest` — line 593: _No docstring._
+- `BackupCatalogObjectUpsert` — line 623: _No docstring._
+- `BackupCatalogEntryUpsert` — line 638: _No docstring._
+- `DatabaseUser` — line 652: _No docstring._
+- `DatabaseRoleTemplateConfig` — line 658: _No docstring._
+- `ClusterDatabaseRole` — line 664: _No docstring._
+- `ClusterDatabaseRoleDetails` — line 674: _No docstring._
+- `ClusterDatabaseRoleGroupMapping` — line 683: _No docstring._
+- `ClusterDatabaseObject` — line 693: _No docstring._
+- `ClusterDatabaseObjectDetails` — line 702: _No docstring._
+- `CreateClusterDatabaseObjectRequest` — line 706: _No docstring._
+- `NewDatabaseUserRequest` — line 710: _No docstring._
+- `Msg` — line 719: _No docstring._
+- `Job` — line 728: _No docstring._
+- `Task` — line 738: _No docstring._
+- `ClusterArtifactUpsert` — line 746: _No docstring._
+- `ClusterArtifactUpdate` — line 764: _No docstring._
+- `ClusterArtifact` — line 777: _No docstring._
+- `ArtifactDownloadUrlResponse` — line 797: _No docstring._
+- `ClusterArtifactsSnapshot` — line 808: _No docstring._
+- `JobDetailsResponse` — line 814: _No docstring._
+- `JobRescheduleResponse` — line 821: _No docstring._
+- `Region` — line 828: _No docstring._
+- `Version` — line 839: _No docstring._
+- `RegionOption` — line 843: _No docstring._
+- `NodeCountOption` — line 847: _No docstring._
+- `CpuCountOption` — line 851: _No docstring._
+- `DiskSizeOption` — line 855: _No docstring._
+- `Nodes` — line 859: _No docstring._
+- `PlaybookOverview` — line 867: _No docstring._
+- `Playbook` — line 876: _No docstring._
+- `PlaybookResponse` — line 880: _No docstring._
+- `PlaybookVersionResponse` — line 889: _No docstring._
+- `PlaybookSaveRequest` — line 897: _No docstring._
+- `DashboardMetrics` — line 901: _No docstring._
+- `DashboardSnapshot` — line 906: _No docstring._
+- `ClusterJobsSnapshot` — line 911: _No docstring._
+- `ClusterUsersSnapshot` — line 916: _No docstring._
+- `ClusterBackupsSnapshot` — line 925: _No docstring._
+- `ClusterCreateOptionsResponse` — line 930: _No docstring._
+- `ClusterDialogOptionsResponse` — line 938: _No docstring._
+- `ClusterCreateApiRequest` — line 946: _No docstring._
+- `ClusterRestoreApiRequest` — line 956: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 965: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 1013: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 1017: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 1021: _No docstring._
+- `NoFreeComputeUnitError` — line 1025: _No docstring._
+- `ComputeUnitNotFoundError` — line 1029: _No docstring._
+- `ComputeUnitStateError` — line 1033: _No docstring._
+- `ComputeUnitOperationError` — line 1037: _No docstring._
+- `AllocatePlaybookError` — line 1041: _No docstring._
+- `ApiKeyNotFoundError` — line 1045: _No docstring._
+- `InvalidApiKeyValidityError` — line 1049: _No docstring._
+- `LogMsg` — line 1053: _No docstring._
+- `ApiKeyRecord` — line 1061: _No docstring._
+- `ApiKeySummary` — line 1069: _No docstring._
+- `OIDCSessionRecord` — line 1076: _No docstring._
+- `ApiKeyCreateRequest` — line 1086: _No docstring._
+- `ApiKeyCreateRequestInDB` — line 1091: _No docstring._
+- `ApiKeyCreateResponse` — line 1095: _No docstring._
+- `DeferredTask` — line 1099: _No docstring._
+- `Alert` — line 1105: _No docstring._
+- `AlertmanagerPayload` — line 1114: _No docstring._
+- `LiveAlert` — line 1124: _No docstring._
 
 Functions:
 
-- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 283: _No docstring._
-- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 553: _No docstring._
-- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 557: _No docstring._
+- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 260: _No docstring._
+- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 530: _No docstring._
+- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 534: _No docstring._
 
 ### `cp.repos`
 
@@ -702,7 +678,7 @@ Path: `cp/repos/admin/settings.py`
 Admin settings repository.
 
 Classes:
-- `SettingsRepo` — line 8: _No docstring._
+- `SettingsRepo` — line 9: _No docstring._
 
 ### `cp.repos.admin.versions`
 
@@ -914,7 +890,7 @@ Shared service-layer helpers.
 
 Functions:
 
-- `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 12: Best-effort audit logging for service-layer actions.
+- `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 15: Best-effort audit logging for service-layer actions.
 
 ### `cp.services.cluster`
 
@@ -977,19 +953,7 @@ Classes:
 
 Path: `cp/services/errors.py`
 
-Service-layer exception types and repository error translation.
-
-Classes:
-- `ServiceError` — line 12: Base exception for errors that may be shown in the UI.
-- `ServiceUnavailableError` — line 29: _No docstring._
-- `ServiceConflictError` — line 34: _No docstring._
-- `ServiceValidationError` — line 39: _No docstring._
-- `ServiceAuthorizationError` — line 44: _No docstring._
-- `ServiceNotFoundError` — line 49: _No docstring._
-
-Functions:
-
-- `from_repository_error(err: RepositoryError, *, unavailable_message: str | None=None, conflict_message: str | None=None, validation_message: str | None=None, permission_message: str | None=None, fallback_message: str | None=None, fallback_title: str | None=None) -> ServiceError` — line 54: Translate a repository exception into a service exception.
+Compatibility exports for service-layer exception types.
 
 ### `cp.services.events`
 
