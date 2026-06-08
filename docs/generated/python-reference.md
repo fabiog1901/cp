@@ -162,6 +162,16 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+## `cp.cluster_database`
+
+### `cp.cluster_database`
+
+::: cp.cluster_database
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ## `cp.infra`
 
 ### `cp.infra`
@@ -183,22 +193,6 @@
 ### `cp.infra.errors`
 
 ::: cp.infra.errors
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.infra.repository`
-
-::: cp.infra.repository
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.infra.util`
-
-::: cp.infra.util
     options:
       show_source: true
       show_root_heading: false
@@ -373,6 +367,16 @@
 ### `cp.repos.mq`
 
 ::: cp.repos.mq
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
+## `cp.repository`
+
+### `cp.repository`
+
+::: cp.repository
     options:
       show_source: true
       show_root_heading: false

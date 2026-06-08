@@ -7,8 +7,9 @@ secret generation and audit logging out of the API layer.
 import secrets
 from datetime import datetime, timezone
 
+from cpkit.auth import encrypt_secret
+
 from ...infra.errors import RepositoryError
-from ...infra.util import encrypt_secret
 from ...models import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,

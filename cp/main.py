@@ -16,7 +16,8 @@ from . import DB_ENGINE, DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events, jobs
 from .auth import oidc
 from .auth import router as auth_router
-from .infra import close_db, get_repo, initialize_postgres
+from .infra import close_db, initialize_postgres
+from .repository import get_repo
 from .workers.queue import get_nodes, pull_from_mq
 
 

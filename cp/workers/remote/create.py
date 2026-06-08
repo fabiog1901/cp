@@ -9,10 +9,10 @@ import logging
 import secrets
 from threading import Thread
 
+from cpkit.auth import encrypt_secret
 from cpkit.playbooks import run_playbook
 
-from ...infra import get_repo
-from ...infra.util import encrypt_secret
+from ...repository import get_repo
 from ...models import (
     ClusterRequest,
     ClusterState,

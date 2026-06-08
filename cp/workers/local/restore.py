@@ -10,7 +10,7 @@ import logging
 from psycopg import sql
 from psycopg.rows import dict_row
 
-from ...infra import get_repo
+from ...repository import get_repo
 from cpkit.db import get_pool
 from ...models import (
     ClusterState,

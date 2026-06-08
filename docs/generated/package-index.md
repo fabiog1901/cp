@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 83 | 147 | 123 | 73 |
+| `cp` | 83 | 147 | 120 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -31,11 +31,10 @@
 | `cp.api.jobs` | `cp/api/jobs.py` | Job API routes. |
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth.py` | CP's cpkit OIDC integration. |
+| `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
-| `cp.infra.repository` | `cp/infra/repository.py` | CP repository factory and application-specific database error handling. |
-| `cp.infra.util` | `cp/infra/util.py` | Shared operational utilities. |
 | `cp.main` | `cp/main.py` | FastAPI application entry point. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
 | `cp.repos` | `cp/repos/__init__.py` | Repository-layer package. |
@@ -57,6 +56,7 @@
 | `cp.repos.external_connections` | `cp/repos/external_connections.py` | External connections repository. |
 | `cp.repos.jobs` | `cp/repos/jobs.py` | Job and task metadata repository. |
 | `cp.repos.mq` | `cp/repos/mq.py` | Message queue repository. |
+| `cp.repository` | `cp/repository.py` | CP repository factory and application-specific database error handling. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
 | `cp.services.admin` | `cp/services/admin/__init__.py` | Admin service package. |
 | `cp.services.admin.api_keys` | `cp/services/admin/api_keys.py` | Admin API key service. |

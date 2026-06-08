@@ -10,7 +10,7 @@ from threading import Thread
 
 from cpkit.playbooks import run_playbook
 
-from ...infra import get_repo
+from ...repository import get_repo
 from ...models import (
     Cluster,
     ClusterScaleRequest,

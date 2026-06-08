@@ -10,7 +10,7 @@ from typing import Any
 
 import requests
 
-from ..infra.repository import get_repo
+from ..repository import get_repo
 from ..infra.errors import RepositoryError, RepositoryUnavailableError
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
 from ..repos import Repo

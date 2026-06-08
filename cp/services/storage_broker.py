@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
-from ..infra.repository import get_repo
-from ..infra.util import decrypt_secret, encrypt_secret
+from cpkit.auth import decrypt_secret, encrypt_secret
+
+from ..repository import get_repo
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
 from ..repos import Repo
 from .errors import ServiceValidationError

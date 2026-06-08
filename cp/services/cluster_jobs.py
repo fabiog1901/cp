@@ -1,6 +1,6 @@
 """Business logic for the cluster jobs vertical."""
 
-from ..infra.repository import get_repo
+from ..repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import ClusterJobsSnapshot, to_public_cluster
 from ..repos import Repo

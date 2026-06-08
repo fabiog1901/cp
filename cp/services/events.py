@@ -1,6 +1,6 @@
 """Business logic for the events vertical."""
 
-from ..infra.repository import get_repo
+from ..repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import LogMsg
 from ..repos import Repo

@@ -4,7 +4,7 @@ This service manages catalog sync and recovery views for backups discovered in
 object storage. It bridges API requests, catalog metadata, and worker jobs.
 """
 
-from ..infra.repository import get_repo
+from ..repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,

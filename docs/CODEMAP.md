@@ -42,10 +42,10 @@ limited to persistence.
 | Path | Why it matters |
 | --- | --- |
 | `cp/main.py` | FastAPI application setup and router registration. |
+| `cp/repository.py` | App repository factory and app-specific database error translation. |
+| `cp/cluster_database.py` | Managed-cluster SQL connection helper. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |
 | `cp/infra/dependencies.py` | Service/repo dependency factories used by API routes. |
-| `cp/infra/repository.py` | CP repository factory and app-specific database error translation. |
-| `cp/infra/util.py` | Managed-cluster connection utilities and cluster config helpers. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |
 | `resources/cpkit_ddl.sql` | Framework-owned schema and tables. |
 | `resources/ddl.sql` | Canonical CP metadata schema. |

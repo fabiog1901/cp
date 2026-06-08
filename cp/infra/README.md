@@ -1,16 +1,13 @@
 # Infrastructure Helpers
 
-This directory contains shared infrastructure used across API, service,
-repository, and worker code.
+This directory contains FastAPI dependency wiring for CP services.
 
 For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 
 ## What Belongs Here
 
 - Dependency factories used by FastAPI.
-- CP repository construction.
-- CP-specific database error translation for managed-cluster connections.
-- Utility functions for connecting to managed clusters.
+- Small compatibility exports for repository exception types.
 
 ## Entry Points
 
@@ -18,12 +15,11 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | --- | --- |
 | `dependencies.py` | Constructs services and repos for FastAPI dependency injection. |
 | `errors.py` | Repository error classes. |
-| `repository.py` | Builds the CP repository from the cpkit database pool and adapts managed-cluster connection failures. |
-| `util.py` | Cluster connection/config helpers and low-level operational utilities. |
 
 Database pool lifecycle, statement execution, fetch helpers, logging setup,
 request ID context, and request/response logging middleware are provided by
-cpkit.
+cpkit. CP app integration lives at the root, such as `cp/repository.py` for repo
+construction and `cp/cluster_database.py` for managed-cluster SQL connections.
 
 ## Caution
 

@@ -351,11 +351,24 @@ Path: `cp/auth.py`
 CP's cpkit OIDC integration.
 
 Classes:
-- `OIDCManager` — line 42: Configure CP-specific dependencies for cpkit OIDC auth.
+- `OIDCManager` — line 44: Configure CP-specific dependencies for cpkit OIDC auth.
 
 Functions:
 
-- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 77: Persist a login or logout event using the current request id context.
+- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 79: Persist a login or logout event using the current request id context.
+
+### `cp.cluster_database`
+
+Path: `cp/cluster_database.py`
+
+Managed-cluster database connection helpers.
+
+Classes:
+- `ClusterDatabaseConnectionError` — line 12: Raised when a cluster database cannot be reached in normal operation.
+
+Functions:
+
+- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 21: _No docstring._
 
 ### `cp.infra`
 
@@ -381,33 +394,6 @@ Path: `cp/infra/errors.py`
 
 Compatibility exports for repository exception types.
 
-### `cp.infra.repository`
-
-Path: `cp/infra/repository.py`
-
-CP repository factory and application-specific database error handling.
-
-Functions:
-
-- `get_repo()` — line 9: _No docstring._
-- `translate_database_error(err: Exception, operation: str | None)` — line 15: _No docstring._
-
-### `cp.infra.util`
-
-Path: `cp/infra/util.py`
-
-Shared operational utilities.
-
-Classes:
-- `ClusterDatabaseConnectionError` — line 23: Raised when a cluster database cannot be reached in normal operation.
-
-Functions:
-
-- `validate_api_key_crypto_config() -> None` — line 32: _No docstring._
-- `encrypt_api_key_secret(secret: bytes | str) -> bytes` — line 36: _No docstring._
-- `decrypt_api_key_secret(secret: bytes | str) -> bytes` — line 40: _No docstring._
-- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 44: _No docstring._
-
 ### `cp.main`
 
 Path: `cp/main.py`
@@ -416,9 +402,9 @@ FastAPI application entry point.
 
 Functions:
 
-- `async lifespan(_app: FastAPI)` — line 24: _No docstring._
-- `async get_targets()` — line 65: _No docstring._
-- `async dispatch(request: Request, call_next)` — line 78: _No docstring._
+- `async lifespan(_app: FastAPI)` — line 25: _No docstring._
+- `async get_targets()` — line 66: _No docstring._
+- `async dispatch(request: Request, call_next)` — line 79: _No docstring._
 
 ### `cp.models`
 
@@ -712,6 +698,17 @@ Message queue repository.
 Classes:
 - `MqRepo` — line 9: _No docstring._
 
+### `cp.repository`
+
+Path: `cp/repository.py`
+
+CP repository factory and application-specific database error handling.
+
+Functions:
+
+- `get_repo()` — line 9: _No docstring._
+- `translate_database_error(err: Exception, operation: str | None)` — line 15: _No docstring._
+
 ### `cp.services`
 
 Path: `cp/services/__init__.py`
@@ -731,7 +728,7 @@ Path: `cp/services/admin/api_keys.py`
 Admin API key service.
 
 Classes:
-- `ApiKeysService` — line 24: _No docstring._
+- `ApiKeysService` — line 25: _No docstring._
 
 ### `cp.services.admin.base`
 
@@ -850,9 +847,9 @@ Shared helpers for connecting to a cluster SQL endpoint.
 
 Functions:
 
-- `get_primary_dns_address(cluster: Cluster) -> str` — line 8: _No docstring._
-- `get_cluster_db_password(cluster: Cluster) -> str` — line 16: _No docstring._
-- `connect_to_cluster_db(cluster: Cluster)` — line 29: _No docstring._
+- `get_primary_dns_address(cluster: Cluster) -> str` — line 10: _No docstring._
+- `get_cluster_db_password(cluster: Cluster) -> str` — line 18: _No docstring._
+- `connect_to_cluster_db(cluster: Cluster)` — line 31: _No docstring._
 
 ### `cp.services.cluster_jobs`
 
@@ -912,8 +909,8 @@ Path: `cp/services/storage_broker.py`
 Provision and resolve external storage connections for clusters.
 
 Classes:
-- `PresignedS3Url` — line 25: _No docstring._
-- `StorageBrokerService` — line 32: _No docstring._
+- `PresignedS3Url` — line 26: _No docstring._
+- `StorageBrokerService` — line 33: _No docstring._
 
 ### `cp.workers`
 

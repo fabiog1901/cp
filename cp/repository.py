@@ -3,11 +3,11 @@
 from cpkit.db import get_pool
 from cpkit.db import translate_database_error as _translate_database_error
 
-from .util import ClusterDatabaseConnectionError
+from .cluster_database import ClusterDatabaseConnectionError
 
 
 def get_repo():
-    from ..repos import Repo
+    from .repos import Repo
 
     return Repo(get_pool())
 

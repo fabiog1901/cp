@@ -12,7 +12,7 @@ from psycopg import sql
 from psycopg.rows import class_row
 from pydantic import ValidationError
 
-from ..infra.repository import get_repo, translate_database_error
+from ..repository import get_repo, translate_database_error
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,

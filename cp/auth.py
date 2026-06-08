@@ -27,13 +27,15 @@ from cpkit.auth import (
     request_target_bytes,
     signature_scheme,
     timestamp_scheme,
+    decrypt_secret,
+    encrypt_secret,
+    validate_secret_crypto_config,
 )
 from cpkit.logging import request_id_ctx
 
 from .audit import build_log_msg
-from .infra import decrypt_secret, encrypt_secret, get_repo
-from .infra import validate_secret_crypto_config
 from .models import AuditEvent, CPRole, OIDCSessionRecord
+from .repository import get_repo
 from .repos import Repo
 
 OIDC_SESSION_COOKIE_NAME = "cp_session"
