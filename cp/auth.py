@@ -15,6 +15,7 @@ from cpkit.auth import (
     OIDC_STATE_COOKIE_NAME,
     OIDCConfig,
     OIDCManager as CpkitOIDCManager,
+    OIDCSessionRecord,
     access_key_scheme,
     api_key_signature,
     build_api_key_signature_payload,
@@ -34,7 +35,7 @@ from cpkit.auth import (
 from cpkit.logging import request_id_ctx
 
 from .audit import build_log_msg
-from .models import AuditEvent, CPRole, OIDCSessionRecord
+from .models import AuditEvent, CPRole
 from .repository import get_repo
 from .repos import Repo
 

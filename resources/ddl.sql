@@ -114,11 +114,6 @@ CREATE TABLE public.disk_sizes (
     size_gb INT2 NOT NULL,
     CONSTRAINT pk PRIMARY KEY (size_gb ASC)
 );
-CREATE TABLE public.role_to_groups_mappings (
-    "role" STRING NOT NULL,
-    groups STRING[] NULL,
-    CONSTRAINT pk PRIMARY KEY ("role" ASC)
-);
 CREATE TABLE public.database_role_templates (
     database_role_template STRING NOT NULL,
     scope_type STRING NOT NULL DEFAULT 'schema':::STRING,

@@ -252,14 +252,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.repos.auth`
-
-::: cp.repos.auth
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.repos.backup_catalog`
 
 ::: cp.repos.backup_catalog
@@ -379,14 +371,6 @@
 ### `cp.services.alerts`
 
 ::: cp.services.alerts
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.auth`
-
-::: cp.services.auth
     options:
       show_source: true
       show_root_heading: false

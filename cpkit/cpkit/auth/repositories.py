@@ -2,10 +2,11 @@
 
 from cpkit.db import execute_stmt, fetch_all, fetch_one
 
-from .types import ApiKeyRecord, ApiKeySummary
+from .types import ApiKeyRecord, ApiKeySummary, OIDCSessionRecord, RoleGroupMap
 
 API_KEYS_TABLE = "cpkit.api_keys"
 OIDC_SESSIONS_TABLE = "cpkit.oidc_sessions"
+ROLE_GROUP_MAPPINGS_TABLE = "cpkit.role_to_groups_mappings"
 
 
 class APIKeysRepositoryMixin:
@@ -87,6 +88,8 @@ class APIKeysRepositoryMixin:
 
 
 class OIDCSessionsRepositoryMixin:
+    oidc_session_record_type = OIDCSessionRecord
+
     def get_oidc_session(self, session_id: str):
         return fetch_one(
             f"""
@@ -160,4 +163,19 @@ class OIDCSessionsRepositoryMixin:
             """,
             (session_id,),
             operation="auth.delete_oidc_session",
+        )
+
+
+class RoleGroupMappingsRepositoryMixin:
+    role_group_map_type = RoleGroupMap
+
+    def list_role_group_mappings(self) -> list[RoleGroupMap]:
+        return fetch_all(
+            f"""
+            SELECT role, groups
+            FROM {ROLE_GROUP_MAPPINGS_TABLE}
+            """,
+            (),
+            self.role_group_map_type,
+            operation="auth.list_role_group_mappings",
         )

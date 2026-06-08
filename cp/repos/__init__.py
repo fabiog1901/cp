@@ -1,6 +1,10 @@
 """Repository-layer package."""
 
-from cpkit.auth import APIKeysRepositoryMixin
+from cpkit.auth import (
+    APIKeysRepositoryMixin,
+    OIDCSessionsRepositoryMixin,
+    RoleGroupMappingsRepositoryMixin,
+)
 from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
 from cpkit.playbooks import PlaybooksRepositoryMixin
 from cpkit.settings import SettingsRepositoryMixin
@@ -12,7 +16,6 @@ from .admin import (
     VersionsRepo,
 )
 from .alerts import AlertsRepo
-from .auth import AuthRepo
 from .backup_catalog import BackupCatalogRepo
 from .cluster import ClusterRepo
 from .cluster_artifacts import ClusterArtifactsRepo
@@ -31,7 +34,8 @@ class Repo(
     VersionsRepo,
     SettingsRepositoryMixin,
     PlaybooksRepositoryMixin,
-    AuthRepo,
+    OIDCSessionsRepositoryMixin,
+    RoleGroupMappingsRepositoryMixin,
     ClusterRepo,
     ClusterArtifactsRepo,
     EventRepo,

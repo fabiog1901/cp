@@ -36,8 +36,8 @@ authentication or authorization.
 | --- | --- |
 | App integration | `cp/auth.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
-| Services | `cp/services/auth.py`, `cpkit/cpkit/auth/` |
-| Repos | `cp/repos/auth.py`, `cpkit/cpkit/auth/` |
+| Services | `cpkit/cpkit/auth/` |
+| Repos | `cpkit/cpkit/auth/` |
 
 ## API Resources
 

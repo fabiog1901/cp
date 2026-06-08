@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 72 | 125 | 108 | 61 |
+| `cp` | 70 | 121 | 108 | 61 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -41,7 +41,6 @@
 | `cp.repos.admin.regions` | `cp/repos/admin/regions.py` | Admin regions repository. |
 | `cp.repos.admin.versions` | `cp/repos/admin/versions.py` | Admin versions repository. |
 | `cp.repos.alerts` | `cp/repos/alerts.py` | Alerts repository. |
-| `cp.repos.auth` | `cp/repos/auth.py` | Auth/support repository. |
 | `cp.repos.backup_catalog` | `cp/repos/backup_catalog.py` | Backup catalog metadata repository. |
 | `cp.repos.cluster` | `cp/repos/cluster.py` | Cluster metadata repository. |
 | `cp.repos.cluster_artifacts` | `cp/repos/cluster_artifacts.py` | Cluster artifact catalog repository. |
@@ -57,7 +56,6 @@
 | `cp.services.admin.regions` | `cp/services/admin/regions.py` | Business logic for the admin regions vertical. |
 | `cp.services.admin.versions` | `cp/services/admin/versions.py` | Business logic for the admin versions vertical. |
 | `cp.services.alerts` | `cp/services/alerts.py` | Business logic for the alerts vertical. |
-| `cp.services.auth` | `cp/services/auth.py` | Business logic for auth-related shared operations. |
 | `cp.services.backup_catalog` | `cp/services/backup_catalog.py` | Backup catalog service. |
 | `cp.services.base` | `cp/services/base.py` | Shared service-layer helpers. |
 | `cp.services.cluster` | `cp/services/cluster.py` | Cluster lifecycle service. |

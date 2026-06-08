@@ -24,7 +24,12 @@ from .dependencies import (
     timestamp_scheme,
 )
 from .redirects import safe_next_path
-from .repositories import APIKeysRepositoryMixin, OIDCSessionsRepositoryMixin
+from .repositories import (
+    APIKeysRepositoryMixin,
+    OIDCSessionsRepositoryMixin,
+    ROLE_GROUP_MAPPINGS_TABLE,
+    RoleGroupMappingsRepositoryMixin,
+)
 from .router import (
     OIDC_NEXT_COOKIE_NAME,
     OIDC_NONCE_COOKIE_NAME,
@@ -50,6 +55,8 @@ from .types import (
     ApiKeyCreateResponse,
     ApiKeyRecord,
     ApiKeySummary,
+    OIDCSessionRecord,
+    RoleGroupMap,
 )
 
 __all__ = [
@@ -66,6 +73,7 @@ __all__ = [
     "APIKeyAuthenticator",
     "APIKeyRepository",
     "APIKeysRepositoryMixin",
+    "ROLE_GROUP_MAPPINGS_TABLE",
     "ApiKeyCreateRequest",
     "ApiKeyCreateRequestInDB",
     "ApiKeyCreateResponse",
@@ -73,9 +81,12 @@ __all__ = [
     "ApiKeySummary",
     "ApiKeysService",
     "OIDCSessionsRepositoryMixin",
+    "OIDCSessionRecord",
     "ACCESS_KEY_HEADER_NAME",
     "AuthDependencies",
     "OIDCConfig",
+    "RoleGroupMap",
+    "RoleGroupMappingsRepositoryMixin",
     "SIGNATURE_HEADER_NAME",
     "TIMESTAMP_HEADER_NAME",
     "access_key_scheme",

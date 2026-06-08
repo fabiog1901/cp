@@ -16,6 +16,8 @@ from cpkit.auth import (
     ApiKeyCreateResponse,
     ApiKeyRecord,
     ApiKeySummary,
+    OIDCSessionRecord,
+    RoleGroupMap,
 )
 from cpkit.jobs import (
     ClusterIDRef,
@@ -174,11 +176,6 @@ class StrID(BaseModel):
 class WebUser(BaseModel):
     username: str
     roles: List[str]
-    groups: List[str]
-
-
-class RoleGroupMap(BaseModel):
-    role: str
     groups: List[str]
 
 
@@ -981,16 +978,6 @@ class LogMsg(BaseModel):
     action: str
     details: dict[str, Any] | None = None
     request_id: str | None = None
-
-
-class OIDCSessionRecord(BaseModel):
-    session_id: str
-    encrypted_id_token: bytes
-    encrypted_refresh_token: bytes | None = None
-    token_expires_at: dt.datetime
-    session_expires_at: dt.datetime
-    created_at: dt.datetime | None = None
-    updated_at: dt.datetime | None = None
 
 
 class DeferredTask(BaseModel):

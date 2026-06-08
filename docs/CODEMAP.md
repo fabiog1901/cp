@@ -195,8 +195,8 @@ This area controls web/API authentication and CP-level visibility.
 | --- | --- |
 | App auth wiring | `cp/auth.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
-| Services | `cp/services/auth.py` |
-| Repos | `cp/repos/auth.py` |
+| Services | `cpkit/cpkit/auth/*.py` |
+| Repos | `cpkit/cpkit/auth/*.py` |
 
 CP-level auth determines who may use CP and what clusters they can see. Managed
 cluster authentication and authorization are configured in the cluster itself and

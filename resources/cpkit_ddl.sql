@@ -45,6 +45,12 @@ CREATE TABLE cpkit.oidc_sessions (
     CONSTRAINT pk_oidc_sessions PRIMARY KEY (session_id ASC)
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(session_expires_at)', ttl_job_cron = '@hourly');
 
+CREATE TABLE cpkit.role_to_groups_mappings (
+    "role" STRING NOT NULL,
+    groups STRING[] NULL,
+    CONSTRAINT pk_role_to_groups_mappings PRIMARY KEY ("role" ASC)
+);
+
 CREATE TABLE cpkit.playbooks (
     name STRING NOT NULL,
     version TIMESTAMPTZ(0) NOT NULL DEFAULT now():::TIMESTAMPTZ,
