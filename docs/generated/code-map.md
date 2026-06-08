@@ -351,11 +351,11 @@ Path: `cp/auth.py`
 CP's cpkit OIDC integration.
 
 Classes:
-- `OIDCManager` — line 41: Configure CP-specific dependencies for cpkit OIDC auth.
+- `OIDCManager` — line 42: Configure CP-specific dependencies for cpkit OIDC auth.
 
 Functions:
 
-- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 76: Persist a login or logout event using the current request id context.
+- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 77: Persist a login or logout event using the current request id context.
 
 ### `cp.infra`
 
@@ -392,16 +392,6 @@ Path: `cp/infra/errors.py`
 
 Compatibility exports for repository exception types.
 
-### `cp.infra.logging`
-
-Path: `cp/infra/logging.py`
-
-CP logging configuration adapter.
-
-Functions:
-
-- `configure_logging(repo=None, *, force: bool=False) -> None` — line 9: Configure app logging with CP's persisted logging settings.
-
 ### `cp.infra.util`
 
 Path: `cp/infra/util.py`
@@ -409,14 +399,14 @@ Path: `cp/infra/util.py`
 Shared operational utilities.
 
 Classes:
-- `ClusterDatabaseConnectionError` — line 24: Raised when a cluster database cannot be reached in normal operation.
+- `ClusterDatabaseConnectionError` — line 23: Raised when a cluster database cannot be reached in normal operation.
 
 Functions:
 
-- `validate_api_key_crypto_config() -> None` — line 33: _No docstring._
-- `encrypt_api_key_secret(secret: bytes | str) -> bytes` — line 37: _No docstring._
-- `decrypt_api_key_secret(secret: bytes | str) -> bytes` — line 41: _No docstring._
-- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 45: _No docstring._
+- `validate_api_key_crypto_config() -> None` — line 32: _No docstring._
+- `encrypt_api_key_secret(secret: bytes | str) -> bytes` — line 36: _No docstring._
+- `decrypt_api_key_secret(secret: bytes | str) -> bytes` — line 40: _No docstring._
+- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 44: _No docstring._
 
 ### `cp.main`
 
@@ -426,9 +416,9 @@ FastAPI application entry point.
 
 Functions:
 
-- `async lifespan(_app: FastAPI)` — line 27: _No docstring._
-- `async get_targets()` — line 68: _No docstring._
-- `async dispatch(request: Request, call_next)` — line 81: _No docstring._
+- `async lifespan(_app: FastAPI)` — line 24: _No docstring._
+- `async get_targets()` — line 65: _No docstring._
+- `async dispatch(request: Request, call_next)` — line 78: _No docstring._
 
 ### `cp.models`
 
@@ -837,7 +827,7 @@ Shared service-layer helpers.
 
 Functions:
 
-- `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 15: Best-effort audit logging for service-layer actions.
+- `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 16: Best-effort audit logging for service-layer actions.
 
 ### `cp.services.cluster`
 

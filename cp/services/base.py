@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from cpkit.audit import AuditRecorder
+from cpkit.logging import request_id_ctx
 
 from ..audit import build_log_msg
 from ..models import AuditEvent
@@ -19,8 +20,6 @@ def log_event(
     details: dict[str, Any] | None = None,
 ) -> None:
     """Best-effort audit logging for service-layer actions."""
-    from ..main import request_id_ctx
-
     AuditRecorder(
         repo,
         build_log_msg,

@@ -5,21 +5,18 @@ serving, request IDs, and top-level exception handling.
 """
 
 import asyncio
-import logging
-import time
-import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from cpkit.logging import configure_logging, request_logging_middleware
 
 from . import DB_ENGINE, DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events, jobs
 from .auth import oidc
 from .auth import router as auth_router
-from .infra import close_db, get_repo, initialize_postgres, request_id_ctx
-from .infra.logging import configure_logging
+from .infra import close_db, get_repo, initialize_postgres
 from .workers.queue import get_nodes, pull_from_mq
 
 
@@ -29,7 +26,7 @@ async def lifespan(_app: FastAPI):
 
     if DB_ENGINE == "postgres":
         initialize_postgres(DB_URL)
-        configure_logging(get_repo(), force=True)
+        configure_logging(get_repo(), force=True, default_journald_identifier="cp")
         oidc.validate_config(get_repo())
         queue_task = asyncio.create_task(pull_from_mq())
     else:
@@ -79,30 +76,7 @@ app.mount(
 
 @app.middleware("http")
 async def dispatch(request: Request, call_next):
-    # 1. Generate or capture Request ID
-    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-    request_id_ctx.set(request_id)
-
-    start_time = time.perf_counter()
-
-    # 2. Log Incoming
-    logging.debug(
-        f'<- {request.client[0]}:{request.client[1]} - "{request.method} {request.url.path}"'
-    )
-
-    response: Response = await call_next(request)
-
-    # 3. Log Outgoing
-    process_time_ms = (time.perf_counter() - start_time) * 1000
-    logging.info(
-        f'-> {request.client[0]}:{request.client[1]} - "{request.method} {request.url.path}" {response.status_code} | {process_time_ms:.2f}'
-    )
-
-    # Return ID to client so they can reference it if they have an error
-    response.headers["X-Request-ID"] = request_id
-    response.headers["X-Process-Time-ms"] = f"{process_time_ms:.2f}"
-
-    return response
+    return await request_logging_middleware(request, call_next)
 
 
 # SPA fallback: any non-/api path returns index.html

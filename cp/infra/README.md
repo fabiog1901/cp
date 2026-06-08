@@ -10,7 +10,6 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 - Dependency factories used by FastAPI.
 - CP metadata database helpers.
 - Shared error translation.
-- Logging setup.
 - Utility functions for connecting to managed clusters.
 
 ## Entry Points
@@ -20,8 +19,10 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | `dependencies.py` | Constructs services and repos for FastAPI dependency injection. |
 | `db.py` | CP metadata database helpers, statement execution, fetch helpers, and database error translation. |
 | `errors.py` | Repository error classes. |
-| `logging.py` | Logging configuration. |
 | `util.py` | Cluster connection/config helpers and low-level operational utilities. |
+
+Logging setup, request ID context, and request/response logging middleware are
+provided by `cpkit.logging`.
 
 ## Caution
 

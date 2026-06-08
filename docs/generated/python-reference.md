@@ -196,14 +196,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.infra.logging`
-
-::: cp.infra.logging
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.infra.util`
 
 ::: cp.infra.util

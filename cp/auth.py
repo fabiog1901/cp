@@ -28,9 +28,10 @@ from cpkit.auth import (
     signature_scheme,
     timestamp_scheme,
 )
+from cpkit.logging import request_id_ctx
 
 from .audit import build_log_msg
-from .infra import decrypt_secret, encrypt_secret, get_repo, request_id_ctx
+from .infra import decrypt_secret, encrypt_secret, get_repo
 from .infra import validate_secret_crypto_config
 from .models import AuditEvent, CPRole, OIDCSessionRecord
 from .repos import Repo

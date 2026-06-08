@@ -61,3 +61,29 @@ get_audit_actor = auth.get_audit_actor
 After wiring this router into the app, cpkit handles the `/auth/login`,
 `/auth/callback`, `/auth/logout`, and `/auth/me` flow, plus API-key header
 authentication through `X-CP-Access-Key`, `X-CP-Signature`, and `X-Timestamp`.
+
+## Logging Integration
+
+Logging is provided by `cpkit.logging`. Framework settings in `cpkit.settings`
+control the runtime log level and journald identifier:
+
+- `logging.level`
+- `logging.journald_identifier`
+
+Applications should configure logging and install the request logging middleware
+through the cpkit API:
+
+```python
+from cpkit.logging import configure_logging, request_logging_middleware
+
+configure_logging(get_repo(), force=True, default_journald_identifier="cp")
+
+
+@app.middleware("http")
+async def dispatch(request, call_next):
+    return await request_logging_middleware(request, call_next)
+```
+
+`request_logging_middleware` manages the request id context, emits inbound and
+outbound request logs, and adds `X-Request-ID` plus `X-Process-Time-ms` response
+headers.

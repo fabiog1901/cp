@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 85 | 156 | 124 | 73 |
+| `cp` | 84 | 156 | 123 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -35,7 +35,6 @@
 | `cp.infra.db` | `cp/infra/db.py` | CP metadata database infrastructure adapter. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
-| `cp.infra.logging` | `cp/infra/logging.py` | CP logging configuration adapter. |
 | `cp.infra.util` | `cp/infra/util.py` | Shared operational utilities. |
 | `cp.main` | `cp/main.py` | FastAPI application entry point. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |

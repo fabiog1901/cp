@@ -5,6 +5,8 @@ import sys
 import time
 from typing import Any
 
+from cpkit.settings import FrameworkSettingKey
+
 from .context import RequestIDFilter, ShorthandFormatter
 
 
@@ -14,8 +16,8 @@ def configure_logging(
     force: bool = False,
     default_level: str = "INFO",
     default_journald_identifier: str = "app",
-    level_key: Any = "logging_level",
-    journald_identifier_key: Any = "logging_journald_identifier",
+    level_key: Any = FrameworkSettingKey.logging_level,
+    journald_identifier_key: Any = FrameworkSettingKey.logging_journald_identifier,
 ) -> None:
     """Configure root logging with journald when available."""
 
