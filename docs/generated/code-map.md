@@ -360,16 +360,7 @@ Shared authentication constants and compatibility exports.
 
 Path: `cp/auth/dependencies.py`
 
-Authentication and authorization dependencies.
-
-Functions:
-
-- `async require_authenticated(request: Request, repo: Repo=Depends(get_repo), access_key: str | None=Security(access_key_scheme), signature: str | None=Security(signature_scheme), timestamp: str | None=Security(timestamp_scheme)) -> dict[str, Any]` — line 35: Return claims for the current caller, regardless of auth transport.
-- `require_user(claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 55: Require a role that permits mutating compute-unit operations.
-- `require_readonly(request: Request, claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 62: Allow read-only users on GET, and require user/admin on write operations.
-- `require_admin(claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 77: Require the admin role.
-- `get_access_scope(claims: dict[str, Any]) -> tuple[list[str], bool]` — line 84: Return normalized caller groups plus whether the caller has CP_ADMIN.
-- `get_audit_actor(claims: dict[str, Any]=Security(require_authenticated)) -> str` — line 102: Return the identifier that should be written into audit logs.
+CP auth dependency wiring.
 
 ### `cp.auth.oidc`
 

@@ -11,6 +11,16 @@ from .api_keys import (
 )
 from .claims import claim_groups, claims_groups, jsonable_role_groups
 from .config import OIDCConfig
+from .dependencies import (
+    ACCESS_KEY_HEADER_NAME,
+    SIGNATURE_HEADER_NAME,
+    TIMESTAMP_HEADER_NAME,
+    AuthDependencies,
+    access_key_scheme,
+    create_auth_dependencies,
+    signature_scheme,
+    timestamp_scheme,
+)
 from .redirects import safe_next_path
 from .repositories import APIKeysRepositoryMixin
 from .router import (
@@ -47,17 +57,25 @@ __all__ = [
     "APIKeyAuthenticator",
     "APIKeyRepository",
     "APIKeysRepositoryMixin",
+    "ACCESS_KEY_HEADER_NAME",
+    "AuthDependencies",
     "OIDCConfig",
+    "SIGNATURE_HEADER_NAME",
+    "TIMESTAMP_HEADER_NAME",
+    "access_key_scheme",
     "api_key_signature",
     "build_api_key_signature_payload",
     "claim_groups",
     "claims_groups",
     "create_oidc_router",
+    "create_auth_dependencies",
     "decrypt_secret",
     "encrypt_secret",
     "jsonable_role_groups",
     "parse_api_key_timestamp",
     "request_target_bytes",
     "safe_next_path",
+    "signature_scheme",
+    "timestamp_scheme",
     "validate_secret_crypto_config",
 ]

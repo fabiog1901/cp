@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 89 | 156 | 130 | 73 |
+| `cp` | 89 | 156 | 124 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -32,7 +32,7 @@
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth/__init__.py` | _No docstring._ |
 | `cp.auth.common` | `cp/auth/common.py` | Shared authentication constants and compatibility exports. |
-| `cp.auth.dependencies` | `cp/auth/dependencies.py` | Authentication and authorization dependencies. |
+| `cp.auth.dependencies` | `cp/auth/dependencies.py` | CP auth dependency wiring. |
 | `cp.auth.oidc` | `cp/auth/oidc.py` | CP OIDC manager configuration. |
 | `cp.auth.router` | `cp/auth/router.py` | CP auth router wiring. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
