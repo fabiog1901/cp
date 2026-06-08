@@ -47,27 +47,60 @@ def get_compute_unit_service():
     raise RuntimeError("Compute unit service is not available on this branch.")
 
 
-def _build_service(service_cls):
-    def _get_service():
-        return service_cls()
-
-    return _get_service
+def get_auth_service():
+    return AuthService()
 
 
-get_auth_service = _build_service(AuthService)
-get_backup_catalog_service = _build_service(BackupCatalogService)
-get_alerts_service = _build_service(AlertsService)
-get_cluster_service = _build_service(ClusterService)
-get_cluster_backups_service = _build_service(ClusterBackupsService)
-get_cluster_jobs_service = _build_service(ClusterJobsService)
-get_cluster_users_service = _build_service(ClusterUsersService)
-get_dashboard_service = _build_service(DashboardService)
-get_events_service = _build_service(EventsService)
-get_jobs_service = _build_service(JobsService)
-get_regions_service = _build_service(RegionsService)
-get_versions_service = _build_service(VersionsService)
-get_cluster_options_service = _build_service(ClusterOptionsService)
-get_api_keys_service = _build_service(ApiKeysService)
+def get_backup_catalog_service():
+    return BackupCatalogService()
+
+
+def get_alerts_service():
+    return AlertsService()
+
+
+def get_cluster_service():
+    return ClusterService()
+
+
+def get_cluster_backups_service():
+    return ClusterBackupsService()
+
+
+def get_cluster_jobs_service():
+    return ClusterJobsService()
+
+
+def get_cluster_users_service():
+    return ClusterUsersService()
+
+
+def get_dashboard_service():
+    return DashboardService()
+
+
+def get_events_service():
+    return EventsService()
+
+
+def get_jobs_service():
+    return JobsService()
+
+
+def get_regions_service():
+    return RegionsService()
+
+
+def get_versions_service():
+    return VersionsService()
+
+
+def get_cluster_options_service():
+    return ClusterOptionsService()
+
+
+def get_api_keys_service():
+    return ApiKeysService()
 
 
 def get_playbooks_service():
