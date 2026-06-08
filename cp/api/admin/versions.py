@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_versions_service
 from ...models import Version
 from ...services.admin.versions import VersionsService
 from ...services.errors import ServiceError
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/versions", tags=["admin"])
 
 @router.get("/")
 async def list_versions(
-    service: VersionsService = Depends(get_versions_service),
+    service: VersionsService = Depends(VersionsService),
 ) -> list[Version]:
     try:
         return service.list_versions()
@@ -24,7 +23,7 @@ async def list_versions(
 async def create_version(
     request: Version,
     actor_id: str = Depends(get_audit_actor),
-    service: VersionsService = Depends(get_versions_service),
+    service: VersionsService = Depends(VersionsService),
 ) -> Version:
     try:
         return service.create_version(request.version, actor_id)
@@ -36,7 +35,7 @@ async def create_version(
 async def delete_version(
     version: str,
     actor_id: str = Depends(get_audit_actor),
-    service: VersionsService = Depends(get_versions_service),
+    service: VersionsService = Depends(VersionsService),
 ) -> None:
     try:
         service.delete_version(version, actor_id)

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_cluster_options_service
 from ...models import DiskSizeOption
 from ...services.admin.cluster_options import ClusterOptionsService
 from ...services.errors import ServiceError
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/disk_sizes", tags=["admin"])
 
 @router.get("/")
 async def list_disk_sizes(
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> list[DiskSizeOption]:
     try:
         return service.list_disk_sizes()
@@ -24,7 +23,7 @@ async def list_disk_sizes(
 async def create_disk_size(
     request: DiskSizeOption,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> DiskSizeOption:
     try:
         return service.create_disk_size(request.size_gb, actor_id)
@@ -36,7 +35,7 @@ async def create_disk_size(
 async def delete_disk_size(
     size_gb: int,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> None:
     try:
         service.delete_disk_size(size_gb, actor_id)

@@ -12,14 +12,13 @@ from ..models import (
     JobStatsResponse,
     parse_command_payload,
 )
-from ..repos import Repo
 from .base import log_event
 from .errors import ServiceNotFoundError, from_repository_error
 
 
 class JobsService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     def list_visible_jobs(self, groups: list[str], is_admin: bool) -> list[Job]:
         try:

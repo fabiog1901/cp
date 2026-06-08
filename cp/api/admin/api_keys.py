@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_api_keys_service
 from ...models import (
     ApiKeyCreateRequest,
     ApiKeyCreateResponse,
@@ -18,7 +17,7 @@ router = APIRouter(prefix="/api_keys", tags=["admin"])
 @router.get("/")
 async def list_api_keys(
     access_key: str | None = None,
-    service: ApiKeysService = Depends(get_api_keys_service),
+    service: ApiKeysService = Depends(ApiKeysService),
 ) -> list[ApiKeySummary]:
     try:
         return service.list_api_keys(access_key)
@@ -39,7 +38,7 @@ async def list_api_keys(
 async def create_api_key(
     request: ApiKeyCreateRequest,
     actor_id: str = Depends(get_audit_actor),
-    service: ApiKeysService = Depends(get_api_keys_service),
+    service: ApiKeysService = Depends(ApiKeysService),
 ) -> ApiKeyCreateResponse:
     try:
         return service.create_api_key(actor_id, request)
@@ -59,7 +58,7 @@ async def create_api_key(
 async def delete_api_key(
     access_key: str,
     actor_id: str = Depends(get_audit_actor),
-    service: ApiKeysService = Depends(get_api_keys_service),
+    service: ApiKeysService = Depends(ApiKeysService),
 ) -> None:
     try:
         service.delete_api_key(actor_id, access_key)

@@ -13,7 +13,6 @@ import requests
 from ..repository import get_repo
 from ..infra.errors import RepositoryError, RepositoryUnavailableError
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
-from ..repos import Repo
 from .errors import ServiceValidationError, from_repository_error
 
 PROMETHEUS_TIMEOUT_SECS = 10
@@ -21,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class DashboardService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     def get_prometheus_url(self) -> str:
         prom_url = self.repo.get_setting(

@@ -7,7 +7,6 @@ clients. Alert retrieval and filtering live in AlertsService.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import require_readonly
-from ..infra import get_alerts_service
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
 from ..services.errors import (
@@ -49,7 +48,7 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 async def list_alerts(
     limit: int | None = Query(default=None, ge=1, le=200),
     claims: dict = Depends(require_readonly),
-    service: AlertsService = Depends(get_alerts_service),
+    service: AlertsService = Depends(AlertsService),
 ) -> list[LiveAlert]:
     del claims
     try:
@@ -61,7 +60,7 @@ async def list_alerts(
 @router.post("/webhook")
 async def receive_alert(
     payload: AlertmanagerPayload,
-    service: AlertsService = Depends(get_alerts_service),
+    service: AlertsService = Depends(AlertsService),
 ) -> dict[str, str]:
     try:
         service.ingest_payload(payload)

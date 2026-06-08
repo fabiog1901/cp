@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_cluster_options_service
 from ...models import CpuCountOption
 from ...services.admin.cluster_options import ClusterOptionsService
 from ...services.errors import ServiceError
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/cpu_counts", tags=["admin"])
 
 @router.get("/")
 async def list_cpu_counts(
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> list[CpuCountOption]:
     try:
         return service.list_cpu_counts()
@@ -24,7 +23,7 @@ async def list_cpu_counts(
 async def create_cpu_count(
     request: CpuCountOption,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> CpuCountOption:
     try:
         return service.create_cpu_count(request.cpu_count, actor_id)
@@ -36,7 +35,7 @@ async def create_cpu_count(
 async def delete_cpu_count(
     cpu_count: int,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> None:
     try:
         service.delete_cpu_count(cpu_count, actor_id)

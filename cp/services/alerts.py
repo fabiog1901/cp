@@ -3,13 +3,12 @@
 from ..repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import AlertmanagerPayload, LiveAlert
-from ..repos import Repo
 from .errors import from_repository_error
 
 
 class AlertsService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     @staticmethod
     def _extract_cluster(payload: AlertmanagerPayload, alert) -> str | None:

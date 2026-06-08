@@ -28,7 +28,6 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repos import Repo
 from .base import log_event
 from .errors import (
     ServiceConflictError,
@@ -40,8 +39,8 @@ from .storage_broker import StorageBrokerService
 
 
 class ClusterService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     def list_visible_clusters(self, groups: list[str], is_admin: bool) -> list:
         """Return clusters visible under the caller's CP access scope."""

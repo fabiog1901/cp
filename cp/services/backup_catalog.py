@@ -17,7 +17,6 @@ from ..models import (
     SyncBackupCatalogRequest,
     SyncClusterBackupCatalogRequest,
 )
-from ..repos import Repo
 from .base import log_event
 from .errors import (
     ServiceAuthorizationError,
@@ -28,8 +27,8 @@ from .errors import (
 
 
 class BackupCatalogService:
-    def __init__(self, repo: Repo | None = None):
-        self.repo = repo or get_repo()
+    def __init__(self):
+        self.repo = get_repo()
 
     def list_backups(
         self,

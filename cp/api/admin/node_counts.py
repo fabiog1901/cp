@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_cluster_options_service
 from ...models import NodeCountOption
 from ...services.admin.cluster_options import ClusterOptionsService
 from ...services.errors import ServiceError
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/node_counts", tags=["admin"])
 
 @router.get("/")
 async def list_node_counts(
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> list[NodeCountOption]:
     try:
         return service.list_node_counts()
@@ -24,7 +23,7 @@ async def list_node_counts(
 async def create_node_count(
     request: NodeCountOption,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> NodeCountOption:
     try:
         return service.create_node_count(request.node_count, actor_id)
@@ -36,7 +35,7 @@ async def create_node_count(
 async def delete_node_count(
     node_count: int,
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterOptionsService = Depends(get_cluster_options_service),
+    service: ClusterOptionsService = Depends(ClusterOptionsService),
 ) -> None:
     try:
         service.delete_node_count(node_count, actor_id)

@@ -3,7 +3,6 @@ import json
 from fastapi import APIRouter, Depends
 
 from ...auth import get_audit_actor
-from ...infra import get_regions_service
 from ...models import Region
 from ...services.admin.regions import RegionsService
 from ...services.errors import ServiceError
@@ -14,7 +13,7 @@ router = APIRouter(prefix="/regions", tags=["admin"])
 
 @router.get("/")
 async def list_regions(
-    service: RegionsService = Depends(get_regions_service),
+    service: RegionsService = Depends(RegionsService),
 ) -> list[Region]:
     try:
         return service.list_regions()
@@ -26,7 +25,7 @@ async def list_regions(
 async def create_region(
     request: Region,
     actor_id: str = Depends(get_audit_actor),
-    service: RegionsService = Depends(get_regions_service),
+    service: RegionsService = Depends(RegionsService),
 ) -> Region:
     try:
         return service.create_region(
@@ -50,7 +49,7 @@ async def delete_region(
     region: str,
     zone: str,
     actor_id: str = Depends(get_audit_actor),
-    service: RegionsService = Depends(get_regions_service),
+    service: RegionsService = Depends(RegionsService),
 ) -> None:
     try:
         service.delete_region(

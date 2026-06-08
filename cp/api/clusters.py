@@ -8,13 +8,6 @@ grants, and IdP group mappings. Business behavior belongs in services.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
-from ..infra import (
-    get_cluster_backups_service,
-    get_cluster_jobs_service,
-    get_cluster_service,
-    get_cluster_users_service,
-    get_dashboard_service,
-)
 from ..models import (
     ArtifactDownloadUrlResponse,
     BackupDetails,
@@ -95,7 +88,7 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 @router.get("/")
 async def list_clusters(
     claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> list[ClusterOverview]:
     """List clusters visible to the current CP principal."""
     groups, is_admin = get_access_scope(claims)
@@ -108,7 +101,7 @@ async def list_clusters(
 @router.get("/stats", response_model=ClusterStatsResponse)
 async def get_cluster_stats(
     claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ClusterStatsResponse:
     """Return aggregate status counts for visible clusters."""
     groups, is_admin = get_access_scope(claims)
@@ -121,7 +114,7 @@ async def get_cluster_stats(
 @router.get("/options", response_model=ClusterCreateOptionsResponse)
 async def get_cluster_create_options(
     _claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ClusterCreateOptionsResponse:
     """Return admin-configured options used by the create-cluster dialog."""
     try:
@@ -135,7 +128,7 @@ async def create_cluster(
     request: ClusterCreateApiRequest,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue a create-cluster workflow and return the job id."""
     try:
@@ -161,7 +154,7 @@ async def create_cluster(
 async def get_cluster(
     cluster_id: str,
     claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ClusterPublic:
     """Return one cluster when it is visible to the current CP principal."""
     groups, is_admin = get_access_scope(claims)
@@ -186,7 +179,7 @@ async def delete_cluster(
     cluster_id: str,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue a delete-cluster workflow for an existing managed cluster."""
     try:
@@ -206,7 +199,7 @@ async def create_cluster_debug_zip(
     request: DebugZipOptions | None = None,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue a CockroachDB debug zip collection job for an existing cluster."""
     payload = DebugZipRequest(
@@ -229,7 +222,7 @@ async def list_cluster_artifacts(
     cluster_id: str,
     kind: str | None = None,
     claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ClusterArtifactsSnapshot:
     """Return artifact catalog entries for one visible cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -269,7 +262,7 @@ async def create_cluster_artifact_download_url(
     artifact_id: str,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ArtifactDownloadUrlResponse:
     """Create a presigned download URL for a ready cluster artifact."""
     groups, is_admin = get_access_scope(claims)
@@ -294,7 +287,7 @@ async def healthcheck_cluster(
     cluster_id: str,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue the configured healthcheck playbook for an existing cluster."""
     try:
@@ -312,7 +305,7 @@ async def healthcheck_cluster(
 async def get_cluster_options(
     cluster_id: str,
     claims: dict = Depends(require_readonly),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> ClusterDialogOptionsResponse:
     """Return dialog options for changing an existing visible cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -335,7 +328,7 @@ async def scale_cluster(
     request: ClusterScaleRequest,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue a scale workflow for node count, CPU, disk, or region changes."""
     try:
@@ -353,7 +346,7 @@ async def upgrade_cluster(
     request: ClusterUpgradeRequest,
     actor_id: str = Depends(get_audit_actor),
     _claims: dict = Depends(require_user),
-    service: ClusterService = Depends(get_cluster_service),
+    service: ClusterService = Depends(ClusterService),
 ) -> JobID:
     """Enqueue a cluster version upgrade workflow."""
     try:
@@ -374,7 +367,7 @@ async def upgrade_cluster(
 async def get_cluster_jobs(
     cluster_id: str,
     claims: dict = Depends(require_readonly),
-    service: ClusterJobsService = Depends(get_cluster_jobs_service),
+    service: ClusterJobsService = Depends(ClusterJobsService),
 ) -> ClusterJobsSnapshot:
     """Return jobs linked to one visible cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -398,7 +391,7 @@ async def get_cluster_jobs(
 async def get_cluster_backups(
     cluster_id: str,
     claims: dict = Depends(require_readonly),
-    service: ClusterBackupsService = Depends(get_cluster_backups_service),
+    service: ClusterBackupsService = Depends(ClusterBackupsService),
 ) -> ClusterBackupsSnapshot:
     """Return backup path options for one visible cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -419,7 +412,7 @@ async def get_cluster_backup_details(
     cluster_id: str,
     backup_path: str,
     claims: dict = Depends(require_readonly),
-    service: ClusterBackupsService = Depends(get_cluster_backups_service),
+    service: ClusterBackupsService = Depends(ClusterBackupsService),
 ) -> list[BackupDetails]:
     """Return the object contents for one backup path."""
     groups, is_admin = get_access_scope(claims)
@@ -435,7 +428,7 @@ async def restore_cluster(
     request: ClusterRestoreApiRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterBackupsService = Depends(get_cluster_backups_service),
+    service: ClusterBackupsService = Depends(ClusterBackupsService),
 ) -> JobID:
     """Enqueue a restore workflow from a selected cluster backup path."""
     groups, is_admin = get_access_scope(claims)
@@ -463,7 +456,7 @@ async def restore_cluster_object(
     request: ClusterObjectRestoreApiRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterBackupsService = Depends(get_cluster_backups_service),
+    service: ClusterBackupsService = Depends(ClusterBackupsService),
 ) -> JobID:
     """Enqueue a restore workflow for one database or table object."""
     groups, is_admin = get_access_scope(claims)
@@ -493,7 +486,7 @@ async def restore_cluster_object(
 async def list_cluster_database_objects(
     cluster_id: str,
     claims: dict = Depends(require_user),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> list[ClusterDatabaseObjectDetails]:
     """List database cards and their generated roles; mappings are read separately."""
     groups, is_admin = get_access_scope(claims)
@@ -518,7 +511,7 @@ async def create_cluster_database_object(
     request: CreateClusterDatabaseObjectRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> ClusterDatabaseObject:
     """Create a database in the cluster and materialize default generated roles."""
     groups, is_admin = get_access_scope(claims)
@@ -545,7 +538,7 @@ async def get_cluster_database_object(
     cluster_id: str,
     database_name: str,
     claims: dict = Depends(require_user),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> ClusterDatabaseObject:
     """Return one managed database object recorded by CP."""
     groups, is_admin = get_access_scope(claims)
@@ -572,7 +565,7 @@ async def delete_cluster_database_object(
     database_name: str,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Drop a managed database object and remove its generated roles from CP."""
     groups, is_admin = get_access_scope(claims)
@@ -596,7 +589,7 @@ async def delete_cluster_database_object(
 async def list_cluster_database_role_group_mappings(
     cluster_id: str,
     claims: dict = Depends(require_user),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> list[ClusterDatabaseRoleGroupMapping]:
     """List the stored IdP group to generated database role mappings."""
     groups, is_admin = get_access_scope(claims)
@@ -626,7 +619,7 @@ async def update_cluster_database_role_group_mappings(
     request: ClusterDatabaseRoleGroupsUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> list[ClusterDatabaseRoleGroupMapping]:
     """Replace all IdP groups mapped to one generated database role."""
     groups, is_admin = get_access_scope(claims)
@@ -652,7 +645,7 @@ async def get_cluster_users(
     cluster_id: str,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> ClusterUsersSnapshot:
     """Return database users plus role options for User Management."""
     groups, is_admin = get_access_scope(claims)
@@ -679,7 +672,7 @@ async def create_cluster_user(
     request: NewDatabaseUserRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Create a database user and optionally grant generated database roles."""
     groups, is_admin = get_access_scope(claims)
@@ -703,7 +696,7 @@ async def delete_cluster_user(
     username: str,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Drop a database user from the managed cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -726,7 +719,7 @@ async def grant_cluster_user_database_roles(
     request: ClusterDatabaseRolesUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Grant one or more generated database roles directly to a database user."""
     groups, is_admin = get_access_scope(claims)
@@ -750,7 +743,7 @@ async def revoke_cluster_user_database_roles(
     request: ClusterDatabaseRolesUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Revoke one or more generated database roles directly from a database user."""
     groups, is_admin = get_access_scope(claims)
@@ -774,7 +767,7 @@ async def update_cluster_user_password(
     request: ClusterPasswordUpdateRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: ClusterUsersService = Depends(get_cluster_users_service),
+    service: ClusterUsersService = Depends(ClusterUsersService),
 ) -> None:
     """Update the password for a database user in the managed cluster."""
     groups, is_admin = get_access_scope(claims)
@@ -802,7 +795,7 @@ async def get_cluster_dashboard(
     end: int = 0,
     interval_secs: int = 10,
     claims: dict = Depends(require_readonly),
-    service: DashboardService = Depends(get_dashboard_service),
+    service: DashboardService = Depends(DashboardService),
 ) -> DashboardSnapshot:
     """Return metadata and metrics for the Cluster Dashboard page."""
     groups, is_admin = get_access_scope(claims)

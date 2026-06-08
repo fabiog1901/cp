@@ -7,7 +7,6 @@ cluster recovery page. Restore orchestration is delegated to BackupCatalogServic
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
-from ..infra import get_backup_catalog_service
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
 from ..services.errors import (
@@ -55,7 +54,7 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 async def list_recovery_backups(
     full_cluster_only: bool = Query(default=True),
     claims: dict = Depends(require_readonly),
-    service: BackupCatalogService = Depends(get_backup_catalog_service),
+    service: BackupCatalogService = Depends(BackupCatalogService),
 ) -> BackupCatalogSnapshot:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -74,7 +73,7 @@ async def sync_recovery_backups(
     cluster_id: str | None = Query(default=None),
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: BackupCatalogService = Depends(get_backup_catalog_service),
+    service: BackupCatalogService = Depends(BackupCatalogService),
 ) -> dict[str, str]:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -89,7 +88,7 @@ async def restore_full_cluster(
     request: ClusterRecoveryRestoreApiRequest,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: BackupCatalogService = Depends(get_backup_catalog_service),
+    service: BackupCatalogService = Depends(BackupCatalogService),
 ) -> JobID:
     groups, is_admin = get_access_scope(claims)
     try:

@@ -3,13 +3,12 @@
 from ..repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import LogMsg
-from ..repos import Repo
 from .errors import from_repository_error
 
 
 class EventsService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     def list_visible_events(
         self,

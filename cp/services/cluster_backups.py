@@ -24,7 +24,6 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repos import Repo
 from .base import log_event
 from .cluster_db import connect_to_cluster_db
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
@@ -33,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 class ClusterBackupsService:
-    def __init__(self, repo: Repo | None = None):
-        self.repo = repo or get_repo()
+    def __init__(self):
+        self.repo = get_repo()
 
     def load_cluster_backups_snapshot(
         self,

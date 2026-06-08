@@ -7,7 +7,6 @@ service workflows through shared audit helpers.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_access_scope, require_readonly
-from ..infra import get_events_service
 from ..models import EventCountResponse, LogMsg
 from ..services.errors import (
     ServiceAuthorizationError,
@@ -56,7 +55,7 @@ async def list_events(
     limit: int = Query(default=20, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     claims: dict = Depends(require_readonly),
-    service: EventsService = Depends(get_events_service),
+    service: EventsService = Depends(EventsService),
 ) -> list[LogMsg]:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -67,7 +66,7 @@ async def list_events(
 
 @router.get("/count", response_model=EventCountResponse)
 async def get_event_count(
-    service: EventsService = Depends(get_events_service),
+    service: EventsService = Depends(EventsService),
 ) -> EventCountResponse:
     try:
         total = service.get_event_total()

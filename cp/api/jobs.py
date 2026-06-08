@@ -8,7 +8,6 @@ JobsService.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
-from ..infra import get_jobs_service
 from ..models import (
     ErrorResponse,
     Job,
@@ -61,7 +60,7 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 @router.get("/")
 async def list_jobs(
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(get_jobs_service),
+    service: JobsService = Depends(JobsService),
 ) -> list[Job]:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -73,7 +72,7 @@ async def list_jobs(
 @router.get("/stats", response_model=JobStatsResponse)
 async def get_job_stats(
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(get_jobs_service),
+    service: JobsService = Depends(JobsService),
 ) -> JobStatsResponse:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -94,7 +93,7 @@ async def get_job_stats(
 async def get_job(
     job_id: int,
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(get_jobs_service),
+    service: JobsService = Depends(JobsService),
 ) -> Job:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -124,7 +123,7 @@ async def get_job(
 async def get_job_details(
     job_id: int,
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(get_jobs_service),
+    service: JobsService = Depends(JobsService),
 ) -> JobDetailsResponse:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -155,7 +154,7 @@ async def reschedule_job(
     job_id: int,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: JobsService = Depends(get_jobs_service),
+    service: JobsService = Depends(JobsService),
 ) -> JobRescheduleResponse:
     groups, is_admin = get_access_scope(claims)
     try:

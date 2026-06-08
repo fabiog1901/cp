@@ -28,7 +28,6 @@ from ..models import (
     NewDatabaseUserRequest,
     to_public_cluster,
 )
-from ..repos import Repo
 from .base import log_event
 from .cluster_db import connect_to_cluster_db
 from .errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
@@ -41,8 +40,8 @@ DATABASE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
 
 
 class ClusterUsersService:
-    def __init__(self, repo: Repo | None = None) -> None:
-        self.repo = repo or get_repo()
+    def __init__(self) -> None:
+        self.repo = get_repo()
 
     def list_database_objects(
         self,
