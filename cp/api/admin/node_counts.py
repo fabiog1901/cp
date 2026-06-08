@@ -4,7 +4,7 @@ from ...cpkit_integration import get_audit_actor
 from ...models import NodeCountOption
 from ...services.admin.cluster_options import ClusterOptionsService
 from ...services.errors import ServiceError
-from .common import raise_http_from_service_error
+from cpkit.errors import raise_http_from_service_error
 
 router = APIRouter(prefix="/node_counts", tags=["admin"])
 

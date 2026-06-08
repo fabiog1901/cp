@@ -1,5 +1,6 @@
 """Shared framework exception types."""
 
+from .http import raise_http_from_service_error
 from .repository import (
     RepositoryConflictError,
     RepositoryError,
@@ -30,4 +31,5 @@ __all__ = [
     "ServiceUnavailableError",
     "ServiceValidationError",
     "from_repository_error",
+    "raise_http_from_service_error",
 ]

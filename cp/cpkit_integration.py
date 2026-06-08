@@ -57,7 +57,7 @@ def validate_auth_config() -> None:
 
 def create_admin_router():
     """Create admin routes owned by cpkit and wired to CP hooks."""
-    from .api.admin.common import raise_http_from_service_error
+    from cpkit.errors import raise_http_from_service_error
 
     return create_cpkit_admin_router(
         get_api_keys_service=_get_api_keys_service,
@@ -71,7 +71,7 @@ def create_admin_router():
 
 def create_events_router():
     """Create audit event routes owned by cpkit and wired to CP hooks."""
-    from .api.admin.common import raise_http_from_service_error
+    from cpkit.errors import raise_http_from_service_error
 
     return create_cpkit_events_router(
         get_service=_get_events_service,
@@ -84,7 +84,7 @@ def create_events_router():
 
 def create_jobs_router():
     """Create job management routes owned by cpkit and wired to CP hooks."""
-    from .api.admin.common import raise_http_from_service_error
+    from cpkit.errors import raise_http_from_service_error
 
     return create_cpkit_jobs_router(
         get_service=_get_jobs_service,

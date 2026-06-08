@@ -4,44 +4,18 @@ This router exposes Alertmanager-backed alert data for the webapp and API
 clients. Alert retrieval and filtering live in AlertsService.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
+from cpkit.errors import raise_http_from_service_error
 
 from ..cpkit_integration import require_readonly
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
-from ..services.errors import (
-    ServiceAuthorizationError,
-    ServiceError,
-    ServiceUnavailableError,
-    ServiceValidationError,
-)
+from ..services.errors import ServiceError
 
 router = APIRouter(
     prefix="/alerts",
     tags=["alerts"],
 )
-
-
-def _raise_http_from_service_error(err: ServiceError) -> None:
-    if isinstance(err, ServiceValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=err.user_message,
-        )
-    if isinstance(err, ServiceAuthorizationError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=err.user_message,
-        )
-    if isinstance(err, ServiceUnavailableError):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=err.user_message,
-        )
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=err.user_message,
-    )
 
 
 @router.get("/", response_model=list[LiveAlert])
@@ -54,7 +28,7 @@ async def list_alerts(
     try:
         return service.list_live_alerts(limit=limit)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/webhook")
@@ -65,6 +39,6 @@ async def receive_alert(
     try:
         service.ingest_payload(payload)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
     return {"status": "ok"}

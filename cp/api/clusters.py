@@ -6,6 +6,7 @@ grants, and IdP group mappings. Business behavior belongs in services.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from cpkit.errors import raise_http_from_service_error
 
 from ..cpkit_integration import (
     get_access_scope,
@@ -49,45 +50,12 @@ from ..services.cluster_backups import ClusterBackupsService
 from ..services.cluster_jobs import ClusterJobsService
 from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
-from ..services.errors import (
-    ServiceAuthorizationError,
-    ServiceConflictError,
-    ServiceError,
-    ServiceNotFoundError,
-    ServiceUnavailableError,
-    ServiceValidationError,
-)
+from ..services.errors import ServiceError
 
 router = APIRouter(
     prefix="/clusters",
     tags=["clusters"],
 )
-
-
-def _raise_http_from_service_error(err: ServiceError) -> None:
-    if isinstance(err, ServiceNotFoundError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=err.user_message
-        )
-    if isinstance(err, ServiceValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=err.user_message
-        )
-    if isinstance(err, ServiceConflictError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=err.user_message
-        )
-    if isinstance(err, ServiceAuthorizationError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=err.user_message
-        )
-    if isinstance(err, ServiceUnavailableError):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=err.user_message
-        )
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=err.user_message
-    )
 
 
 @router.get("/")
@@ -100,7 +68,7 @@ async def list_clusters(
     try:
         return service.list_visible_clusters(groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get("/stats", response_model=ClusterStatsResponse)
@@ -113,7 +81,7 @@ async def get_cluster_stats(
     try:
         return service.get_visible_cluster_stats(groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get("/options", response_model=ClusterCreateOptionsResponse)
@@ -125,7 +93,7 @@ async def get_cluster_create_options(
     try:
         return ClusterCreateOptionsResponse(**service.get_create_dialog_options())
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/", response_model=JobID)
@@ -148,7 +116,7 @@ async def create_cluster(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -166,7 +134,7 @@ async def get_cluster(
     try:
         cluster = service.get_cluster_for_user(cluster_id, groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if cluster is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -190,7 +158,7 @@ async def delete_cluster(
     try:
         job_id = service.enqueue_cluster_deletion(cluster_id, actor_id)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -214,7 +182,7 @@ async def create_cluster_debug_zip(
     try:
         job_id = service.enqueue_cluster_debug_zip(payload, actor_id)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -239,7 +207,7 @@ async def list_cluster_artifacts(
             kind=kind,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -280,7 +248,7 @@ async def create_cluster_artifact_download_url(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post(
@@ -298,7 +266,7 @@ async def healthcheck_cluster(
     try:
         job_id = service.enqueue_cluster_healthcheck(cluster_id, actor_id)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -325,7 +293,7 @@ async def get_cluster_options(
             **service.get_cluster_dialog_options(cluster)
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/scale", response_model=JobID)
@@ -342,7 +310,7 @@ async def scale_cluster(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -360,7 +328,7 @@ async def upgrade_cluster(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -379,7 +347,7 @@ async def get_cluster_jobs(
     try:
         snapshot = service.load_cluster_jobs_snapshot(cluster_id, groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -403,7 +371,7 @@ async def get_cluster_backups(
     try:
         snapshot = service.load_cluster_backups_snapshot(cluster_id, groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -424,7 +392,7 @@ async def get_cluster_backup_details(
     try:
         return service.load_backup_details(cluster_id, groups, is_admin, backup_path)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/{cluster_id}/backups/restore", response_model=JobID)
@@ -451,7 +419,7 @@ async def restore_cluster(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -479,7 +447,7 @@ async def restore_cluster_object(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)
 
 
@@ -498,7 +466,7 @@ async def list_cluster_database_objects(
     try:
         database_objects = service.list_database_objects(cluster_id, groups, is_admin)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if database_objects is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -529,7 +497,7 @@ async def create_cluster_database_object(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get(
@@ -555,7 +523,7 @@ async def get_cluster_database_object(
             database_name,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if database_object is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -583,7 +551,7 @@ async def delete_cluster_database_object(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get(
@@ -605,7 +573,7 @@ async def list_cluster_database_role_group_mappings(
             is_admin,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if mappings is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -638,7 +606,7 @@ async def update_cluster_database_role_group_mappings(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get(
@@ -662,7 +630,7 @@ async def get_cluster_users(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -692,7 +660,7 @@ async def create_cluster_user(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.delete("/{cluster_id}/users/{username}")
@@ -714,7 +682,7 @@ async def delete_cluster_user(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/{cluster_id}/users/{username}/grant-database-roles")
@@ -738,7 +706,7 @@ async def grant_cluster_user_database_roles(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/{cluster_id}/users/{username}/revoke-database-roles")
@@ -762,7 +730,7 @@ async def revoke_cluster_user_database_roles(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.post("/{cluster_id}/users/{username}/password")
@@ -786,7 +754,7 @@ async def update_cluster_user_password(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
 
 
 @router.get(
@@ -814,7 +782,7 @@ async def get_cluster_dashboard(
             interval_secs,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

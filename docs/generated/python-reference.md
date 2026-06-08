@@ -22,14 +22,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.api.admin.common`
-
-::: cp.api.admin.common
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.api.admin.cpu_counts`
 
 ::: cp.api.admin.cpu_counts

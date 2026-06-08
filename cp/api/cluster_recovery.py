@@ -4,7 +4,8 @@ This router exposes backup catalog views and restore entry points used by the
 cluster recovery page. Restore orchestration is delegated to BackupCatalogService.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
+from cpkit.errors import raise_http_from_service_error
 
 from ..cpkit_integration import (
     get_access_scope,
@@ -14,45 +15,12 @@ from ..cpkit_integration import (
 )
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
-from ..services.errors import (
-    ServiceAuthorizationError,
-    ServiceError,
-    ServiceNotFoundError,
-    ServiceUnavailableError,
-    ServiceValidationError,
-)
+from ..services.errors import ServiceError
 
 router = APIRouter(
     prefix="/cluster-recovery",
     tags=["cluster-recovery"],
 )
-
-
-def _raise_http_from_service_error(err: ServiceError) -> None:
-    if isinstance(err, ServiceNotFoundError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=err.user_message,
-        )
-    if isinstance(err, ServiceValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=err.user_message,
-        )
-    if isinstance(err, ServiceAuthorizationError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=err.user_message,
-        )
-    if isinstance(err, ServiceUnavailableError):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=err.user_message,
-        )
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=err.user_message,
-    )
 
 
 @router.get("/backups", response_model=BackupCatalogSnapshot)
@@ -69,7 +37,7 @@ async def list_recovery_backups(
             full_cluster_only=full_cluster_only,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return BackupCatalogSnapshot(backups=backups)
 
 
@@ -84,7 +52,7 @@ async def sync_recovery_backups(
     try:
         service.enqueue_sync(actor_id, groups, is_admin, cluster_id=cluster_id)
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return {"status": "queued"}
 
 
@@ -104,5 +72,5 @@ async def restore_full_cluster(
             actor_id,
         )
     except ServiceError as err:
-        _raise_http_from_service_error(err)
+        raise_http_from_service_error(err)
     return JobID(job_id=job_id)

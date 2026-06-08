@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 64 | 112 | 98 | 54 |
+| `cp` | 63 | 112 | 97 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -14,7 +14,6 @@
 | `cp` | `cp/__init__.py` | _No docstring._ |
 | `cp.api` | `cp/api/__init__.py` | FastAPI router packages for the cp application. |
 | `cp.api.admin` | `cp/api/admin/__init__.py` | _No docstring._ |
-| `cp.api.admin.common` | `cp/api/admin/common.py` | _No docstring._ |
 | `cp.api.admin.cpu_counts` | `cp/api/admin/cpu_counts.py` | _No docstring._ |
 | `cp.api.admin.database_role_templates` | `cp/api/admin/database_role_templates.py` | _No docstring._ |
 | `cp.api.admin.disk_sizes` | `cp/api/admin/disk_sizes.py` | _No docstring._ |

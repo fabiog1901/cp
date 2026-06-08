@@ -39,7 +39,7 @@ Most route handlers should follow this shape:
 
 1. Resolve access scope from claims.
 2. Call one service method.
-3. Convert `ServiceError` through `_raise_http_from_service_error`.
+3. Convert `ServiceError` through `cpkit.errors.raise_http_from_service_error`.
 4. Return a typed model or raise a `404` for missing resources.
 
 If a route needs several business decisions, move those decisions into the
