@@ -16,7 +16,7 @@ Use this file as a compact starting point before opening source files.
 
 ## API Route Count
 
-- `65` FastAPI routes
+- `56` FastAPI routes
 
 ## Command Handlers
 

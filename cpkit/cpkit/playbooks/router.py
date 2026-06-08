@@ -15,7 +15,7 @@ def create_playbooks_router(
     handle_service_error: Callable[[Exception], None],
     service_error_type: type[Exception] = Exception,
 ) -> APIRouter:
-    router = APIRouter(prefix="/playbooks", tags=["admin"])
+    router = APIRouter(prefix="/playbooks", tags=["cpkit"])
 
     @router.get("/{name}", response_model=PlaybookResponse)
     async def get_playbook(

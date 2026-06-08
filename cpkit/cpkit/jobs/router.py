@@ -18,7 +18,7 @@ def create_jobs_router(
     handle_service_error: Callable[[Exception], None],
     service_error_type: type[Exception] = Exception,
 ) -> APIRouter:
-    router = APIRouter(prefix="/jobs", tags=["jobs"])
+    router = APIRouter(prefix="/jobs", tags=["cpkit"])
 
     @router.get("/")
     async def list_jobs(

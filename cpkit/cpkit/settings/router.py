@@ -15,7 +15,7 @@ def create_settings_router(
     handle_service_error: Callable[[Exception], None],
     service_error_type: type[Exception] = Exception,
 ) -> APIRouter:
-    router = APIRouter(prefix="/settings", tags=["admin"])
+    router = APIRouter(prefix="/settings", tags=["cpkit"])
 
     @router.get("/")
     async def list_settings(

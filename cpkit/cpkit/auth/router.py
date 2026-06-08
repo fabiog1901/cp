@@ -31,7 +31,7 @@ def create_oidc_router(
     next_cookie_name: str = OIDC_NEXT_COOKIE_NAME,
 ) -> APIRouter:
     """Create the standard OIDC auth router for a cpkit app."""
-    router = APIRouter(prefix=prefix, tags=tags or ["auth"])
+    router = APIRouter(prefix=prefix, tags=tags or ["cpkit"])
 
     def oidc_cookie_kwargs() -> dict[str, Any]:
         return {

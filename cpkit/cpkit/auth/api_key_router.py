@@ -15,7 +15,7 @@ def create_api_keys_router(
     handle_service_error: Callable[[Exception], None],
     service_error_type: type[Exception] = Exception,
 ) -> APIRouter:
-    router = APIRouter(prefix="/api_keys", tags=["admin"])
+    router = APIRouter(prefix="/api_keys", tags=["cpkit"])
 
     @router.get("/")
     async def list_api_keys(
