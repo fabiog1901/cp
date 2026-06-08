@@ -24,7 +24,9 @@ BODY=' '
 STRING_TO_SIGN=$(printf "%s\n%s\n%s\n%s" "$METHOD" "/$PATH_AND_QUERY" "$TIMESTAMP" "$BODY")
 
 # --- 4. Generate the HMAC-SHA256 Signature ---
-# We use openssl to hash the string using our secret key
+# cpkit API keys use an HMAC over the canonical request string. This example
+# uses openssl's `dgst -sha256 -hmac` command so clients can reproduce the
+# signature without depending on a language-specific SDK.
 SIGNATURE=$(printf "%s" "$STRING_TO_SIGN" | openssl dgst -sha256 -hmac "$CP_SECRET_ACCESS_KEY" -hex | sed 's/^.* //')
 
 # echo $STRING_TO_SIGN

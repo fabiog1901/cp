@@ -75,15 +75,15 @@ The backend is organized in layers. The intended dependency direction is API to 
 - `cp/services/` contains business workflows. Services validate domain input, coordinate repositories, execute managed-cluster SQL when needed, enqueue jobs, and write audit events.
 - `cp/repos/` contains CP metadata persistence. Repositories should read and write CP tables only; they should not contain business decisions or connect to managed clusters.
 - `cp/main.py` contributes CP routers, hooks, and workers to `cpkit.create_cpkit_app`; cpkit owns the FastAPI app shell.
-- `cp/infra/` contains FastAPI dependency factories. Root modules such as `cp/repository.py` and `cp/cluster_database.py` are thin app integration points over cpkit and CP services. Shared DB helpers live in `cpkit.db`.
 - `cp/workers/` contains queued and background execution paths.
 - `webapp/` contains the AlpineJS SPA, including UI state, hash routing, API calls, HTML templates, and CSS.
-- `resources/` contains the canonical cpkit/CP schemas, seed/dev SQL, and playbook examples.
+- `cpkit/resources/` contains framework-owned schema.
+- `resources/` contains the canonical CP schema, seed/dev SQL, and playbook examples.
 
 When adding a feature, prefer following the existing vertical slice:
 
 1. Add or update models in `cp/models.py`.
-2. Add framework SQL in `resources/cpkit_ddl.sql` or CP metadata SQL in `resources/ddl.sql` when persistence changes.
+2. Add framework SQL in `cpkit/resources/ddl.sql` or CP metadata SQL in `resources/ddl.sql` when persistence changes.
 3. Add repository methods for metadata access.
 4. Add service methods for business behavior.
 5. Add API routes that delegate to the service.

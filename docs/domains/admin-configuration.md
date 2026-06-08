@@ -33,7 +33,7 @@ creation, cluster operations, and database access defaults.
 | API | `cp/api/admin/*.py` |
 | Services | `cp/services/admin/*.py` |
 | Repos | `cp/repos/admin/*.py` |
-| Schema | `resources/cpkit_ddl.sql`, `resources/ddl.sql`, `resources/init.sql` |
+| Schema | `cpkit/resources/ddl.sql`, `resources/ddl.sql`, `resources/init.sql` |
 | Models | Admin option models in `cp/models.py` |
 
 ## API Resources

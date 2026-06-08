@@ -182,7 +182,7 @@ packages:
       - cp/services/cluster_users.py
       - cp/api/clusters.py
       - cp/repos/admin/cluster_options.py
-      - resources/cpkit_ddl.sql
+      - cpkit/resources/ddl.sql
       - resources/ddl.sql
     review:
       - docs/domains/database-access.md
