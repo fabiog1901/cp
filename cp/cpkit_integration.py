@@ -10,7 +10,6 @@ from cpkit.jobs import create_queue_worker as create_cpkit_queue_worker
 from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
 
-from .api.admin.common import raise_http_from_service_error
 from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
 from .repository import get_repo
@@ -55,6 +54,8 @@ def validate_auth_config() -> None:
 
 def create_admin_router():
     """Create admin routes owned by cpkit and wired to CP hooks."""
+    from .api.admin.common import raise_http_from_service_error
+
     return create_cpkit_admin_router(
         get_api_keys_service=_get_api_keys_service,
         get_settings_service=_get_settings_service,
@@ -67,6 +68,8 @@ def create_admin_router():
 
 def create_jobs_router():
     """Create job management routes owned by cpkit and wired to CP hooks."""
+    from .api.admin.common import raise_http_from_service_error
+
     return create_cpkit_jobs_router(
         get_service=_get_jobs_service,
         get_access_scope=get_access_scope,

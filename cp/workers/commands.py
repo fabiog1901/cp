@@ -2,8 +2,7 @@
 
 from typing import Callable
 
-from ..models import CommandModel, CommandType, FailZombieJobsCommand
-from ..repository import get_repo
+from ..models import CommandModel, CommandType
 from .local.backup_catalog import sync_backup_catalog, sync_cluster_backup_catalog
 from .local.restore import (
     poll_cluster_restore,
@@ -18,15 +17,6 @@ from .remote.healthcheck import healthcheck_cluster
 from .remote.poll_debug_zip import poll_debug_zip
 from .remote.scale import scale_cluster
 from .remote.upgrade import upgrade_cluster
-
-
-def fail_zombie_jobs(
-    _job_id: int,
-    _command: FailZombieJobsCommand,
-    _requested_by: str,
-):
-    """Mark stale running jobs as failed from a scheduled queue command."""
-    get_repo().fail_zombie_jobs()
 
 
 CommandHandler = Callable[[int, CommandModel, str], None]
@@ -48,5 +38,4 @@ COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {
     CommandType.POLL_CLUSTER_RESTORE: poll_cluster_restore,
     CommandType.SYNC_BACKUP_CATALOG: sync_backup_catalog,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: sync_cluster_backup_catalog,
-    CommandType.FAIL_ZOMBIE_JOBS: fail_zombie_jobs,
 }

@@ -9,6 +9,10 @@ from typing import Any
 
 from psycopg.rows import class_row
 
+from .maintenance import (
+    FAIL_ZOMBIE_JOBS_MESSAGE_TYPE,
+    create_fail_zombie_jobs_handler,
+)
 from .repository import QUEUE_TABLE
 from .types import QueueMessage
 
@@ -31,6 +35,9 @@ def create_queue_worker(
     failed_status: str = "FAILED",
 ) -> Callable[[], Any]:
     """Create a background task that polls the framework queue."""
+    maintenance_handlers = {
+        FAIL_ZOMBIE_JOBS_MESSAGE_TYPE: create_fail_zombie_jobs_handler(get_repo),
+    }
 
     def record_failure(message: QueueMessage, err: Exception) -> None:
         _record_job_failure(
@@ -46,12 +53,47 @@ def create_queue_worker(
         await run_queue_worker(
             get_pool=get_pool,
             handlers=handlers,
-            resolve_handler=resolve_handler,
-            parse_message=parse_message,
+            resolve_handler=_resolve_worker_handler(
+                maintenance_handlers,
+                resolve_handler,
+            ),
+            parse_message=_parse_worker_message(
+                maintenance_handlers,
+                parse_message,
+            ),
             handle_failure=record_failure,
         )
 
     return pull_from_mq
+
+
+def _resolve_worker_handler(
+    maintenance_handlers: Mapping[str, QueueHandler],
+    resolve_handler: ResolveHandler | None,
+) -> ResolveHandler:
+    def resolve(message: QueueMessage) -> QueueHandler | None:
+        handler = maintenance_handlers.get(message.msg_type)
+        if handler is not None:
+            return handler
+        if resolve_handler is None:
+            return None
+        return resolve_handler(message)
+
+    return resolve
+
+
+def _parse_worker_message(
+    maintenance_handlers: Mapping[str, QueueHandler],
+    parse_message: ParseMessage | None,
+) -> ParseMessage:
+    def parse(message: QueueMessage) -> Any:
+        if message.msg_type in maintenance_handlers:
+            return message.msg_data
+        if parse_message is None:
+            return message.msg_data
+        return parse_message(message)
+
+    return parse
 
 
 async def run_queue_worker(

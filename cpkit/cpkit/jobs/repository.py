@@ -4,6 +4,7 @@ from typing import Any
 
 from cpkit.db import execute_stmt, fetch_all, fetch_one
 
+from .maintenance import FAIL_ZOMBIE_JOBS_MESSAGE_TYPE
 from .types import ClusterIDRef, IntID, Job, JobID, JobStatsResponse, Task
 
 QUEUE_TABLE = "cpkit.mq"
@@ -274,7 +275,7 @@ class JobsRepositoryMixin:
                 AND now() > updated_at + INTERVAL '300s'
             RETURNING job_id AS id
             """,
-            ("FAIL_ZOMBIE_JOBS", "FAILED", "RUNNING", "QUEUED"),
+            (FAIL_ZOMBIE_JOBS_MESSAGE_TYPE, "FAILED", "RUNNING", "QUEUED"),
             IntID,
         )
 

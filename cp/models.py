@@ -78,7 +78,6 @@ class CommandType(AutoNameStrEnum):
     SYNC_BACKUP_CATALOG = auto()
     SYNC_CLUSTER_BACKUP_CATALOG = auto()
     HEALTHCHECK_CLUSTER = auto()
-    FAIL_ZOMBIE_JOBS = auto()
 
 
 class ClusterState(AutoNameStrEnum):
@@ -497,10 +496,6 @@ class ClusterScaleRequest(CommandModel):
     regions: List[str]
 
 
-class FailZombieJobsCommand(CommandModel):
-    pass
-
-
 COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.CREATE_CLUSTER: CreateClusterCommand,
     CommandType.RECREATE_CLUSTER: CreateClusterCommand,
@@ -516,7 +511,6 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.POLL_CLUSTER_RESTORE: PollClusterRestoreRequest,
     CommandType.SYNC_BACKUP_CATALOG: SyncBackupCatalogRequest,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: SyncClusterBackupCatalogRequest,
-    CommandType.FAIL_ZOMBIE_JOBS: FailZombieJobsCommand,
 }
 
 

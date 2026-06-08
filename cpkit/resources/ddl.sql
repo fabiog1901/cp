@@ -12,6 +12,9 @@ CREATE TABLE cpkit.mq (
     CONSTRAINT pk PRIMARY KEY (msg_id ASC)
 );
 
+INSERT INTO cpkit.mq (msg_type, start_after)
+VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '300s' + (random()*10)::INTERVAL);
+
 CREATE TABLE cpkit.jobs (
     job_id INT8 NOT NULL,
     job_type STRING NULL,
