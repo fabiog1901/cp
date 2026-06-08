@@ -7,19 +7,17 @@ from cpkit.audit import AuditEventsService
 from cpkit.audit import create_events_router as create_cpkit_events_router
 from cpkit.auth import ApiKeysService, create_auth_bundle
 from cpkit.db import get_pool
-from cpkit.jobs import JobsService
-from cpkit.jobs import QueueMessage
+from cpkit.errors import ServiceError, raise_http_from_service_error
+from cpkit.jobs import JobsService, QueueMessage
 from cpkit.jobs import create_jobs_router as create_cpkit_jobs_router
 from cpkit.jobs import create_queue_worker as create_cpkit_queue_worker
 from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
-from cpkit.errors import raise_http_from_service_error
 
 from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
 from .repository import get_repo
 from .services.base import log_event
-from cpkit.errors import ServiceError
 from .workers.commands import COMMAND_HANDLERS
 
 auth = create_auth_bundle(

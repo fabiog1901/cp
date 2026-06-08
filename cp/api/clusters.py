@@ -6,7 +6,8 @@ grants, and IdP group mappings. Business behavior belongs in services.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from cpkit.errors import raise_http_from_service_error
+
+from cpkit.errors import ServiceError, raise_http_from_service_error
 
 from ..cpkit_integration import (
     get_access_scope,
@@ -50,7 +51,6 @@ from ..services.cluster_backups import ClusterBackupsService
 from ..services.cluster_jobs import ClusterJobsService
 from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
-from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/clusters",

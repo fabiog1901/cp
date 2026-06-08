@@ -2,11 +2,11 @@ import json
 
 from fastapi import APIRouter, Depends
 
+from cpkit.errors import ServiceError, raise_http_from_service_error
+
 from ...cpkit_integration import get_audit_actor
 from ...models import Region
 from ...services.admin.regions import RegionsService
-from cpkit.errors import ServiceError
-from cpkit.errors import raise_http_from_service_error
 
 router = APIRouter(prefix="/regions", tags=["admin"])
 

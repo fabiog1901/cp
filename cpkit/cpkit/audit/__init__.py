@@ -7,7 +7,7 @@ from .recorder import (
     write_audit_record,
     write_audit_record_best_effort,
 )
-from .repository import AuditEventsRepositoryMixin, EVENT_LOG_TABLE
+from .repository import EVENT_LOG_TABLE, AuditEventsRepositoryMixin
 from .router import create_events_router
 from .service import AuditService
 from .types import (

@@ -18,7 +18,6 @@ from .remote.poll_debug_zip import poll_debug_zip
 from .remote.scale import scale_cluster
 from .remote.upgrade import upgrade_cluster
 
-
 CommandHandler = Callable[[int, CommandModel, str], None]
 
 COMMAND_HANDLERS: dict[CommandType, CommandHandler] = {

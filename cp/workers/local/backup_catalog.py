@@ -9,8 +9,8 @@ import logging
 from psycopg import sql
 from psycopg.rows import dict_row
 
-from ...repository import get_repo
 from cpkit.db import get_pool
+
 from ...models import (
     BackupCatalogEntryUpsert,
     BackupCatalogObjectUpsert,
@@ -19,6 +19,7 @@ from ...models import (
     SyncBackupCatalogRequest,
     SyncClusterBackupCatalogRequest,
 )
+from ...repository import get_repo
 from ...services.storage_broker import StorageBrokerService
 
 logger = logging.getLogger(__name__)

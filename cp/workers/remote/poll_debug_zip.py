@@ -9,15 +9,15 @@ import logging
 
 from cpkit.playbooks import run_playbook
 
-from ...repository import get_repo
 from ...models import (
-    CommandType,
     ClusterArtifactState,
     ClusterArtifactUpdate,
+    CommandType,
     JobState,
     PlaybookName,
     PollDebugZipCommand,
 )
+from ...repository import get_repo
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,7 @@ def poll_debug_zip(
                     size_bytes=_optional_int(runner_result.data.get("size_bytes")),
                     sha256=_optional_str(runner_result.data.get("sha256")),
                     metadata=_artifact_metadata(command, runner_result.data),
-                    expires_at=_optional_datetime(
-                        runner_result.data.get("expires_at")
-                    ),
+                    expires_at=_optional_datetime(runner_result.data.get("expires_at")),
                     updated_by=requested_by,
                 ),
             )

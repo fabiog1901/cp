@@ -10,8 +10,8 @@ import logging
 from psycopg import sql
 from psycopg.rows import dict_row
 
-from ...repository import get_repo
 from cpkit.db import get_pool
+
 from ...models import (
     ClusterState,
     CommandType,
@@ -21,6 +21,7 @@ from ...models import (
     RestoreFullClusterRequest,
     RestoreRequest,
 )
+from ...repository import get_repo
 from ...services.cluster_db import connect_to_cluster_db
 from ...services.storage_broker import StorageBrokerService
 

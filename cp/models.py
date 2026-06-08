@@ -10,6 +10,7 @@ from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 from cpkit.auth import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,

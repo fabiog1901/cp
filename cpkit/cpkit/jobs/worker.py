@@ -9,10 +9,7 @@ from typing import Any
 
 from psycopg.rows import class_row
 
-from .maintenance import (
-    FAIL_ZOMBIE_JOBS_MESSAGE_TYPE,
-    create_fail_zombie_jobs_handler,
-)
+from .maintenance import FAIL_ZOMBIE_JOBS_MESSAGE_TYPE, create_fail_zombie_jobs_handler
 from .repository import QUEUE_TABLE
 from .types import QueueMessage
 
@@ -163,15 +160,13 @@ async def run_queue_worker(
 
 
 def _claim_due_message(cur) -> QueueMessage | None:
-    return cur.execute(
-        f"""
+    return cur.execute(f"""
         SELECT *
         FROM {QUEUE_TABLE}
         WHERE now() > start_after
         LIMIT 1
         FOR UPDATE SKIP LOCKED
-        """
-    ).fetchone()
+        """).fetchone()
 
 
 def _record_job_failure(

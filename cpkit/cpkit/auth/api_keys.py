@@ -2,7 +2,8 @@
 
 from datetime import datetime, timezone
 from hashlib import sha256
-from hmac import compare_digest, new as hmac_new
+from hmac import compare_digest
+from hmac import new as hmac_new
 from typing import Any, Protocol
 
 
@@ -28,7 +29,7 @@ def parse_api_key_timestamp(timestamp: str) -> datetime:
 
     try:
         parsed = datetime.fromtimestamp(float(raw_timestamp), tz=timezone.utc)
-    except (OSError, OverflowError, ValueError):
+    except OSError, OverflowError, ValueError:
         normalized = (
             f"{raw_timestamp[:-1]}+00:00"
             if raw_timestamp.endswith("Z")

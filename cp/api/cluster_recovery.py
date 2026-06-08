@@ -5,7 +5,8 @@ cluster recovery page. Restore orchestration is delegated to BackupCatalogServic
 """
 
 from fastapi import APIRouter, Depends, Query
-from cpkit.errors import raise_http_from_service_error
+
+from cpkit.errors import ServiceError, raise_http_from_service_error
 
 from ..cpkit_integration import (
     get_access_scope,
@@ -15,7 +16,6 @@ from ..cpkit_integration import (
 )
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
 from ..services.backup_catalog import BackupCatalogService
-from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/cluster-recovery",

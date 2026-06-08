@@ -1,21 +1,18 @@
 """Repository-layer package."""
 
+from psycopg_pool import ConnectionPool
+
+from cpkit.audit import AuditEventsRepositoryMixin
 from cpkit.auth import (
     APIKeysRepositoryMixin,
     OIDCSessionsRepositoryMixin,
     RoleGroupMappingsRepositoryMixin,
 )
-from cpkit.audit import AuditEventsRepositoryMixin
 from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
 from cpkit.playbooks import PlaybooksRepositoryMixin
 from cpkit.settings import SettingsRepositoryMixin
-from psycopg_pool import ConnectionPool
 
-from .admin import (
-    ClusterOptionsRepo,
-    RegionsRepo,
-    VersionsRepo,
-)
+from .admin import ClusterOptionsRepo, RegionsRepo, VersionsRepo
 from .alerts import AlertsRepo
 from .backup_catalog import BackupCatalogRepo
 from .cluster import ClusterRepo

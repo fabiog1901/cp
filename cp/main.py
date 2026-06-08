@@ -8,10 +8,10 @@ from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters
 from .cpkit_integration import (
     auth_router,
+    cpkit_admin_router,
     create_events_router,
     create_jobs_router,
     create_queue_worker,
-    cpkit_admin_router,
     validate_auth_config,
 )
 from .prometheus import get_nodes

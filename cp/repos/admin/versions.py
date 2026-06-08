@@ -1,6 +1,7 @@
 """Admin versions repository."""
 
 from cpkit.db import execute_stmt, fetch_all
+
 from ...models import Version
 from ..common import convert_model_to_sql
 from .base import AdminRepo

@@ -3,10 +3,10 @@
 import json
 from typing import Any
 
-from cpkit.errors import RepositoryError
+from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
+
 from ...models import AuditEvent, Region
 from ..base import log_event
-from cpkit.errors import ServiceValidationError, from_repository_error
 from .base import AdminService
 
 

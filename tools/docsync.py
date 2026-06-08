@@ -413,20 +413,14 @@ def synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]:
         None,
     )
     main_imports = (
-        {
-            name
-            for import_info in main_module.imports
-            for name in import_info.names
-        }
+        {name for import_info in main_module.imports for name in import_info.names}
         if main_module is not None
         else set()
     )
     if "create_events_router" in main_imports:
         routes.extend(
             [
-                _synthetic_route(
-                    "GET", "/events", "cpkit.audit.router", "list_events"
-                ),
+                _synthetic_route("GET", "/events", "cpkit.audit.router", "list_events"),
                 _synthetic_route(
                     "GET",
                     "/events/count",
@@ -441,9 +435,7 @@ def synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]:
         return routes
 
     imports = {
-        name
-        for import_info in admin_module.imports
-        for name in import_info.names
+        name for import_info in admin_module.imports for name in import_info.names
     }
     if "create_settings_router" in imports:
         routes.extend(

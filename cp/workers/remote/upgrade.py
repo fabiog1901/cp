@@ -10,8 +10,8 @@ from threading import Thread
 
 from cpkit.playbooks import run_playbook
 
-from ...repository import get_repo
 from ...models import ClusterState, ClusterUpgradeRequest, JobState, PlaybookName
+from ...repository import get_repo
 
 logger = logging.getLogger(__name__)
 

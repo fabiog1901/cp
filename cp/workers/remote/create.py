@@ -12,7 +12,6 @@ from threading import Thread
 from cpkit.auth import encrypt_secret
 from cpkit.playbooks import run_playbook
 
-from ...repository import get_repo
 from ...models import (
     ClusterRequest,
     ClusterState,
@@ -24,6 +23,7 @@ from ...models import (
     Region,
     SettingKey,
 )
+from ...repository import get_repo
 from ...services.storage_broker import StorageBrokerService
 from .common import get_node_count_per_zone
 

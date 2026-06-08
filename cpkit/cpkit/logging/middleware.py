@@ -22,9 +22,7 @@ async def request_logging_middleware(
     start_time = time.perf_counter()
 
     client = _client_address(request)
-    logging.debug(
-        f'<- {client} - "{request.method} {request.url.path}"'
-    )
+    logging.debug(f'<- {client} - "{request.method} {request.url.path}"')
 
     response = await call_next(request)
 

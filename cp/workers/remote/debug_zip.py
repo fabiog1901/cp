@@ -11,17 +11,17 @@ from uuid import uuid4
 
 from cpkit.playbooks import run_playbook
 
-from ...repository import get_repo
 from ...models import (
+    ClusterArtifactState,
+    ClusterArtifactUpsert,
     ClusterState,
     CommandType,
     DebugZipClusterCommand,
-    ClusterArtifactUpsert,
-    ClusterArtifactState,
     JobState,
     PlaybookName,
     PollDebugZipCommand,
 )
+from ...repository import get_repo
 from ...services.storage_broker import StorageBrokerService
 
 logger = logging.getLogger(__name__)
@@ -239,9 +239,7 @@ def _poll_command_from_runner_data(
     if not remote_host:
         raise RuntimeError("Debug zip starter metadata is missing remote_host.")
     if not remote_status_path:
-        raise RuntimeError(
-            "Debug zip starter metadata is missing remote_status_path."
-        )
+        raise RuntimeError("Debug zip starter metadata is missing remote_status_path.")
 
     return PollDebugZipCommand(
         cluster_id=cluster_id,

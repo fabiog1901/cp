@@ -9,11 +9,11 @@ from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from cpkit.auth import decrypt_secret, encrypt_secret
+from cpkit.errors import ServiceValidationError
 
-from ..repository import get_repo
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
 from ..repos import Repo
-from cpkit.errors import ServiceValidationError
+from ..repository import get_repo
 
 BACKUP_CONNECTION_NAME = "backup"
 BACKUP_CONNECTION_TYPE = "s3"

@@ -7,6 +7,7 @@ can be served without scanning object storage on every request.
 import datetime as dt
 
 from cpkit.db import execute_stmt, fetch_all, fetch_one
+
 from ..models import BackupCatalogEntry, BackupCatalogEntryUpsert
 
 

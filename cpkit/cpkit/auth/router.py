@@ -68,9 +68,7 @@ def create_oidc_router(
         state = secrets.token_urlsafe(24)
         nonce = secrets.token_urlsafe(24)
         next_path = safe_next_path(next)
-        redirect_uri = oidc.config.redirect_uri or str(
-            request.url_for("oidc_callback")
-        )
+        redirect_uri = oidc.config.redirect_uri or str(request.url_for("oidc_callback"))
         auth_url = oidc.build_authorization_url(redirect_uri, state, nonce)
 
         resp = RedirectResponse(auth_url, status_code=302)
@@ -112,9 +110,7 @@ def create_oidc_router(
         if not expected_nonce:
             raise HTTPException(status_code=401, detail="Missing OIDC nonce.")
 
-        redirect_uri = oidc.config.redirect_uri or str(
-            request.url_for("oidc_callback")
-        )
+        redirect_uri = oidc.config.redirect_uri or str(request.url_for("oidc_callback"))
         token_payload = oidc.exchange_code(code, redirect_uri)
 
         id_token = token_payload.get("id_token")
@@ -125,9 +121,7 @@ def create_oidc_router(
             )
         refresh_token = token_payload.get("refresh_token")
         refresh_token_value = (
-            refresh_token
-            if isinstance(refresh_token, str) and refresh_token
-            else None
+            refresh_token if isinstance(refresh_token, str) and refresh_token else None
         )
 
         claims = oidc.validate_jwt(

@@ -1,5 +1,6 @@
 """Framework-owned job queue primitives."""
 
+from .maintenance import FAIL_ZOMBIE_JOBS_MESSAGE_TYPE, create_fail_zombie_jobs_handler
 from .repository import (
     JOB_CLUSTER_MAP_TABLE,
     JOBS_TABLE,
@@ -8,10 +9,6 @@ from .repository import (
     JobsRepositoryMixin,
     QueueJobRepositoryMixin,
     QueueRepositoryMixin,
-)
-from .maintenance import (
-    FAIL_ZOMBIE_JOBS_MESSAGE_TYPE,
-    create_fail_zombie_jobs_handler,
 )
 from .router import create_jobs_router
 from .service import JobsService

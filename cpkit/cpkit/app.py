@@ -51,8 +51,7 @@ def create_cpkit_app(
                 await result
 
         running_tasks = [
-            asyncio.create_task(task_factory())
-            for task_factory in background_tasks
+            asyncio.create_task(task_factory()) for task_factory in background_tasks
         ]
 
         yield

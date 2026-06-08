@@ -5,12 +5,12 @@ clients. Alert retrieval and filtering live in AlertsService.
 """
 
 from fastapi import APIRouter, Depends, Query
-from cpkit.errors import raise_http_from_service_error
+
+from cpkit.errors import ServiceError, raise_http_from_service_error
 
 from ..cpkit_integration import require_readonly
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
-from cpkit.errors import ServiceError
 
 router = APIRouter(
     prefix="/alerts",

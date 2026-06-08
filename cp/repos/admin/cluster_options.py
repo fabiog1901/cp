@@ -6,6 +6,7 @@ not execute SQL against managed clusters.
 """
 
 from cpkit.db import execute_stmt, fetch_all
+
 from ...models import (
     ClusterDatabaseObject,
     ClusterDatabaseRole,

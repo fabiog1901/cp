@@ -8,8 +8,8 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 
-from fastapi import HTTPException, status
 import jwt
+from fastapi import HTTPException, status
 
 from .api_keys import APIKeyAuthenticationError, APIKeyAuthenticator
 from .claims import claims_groups, jsonable_role_groups
@@ -200,9 +200,7 @@ class OIDCProviderClient:
             if jwk.get("kid") == kid:
                 return jwt.PyJWK.from_dict(jwk).key
 
-        raise OIDCAuthenticationError(
-            "Unable to find a matching JWKS key for token"
-        )
+        raise OIDCAuthenticationError("Unable to find a matching JWKS key for token")
 
     def validate_jwt(
         self,
@@ -257,9 +255,7 @@ class OIDCProviderClient:
         try:
             return datetime.fromtimestamp(float(raw_exp), tz=timezone.utc)
         except (TypeError, ValueError, OSError, OverflowError) as exc:
-            raise OIDCAuthenticationError(
-                "Token has an invalid 'exp' claim."
-            ) from exc
+            raise OIDCAuthenticationError("Token has an invalid 'exp' claim.") from exc
 
 
 class OIDCSessionManager:

@@ -11,12 +11,7 @@ from cpkit.errors import (
     from_repository_error,
 )
 
-from .types import (
-    Playbook,
-    PlaybookOverview,
-    PlaybookResponse,
-    PlaybookVersionResponse,
-)
+from .types import Playbook, PlaybookOverview, PlaybookResponse, PlaybookVersionResponse
 
 STRFTIME = "%Y-%m-%d %H:%M:%S"
 PlaybookAuditHook = Callable[[Any, str, str, dict[str, Any]], None]

@@ -1,9 +1,9 @@
 """Business logic for the cluster jobs vertical."""
 
-from ..repository import get_repo
-from cpkit.errors import RepositoryError
+from cpkit.errors import RepositoryError, from_repository_error
+
 from ..models import ClusterJobsSnapshot, to_public_cluster
-from cpkit.errors import from_repository_error
+from ..repository import get_repo
 
 
 class ClusterJobsService:

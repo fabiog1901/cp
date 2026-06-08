@@ -1,10 +1,10 @@
 """Shared helpers for connecting to a cluster SQL endpoint."""
 
 from cpkit.auth import decrypt_secret
+from cpkit.errors import ServiceValidationError
 
 from ..cluster_database import connect_cluster_db
 from ..models import Cluster
-from cpkit.errors import ServiceValidationError
 
 
 def get_primary_dns_address(cluster: Cluster) -> str:
