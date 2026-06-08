@@ -8,6 +8,11 @@ cpkit application should get consistently. Product-specific domains, request
 models, event catalogs, and lifecycle behavior stay in the applications that
 consume it.
 
+Framework-owned Pydantic models are exported from `cpkit.models`, including
+auth, audit, job, playbook, and settings models. Capability packages keep their
+local exports for focused imports, but applications can use `cpkit.models` as
+the canonical aggregate surface.
+
 ## App Bootstrap
 
 Applications create their FastAPI app through `create_cpkit_app`. The framework
