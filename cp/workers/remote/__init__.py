@@ -1,1 +1,1 @@
-"""Remote workers that execute Ansible playbooks over SSH."""
+"""Remote workers that prepare CP inputs for cpkit playbook execution."""

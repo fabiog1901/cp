@@ -7,6 +7,8 @@ zip collection and reconciles CP job/artifact metadata.
 import datetime as dt
 import logging
 
+from cpkit.playbooks import run_playbook
+
 from ...infra import get_repo
 from ...models import (
     CommandType,
@@ -16,7 +18,6 @@ from ...models import (
     PlaybookName,
     PollDebugZipCommand,
 )
-from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,11 @@ def poll_debug_zip(
             return
 
         task_id_counter = command.poll_attempt * DEBUG_ZIP_POLL_TASK_ID_OFFSET
-        runner_result = MyRunner(command.cp_job_id, task_id_counter).launch_runner(
-            PlaybookName.POLL_DEBUG_ZIP,
-            {
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=command.cp_job_id,
+            playbook_name=PlaybookName.POLL_DEBUG_ZIP,
+            extra_vars={
                 "cluster_id": command.cluster_id,
                 "cp_job_id": command.cp_job_id,
                 "artifact_id": command.artifact_id,
@@ -57,6 +60,7 @@ def poll_debug_zip(
                 "remote_user": command.remote_user,
                 "poll_attempt": command.poll_attempt,
             },
+            task_id_counter=task_id_counter,
         )
 
         if runner_result.status != "successful":

@@ -18,7 +18,7 @@ enqueues a command, returns a CP job id, and a worker later executes the command
 - Job: a durable CP record for an asynchronous operation.
 - Task: progress entries attached to a job.
 - Command: a typed payload persisted in the CP message queue.
-- Remote worker: a worker that uses Ansible and SSH to operate a cluster.
+- Remote worker: a worker that prepares CP inputs for cpkit playbook execution.
 - Local worker: a worker that runs inside CP without remote SSH.
 
 ## Lifecycle
@@ -72,8 +72,8 @@ dashboard, jobs, and operation controls in:
 - API routes should not run long cluster lifecycle operations directly.
 - Long-running operations should be queued and represented by jobs.
 - Workers own operational execution and job/task progress updates.
-- Repos persist CP metadata only; they should not invoke Ansible or connect to
-  managed clusters.
+- Repos persist CP metadata only; they should not execute playbooks or connect
+  to managed clusters.
 - Audit-worthy lifecycle requests should write audit events from the service
   layer.
 
@@ -81,7 +81,7 @@ dashboard, jobs, and operation controls in:
 
 - Cluster lifecycle auth is CP access control, not CockroachDB SQL auth.
 - Job state is CP workflow state, not necessarily CockroachDB internal job state.
-- Local workers run inside CP; remote workers run Ansible/SSH workflows.
+- Local workers run inside CP; remote workers run playbook-backed workflows.
 
 ## Common Changes
 

@@ -1,6 +1,6 @@
 """Remote cluster healthcheck worker.
 
-This worker runs the configured Ansible healthcheck playbook for one managed
+This worker runs the configured healthcheck playbook for one managed
 cluster and records task output on the requested CP job.
 """
 
@@ -8,9 +8,10 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from cpkit.playbooks import run_playbook
+
 from ...infra import get_repo
 from ...models import ClusterState, HealthcheckClusterCommand, JobState, PlaybookName
-from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +89,11 @@ def healthcheck_cluster_worker(
             "requested_by": requested_by,
         }
 
-        MyRunner(job_id).launch_runner(
-            PlaybookName.HEALTHCHECK_CLUSTER,
-            extra_vars,
+        run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.HEALTHCHECK_CLUSTER,
+            extra_vars=extra_vars,
         )
     except Exception as err:
         logger.exception(

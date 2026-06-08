@@ -1,6 +1,13 @@
 """Versioned playbook models and repository helpers."""
 
-from .ansible import AnsibleRunner, LiteAnsibleRunner, LiteRunnerResult, RunnerResult
+from .ansible import (
+    AnsibleRunner,
+    LiteAnsibleRunner,
+    LiteRunnerResult,
+    RunnerResult,
+    run_playbook,
+    run_playbook_lite,
+)
 from .repository import PLAYBOOKS_TABLE, PlaybooksRepositoryMixin
 from .types import (
     Playbook,
@@ -22,4 +29,6 @@ __all__ = [
     "PlaybookVersionResponse",
     "PlaybooksRepositoryMixin",
     "RunnerResult",
+    "run_playbook",
+    "run_playbook_lite",
 ]

@@ -1,6 +1,6 @@
 """Remote cluster deletion worker.
 
-This worker runs the Ansible-backed delete workflow and updates CP cluster/job
+This worker runs the playbook-backed delete workflow and updates CP cluster/job
 metadata after a managed cluster is removed.
 """
 
@@ -8,9 +8,10 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from cpkit.playbooks import run_playbook
+
 from ...infra import get_repo
 from ...models import ClusterState, DeleteClusterCommand, JobState, PlaybookName
-from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,11 @@ def delete_cluster_worker(
             "deployment_id": cluster_id,
         }
 
-        runner_result = MyRunner(job_id).launch_runner(
-            PlaybookName.DELETE_CLUSTER, extra_vars
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.DELETE_CLUSTER,
+            extra_vars=extra_vars,
         )
 
         if runner_result.status == "successful":

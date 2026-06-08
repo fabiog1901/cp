@@ -135,23 +135,24 @@ Applications still own the domain contract around playbooks:
 - extra vars construction
 - business state transitions after a playbook succeeds or fails
 
-Remote workers can wrap `AnsibleRunner` with application-specific repository
-and status values:
+Remote workers can ask cpkit to run a stored playbook with application-specific
+repository and status values:
 
 ```python
-from cpkit.playbooks import AnsibleRunner, PlaybooksRepositoryMixin
+from cpkit.playbooks import PlaybooksRepositoryMixin, run_playbook
 
 
 class Repo(PlaybooksRepositoryMixin, ...):
     ...
 
 
-runner = AnsibleRunner(
+result = run_playbook(
     repo=repo,
     job_id=job_id,
+    playbook_name=playbook_name,
+    extra_vars=extra_vars,
     running_status="RUNNING",
     completed_status="COMPLETED",
     failed_status="FAILED",
 )
-runner.launch_runner(playbook_name, extra_vars)
 ```

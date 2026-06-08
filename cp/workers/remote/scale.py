@@ -1,12 +1,14 @@
 """Remote cluster scale worker.
 
-This worker runs Ansible-backed scale workflows and updates CP metadata/job state
+This worker runs playbook-backed scale workflows and updates CP metadata/job state
 after node, CPU, or disk-size changes.
 """
 
 import datetime as dt
 import logging
 from threading import Thread
+
+from cpkit.playbooks import run_playbook
 
 from ...infra import get_repo
 from ...models import (
@@ -19,7 +21,6 @@ from ...models import (
     PlaybookName,
     Region,
 )
-from .ansible import MyRunner
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)
@@ -119,7 +120,7 @@ def scale_cluster_worker(
     current_cluster: Cluster,
     requested_by: str,
 ):
-    """Run the Ansible-backed scale workflow for disk, CPU, node, or region changes."""
+    """Run the playbook-backed scale workflow for disk, CPU, node, or region changes."""
     repo = get_repo()
     deployment = []
     task_id_counter = 0
@@ -136,10 +137,13 @@ def scale_cluster_worker(
             "disk_size": csr.disk_size,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_DISK_SIZE, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_DISK_SIZE,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":
@@ -166,10 +170,13 @@ def scale_cluster_worker(
             "node_cpus": csr.node_cpus,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_NODE_CPUS, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_NODE_CPUS,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":
@@ -277,10 +284,13 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_CLUSTER_OUT,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":
@@ -394,10 +404,13 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_CLUSTER_IN,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":
@@ -523,10 +536,13 @@ def scale_cluster_worker(
             "cockroachdb_version": current_cluster.version,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_CLUSTER_OUT, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_CLUSTER_OUT,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":
@@ -644,10 +660,13 @@ def scale_cluster_worker(
             "deployment": deployment,
         }
 
-        runner_result = MyRunner(
-            job_id,
-            task_id_counter,
-        ).launch_runner(PlaybookName.SCALE_CLUSTER_IN, extra_vars)
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.SCALE_CLUSTER_IN,
+            extra_vars=extra_vars,
+            task_id_counter=task_id_counter,
+        )
         task_id_counter = runner_result.task_id_counter
 
         if runner_result.status != "successful":

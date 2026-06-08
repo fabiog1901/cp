@@ -251,3 +251,43 @@ class LiteAnsibleRunner:
         if playbook is None or playbook.content is None:
             raise RuntimeError(f"Default playbook '{playbook_name}' is not configured")
         return gzip.decompress(playbook.content).decode()
+
+
+def run_playbook(
+    *,
+    repo: Any,
+    job_id: int,
+    playbook_name: str,
+    extra_vars: dict,
+    task_id_counter: int = 0,
+    running_status: Any = "RUNNING",
+    completed_status: Any = "COMPLETED",
+    failed_status: Any = "FAILED",
+    job_dir_root: str = "/tmp",
+) -> RunnerResult:
+    """Run a stored playbook for a framework job."""
+    return AnsibleRunner(
+        repo=repo,
+        job_id=job_id,
+        counter=task_id_counter,
+        running_status=running_status,
+        completed_status=completed_status,
+        failed_status=failed_status,
+        job_dir_root=job_dir_root,
+    ).launch_runner(playbook_name, extra_vars)
+
+
+def run_playbook_lite(
+    *,
+    repo: Any,
+    job_id: int,
+    playbook_name: str,
+    extra_vars: dict,
+    job_dir_root: str = "/tmp",
+) -> LiteRunnerResult:
+    """Run a stored playbook and capture only its Data result."""
+    return LiteAnsibleRunner(
+        repo=repo,
+        job_id=job_id,
+        job_dir_root=job_dir_root,
+    ).launch_runner(playbook_name, extra_vars)

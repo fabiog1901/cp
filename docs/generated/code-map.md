@@ -969,17 +969,7 @@ Functions:
 
 Path: `cp/workers/remote/__init__.py`
 
-Remote workers that execute Ansible playbooks over SSH.
-
-### `cp.workers.remote.ansible`
-
-Path: `cp/workers/remote/ansible.py`
-
-CP remote worker adapters for cpkit Ansible playbook runners.
-
-Classes:
-- `MyRunner` — line 14: _No docstring._
-- `MyRunnerLite` — line 33: _No docstring._
+Remote workers that prepare CP inputs for cpkit playbook execution.
 
 ### `cp.workers.remote.common`
 
@@ -999,8 +989,8 @@ Remote cluster creation worker.
 
 Functions:
 
-- `create_cluster(job_id: int, command: CreateClusterCommand, created_by: str, recreate: bool=False) -> None` — line 32: Prepare CP metadata and start the threaded remote create workflow.
-- `create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str, cluster_db_password: str)` — line 90: Run the Ansible-backed cluster creation workflow and update job state.
+- `create_cluster(job_id: int, command: CreateClusterCommand, created_by: str, recreate: bool=False) -> None` — line 33: Prepare CP metadata and start the threaded remote create workflow.
+- `create_cluster_worker(job_id, cluster_request: ClusterRequest, created_by: str, cluster_db_password: str)` — line 91: Run the playbook-backed cluster creation workflow and update job state.
 
 ### `cp.workers.remote.debug_zip`
 
@@ -1010,8 +1000,8 @@ Remote cluster debug zip worker.
 
 Functions:
 
-- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 29: _No docstring._
-- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 76: _No docstring._
+- `debug_zip_cluster(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 30: _No docstring._
+- `debug_zip_cluster_worker(job_id: int, command: DebugZipClusterCommand, requested_by: str) -> None` — line 77: _No docstring._
 
 ### `cp.workers.remote.delete`
 
@@ -1021,8 +1011,8 @@ Remote cluster deletion worker.
 
 Functions:
 
-- `delete_cluster(job_id: int, command: DeleteClusterCommand, requested_by: str) -> None` — line 18: _No docstring._
-- `delete_cluster_worker(job_id: int, cluster_id: str, requested_by: str)` — line 77: _No docstring._
+- `delete_cluster(job_id: int, command: DeleteClusterCommand, requested_by: str) -> None` — line 19: _No docstring._
+- `delete_cluster_worker(job_id: int, cluster_id: str, requested_by: str)` — line 78: _No docstring._
 
 ### `cp.workers.remote.healthcheck`
 
@@ -1032,8 +1022,8 @@ Remote cluster healthcheck worker.
 
 Functions:
 
-- `healthcheck_cluster(job_id: int, command: HealthcheckClusterCommand, requested_by: str) -> None` — line 18: _No docstring._
-- `healthcheck_cluster_worker(job_id: int, command: HealthcheckClusterCommand, requested_by: str) -> None` — line 65: _No docstring._
+- `healthcheck_cluster(job_id: int, command: HealthcheckClusterCommand, requested_by: str) -> None` — line 19: _No docstring._
+- `healthcheck_cluster_worker(job_id: int, command: HealthcheckClusterCommand, requested_by: str) -> None` — line 66: _No docstring._
 
 ### `cp.workers.remote.poll_debug_zip`
 
@@ -1043,7 +1033,7 @@ Remote debug zip polling worker.
 
 Functions:
 
-- `poll_debug_zip(_msg_id: int, command: PollDebugZipCommand, requested_by: str) -> None` — line 31: _No docstring._
+- `poll_debug_zip(_msg_id: int, command: PollDebugZipCommand, requested_by: str) -> None` — line 32: _No docstring._
 
 ### `cp.workers.remote.scale`
 
@@ -1053,10 +1043,10 @@ Remote cluster scale worker.
 
 Functions:
 
-- `scale_cluster(job_id: int, command: ClusterScaleRequest, requested_by: str) -> None` — line 28: Prepare CP metadata and start the threaded remote scale workflow.
-- `scale_cluster_worker_entry(job_id: int, csr: ClusterScaleRequest, current_cluster: Cluster, requested_by: str)` — line 62: Run the scale worker with failure handling that updates job/cluster state.
-- `parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster)` — line 86: _No docstring._
-- `scale_cluster_worker(job_id, csr: ClusterScaleRequest, current_cluster: Cluster, requested_by: str)` — line 116: Run the Ansible-backed scale workflow for disk, CPU, node, or region changes.
+- `scale_cluster(job_id: int, command: ClusterScaleRequest, requested_by: str) -> None` — line 29: Prepare CP metadata and start the threaded remote scale workflow.
+- `scale_cluster_worker_entry(job_id: int, csr: ClusterScaleRequest, current_cluster: Cluster, requested_by: str)` — line 63: Run the scale worker with failure handling that updates job/cluster state.
+- `parse_raw_data(regions: list[str], raw_data: dict, current_cluster: Cluster)` — line 87: _No docstring._
+- `scale_cluster_worker(job_id, csr: ClusterScaleRequest, current_cluster: Cluster, requested_by: str)` — line 117: Run the playbook-backed scale workflow for disk, CPU, node, or region changes.
 
 ### `cp.workers.remote.upgrade`
 
@@ -1066,8 +1056,8 @@ Remote cluster upgrade worker.
 
 Functions:
 
-- `upgrade_cluster(job_id: int, command: ClusterUpgradeRequest, requested_by: str) -> None` — line 18: _No docstring._
-- `upgrade_cluster_worker(job_id: int, cur: ClusterUpgradeRequest, requested_by: str)` — line 76: _No docstring._
+- `upgrade_cluster(job_id: int, command: ClusterUpgradeRequest, requested_by: str) -> None` — line 19: _No docstring._
+- `upgrade_cluster_worker(job_id: int, cur: ClusterUpgradeRequest, requested_by: str)` — line 77: _No docstring._
 
 ## `tools`
 

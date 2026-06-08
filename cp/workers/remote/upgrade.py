@@ -1,6 +1,6 @@
 """Remote cluster upgrade worker.
 
-This worker runs the Ansible-backed upgrade workflow and updates CP cluster/job
+This worker runs the playbook-backed upgrade workflow and updates CP cluster/job
 metadata after a version change.
 """
 
@@ -8,9 +8,10 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from cpkit.playbooks import run_playbook
+
 from ...infra import get_repo
 from ...models import ClusterState, ClusterUpgradeRequest, JobState, PlaybookName
-from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +87,11 @@ def upgrade_cluster_worker(
             "cockroachdb_autofinalize": cur.auto_finalize,
         }
 
-        runner_result = MyRunner(job_id).launch_runner(
-            PlaybookName.UPGRADE_CLUSTER, extra_vars
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.UPGRADE_CLUSTER,
+            extra_vars=extra_vars,
         )
 
         if runner_result.status != "successful":

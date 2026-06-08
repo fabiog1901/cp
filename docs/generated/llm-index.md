@@ -11,7 +11,7 @@ Use this file as a compact starting point before opening source files.
 
 ## Packages
 
-- `cp`: 84 modules, 149 classes, 123 functions, 73 routes
+- `cp`: 83 modules, 147 classes, 123 functions, 73 routes
 - `tools`: 1 modules, 5 classes, 31 functions, 0 routes
 
 ## API Route Count

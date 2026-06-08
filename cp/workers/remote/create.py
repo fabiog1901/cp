@@ -1,6 +1,6 @@
 """Remote cluster creation worker.
 
-This worker prepares create-cluster command context and runs the Ansible-backed
+This worker prepares create-cluster command context and runs the playbook-backed
 remote workflow that provisions a managed CockroachDB cluster.
 """
 
@@ -8,6 +8,8 @@ import datetime as dt
 import logging
 import secrets
 from threading import Thread
+
+from cpkit.playbooks import run_playbook
 
 from ...infra import get_repo
 from ...infra.util import encrypt_secret
@@ -23,7 +25,6 @@ from ...models import (
     SettingKey,
 )
 from ...services.storage_broker import StorageBrokerService
-from .ansible import MyRunner
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def create_cluster_worker(
     created_by: str,
     cluster_db_password: str,
 ):
-    """Run the Ansible-backed cluster creation workflow and update job state."""
+    """Run the playbook-backed cluster creation workflow and update job state."""
     repo = get_repo()
     try:
         storage_broker = StorageBrokerService(repo)
@@ -206,8 +207,11 @@ def create_cluster_worker(
             "backup_external_connection_uri": backup_external_connection_uri,
         }
 
-        runner_result = MyRunner(job_id).launch_runner(
-            PlaybookName.CREATE_CLUSTER, extra_vars
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.CREATE_CLUSTER,
+            extra_vars=extra_vars,
         )
 
         if runner_result.status != "successful":

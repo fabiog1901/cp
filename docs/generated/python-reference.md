@@ -614,14 +614,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.workers.remote.ansible`
-
-::: cp.workers.remote.ansible
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.workers.remote.common`
 
 ::: cp.workers.remote.common

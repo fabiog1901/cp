@@ -1,6 +1,6 @@
 """Remote cluster debug zip worker.
 
-This worker runs the configured Ansible playbook that collects a CockroachDB
+This worker runs the configured playbook that collects a CockroachDB
 debug zip for one managed cluster.
 """
 
@@ -8,6 +8,8 @@ import datetime as dt
 import logging
 from threading import Thread
 from uuid import uuid4
+
+from cpkit.playbooks import run_playbook
 
 from ...infra import get_repo
 from ...models import (
@@ -21,7 +23,6 @@ from ...models import (
     PollDebugZipCommand,
 )
 from ...services.storage_broker import StorageBrokerService
-from .ansible import MyRunner
 
 logger = logging.getLogger(__name__)
 
@@ -124,9 +125,11 @@ def debug_zip_cluster_worker(
             "requested_by": requested_by,
         }
 
-        runner_result = MyRunner(job_id).launch_runner(
-            PlaybookName.DEBUG_ZIP_CLUSTER,
-            extra_vars,
+        runner_result = run_playbook(
+            repo=repo,
+            job_id=job_id,
+            playbook_name=PlaybookName.DEBUG_ZIP_CLUSTER,
+            extra_vars=extra_vars,
         )
 
         if runner_result.status != "successful":
