@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from .models import LogMsg
+from cpkit.audit import AuditLogRecord
 
 
 def build_log_msg(
@@ -12,8 +12,8 @@ def build_log_msg(
     metadata: dict[str, Any] | None,
     request_id: str | None,
     default_metadata: dict[str, Any] | None = None,
-) -> LogMsg:
-    return LogMsg(
+) -> AuditLogRecord:
+    return AuditLogRecord(
         user_id=actor_id,
         action=event_type,
         details=metadata if metadata is not None else default_metadata,

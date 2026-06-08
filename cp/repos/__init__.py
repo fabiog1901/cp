@@ -5,6 +5,7 @@ from cpkit.auth import (
     OIDCSessionsRepositoryMixin,
     RoleGroupMappingsRepositoryMixin,
 )
+from cpkit.audit import AuditEventsRepositoryMixin
 from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
 from cpkit.playbooks import PlaybooksRepositoryMixin
 from cpkit.settings import SettingsRepositoryMixin
@@ -20,7 +21,6 @@ from .backup_catalog import BackupCatalogRepo
 from .cluster import ClusterRepo
 from .cluster_artifacts import ClusterArtifactsRepo
 from .cluster_jobs import ClusterJobsRepo
-from .event import EventRepo
 from .external_connections import ExternalConnectionsRepo
 
 
@@ -38,7 +38,7 @@ class Repo(
     RoleGroupMappingsRepositoryMixin,
     ClusterRepo,
     ClusterArtifactsRepo,
-    EventRepo,
+    AuditEventsRepositoryMixin,
     ExternalConnectionsRepo,
     JobsRepositoryMixin,
     QueueJobRepositoryMixin,

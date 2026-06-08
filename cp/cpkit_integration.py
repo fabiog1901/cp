@@ -1,6 +1,8 @@
 """CP wiring for cpkit-provided capabilities."""
 
 from cpkit import create_cpkit_admin_router
+from cpkit.audit import AuditEventsService
+from cpkit.audit import create_events_router as create_cpkit_events_router
 from cpkit.auth import ApiKeysService, create_auth_bundle
 from cpkit.db import get_pool
 from cpkit.jobs import JobsService
@@ -34,6 +36,7 @@ __all__ = [
     "auth",
     "auth_router",
     "create_admin_router",
+    "create_events_router",
     "create_jobs_router",
     "create_queue_worker",
     "get_access_scope",
@@ -61,6 +64,19 @@ def create_admin_router():
         get_settings_service=_get_settings_service,
         get_playbooks_service=_get_playbooks_service,
         get_audit_actor=get_audit_actor,
+        handle_service_error=raise_http_from_service_error,
+        service_error_type=ServiceError,
+    )
+
+
+def create_events_router():
+    """Create audit event routes owned by cpkit and wired to CP hooks."""
+    from .api.admin.common import raise_http_from_service_error
+
+    return create_cpkit_events_router(
+        get_service=_get_events_service,
+        get_access_scope=get_access_scope,
+        require_readonly=require_readonly,
         handle_service_error=raise_http_from_service_error,
         service_error_type=ServiceError,
     )
@@ -97,6 +113,10 @@ def _get_api_keys_service():
         created_hook=log_event,
         deleted_hook=log_event,
     )
+
+
+def _get_events_service():
+    return AuditEventsService(get_repo())
 
 
 def _get_jobs_service():

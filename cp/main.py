@@ -5,10 +5,11 @@ from fastapi import FastAPI
 from cpkit import create_cpkit_app
 
 from . import DB_URL
-from .api import admin, alerts, cluster_recovery, clusters, events
+from .api import admin, alerts, cluster_recovery, clusters
 from .cpkit_integration import (
     auth_router,
     create_jobs_router,
+    create_events_router,
     create_queue_worker,
     validate_auth_config,
 )
@@ -33,7 +34,7 @@ app = create_cpkit_app(
         alerts.router,
         cluster_recovery.router,
         clusters.router,
-        events.router,
+        create_events_router(),
         create_jobs_router(),
     ),
     configure_api=configure_api,

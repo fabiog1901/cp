@@ -241,21 +241,6 @@ Routes:
 - `POST /clusters/{cluster_id}/users/{username}/password` -> `update_cluster_user_password()`
 - `GET /clusters/{cluster_id}/dashboard` -> `get_cluster_dashboard()`
 
-### `cp.api.events`
-
-Path: `cp/api/events.py`
-
-Event API routes.
-
-Functions:
-
-- `async list_events(limit: int=Query(default=20, ge=1, le=200), offset: int=Query(default=0, ge=0), claims: dict=Depends(require_readonly), service: EventsService=Depends(EventsService)) -> list[LogMsg]` — line 54: _No docstring._
-- `async get_event_count(service: EventsService=Depends(EventsService)) -> EventCountResponse` — line 68: _No docstring._
-
-Routes:
-- `GET /events` -> `list_events()`
-- `GET /events/count` -> `get_event_count()`
-
 ### `cp.audit`
 
 Path: `cp/audit.py`
@@ -264,7 +249,7 @@ CP-specific audit record construction helpers.
 
 Functions:
 
-- `build_log_msg(*, actor_id: str, event_type: str, metadata: dict[str, Any] | None, request_id: str | None, default_metadata: dict[str, Any] | None=None) -> LogMsg` — line 8: _No docstring._
+- `build_log_msg(*, actor_id: str, event_type: str, metadata: dict[str, Any] | None, request_id: str | None, default_metadata: dict[str, Any] | None=None) -> AuditLogRecord` — line 8: _No docstring._
 
 ### `cp.cluster_database`
 
@@ -287,10 +272,11 @@ CP wiring for cpkit-provided capabilities.
 
 Functions:
 
-- `validate_auth_config() -> None` — line 50: Validate cpkit auth settings at startup.
-- `create_admin_router()` — line 55: Create admin routes owned by cpkit and wired to CP hooks.
-- `create_jobs_router()` — line 69: Create job management routes owned by cpkit and wired to CP hooks.
-- `create_queue_worker()` — line 84: Create the cpkit queue worker with CP command handlers.
+- `validate_auth_config() -> None` — line 53: Validate cpkit auth settings at startup.
+- `create_admin_router()` — line 58: Create admin routes owned by cpkit and wired to CP hooks.
+- `create_events_router()` — line 72: Create audit event routes owned by cpkit and wired to CP hooks.
+- `create_jobs_router()` — line 85: Create job management routes owned by cpkit and wired to CP hooks.
+- `create_queue_worker()` — line 100: Create the cpkit queue worker with CP command handlers.
 
 ### `cp.main`
 
@@ -300,7 +286,7 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 19: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 20: _No docstring._
 
 ### `cp.models`
 
@@ -319,91 +305,89 @@ Classes:
 - `SettingKey` — line 153: _No docstring._
 - `StrID` — line 164: _No docstring._
 - `WebUser` — line 171: _No docstring._
-- `EventCountResponse` — line 177: _No docstring._
-- `ClusterStatsResponse` — line 181: _No docstring._
-- `ErrorResponse` — line 189: _No docstring._
-- `ClusterOverview` — line 196: _No docstring._
-- `InventoryRegion` — line 207: _No docstring._
-- `InventoryLB` — line 213: _No docstring._
-- `ClusterPublic` — line 219: _No docstring._
-- `Cluster` — line 235: _No docstring._
-- `ExternalConnection` — line 256: _No docstring._
-- `ExternalConnectionUpsert` — line 273: _No docstring._
-- `ClusterRequest` — line 286: _No docstring._
-- `CommandModel` — line 296: _No docstring._
-- `CreateClusterCommand` — line 300: _No docstring._
-- `ClusterUpgradeRequest` — line 310: _No docstring._
-- `DeleteClusterCommand` — line 316: _No docstring._
-- `HealthcheckClusterCommand` — line 320: _No docstring._
-- `DebugZipOptions` — line 324: _No docstring._
-- `DebugZipRequest` — line 368: _No docstring._
-- `DebugZipClusterCommand` — line 372: _No docstring._
-- `PollDebugZipCommand` — line 376: _No docstring._
-- `RestoreRequest` — line 386: _No docstring._
-- `RestoreClusterObjectRequest` — line 396: _No docstring._
-- `RestoreFullClusterRequest` — line 446: _No docstring._
-- `PollClusterRestoreRequest` — line 476: _No docstring._
-- `SyncBackupCatalogRequest` — line 483: _No docstring._
-- `SyncClusterBackupCatalogRequest` — line 487: _No docstring._
-- `ClusterScaleRequest` — line 491: _No docstring._
-- `BackupDetails` — line 528: _No docstring._
-- `BackupPathOption` — line 538: _No docstring._
-- `BackupCatalogObject` — line 542: _No docstring._
-- `BackupCatalogEntry` — line 560: _No docstring._
-- `BackupCatalogSnapshot` — line 576: _No docstring._
-- `ClusterRecoveryRestoreApiRequest` — line 580: _No docstring._
-- `BackupCatalogObjectUpsert` — line 610: _No docstring._
-- `BackupCatalogEntryUpsert` — line 625: _No docstring._
-- `DatabaseUser` — line 639: _No docstring._
-- `DatabaseRoleTemplateConfig` — line 645: _No docstring._
-- `ClusterDatabaseRole` — line 651: _No docstring._
-- `ClusterDatabaseRoleDetails` — line 661: _No docstring._
-- `ClusterDatabaseRoleGroupMapping` — line 670: _No docstring._
-- `ClusterDatabaseObject` — line 680: _No docstring._
-- `ClusterDatabaseObjectDetails` — line 689: _No docstring._
-- `CreateClusterDatabaseObjectRequest` — line 693: _No docstring._
-- `NewDatabaseUserRequest` — line 697: _No docstring._
-- `ClusterArtifactUpsert` — line 703: _No docstring._
-- `ClusterArtifactUpdate` — line 721: _No docstring._
-- `ClusterArtifact` — line 734: _No docstring._
-- `ArtifactDownloadUrlResponse` — line 754: _No docstring._
-- `ClusterArtifactsSnapshot` — line 765: _No docstring._
-- `Region` — line 774: _No docstring._
-- `Version` — line 785: _No docstring._
-- `RegionOption` — line 789: _No docstring._
-- `NodeCountOption` — line 793: _No docstring._
-- `CpuCountOption` — line 797: _No docstring._
-- `DiskSizeOption` — line 801: _No docstring._
-- `Nodes` — line 805: _No docstring._
-- `DashboardMetrics` — line 810: _No docstring._
-- `DashboardSnapshot` — line 815: _No docstring._
-- `ClusterJobsSnapshot` — line 820: _No docstring._
-- `ClusterUsersSnapshot` — line 825: _No docstring._
-- `ClusterBackupsSnapshot` — line 834: _No docstring._
-- `ClusterCreateOptionsResponse` — line 839: _No docstring._
-- `ClusterDialogOptionsResponse` — line 847: _No docstring._
-- `ClusterCreateApiRequest` — line 855: _No docstring._
-- `ClusterRestoreApiRequest` — line 865: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 874: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 922: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 926: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 930: _No docstring._
-- `NoFreeComputeUnitError` — line 934: _No docstring._
-- `ComputeUnitNotFoundError` — line 938: _No docstring._
-- `ComputeUnitStateError` — line 942: _No docstring._
-- `ComputeUnitOperationError` — line 946: _No docstring._
-- `AllocatePlaybookError` — line 950: _No docstring._
-- `LogMsg` — line 954: _No docstring._
-- `DeferredTask` — line 962: _No docstring._
-- `Alert` — line 968: _No docstring._
-- `AlertmanagerPayload` — line 977: _No docstring._
-- `LiveAlert` — line 987: _No docstring._
+- `ClusterStatsResponse` — line 177: _No docstring._
+- `ErrorResponse` — line 185: _No docstring._
+- `ClusterOverview` — line 192: _No docstring._
+- `InventoryRegion` — line 203: _No docstring._
+- `InventoryLB` — line 209: _No docstring._
+- `ClusterPublic` — line 215: _No docstring._
+- `Cluster` — line 231: _No docstring._
+- `ExternalConnection` — line 252: _No docstring._
+- `ExternalConnectionUpsert` — line 269: _No docstring._
+- `ClusterRequest` — line 282: _No docstring._
+- `CommandModel` — line 292: _No docstring._
+- `CreateClusterCommand` — line 296: _No docstring._
+- `ClusterUpgradeRequest` — line 306: _No docstring._
+- `DeleteClusterCommand` — line 312: _No docstring._
+- `HealthcheckClusterCommand` — line 316: _No docstring._
+- `DebugZipOptions` — line 320: _No docstring._
+- `DebugZipRequest` — line 364: _No docstring._
+- `DebugZipClusterCommand` — line 368: _No docstring._
+- `PollDebugZipCommand` — line 372: _No docstring._
+- `RestoreRequest` — line 382: _No docstring._
+- `RestoreClusterObjectRequest` — line 392: _No docstring._
+- `RestoreFullClusterRequest` — line 442: _No docstring._
+- `PollClusterRestoreRequest` — line 472: _No docstring._
+- `SyncBackupCatalogRequest` — line 479: _No docstring._
+- `SyncClusterBackupCatalogRequest` — line 483: _No docstring._
+- `ClusterScaleRequest` — line 487: _No docstring._
+- `BackupDetails` — line 524: _No docstring._
+- `BackupPathOption` — line 534: _No docstring._
+- `BackupCatalogObject` — line 538: _No docstring._
+- `BackupCatalogEntry` — line 556: _No docstring._
+- `BackupCatalogSnapshot` — line 572: _No docstring._
+- `ClusterRecoveryRestoreApiRequest` — line 576: _No docstring._
+- `BackupCatalogObjectUpsert` — line 606: _No docstring._
+- `BackupCatalogEntryUpsert` — line 621: _No docstring._
+- `DatabaseUser` — line 635: _No docstring._
+- `DatabaseRoleTemplateConfig` — line 641: _No docstring._
+- `ClusterDatabaseRole` — line 647: _No docstring._
+- `ClusterDatabaseRoleDetails` — line 657: _No docstring._
+- `ClusterDatabaseRoleGroupMapping` — line 666: _No docstring._
+- `ClusterDatabaseObject` — line 676: _No docstring._
+- `ClusterDatabaseObjectDetails` — line 685: _No docstring._
+- `CreateClusterDatabaseObjectRequest` — line 689: _No docstring._
+- `NewDatabaseUserRequest` — line 693: _No docstring._
+- `ClusterArtifactUpsert` — line 699: _No docstring._
+- `ClusterArtifactUpdate` — line 717: _No docstring._
+- `ClusterArtifact` — line 730: _No docstring._
+- `ArtifactDownloadUrlResponse` — line 750: _No docstring._
+- `ClusterArtifactsSnapshot` — line 761: _No docstring._
+- `Region` — line 770: _No docstring._
+- `Version` — line 781: _No docstring._
+- `RegionOption` — line 785: _No docstring._
+- `NodeCountOption` — line 789: _No docstring._
+- `CpuCountOption` — line 793: _No docstring._
+- `DiskSizeOption` — line 797: _No docstring._
+- `Nodes` — line 801: _No docstring._
+- `DashboardMetrics` — line 806: _No docstring._
+- `DashboardSnapshot` — line 811: _No docstring._
+- `ClusterJobsSnapshot` — line 816: _No docstring._
+- `ClusterUsersSnapshot` — line 821: _No docstring._
+- `ClusterBackupsSnapshot` — line 830: _No docstring._
+- `ClusterCreateOptionsResponse` — line 835: _No docstring._
+- `ClusterDialogOptionsResponse` — line 843: _No docstring._
+- `ClusterCreateApiRequest` — line 851: _No docstring._
+- `ClusterRestoreApiRequest` — line 861: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 870: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 918: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 922: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 926: _No docstring._
+- `NoFreeComputeUnitError` — line 930: _No docstring._
+- `ComputeUnitNotFoundError` — line 934: _No docstring._
+- `ComputeUnitStateError` — line 938: _No docstring._
+- `ComputeUnitOperationError` — line 942: _No docstring._
+- `AllocatePlaybookError` — line 946: _No docstring._
+- `DeferredTask` — line 950: _No docstring._
+- `Alert` — line 956: _No docstring._
+- `AlertmanagerPayload` — line 965: _No docstring._
+- `LiveAlert` — line 975: _No docstring._
 
 Functions:
 
-- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 252: _No docstring._
-- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 517: _No docstring._
-- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 521: _No docstring._
+- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 248: _No docstring._
+- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 513: _No docstring._
+- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 517: _No docstring._
 
 ### `cp.prometheus`
 
@@ -520,15 +504,6 @@ Shared helpers for repository models.
 Functions:
 
 - `convert_model_to_sql(table: str, model: BaseModel)` — line 6: _No docstring._
-
-### `cp.repos.event`
-
-Path: `cp/repos/event.py`
-
-Event repository.
-
-Classes:
-- `EventRepo` — line 9: _No docstring._
 
 ### `cp.repos.external_connections`
 
@@ -688,15 +663,6 @@ Classes:
 Path: `cp/services/errors.py`
 
 Compatibility exports for service-layer exception types.
-
-### `cp.services.events`
-
-Path: `cp/services/events.py`
-
-Business logic for the events vertical.
-
-Classes:
-- `EventsService` — line 9: _No docstring._
 
 ### `cp.services.storage_broker`
 
@@ -884,14 +850,14 @@ Functions:
 - `route_sort_key(route: dict[str, Any]) -> tuple[str, str, str]` — line 354: Sort routes by path, method, then handler.
 - `build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]` — line 359: Build the machine-readable project index consumed by docs and agents.
 - `synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]` — line 404: Represent known cpkit router factories wired by CP modules.
-- `generated_header(title: str) -> list[str]` — line 506: Return a standard generated Markdown header.
-- `render_code_map(index: dict[str, Any]) -> str` — line 511: Render a module-oriented generated code map.
-- `render_package_index(index: dict[str, Any]) -> str` — line 563: Render package/module summary tables.
-- `render_api_routes(index: dict[str, Any]) -> str` — line 590: Render FastAPI route inventory.
-- `render_llm_index(index: dict[str, Any]) -> str` — line 608: Render a compact agent-facing navigation index.
-- `render_python_reference(index: dict[str, Any]) -> str` — line 655: Render a MkDocstrings reference page for importable Python modules.
-- `json_dumps(data: dict[str, Any]) -> str` — line 691: Serialize JSON deterministically with a trailing newline.
-- `file_hash(content: str) -> str` — line 696: Return a stable content hash.
-- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 701: Write a generated file or report it stale in check mode.
-- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 717: Return all deterministic generated outputs.
-- `main() -> int` — line 729: CLI entry point.
+- `generated_header(title: str) -> list[str]` — line 535: Return a standard generated Markdown header.
+- `render_code_map(index: dict[str, Any]) -> str` — line 540: Render a module-oriented generated code map.
+- `render_package_index(index: dict[str, Any]) -> str` — line 592: Render package/module summary tables.
+- `render_api_routes(index: dict[str, Any]) -> str` — line 619: Render FastAPI route inventory.
+- `render_llm_index(index: dict[str, Any]) -> str` — line 637: Render a compact agent-facing navigation index.
+- `render_python_reference(index: dict[str, Any]) -> str` — line 684: Render a MkDocstrings reference page for importable Python modules.
+- `json_dumps(data: dict[str, Any]) -> str` — line 720: Serialize JSON deterministically with a trailing newline.
+- `file_hash(content: str) -> str` — line 725: Return a stable content hash.
+- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 730: Write a generated file or report it stale in check mode.
+- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 746: Return all deterministic generated outputs.
+- `main() -> int` — line 758: CLI entry point.

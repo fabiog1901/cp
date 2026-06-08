@@ -174,10 +174,6 @@ class WebUser(BaseModel):
     groups: List[str]
 
 
-class EventCountResponse(BaseModel):
-    total: int
-
-
 class ClusterStatsResponse(BaseModel):
     total: int
     active: int
@@ -949,14 +945,6 @@ class ComputeUnitOperationError(Exception):
 
 class AllocatePlaybookError(Exception):
     pass
-
-
-class LogMsg(BaseModel):
-    ts: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.timezone.utc))
-    user_id: str
-    action: str
-    details: dict[str, Any] | None = None
-    request_id: str | None = None
 
 
 class DeferredTask(BaseModel):

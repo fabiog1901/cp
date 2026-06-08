@@ -26,11 +26,12 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | File | Purpose |
 | --- | --- |
 | `clusters.py` | Main cluster routes: lifecycle, dashboard, backups, database users, database objects, role mappings. |
-| `jobs.py` | Job visibility and operational job actions. |
-| `events.py` | Audit/event log routes. |
 | `alerts.py` | Alertmanager-backed alert visibility. |
 | `cluster_recovery.py` | Cluster recovery-specific routes. |
 | `admin/` | Admin option CRUD routes. |
+
+Framework routes such as jobs, audit events, settings, playbooks, API keys, and
+auth are mounted through `cp/cpkit_integration.py`.
 
 ## Common Pattern
 

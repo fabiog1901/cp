@@ -204,7 +204,7 @@ should not be conflated with CP session auth.
 
 | Concern | Entry points |
 | --- | --- |
-| Events API/service/repo | `cp/api/events.py`, `cp/services/events.py`, `cp/repos/event.py` |
+| Events API/service/repo | `cpkit/cpkit/audit/` |
 | Alerts API/service/repo | `cp/api/alerts.py`, `cp/services/alerts.py`, `cp/repos/alerts.py` |
 | Dashboard service | `cp/services/dashboard.py` |
 | UI | Dashboard, alert, and event sections in `webapp/` |

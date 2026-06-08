@@ -102,14 +102,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.api.events`
-
-::: cp.api.events
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.audit`
 
 ### `cp.audit`
@@ -268,14 +260,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.repos.event`
-
-::: cp.repos.event
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.repos.external_connections`
 
 ::: cp.repos.external_connections
@@ -419,14 +403,6 @@
 ### `cp.services.errors`
 
 ::: cp.services.errors
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.events`
-
-::: cp.services.events
     options:
       show_source: true
       show_root_heading: false

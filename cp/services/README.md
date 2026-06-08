@@ -32,12 +32,13 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | `cluster_jobs.py` | Cluster job views and job actions. |
 | `dashboard.py` | Dashboard snapshot and metrics aggregation. |
 | `backup_catalog.py` | Backup catalog sync/read workflows. |
-| `events.py` | Event and audit log reads. |
 | `alerts.py` | Alertmanager service integration. |
-| `jobs.py` | Generic job operations. |
 | `cluster_db.py` | Managed-cluster connection setup. |
 | `storage_broker.py` | S3-compatible storage integration helpers. |
 | `admin/` | Admin option business logic. |
+
+Framework services such as jobs, audit events, settings, playbooks, API keys,
+and auth live under `cpkit/cpkit/`.
 
 ## Common Pattern
 

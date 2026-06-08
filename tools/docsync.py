@@ -407,15 +407,44 @@ def synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]:
         (module for module in modules if module.module_name == "cp.api.admin"),
         None,
     )
+    routes: list[dict[str, Any]] = []
+    main_module = next(
+        (module for module in modules if module.module_name == "cp.main"),
+        None,
+    )
+    main_imports = (
+        {
+            name
+            for import_info in main_module.imports
+            for name in import_info.names
+        }
+        if main_module is not None
+        else set()
+    )
+    if "create_events_router" in main_imports:
+        routes.extend(
+            [
+                _synthetic_route(
+                    "GET", "/events", "cpkit.audit.router", "list_events"
+                ),
+                _synthetic_route(
+                    "GET",
+                    "/events/count",
+                    "cpkit.audit.router",
+                    "get_event_count",
+                    "AuditEventCountResponse",
+                ),
+            ]
+        )
+
     if admin_module is None:
-        return []
+        return routes
 
     imports = {
         name
         for import_info in admin_module.imports
         for name in import_info.names
     }
-    routes: list[dict[str, Any]] = []
     if "create_settings_router" in imports:
         routes.extend(
             [

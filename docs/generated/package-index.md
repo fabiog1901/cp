@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 67 | 116 | 99 | 56 |
+| `cp` | 64 | 112 | 98 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -24,7 +24,6 @@
 | `cp.api.alerts` | `cp/api/alerts.py` | Alert API routes. |
 | `cp.api.cluster_recovery` | `cp/api/cluster_recovery.py` | Cluster recovery API routes. |
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
-| `cp.api.events` | `cp/api/events.py` | Event API routes. |
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
 | `cp.cpkit_integration` | `cp/cpkit_integration.py` | CP wiring for cpkit-provided capabilities. |
@@ -43,7 +42,6 @@
 | `cp.repos.cluster_artifacts` | `cp/repos/cluster_artifacts.py` | Cluster artifact catalog repository. |
 | `cp.repos.cluster_jobs` | `cp/repos/cluster_jobs.py` | Cluster jobs repository. |
 | `cp.repos.common` | `cp/repos/common.py` | Shared helpers for repository models. |
-| `cp.repos.event` | `cp/repos/event.py` | Event repository. |
 | `cp.repos.external_connections` | `cp/repos/external_connections.py` | External connections repository. |
 | `cp.repository` | `cp/repository.py` | CP repository factory and application-specific database error handling. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
@@ -62,7 +60,6 @@
 | `cp.services.cluster_users` | `cp/services/cluster_users.py` | Database access workflows for managed clusters. |
 | `cp.services.dashboard` | `cp/services/dashboard.py` | Cluster dashboard service. |
 | `cp.services.errors` | `cp/services/errors.py` | Compatibility exports for service-layer exception types. |
-| `cp.services.events` | `cp/services/events.py` | Business logic for the events vertical. |
 | `cp.services.storage_broker` | `cp/services/storage_broker.py` | Provision and resolve external storage connections for clusters. |
 | `cp.workers` | `cp/workers/__init__.py` | Worker runtime package. |
 | `cp.workers.commands` | `cp/workers/commands.py` | CP command handlers for queued framework jobs. |

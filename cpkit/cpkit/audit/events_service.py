@@ -1,14 +1,13 @@
-"""Business logic for the events vertical."""
+"""Service helpers for framework audit event reads."""
 
-from ..repository import get_repo
-from cpkit.errors import RepositoryError
-from ..models import LogMsg
-from .errors import from_repository_error
+from cpkit.errors import RepositoryError, from_repository_error
+
+from .types import AuditLogRecord
 
 
-class EventsService:
-    def __init__(self) -> None:
-        self.repo = get_repo()
+class AuditEventsService:
+    def __init__(self, repo) -> None:
+        self.repo = repo
 
     def list_visible_events(
         self,
@@ -16,14 +15,14 @@ class EventsService:
         offset: int,
         groups: list[str],
         is_admin: bool,
-    ) -> list[LogMsg]:
+    ) -> list[AuditLogRecord]:
         try:
             return self.repo.list_events(limit, offset, groups, is_admin)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
                 unavailable_message="Events are temporarily unavailable.",
-                fallback_message="Unable to load EventRepo.",
+                fallback_message="Unable to load events.",
             ) from err
 
     def get_event_total(self) -> int:

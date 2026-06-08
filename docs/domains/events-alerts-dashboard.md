@@ -32,7 +32,7 @@ visibility and troubleshooting.
 
 | Concern | Files |
 | --- | --- |
-| Events | `cp/api/events.py`, `cp/services/events.py`, `cp/repos/event.py` |
+| Events | `cpkit/cpkit/audit/` |
 | Alerts | `cp/api/alerts.py`, `cp/services/alerts.py`, `cp/repos/alerts.py` |
 | Dashboard | `cp/api/clusters.py`, `cp/services/dashboard.py`, `cp/repos/cluster.py` |
 | Models | `Event*`, `Alert*`, `Dashboard*` in `cp/models.py` |
@@ -77,7 +77,7 @@ Relevant files:
 
 | Change | Start Here |
 | --- | --- |
-| Add an audit event | `cp/models.py`, service workflow, `cp/repos/event.py` |
-| Change event filtering | `cp/api/events.py`, `cp/services/events.py` |
+| Add an audit event | `cp/models.py`, service workflow, `cpkit/cpkit/audit/` |
+| Change event filtering | `cpkit/cpkit/audit/` |
 | Change alert data | `cp/services/alerts.py` |
 | Change dashboard metrics | `cp/services/dashboard.py` |
