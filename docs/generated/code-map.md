@@ -633,7 +633,7 @@ Path: `cp/repos/admin/api_keys.py`
 Admin API keys repository.
 
 Classes:
-- `ApiKeysRepo` — line 8: _No docstring._
+- `ApiKeysRepo` — line 9: _No docstring._
 
 ### `cp.repos.admin.base`
 

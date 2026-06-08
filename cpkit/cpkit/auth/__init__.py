@@ -10,6 +10,7 @@ from .api_keys import (
     request_target_bytes,
 )
 from .redirects import safe_next_path
+from .repositories import APIKeysRepositoryMixin
 from .oidc import (
     OIDCAuthenticationError,
     OIDCProviderClient,
@@ -32,6 +33,7 @@ __all__ = [
     "APIKeyAuthenticationError",
     "APIKeyAuthenticator",
     "APIKeyRepository",
+    "APIKeysRepositoryMixin",
     "api_key_signature",
     "build_api_key_signature_payload",
     "decrypt_secret",

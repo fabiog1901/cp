@@ -6,10 +6,10 @@ from cpkit.db import fetch_all, fetch_one
 
 from .types import SettingRecord
 
+SETTINGS_TABLE = "cpkit.settings"
+
 
 class SettingsRepositoryMixin:
-    settings_table_name = "cpkit.settings"
-
     def list_settings(self) -> list[SettingRecord]:
         return fetch_all(
             f"""
@@ -23,7 +23,7 @@ class SettingsRepositoryMixin:
                 description,
                 updated_at,
                 updated_by
-            FROM {self.settings_table_name}
+            FROM {SETTINGS_TABLE}
             ORDER BY category, key
             """,
             (),
@@ -43,7 +43,7 @@ class SettingsRepositoryMixin:
                 description,
                 updated_at,
                 updated_by
-            FROM {self.settings_table_name}
+            FROM {SETTINGS_TABLE}
             WHERE key = %s
             """,
             (key,),
@@ -58,7 +58,7 @@ class SettingsRepositoryMixin:
     ) -> SettingRecord | None:
         return fetch_one(
             f"""
-            UPDATE {self.settings_table_name}
+            UPDATE {SETTINGS_TABLE}
             SET
                 value = %s,
                 updated_at = CURRENT_TIMESTAMP,
@@ -86,7 +86,7 @@ class SettingsRepositoryMixin:
     ) -> SettingRecord | None:
         return fetch_one(
             f"""
-            UPDATE {self.settings_table_name}
+            UPDATE {SETTINGS_TABLE}
             SET
                 value = NULL,
                 updated_at = CURRENT_TIMESTAMP,
