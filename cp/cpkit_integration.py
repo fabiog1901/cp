@@ -7,9 +7,6 @@ from .models import CommandType, parse_command_payload
 from .services.base import log_event
 from .workers.commands import COMMAND_HANDLERS
 
-CREATE_CLUSTER = CommandType.CREATE_CLUSTER
-RECREATE_CLUSTER = CommandType.RECREATE_CLUSTER
-
 cpkit_bundle = create_cpkit_bundle(
     audit_record_factory=build_log_msg,
     audit_event_hook=log_event,
@@ -17,11 +14,9 @@ cpkit_bundle = create_cpkit_bundle(
         CommandType(command_type),
         payload,
     ),
-    reschedule_type_resolver=lambda job_type: (
-        RECREATE_CLUSTER
-        if CommandType(job_type) == CREATE_CLUSTER
-        else CommandType(job_type)
-    ),
+    reschedule_type_map={
+        CommandType.CREATE_CLUSTER: CommandType.RECREATE_CLUSTER,
+    },
     resolve_queue_handler=lambda message: COMMAND_HANDLERS.get(
         CommandType(message.msg_type)
     ),

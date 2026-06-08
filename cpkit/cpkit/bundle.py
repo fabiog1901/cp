@@ -1,6 +1,6 @@
 """Standard cpkit capability bundle for FastAPI applications."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,7 +24,6 @@ AuditRecordFactory = Callable[..., Any]
 PayloadParser = Callable[[Any, dict[str, Any]], Any]
 QueueMessageParser = Callable[[QueueMessage], Any]
 QueueHandlerResolver = Callable[[QueueMessage], QueueHandler | None]
-RescheduleTypeResolver = Callable[[str], Any]
 
 
 @dataclass(frozen=True)
@@ -66,11 +65,15 @@ def create_cpkit_bundle(
     audit_record_factory: AuditRecordFactory,
     audit_event_hook: AuditHook | None = None,
     parse_job_payload: PayloadParser,
-    reschedule_type_resolver: RescheduleTypeResolver,
+    reschedule_type_map: Mapping[Any, Any] | None = None,
     resolve_queue_handler: QueueHandlerResolver,
     parse_queue_message: QueueMessageParser,
 ) -> CpkitBundle:
     """Create the standard cpkit capability bundle for an application."""
+    effective_reschedule_type_map = {
+        _type_value(source): _type_value(target)
+        for source, target in (reschedule_type_map or {}).items()
+    }
     auth = create_auth_bundle(
         get_repo=get_repo,
         audit_record_factory=audit_record_factory,
@@ -93,7 +96,10 @@ def create_cpkit_bundle(
         return JobsService(
             get_repo(),
             parse_payload=parse_job_payload,
-            reschedule_type_resolver=reschedule_type_resolver,
+            reschedule_type_resolver=lambda job_type: effective_reschedule_type_map.get(
+                _type_value(job_type),
+                job_type,
+            ),
             rescheduled_hook=audit_event_hook,
         )
 
@@ -194,3 +200,7 @@ def _setting_reset_hook(
         )
 
     return log_setting_reset
+
+
+def _type_value(value: Any) -> Any:
+    return getattr(value, "value", value)

@@ -25,7 +25,7 @@ cpkit_bundle = create_cpkit_bundle(
     audit_record_factory=build_log_msg,
     audit_event_hook=log_event,
     parse_job_payload=parse_job_payload,
-    reschedule_type_resolver=resolve_reschedule_type,
+    reschedule_type_map={CREATE_COMMAND: RECREATE_COMMAND},
     resolve_queue_handler=resolve_queue_handler,
     parse_queue_message=parse_queue_message,
 )
