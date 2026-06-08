@@ -37,6 +37,13 @@ CREATE TABLE public.external_connections (
     updated_by STRING NOT NULL,
     CONSTRAINT pk_external_connections PRIMARY KEY (cluster_id ASC, name ASC)
 );
+CREATE TABLE public.map_clusters_jobs (
+    cluster_id STRING NOT NULL,
+    job_id INT8 NOT NULL,
+    CONSTRAINT pk PRIMARY KEY (cluster_id ASC, job_id ASC),
+    INDEX map_jobs_clusters (job_id ASC),
+    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE
+);
 CREATE TABLE public.cluster_artifact_catalog (
     artifact_id STRING NOT NULL,
     job_id INT8 NOT NULL,
@@ -179,7 +186,7 @@ CREATE TABLE public.live_alerts (
     CONSTRAINT pk_live_alerts PRIMARY KEY (fingerprint ASC)
 ) WITH (ttl = 'on', ttl_expiration_expression = e'(updated_at::TIMESTAMPTZ + \'90 days\')', ttl_job_cron = '@daily');
 
-ALTER TABLE cpkit.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
+ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT job_id_in_cluster_artifact_catalog FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT cluster_id_in_cluster_artifact_catalog FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;

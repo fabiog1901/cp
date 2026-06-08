@@ -8,7 +8,7 @@ from .types import ClusterIDRef, IntID, Job, JobID, JobStatsResponse, Task
 
 QUEUE_TABLE = "cpkit.mq"
 JOBS_TABLE = "cpkit.jobs"
-JOB_CLUSTER_MAP_TABLE = "cpkit.map_clusters_jobs"
+JOB_CLUSTER_MAP_TABLE = "public.map_clusters_jobs"
 TASKS_TABLE = "cpkit.tasks"
 
 

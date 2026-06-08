@@ -27,14 +27,6 @@ CREATE TABLE cpkit.jobs (
     ttl_job_cron = '@daily'
 );
 
-CREATE TABLE cpkit.map_clusters_jobs (
-    cluster_id STRING NOT NULL,
-    job_id INT8 NOT NULL,
-    CONSTRAINT pk PRIMARY KEY (cluster_id ASC, job_id ASC),
-    INDEX map_jobs_clusters (job_id ASC),
-    CONSTRAINT job_id_in_jobs FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE
-);
-
 CREATE TABLE cpkit.tasks (
     job_id INT8 NOT NULL,
     task_id INT2 NOT NULL,
