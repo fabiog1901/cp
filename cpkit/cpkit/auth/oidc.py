@@ -10,6 +10,10 @@ from typing import Any, Protocol
 
 import jwt
 
+from .api_keys import APIKeyAuthenticationError, APIKeyAuthenticator
+from .claims import claims_groups, jsonable_role_groups
+from .config import OIDCConfig
+
 
 class OIDCAuthenticationError(Exception):
     """Raised when an OIDC token cannot be authenticated."""
@@ -17,6 +21,10 @@ class OIDCAuthenticationError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
         super().__init__(detail)
+
+
+class OIDCAuthorizationError(OIDCAuthenticationError):
+    """Raised when authenticated OIDC claims are not authorized."""
 
 
 class OIDCSessionRepository(Protocol):
@@ -390,3 +398,244 @@ class OIDCSessionManager:
             token_expires_at=self.provider_client.token_expires_at(claims),
         )
         return claims
+
+
+class OIDCManager(OIDCProviderClient):
+    """Coordinate OIDC config, sessions, API keys, and claim authorization."""
+
+    def __init__(
+        self,
+        *,
+        config: OIDCConfig | None = None,
+        encrypt_secret: Callable[[bytes | str], bytes],
+        decrypt_secret: Callable[[bytes | str], bytes],
+        session_record_factory: Callable[..., Any],
+        session_cookie_name: str | None = None,
+        missing_api_key_headers_detail: str = (
+            "Access key, signature, and timestamp are required."
+        ),
+        auth_disabled_claims: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(config or OIDCConfig())
+        self.sessions = OIDCSessionManager(
+            self,
+            encrypt_secret=encrypt_secret,
+            decrypt_secret=decrypt_secret,
+            session_record_factory=session_record_factory,
+        )
+        self.api_keys = APIKeyAuthenticator(decrypt_secret=decrypt_secret)
+        self.session_cookie_name = session_cookie_name
+        self.missing_api_key_headers_detail = missing_api_key_headers_detail
+        self.auth_disabled_claims = auth_disabled_claims or {
+            "sub": "anonymous",
+            "auth_disabled": True,
+        }
+        self._config_loaded_at = 0.0
+        self._config_cache_ttl_seconds = 300
+
+    @property
+    def enabled(self) -> bool:
+        """Expose whether OIDC-backed authentication is enabled."""
+        return self.config.enabled
+
+    def load_config(self, repo: Any, *, force: bool = False) -> None:
+        """Load framework OIDC configuration from a repository-like object."""
+        now = time.time()
+        if (
+            not force
+            and self._config_loaded_at
+            and (now - self._config_loaded_at) < self._config_cache_ttl_seconds
+        ):
+            return
+
+        new_config = OIDCConfig.from_repo(repo)
+        self.update_provider_config(
+            new_config,
+            clear_cache=self.config != new_config,
+        )
+        self._config_loaded_at = now
+
+    def validate_config(
+        self,
+        repo: Any,
+        *,
+        validate_secret_crypto_config: Callable[[], None] | None = None,
+    ) -> None:
+        """Validate auth configuration at startup."""
+        self.load_config(repo, force=True)
+        self.config.validate()
+        if validate_secret_crypto_config is not None:
+            validate_secret_crypto_config()
+
+    def build_session_record(
+        self,
+        session_id: str,
+        *,
+        id_token: str,
+        refresh_token: str | None,
+        claims: dict[str, Any],
+    ) -> Any:
+        """Return the encrypted server-side session representation for a login."""
+        return self.sessions.build_session_record(
+            session_id,
+            id_token=id_token,
+            refresh_token=refresh_token,
+            claims=claims,
+        )
+
+    def ensure_authorized(self, claims: dict[str, Any]) -> dict[str, Any]:
+        """Ensure the caller belongs to at least one configured application group."""
+        if claims.get("auth_disabled"):
+            return claims
+
+        groups_claim_name = str(
+            claims.get("_groups_claim_name", self.config.groups_claim_name)
+        )
+        user_groups = claims_groups(claims, groups_claim_name)
+        if not user_groups:
+            raise OIDCAuthorizationError(
+                f"Forbidden: no groups found in claim '{groups_claim_name}'."
+            )
+
+        if self.config.authorized_groups.isdisjoint(user_groups):
+            raise OIDCAuthorizationError(
+                "Forbidden: user is not in any allowed group."
+            )
+
+        return claims
+
+    def enrich_claims(self, claims: dict[str, Any]) -> dict[str, Any]:
+        """Add metadata that helps an application render auth state."""
+        payload = dict(claims)
+        payload["_groups_claim_name"] = str(
+            claims.get("_groups_claim_name", self.config.groups_claim_name)
+        )
+        effective_role_groups = (
+            claims.get("_role_groups")
+            if isinstance(claims.get("_role_groups"), dict)
+            else self.config.role_groups
+        )
+        payload["_role_groups"] = jsonable_role_groups(effective_role_groups)
+
+        if self.session_cookie_name:
+            existing_meta = (
+                claims.get("_cp") if isinstance(claims.get("_cp"), dict) else {}
+            )
+            payload["_cp"] = {
+                **existing_meta,
+                "display_name_claim": self.config.ui_username_claim,
+                "session_cookie_name": self.session_cookie_name,
+            }
+
+        return payload
+
+    def ensure_any_role(self, claims: dict[str, Any], *roles: Any) -> dict[str, Any]:
+        """Ensure the caller has at least one of the requested application roles."""
+        if claims.get("auth_disabled"):
+            return claims
+
+        groups_claim_name = str(
+            claims.get("_groups_claim_name", self.config.groups_claim_name)
+        )
+        user_groups = claims_groups(claims, groups_claim_name)
+        if not user_groups:
+            raise OIDCAuthorizationError(
+                f"Forbidden: no groups found in claim '{groups_claim_name}'."
+            )
+
+        effective_roles = (
+            claims.get("_role_groups")
+            if isinstance(claims.get("_role_groups"), dict)
+            else self.config.role_groups
+        )
+        for role in roles:
+            role_name = _role_value(role)
+            role_groups = effective_roles.get(role, set()) or effective_roles.get(
+                role_name, set()
+            )
+            if role_groups and not claims_groups(
+                {groups_claim_name: role_groups},
+                groups_claim_name,
+            ).isdisjoint(user_groups):
+                return claims
+
+        role_list = ", ".join(_role_value(role) for role in roles)
+        raise OIDCAuthorizationError(
+            f"Forbidden: requires one of roles [{role_list}]."
+        )
+
+    async def validate_api_key(
+        self,
+        request: Any,
+        repo: Any,
+        access_key: str,
+        signature: str,
+        timestamp: str,
+    ) -> dict[str, Any]:
+        """Authenticate an API request using HMAC-signed API key headers."""
+        return await self.api_keys.authenticate_request(
+            request,
+            repo,
+            access_key=access_key,
+            signature=signature,
+            timestamp=timestamp,
+            max_age_seconds=self.config.api_key_signature_ttl_seconds,
+        )
+
+    async def current_claims(
+        self,
+        request: Any,
+        repo: Any,
+        *,
+        session_token: str | None = None,
+        access_key: str | None = None,
+        signature: str | None = None,
+        timestamp: str | None = None,
+    ) -> dict[str, Any]:
+        """Resolve request claims from API-key headers or an OIDC session."""
+        if access_key or signature or timestamp:
+            if not access_key or not signature or not timestamp:
+                raise APIKeyAuthenticationError(self.missing_api_key_headers_detail)
+            return await self.validate_api_key(
+                request,
+                repo,
+                access_key,
+                signature,
+                timestamp,
+            )
+
+        if not self.enabled:
+            return dict(self.auth_disabled_claims)
+
+        if session_token:
+            return self.claims_from_session(repo, session_token)
+
+        raise OIDCAuthenticationError("Not authenticated.")
+
+    def claims_from_session(
+        self,
+        repo: OIDCSessionRepository,
+        session_id: str,
+    ) -> dict[str, Any]:
+        """Load a server-side OIDC session, refreshing token material when needed."""
+        return self.sessions.claims_from_session(
+            repo,
+            session_id,
+            authorize_claims=self.ensure_authorized,
+        )
+
+    def refresh_session(
+        self,
+        repo: OIDCSessionRepository,
+        session: Any,
+    ) -> dict[str, Any]:
+        """Refresh an OIDC session using its stored refresh token."""
+        return self.sessions.refresh_session(
+            repo,
+            session,
+            authorize_claims=self.ensure_authorized,
+        )
+
+
+def _role_value(role: Any) -> str:
+    return str(getattr(role, "value", role))
