@@ -10,6 +10,7 @@ from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from cpkit.settings import SettingNotFoundError, SettingRecord, SettingUpdateRequest
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
@@ -1071,26 +1072,6 @@ class ApiKeyNotFoundError(Exception):
 
 class InvalidApiKeyValidityError(Exception):
     pass
-
-
-class SettingNotFoundError(Exception):
-    pass
-
-
-class SettingRecord(BaseModel):
-    key: SettingKey
-    value: str | None = None
-    default_value: str
-    value_type: str
-    category: str
-    is_secret: bool = False
-    description: str = ""
-    updated_at: dt.datetime
-    updated_by: str | None = None
-
-
-class SettingUpdateRequest(BaseModel):
-    value: str
 
 
 class LogMsg(BaseModel):
