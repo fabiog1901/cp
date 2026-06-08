@@ -13,6 +13,12 @@ from .claims import claim_groups, claims_groups, jsonable_role_groups
 from .config import OIDCConfig
 from .redirects import safe_next_path
 from .repositories import APIKeysRepositoryMixin
+from .router import (
+    OIDC_NEXT_COOKIE_NAME,
+    OIDC_NONCE_COOKIE_NAME,
+    OIDC_STATE_COOKIE_NAME,
+    create_oidc_router,
+)
 from .oidc import (
     OIDCAuthenticationError,
     OIDCManager,
@@ -31,9 +37,12 @@ __all__ = [
     "ENCRYPTED_SECRET_VERSION",
     "OIDCAuthenticationError",
     "OIDCManager",
+    "OIDC_NEXT_COOKIE_NAME",
+    "OIDC_NONCE_COOKIE_NAME",
     "OIDCProviderClient",
     "OIDCSessionManager",
     "OIDCSessionRepository",
+    "OIDC_STATE_COOKIE_NAME",
     "APIKeyAuthenticationError",
     "APIKeyAuthenticator",
     "APIKeyRepository",
@@ -43,6 +52,7 @@ __all__ = [
     "build_api_key_signature_payload",
     "claim_groups",
     "claims_groups",
+    "create_oidc_router",
     "decrypt_secret",
     "encrypt_secret",
     "jsonable_role_groups",

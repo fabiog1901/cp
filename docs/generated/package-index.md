@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 89 | 156 | 135 | 77 |
+| `cp` | 89 | 156 | 130 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -34,7 +34,7 @@
 | `cp.auth.common` | `cp/auth/common.py` | Shared authentication constants and compatibility exports. |
 | `cp.auth.dependencies` | `cp/auth/dependencies.py` | Authentication and authorization dependencies. |
 | `cp.auth.oidc` | `cp/auth/oidc.py` | CP OIDC manager configuration. |
-| `cp.auth.router` | `cp/auth/router.py` | Authentication HTTP routes. |
+| `cp.auth.router` | `cp/auth/router.py` | CP auth router wiring. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
 | `cp.infra.db` | `cp/infra/db.py` | CP metadata database infrastructure adapter. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |

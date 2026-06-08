@@ -384,22 +384,11 @@ Classes:
 
 Path: `cp/auth/router.py`
 
-Authentication HTTP routes.
+CP auth router wiring.
 
 Functions:
 
-- `oidc_cookie_kwargs() -> dict[str, Any]` — line 30: Return the shared cookie settings used across the OIDC browser flow.
-- `log_auth_event(repo: Repo, actor_id: str, action: AuditEvent, details: dict[str, Any] | None=None) -> None` — line 41: Persist a login or logout event using the current request id context.
-- `oidc_login(request: Request, next: str='/', repo: Repo=Depends(get_repo))` — line 60: Start the browser OIDC login flow and store anti-CSRF cookies.
-- `oidc_callback(request: Request, repo: Repo=Depends(get_repo), code: str | None=None, state: str | None=None, error: str | None=None, error_description: str | None=None)` — line 88: Finish the OIDC login flow, validate the ID token, and set the session cookie.
-- `oidc_logout(repo: Repo=Depends(get_repo), actor_id: str=Depends(get_audit_actor), claims: dict[str, Any]=Security(require_authenticated))` — line 179: Clear the OIDC session cookie and write a logout audit event.
-- `oidc_me(request: Request, claims: dict[str, Any]=Security(require_authenticated)) -> dict[str, Any]` — line 202: Return the current caller's claims plus CP-specific auth metadata.
-
-Routes:
-- `GET /auth/login` -> `oidc_login()`
-- `GET /auth/callback` -> `oidc_callback()`
-- `POST /auth/logout` -> `oidc_logout()`
-- `GET /auth/me` -> `oidc_me()`
+- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 16: Persist a login or logout event using the current request id context.
 
 ### `cp.infra`
 

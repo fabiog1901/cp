@@ -9,10 +9,6 @@
 | `GET` | `/api_keys` | `cp.api.admin.api_keys.list_api_keys` | `-` |
 | `POST` | `/api_keys` | `cp.api.admin.api_keys.create_api_key` | `ApiKeyCreateResponse` |
 | `DELETE` | `/api_keys/{access_key}` | `cp.api.admin.api_keys.delete_api_key` | `-` |
-| `GET` | `/auth/callback` | `cp.auth.router.oidc_callback` | `-` |
-| `GET` | `/auth/login` | `cp.auth.router.oidc_login` | `-` |
-| `POST` | `/auth/logout` | `cp.auth.router.oidc_logout` | `-` |
-| `GET` | `/auth/me` | `cp.auth.router.oidc_me` | `-` |
 | `GET` | `/cluster-recovery/backups` | `cp.api.cluster_recovery.list_recovery_backups` | `BackupCatalogSnapshot` |
 | `POST` | `/cluster-recovery/backups/sync` | `cp.api.cluster_recovery.sync_recovery_backups` | `-` |
 | `POST` | `/cluster-recovery/restores` | `cp.api.cluster_recovery.restore_full_cluster` | `JobID` |
