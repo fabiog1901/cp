@@ -52,3 +52,14 @@ class Task(BaseModel):
     created_at: datetime
     task_name: str | None = None
     task_desc: str | None = None
+
+
+class JobDetailsResponse(BaseModel):
+    job: Job
+    description_yaml: str
+    tasks: list[Task]
+    linked_clusters: list[ClusterIDRef]
+
+
+class JobRescheduleResponse(BaseModel):
+    job_id: int

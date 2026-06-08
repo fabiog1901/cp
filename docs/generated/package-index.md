@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 70 | 121 | 108 | 61 |
+| `cp` | 69 | 119 | 103 | 56 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -25,7 +25,6 @@
 | `cp.api.cluster_recovery` | `cp/api/cluster_recovery.py` | Cluster recovery API routes. |
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
 | `cp.api.events` | `cp/api/events.py` | Event API routes. |
-| `cp.api.jobs` | `cp/api/jobs.py` | Job API routes. |
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth.py` | CP's cpkit OIDC integration. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |

@@ -35,7 +35,7 @@ enqueues a command, returns a CP job id, and a worker later executes the command
 
 | Layer | Files |
 | --- | --- |
-| API | `cp/api/clusters.py`, `cp/api/jobs.py` |
+| API | `cp/api/clusters.py`, `cpkit/cpkit/jobs/` |
 | Services | `cp/services/cluster.py`, `cp/services/cluster_jobs.py`, `cpkit/cpkit/jobs/` |
 | Repos | `cp/repos/cluster.py`, `cp/repos/cluster_jobs.py`, `cp/repos/cluster_artifacts.py`, `cpkit/cpkit/jobs/` |
 | Workers | `cp/workers/queue.py`, `cp/workers/remote/*.py`, `cp/workers/local/*.py` |

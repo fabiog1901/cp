@@ -9,12 +9,15 @@ from .repository import (
     QueueJobRepositoryMixin,
     QueueRepositoryMixin,
 )
+from .router import create_jobs_router
 from .service import JobsService
 from .types import (
     ClusterIDRef,
     IntID,
     Job,
+    JobDetailsResponse,
     JobID,
+    JobRescheduleResponse,
     JobStatsResponse,
     QueueMessage,
     Task,
@@ -27,7 +30,9 @@ __all__ = [
     "JOB_CLUSTER_MAP_TABLE",
     "JOBS_TABLE",
     "Job",
+    "JobDetailsResponse",
     "JobID",
+    "JobRescheduleResponse",
     "JobStatsResponse",
     "JobsRepositoryMixin",
     "JobsService",
@@ -37,5 +42,6 @@ __all__ = [
     "QueueRepositoryMixin",
     "TASKS_TABLE",
     "Task",
+    "create_jobs_router",
     "run_queue_worker",
 ]

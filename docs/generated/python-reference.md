@@ -110,14 +110,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.api.jobs`
-
-::: cp.api.jobs
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.audit`
 
 ### `cp.audit`

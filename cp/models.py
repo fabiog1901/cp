@@ -23,7 +23,9 @@ from cpkit.jobs import (
     ClusterIDRef,
     IntID,
     Job,
+    JobDetailsResponse,
     JobID,
+    JobRescheduleResponse,
     JobStatsResponse,
     Task,
 )
@@ -776,17 +778,6 @@ class ClusterArtifactsSnapshot(BaseModel):
     cluster_id: str
     artifacts: list[ClusterArtifact]
     artifacts_by_kind: dict[str, list[ClusterArtifact]]
-
-
-class JobDetailsResponse(BaseModel):
-    job: Job
-    description_yaml: str
-    tasks: List[Task]
-    linked_clusters: List[ClusterIDRef]
-
-
-class JobRescheduleResponse(BaseModel):
-    job_id: int
 
 
 #
