@@ -6,8 +6,10 @@ JobsService.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from cpkit.jobs import JobsService
 
 from ..auth import get_access_scope, get_audit_actor, require_readonly, require_user
+from ..infra import get_jobs_service
 from ..models import (
     ErrorResponse,
     Job,
@@ -22,7 +24,6 @@ from ..services.errors import (
     ServiceUnavailableError,
     ServiceValidationError,
 )
-from ..services.jobs import JobsService
 
 router = APIRouter(
     prefix="/jobs",
@@ -60,7 +61,7 @@ def _raise_http_from_service_error(err: ServiceError) -> None:
 @router.get("/")
 async def list_jobs(
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(JobsService),
+    service: JobsService = Depends(get_jobs_service),
 ) -> list[Job]:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -72,7 +73,7 @@ async def list_jobs(
 @router.get("/stats", response_model=JobStatsResponse)
 async def get_job_stats(
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(JobsService),
+    service: JobsService = Depends(get_jobs_service),
 ) -> JobStatsResponse:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -93,7 +94,7 @@ async def get_job_stats(
 async def get_job(
     job_id: int,
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(JobsService),
+    service: JobsService = Depends(get_jobs_service),
 ) -> Job:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -123,7 +124,7 @@ async def get_job(
 async def get_job_details(
     job_id: int,
     claims: dict = Depends(require_readonly),
-    service: JobsService = Depends(JobsService),
+    service: JobsService = Depends(get_jobs_service),
 ) -> JobDetailsResponse:
     groups, is_admin = get_access_scope(claims)
     try:
@@ -154,7 +155,7 @@ async def reschedule_job(
     job_id: int,
     claims: dict = Depends(require_user),
     actor_id: str = Depends(get_audit_actor),
-    service: JobsService = Depends(JobsService),
+    service: JobsService = Depends(get_jobs_service),
 ) -> JobRescheduleResponse:
     groups, is_admin = get_access_scope(claims)
     try:

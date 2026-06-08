@@ -26,9 +26,8 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | --- | --- |
 | `__init__.py` | Composes repo mixins into the concrete `Repo` class. |
 | `cluster.py` | Cluster metadata and visibility queries. |
+| `cluster_artifacts.py` | CP-specific cluster artifact catalog persistence. |
 | `cluster_jobs.py` | Cluster/job mapping metadata. |
-| `jobs.py` | Job and task persistence. |
-| `mq.py` | CP command enqueueing built on the `cpkit.jobs` queue repository mixin. |
 | `backup_catalog.py` | Backup catalog metadata. |
 | `event.py` | Audit/event table reads and writes. |
 | `external_connections.py` | External connection metadata. |

@@ -105,8 +105,8 @@ checking clusters.
 | Concern | Entry points |
 | --- | --- |
 | API | `cp/api/clusters.py`, `cp/api/jobs.py` |
-| Services | `cp/services/cluster.py`, `cp/services/cluster_jobs.py`, `cp/services/jobs.py` |
-| Repos | `cp/repos/cluster.py`, `cp/repos/cluster_jobs.py`, `cp/repos/jobs.py`, `cp/repos/mq.py` |
+| Services | `cp/services/cluster.py`, `cp/services/cluster_jobs.py`, `cpkit/cpkit/jobs/` |
+| Repos | `cp/repos/cluster.py`, `cp/repos/cluster_jobs.py`, `cp/repos/cluster_artifacts.py`, `cpkit/cpkit/jobs/` |
 | Workers | `cp/workers/queue.py`, `cp/workers/remote/*.py` |
 | Models | `Cluster*`, `Command*`, `Job*` in `cp/models.py` |
 | UI | Cluster detail/dashboard sections in `webapp/index.html` and `webapp/script.js` |

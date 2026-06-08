@@ -292,6 +292,14 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+### `cp.repos.cluster_artifacts`
+
+::: cp.repos.cluster_artifacts
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ### `cp.repos.cluster_jobs`
 
 ::: cp.repos.cluster_jobs
@@ -319,22 +327,6 @@
 ### `cp.repos.external_connections`
 
 ::: cp.repos.external_connections
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.repos.jobs`
-
-::: cp.repos.jobs
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.repos.mq`
-
-::: cp.repos.mq
     options:
       show_source: true
       show_root_heading: false
@@ -499,14 +491,6 @@
 ### `cp.services.events`
 
 ::: cp.services.events
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.jobs`
-
-::: cp.services.jobs
     options:
       show_source: true
       show_root_heading: false

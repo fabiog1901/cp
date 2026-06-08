@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 77 | 143 | 109 | 64 |
+| `cp` | 75 | 134 | 110 | 64 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -46,12 +46,11 @@
 | `cp.repos.auth` | `cp/repos/auth.py` | Auth/support repository. |
 | `cp.repos.backup_catalog` | `cp/repos/backup_catalog.py` | Backup catalog metadata repository. |
 | `cp.repos.cluster` | `cp/repos/cluster.py` | Cluster metadata repository. |
+| `cp.repos.cluster_artifacts` | `cp/repos/cluster_artifacts.py` | Cluster artifact catalog repository. |
 | `cp.repos.cluster_jobs` | `cp/repos/cluster_jobs.py` | Cluster jobs repository. |
 | `cp.repos.common` | `cp/repos/common.py` | Shared helpers for repository models. |
 | `cp.repos.event` | `cp/repos/event.py` | Event repository. |
 | `cp.repos.external_connections` | `cp/repos/external_connections.py` | External connections repository. |
-| `cp.repos.jobs` | `cp/repos/jobs.py` | Job and task metadata repository. |
-| `cp.repos.mq` | `cp/repos/mq.py` | Message queue repository. |
 | `cp.repository` | `cp/repository.py` | CP repository factory and application-specific database error handling. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
 | `cp.services.admin` | `cp/services/admin/__init__.py` | Admin service package. |
@@ -72,7 +71,6 @@
 | `cp.services.dashboard` | `cp/services/dashboard.py` | Cluster dashboard service. |
 | `cp.services.errors` | `cp/services/errors.py` | Compatibility exports for service-layer exception types. |
 | `cp.services.events` | `cp/services/events.py` | Business logic for the events vertical. |
-| `cp.services.jobs` | `cp/services/jobs.py` | Business logic for the jobs vertical. |
 | `cp.services.storage_broker` | `cp/services/storage_broker.py` | Provision and resolve external storage connections for clusters. |
 | `cp.workers` | `cp/workers/__init__.py` | Worker runtime package. |
 | `cp.workers.local` | `cp/workers/local/__init__.py` | Local CP workers that use CP-managed resources and SQL connections. |

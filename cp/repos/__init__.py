@@ -1,8 +1,9 @@
 """Repository-layer package."""
 
-from psycopg_pool import ConnectionPool
+from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
 from cpkit.playbooks import PlaybooksRepositoryMixin
 from cpkit.settings import SettingsRepositoryMixin
+from psycopg_pool import ConnectionPool
 
 from .admin import (
     ApiKeysRepo,
@@ -14,11 +15,10 @@ from .alerts import AlertsRepo
 from .auth import AuthRepo
 from .backup_catalog import BackupCatalogRepo
 from .cluster import ClusterRepo
+from .cluster_artifacts import ClusterArtifactsRepo
 from .cluster_jobs import ClusterJobsRepo
 from .event import EventRepo
 from .external_connections import ExternalConnectionsRepo
-from .jobs import JobsRepo
-from .mq import MqRepo
 
 
 class Repo(
@@ -33,10 +33,11 @@ class Repo(
     PlaybooksRepositoryMixin,
     AuthRepo,
     ClusterRepo,
+    ClusterArtifactsRepo,
     EventRepo,
     ExternalConnectionsRepo,
-    JobsRepo,
-    MqRepo,
+    JobsRepositoryMixin,
+    QueueJobRepositoryMixin,
 ):
     def __init__(self, pool: ConnectionPool) -> None:
         self.pool: ConnectionPool = pool

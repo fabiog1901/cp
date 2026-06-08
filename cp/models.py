@@ -10,6 +10,14 @@ from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from cpkit.jobs import (
+    ClusterIDRef,
+    IntID,
+    Job,
+    JobID,
+    JobStatsResponse,
+    Task,
+)
 from cpkit.playbooks import (
     Playbook,
     PlaybookOverview,
@@ -149,23 +157,8 @@ class SettingKey(AutoNameStrEnum):
     observability_prometheus_url = "observability.prometheus_url"
 
 
-#
-# GENERIC / LEGACY
-#
-class JobID(BaseModel):
-    job_id: int
-
-
-class ClusterIDRef(BaseModel):
-    cluster_id: str
-
-
 class StrID(BaseModel):
     id: str
-
-
-class IntID(BaseModel):
-    id: int
 
 
 #
@@ -191,13 +184,6 @@ class ClusterStatsResponse(BaseModel):
     active: int
     creating: int
     unhealthy: int
-    failed: int
-
-
-class JobStatsResponse(BaseModel):
-    total: int
-    running: int
-    queued: int
     failed: int
 
 
@@ -718,36 +704,6 @@ class NewDatabaseUserRequest(BaseModel):
     username: str
     password: str
     database_roles: list[str] = Field(default_factory=list)
-
-
-# JOBS
-
-
-class Msg(BaseModel):
-    msg_id: int
-    start_after: dt.datetime
-    msg_type: CommandType
-    msg_data: Dict[str, Any]
-    created_at: dt.datetime
-    created_by: str
-
-
-class Job(BaseModel):
-    job_id: int
-    job_type: CommandType
-    status: str
-    description: Dict[str, Any]
-    created_at: dt.datetime
-    created_by: str
-    updated_at: dt.datetime
-
-
-class Task(BaseModel):
-    job_id: int
-    task_id: int
-    created_at: dt.datetime
-    task_name: Optional[str]
-    task_desc: Optional[str]
 
 
 class ClusterArtifactUpsert(BaseModel):

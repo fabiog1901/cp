@@ -2,9 +2,14 @@
 
 from typing import Any
 
-from cpkit.db import execute_stmt
+from cpkit.db import execute_stmt, fetch_all, fetch_one
+
+from .types import ClusterIDRef, IntID, Job, JobID, JobStatsResponse, Task
 
 QUEUE_TABLE = "cpkit.mq"
+JOBS_TABLE = "jobs"
+JOB_CLUSTER_MAP_TABLE = "map_clusters_jobs"
+TASKS_TABLE = "tasks"
 
 
 class QueueRepositoryMixin:
@@ -33,6 +38,261 @@ class QueueRepositoryMixin:
                 start_after_seconds,
             ),
             operation="jobs.enqueue_message",
+        )
+
+
+class QueueJobRepositoryMixin(QueueRepositoryMixin):
+    """Repository mixin for enqueueing queue messages backed by job records."""
+
+    def enqueue_command(
+        self,
+        command_type: Any,
+        payload: Any,
+        created_by: str,
+    ) -> JobID:
+        payload_value = _payload_value(payload)
+        command_type_value = _message_type_value(command_type)
+        return fetch_one(
+            f"""
+            WITH
+            create_new_job AS (
+                INSERT INTO {QUEUE_TABLE}
+                    (msg_type, msg_data, created_by)
+                VALUES
+                    (%s, %s, %s)
+                RETURNING msg_id
+            )
+            INSERT INTO {JOBS_TABLE}
+                (job_id, job_type, status, description, created_by)
+            VALUES
+                ((select msg_id from create_new_job), %s, %s, %s, %s)
+            RETURNING job_id AS job_id
+            """,
+            (
+                command_type_value,
+                payload_value,
+                created_by,
+                command_type_value,
+                "QUEUED",
+                payload_value,
+                created_by,
+            ),
+            JobID,
+            operation="jobs.enqueue_command",
+        )
+
+
+class JobsRepositoryMixin:
+    """Repository mixin for framework job history, status, and task records."""
+
+    def get_job_stats(
+        self,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> JobStatsResponse:
+        if is_admin:
+            return (
+                fetch_one(
+                    f"""
+                    SELECT
+                        COUNT(*) AS total,
+                        COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS running,
+                        COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS queued,
+                        COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS failed
+                    FROM {JOBS_TABLE}
+                    """,
+                    ("RUNNING", "QUEUED", "FAILED"),
+                    JobStatsResponse,
+                )
+                or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+            )
+
+        return (
+            fetch_one(
+                f"""
+                WITH
+                c AS (
+                    SELECT cluster_id
+                    FROM clusters
+                    WHERE grp = ANY (%s)
+                ),
+                cj AS (
+                    SELECT DISTINCT job_id
+                    FROM {JOB_CLUSTER_MAP_TABLE}
+                    WHERE cluster_id IN (SELECT * FROM c)
+                )
+                SELECT
+                    COUNT(*) AS total,
+                    COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS running,
+                    COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS queued,
+                    COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS failed
+                FROM {JOBS_TABLE}
+                WHERE job_id IN (SELECT * FROM cj)
+                """,
+                (groups, "RUNNING", "QUEUED", "FAILED"),
+                JobStatsResponse,
+            )
+            or JobStatsResponse(total=0, running=0, queued=0, failed=0)
+        )
+
+    def list_jobs(self, groups: list[str], is_admin: bool = False) -> list[Job]:
+        if is_admin:
+            return fetch_all(
+                f"""
+                SELECT *
+                FROM {JOBS_TABLE}
+                ORDER BY created_at DESC
+                """,
+                (),
+                Job,
+            )
+
+        return fetch_all(
+            f"""
+            WITH
+            c AS (
+                SELECT cluster_id
+                FROM clusters
+                WHERE grp = ANY (%s)
+            ),
+            cj AS (
+                SELECT job_id
+                FROM {JOB_CLUSTER_MAP_TABLE}
+                WHERE cluster_id IN (SELECT * FROM c)
+            )
+            SELECT *
+            FROM {JOBS_TABLE}
+            WHERE job_id IN (SELECT * FROM cj)
+            ORDER BY created_at DESC;
+            """,
+            (groups,),
+            Job,
+        )
+
+    def get_job(
+        self,
+        job_id: int,
+        groups: list[str],
+        is_admin: bool = False,
+    ) -> Job | None:
+        if is_admin:
+            return fetch_one(
+                f"""
+                SELECT *
+                FROM {JOBS_TABLE}
+                WHERE job_id = %s
+                """,
+                (job_id,),
+                Job,
+            )
+        return fetch_one(
+            f"""
+            WITH
+            c AS (
+                SELECT cluster_id
+                FROM clusters
+                WHERE grp = ANY (%s)
+            ),
+            cj AS (
+                SELECT job_id
+                FROM {JOB_CLUSTER_MAP_TABLE}
+                WHERE cluster_id IN (SELECT * FROM c)
+            )
+            SELECT *
+            FROM {JOBS_TABLE}
+            WHERE job_id IN (SELECT * FROM cj)
+                AND job_id = %s
+            """,
+            (groups, job_id),
+            Job,
+        )
+
+    def list_tasks(self, job_id: int) -> list[Task]:
+        return fetch_all(
+            f"""
+            SELECT job_id, task_id,
+                created_at, task_name, task_desc
+            FROM {TASKS_TABLE}
+            WHERE job_id = %s
+            ORDER BY task_id DESC
+            """,
+            (job_id,),
+            Task,
+        )
+
+    def list_linked_clusters(self, job_id: int) -> list[ClusterIDRef]:
+        return fetch_all(
+            f"""
+            SELECT cluster_id AS cluster_id
+            FROM {JOB_CLUSTER_MAP_TABLE}
+            WHERE job_id = %s
+            ORDER BY cluster_id
+            """,
+            (job_id,),
+            ClusterIDRef,
+        )
+
+    def link_job_to_cluster(self, cluster_id: str, job_id: int, status: str) -> None:
+        execute_stmt(
+            f"""
+            WITH
+            create_job_linked AS (
+                INSERT INTO {JOB_CLUSTER_MAP_TABLE}
+                    (cluster_id, job_id)
+                VALUES (%s, %s)
+                RETURNING 1
+            )
+            UPDATE {JOBS_TABLE}
+            SET status = %s
+            WHERE job_id = %s
+            """,
+            (cluster_id, job_id, _message_type_value(status), job_id),
+        )
+
+    def update_job(self, job_id: int, status: str) -> None:
+        execute_stmt(
+            f"""
+            UPDATE {JOBS_TABLE}
+            SET status = %s
+            WHERE job_id = %s
+            """,
+            (_message_type_value(status), job_id),
+        )
+
+    def fail_zombie_jobs(self) -> list[IntID]:
+        return fetch_all(
+            f"""
+            WITH
+            fail_zombie_jobs AS (
+                INSERT INTO {QUEUE_TABLE} (msg_type, start_after)
+                VALUES (%s, now() + INTERVAL '300s' + (random()*10)::INTERVAL)
+                RETURNING 1
+            )
+            UPDATE {JOBS_TABLE}
+            SET status = %s
+            WHERE status in (%s, %s)
+                AND now() > updated_at + INTERVAL '300s'
+            RETURNING job_id AS id
+            """,
+            ("FAIL_ZOMBIE_JOBS", "FAILED", "RUNNING", "QUEUED"),
+            IntID,
+        )
+
+    def create_task(
+        self,
+        job_id: int,
+        task_id: int,
+        created_at,
+        task_name: str,
+        task_desc,
+    ) -> None:
+        execute_stmt(
+            f"""
+            INSERT INTO {TASKS_TABLE}
+                (job_id, task_id, created_at, task_name, task_desc)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (job_id, task_id, created_at, task_name, task_desc),
         )
 
 
