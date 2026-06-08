@@ -2,14 +2,17 @@
 
 from pydantic import ValidationError
 
+from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
 
 from ...models import AuditEvent, Version
-from .base import AdminService
 
 
-class VersionsService(AdminService):
+class VersionsService:
+    def __init__(self) -> None:
+        self.repo = get_repo()
+
     def list_versions(self) -> list[Version]:
         try:
             return self.repo.list_versions()

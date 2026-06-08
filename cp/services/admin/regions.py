@@ -3,14 +3,17 @@
 import json
 from typing import Any
 
+from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
 
 from ...models import AuditEvent, Region
-from .base import AdminService
 
 
-class RegionsService(AdminService):
+class RegionsService:
+    def __init__(self) -> None:
+        self.repo = get_repo()
+
     def list_regions(self) -> list[Region]:
         try:
             return self.repo.list_regions()

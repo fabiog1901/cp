@@ -29,11 +29,13 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 | `cluster_artifacts.py` | CP-specific cluster artifact catalog persistence. |
 | `cluster_jobs.py` | Cluster/job mapping metadata. |
 | `backup_catalog.py` | Backup catalog metadata. |
-| `event.py` | Audit/event table reads and writes. |
 | `external_connections.py` | External connection metadata. |
-| `auth.py` | Auth/session/API-key persistence. |
 | `alerts.py` | Alert-related metadata, if any. |
-| `admin/` | Admin option persistence, including database role templates, cluster database access metadata, and CP playbook admin wrappers over `cpkit.playbooks`. |
+| `admin/` | Admin option persistence, including database role templates and cluster database access metadata. |
+
+Framework persistence such as jobs, queue messages, audit events, settings,
+playbooks, API keys, OIDC sessions, and role-group mappings lives under
+`cpkit/cpkit/`.
 
 ## Common Pattern
 

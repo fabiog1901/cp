@@ -9,6 +9,7 @@ from fastapi import APIRouter, Security
 from .admin import create_cpkit_admin_router
 from .audit import (
     AuditEventsService,
+    build_audit_log_record,
     configure_audit_logging,
     create_events_router,
     log_event,
@@ -66,11 +67,11 @@ class CpkitBundle:
 
 def create_cpkit_bundle(
     *,
-    audit_record_factory: AuditRecordFactory,
     parse_job_payload: PayloadParser,
     reschedule_type_map: Mapping[Any, Any] | None = None,
     resolve_queue_handler: QueueHandlerResolver,
     parse_queue_message: QueueMessageParser,
+    audit_record_factory: AuditRecordFactory = build_audit_log_record,
     audit_event_hook: AuditHook | None = None,
 ) -> CpkitBundle:
     """Create the standard cpkit capability bundle for an application."""

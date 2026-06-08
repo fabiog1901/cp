@@ -1,19 +1,22 @@
 """CP FastAPI application wiring."""
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from cpkit import create_cpkit_app, create_cpkit_bundle
 
-from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters
-from .audit import build_log_msg
 from .models import CommandType, parse_command_payload
 from .prometheus import get_nodes
 from .repos import Repo
 from .workers.commands import COMMAND_HANDLERS
 
+load_dotenv(override=True)
+DB_URL = os.getenv("DB_URL")
+
 cpkit_bundle = create_cpkit_bundle(
-    audit_record_factory=build_log_msg,
     parse_job_payload=lambda command_type, payload: parse_command_payload(
         CommandType(command_type),
         payload,

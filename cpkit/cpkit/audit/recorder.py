@@ -7,6 +7,8 @@ from typing import Any, Protocol
 
 from cpkit.logging import request_id_ctx
 
+from .types import AuditLogRecord
+
 logger = logging.getLogger(__name__)
 _audit_record_factory: Callable[..., Any] | None = None
 
@@ -127,6 +129,23 @@ class AuditRecorder:
             metadata=metadata,
             request_id=effective_request_id,
         )
+
+
+def build_audit_log_record(
+    *,
+    actor_id: str,
+    event_type: str,
+    metadata: dict[str, Any] | None,
+    request_id: str | None,
+    default_metadata: dict[str, Any] | None = None,
+) -> AuditLogRecord:
+    """Build the standard cpkit audit log record."""
+    return AuditLogRecord(
+        user_id=actor_id,
+        action=event_type,
+        details=metadata if metadata is not None else default_metadata,
+        request_id=request_id,
+    )
 
 
 def configure_audit_logging(record_factory: Callable[..., Any]) -> None:

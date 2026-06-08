@@ -18,10 +18,9 @@ from ...models import (
     NodeCountOption,
 )
 from ..common import convert_model_to_sql
-from .base import AdminRepo
 
 
-class ClusterOptionsRepo(AdminRepo):
+class ClusterOptionsRepo:
     def list_node_counts(self) -> list[NodeCountOption]:
         return fetch_all(
             """

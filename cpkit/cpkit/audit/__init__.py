@@ -4,6 +4,7 @@ from .events_service import AuditEventsService
 from .recorder import (
     AuditRecorder,
     AuditRecordWriter,
+    build_audit_log_record,
     configure_audit_logging,
     create_audit_event_hook,
     log_event,
@@ -31,6 +32,7 @@ __all__ = [
     "AuditRecordWriter",
     "AuditService",
     "EVENT_LOG_TABLE",
+    "build_audit_log_record",
     "configure_audit_logging",
     "create_events_router",
     "create_audit_event_hook",

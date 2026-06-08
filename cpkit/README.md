@@ -22,7 +22,6 @@ from cp.repos import Repo
 from cpkit import create_cpkit_app, create_cpkit_bundle
 
 cpkit_bundle = create_cpkit_bundle(
-    audit_record_factory=build_log_msg,
     parse_job_payload=parse_job_payload,
     reschedule_type_map={CREATE_COMMAND: RECREATE_COMMAND},
     resolve_queue_handler=resolve_queue_handler,
@@ -45,9 +44,9 @@ factory, mounts its built-in routers, starts its background tasks, runs its
 startup validation, and exposes the configured repository through
 `cpkit.get_repo()`.
 
-`audit_record_factory` teaches cpkit how to build the application's audit row
-model. cpkit then owns event emission through `cpkit.audit.log_event`, including
-best-effort writes and request id propagation.
+cpkit owns event emission through `cpkit.audit.log_event`, including best-effort
+writes and request id propagation. Applications with a custom audit row model
+can pass `audit_record_factory` to teach cpkit how to build that model.
 
 ## OIDC Integration
 

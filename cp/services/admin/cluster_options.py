@@ -6,6 +6,7 @@ CPU counts, disk sizes, and database role templates.
 
 from pydantic import ValidationError
 
+from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
 
@@ -16,10 +17,12 @@ from ...models import (
     DiskSizeOption,
     NodeCountOption,
 )
-from .base import AdminService
 
 
-class ClusterOptionsService(AdminService):
+class ClusterOptionsService:
+    def __init__(self) -> None:
+        self.repo = get_repo()
+
     def list_node_counts(self) -> list[NodeCountOption]:
         try:
             return self.repo.list_node_counts()

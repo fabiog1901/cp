@@ -26,7 +26,7 @@ limited to persistence.
 | Path | Purpose |
 | --- | --- |
 | `cp/api/` | FastAPI routers. Converts HTTP/auth context into service calls. |
-| `cp/api/admin/` | Admin option CRUD endpoints such as versions, regions, role templates, and playbooks. |
+| `cp/api/admin/` | CP-specific admin option CRUD endpoints such as versions, regions, and role templates. |
 | `cp/repos/` | CP metadata persistence. Repos should not execute SQL against managed clusters. |
 | `cp/repos/admin/` | Persistence for admin-configured options and cluster database access metadata. |
 | `cp/services/` | Business workflows. Coordinates repos, managed-cluster SQL, audit events, and workers. |

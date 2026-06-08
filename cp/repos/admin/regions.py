@@ -4,10 +4,9 @@ from cpkit.db import execute_stmt, fetch_all
 
 from ...models import Region, RegionOption
 from ..common import convert_model_to_sql
-from .base import AdminRepo
 
 
-class RegionsRepo(AdminRepo):
+class RegionsRepo:
     def list_regions(self) -> list[Region]:
         return fetch_all(
             """

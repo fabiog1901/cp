@@ -4,14 +4,14 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 59 | 113 | 90 | 54 |
+| `cp` | 56 | 111 | 89 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
 
 | Module | Path | Summary |
 | --- | --- | --- |
-| `cp` | `cp/__init__.py` | _No docstring._ |
+| `cp` | `cp/__init__.py` | CP application package. |
 | `cp.api` | `cp/api/__init__.py` | FastAPI router packages for the cp application. |
 | `cp.api.admin` | `cp/api/admin/__init__.py` | _No docstring._ |
 | `cp.api.admin.cpu_counts` | `cp/api/admin/cpu_counts.py` | _No docstring._ |
@@ -23,14 +23,12 @@
 | `cp.api.alerts` | `cp/api/alerts.py` | Alert API routes. |
 | `cp.api.cluster_recovery` | `cp/api/cluster_recovery.py` | Cluster recovery API routes. |
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
-| `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
 | `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
 | `cp.prometheus` | `cp/prometheus.py` | Prometheus scrape target helpers. |
 | `cp.repos` | `cp/repos/__init__.py` | Repository-layer package. |
 | `cp.repos.admin` | `cp/repos/admin/__init__.py` | Admin repository package. |
-| `cp.repos.admin.base` | `cp/repos/admin/base.py` | Shared base for admin-oriented repositories. |
 | `cp.repos.admin.cluster_options` | `cp/repos/admin/cluster_options.py` | Admin option and cluster database-access metadata repository. |
 | `cp.repos.admin.regions` | `cp/repos/admin/regions.py` | Admin regions repository. |
 | `cp.repos.admin.versions` | `cp/repos/admin/versions.py` | Admin versions repository. |
@@ -43,7 +41,6 @@
 | `cp.repos.external_connections` | `cp/repos/external_connections.py` | External connections repository. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
 | `cp.services.admin` | `cp/services/admin/__init__.py` | Admin service package. |
-| `cp.services.admin.base` | `cp/services/admin/base.py` | Shared base for admin-facing services. |
 | `cp.services.admin.cluster_options` | `cp/services/admin/cluster_options.py` | Admin cluster option service. |
 | `cp.services.admin.regions` | `cp/services/admin/regions.py` | Business logic for the admin regions vertical. |
 | `cp.services.admin.versions` | `cp/services/admin/versions.py` | Business logic for the admin versions vertical. |

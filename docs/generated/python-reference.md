@@ -94,16 +94,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.audit`
-
-### `cp.audit`
-
-::: cp.audit
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.cluster_database`
 
 ### `cp.cluster_database`
@@ -157,14 +147,6 @@
 ### `cp.repos.admin`
 
 ::: cp.repos.admin
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.repos.admin.base`
-
-::: cp.repos.admin.base
     options:
       show_source: true
       show_root_heading: false
@@ -263,14 +245,6 @@
 ### `cp.services.admin`
 
 ::: cp.services.admin
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.admin.base`
-
-::: cp.services.admin.base
     options:
       show_source: true
       show_root_heading: false
