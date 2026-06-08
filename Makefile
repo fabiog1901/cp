@@ -2,6 +2,7 @@
 #
 # Usage:
 #   make help          Show available targets.
+#   make format        Format Python code with isort and black.
 #   make docs-write    Regenerate deterministic docs from source.
 #   make docs-check    Verify generated docs and build the MkDocs site.
 #   make docs-serve    Serve the MkDocs site locally.
@@ -11,7 +12,7 @@
 # - MkDocs renders generated and human-authored Markdown.
 # - Human-authored architecture/domain docs remain curated by developers.
 
-.PHONY: help docs-write docs-check docs-build docs-serve docs-clean py-compile
+.PHONY: help format pre-commit docs-write docs-check docs-build docs-serve docs-clean py-compile
 
 MKDOCS_SITE_DIR ?= /private/tmp/cp-mkdocs-site
 
@@ -20,6 +21,12 @@ help: ## Show this help message.
 
 run: ## Run in development mode.
 	poetry run fastapi run --reload cp/main.py
+
+format: ## Format Python code with isort and black.
+	poetry run isort .
+	poetry run black .
+
+pre-commit: format docs-check py-compile ## Run formatting and local checks before committing.
 
 docs-write: ## Regenerate deterministic docs under docs/generated/ and .build/.
 	poetry run python tools/docsync.py --write
