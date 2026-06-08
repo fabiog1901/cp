@@ -52,6 +52,7 @@
 | `GET` | `/node_counts` | `cp.api.admin.node_counts.list_node_counts` | `-` |
 | `POST` | `/node_counts` | `cp.api.admin.node_counts.create_node_count` | `-` |
 | `DELETE` | `/node_counts/{node_count}` | `cp.api.admin.node_counts.delete_node_count` | `-` |
+| `GET` | `/prom-targets` | `cp.api.prometheus.get_targets` | `-` |
 | `GET` | `/regions` | `cp.api.admin.regions.list_regions` | `-` |
 | `POST` | `/regions` | `cp.api.admin.regions.create_region` | `-` |
 | `DELETE` | `/regions/{cloud}/{region}/{zone}` | `cp.api.admin.regions.delete_region` | `-` |

@@ -10,10 +10,10 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit.time import STRFTIME
 
 from .types import Playbook, PlaybookOverview, PlaybookResponse, PlaybookVersionResponse
 
-STRFTIME = "%Y-%m-%d %H:%M:%S"
 PlaybookAuditHook = Callable[[Any, str, str, dict[str, Any]], None]
 
 

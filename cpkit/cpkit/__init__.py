@@ -13,10 +13,13 @@ from .dependencies import (
     require_user,
 )
 from .repository import CPKitRepo, configure_repository, get_repo
+from .time import STRFTIME, TS_FORMAT
 
 __all__ = [
     "CPKitRepo",
     "CpkitBundle",
+    "STRFTIME",
+    "TS_FORMAT",
     "configure_cpkit_dependencies",
     "configure_repository",
     "create_cpkit_bundle",

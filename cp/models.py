@@ -12,9 +12,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from cpkit.jobs import Job
-
-TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
-STRFTIME = "%Y-%m-%d %H:%M:%S"
+from cpkit.time import STRFTIME, TS_FORMAT
 
 
 class AutoNameStrEnum(StrEnum):
@@ -487,17 +485,6 @@ COMMAND_MODELS: dict[CommandType, type[CommandModel]] = {
     CommandType.SYNC_BACKUP_CATALOG: SyncBackupCatalogRequest,
     CommandType.SYNC_CLUSTER_BACKUP_CATALOG: SyncClusterBackupCatalogRequest,
 }
-
-
-def command_model_for_type(command_type: CommandType) -> type[CommandModel]:
-    return COMMAND_MODELS[command_type]
-
-
-def parse_command_payload(
-    command_type: CommandType,
-    payload: dict[str, Any] | None,
-) -> CommandModel:
-    return command_model_for_type(command_type).model_validate(payload or {})
 
 
 class BackupDetails(BaseModel):

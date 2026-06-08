@@ -21,11 +21,10 @@ routers:
 from cp.repos import Repo
 from cpkit import create_cpkit_app, create_cpkit_bundle
 
-cpkit_bundle = create_cpkit_bundle(
-    parse_job_payload=parse_job_payload,
+cpkit_capabilities = create_cpkit_bundle(
+    command_models=COMMAND_MODELS,
+    command_handlers=COMMAND_HANDLERS,
     reschedule_type_map={CREATE_COMMAND: RECREATE_COMMAND},
-    resolve_queue_handler=resolve_queue_handler,
-    parse_queue_message=parse_queue_message,
 )
 
 app = create_cpkit_app(
@@ -33,7 +32,7 @@ app = create_cpkit_app(
     version="0.1.0",
     repo_class=Repo,
     db_url=DB_URL,
-    bundles=(cpkit_bundle,),
+    capabilities=(cpkit_capabilities,),
     routers=(domain_router,),
     static_directory="webapp",
 )
@@ -97,12 +96,11 @@ headers.
 
 The framework owns the durable message queue and worker polling loop. The queue
 table lives in `cpkit.mq`; applications extend `CPKitRepo` and supply command
-parsing plus handler resolution through `create_cpkit_bundle`.
+payload models plus handlers through `create_cpkit_bundle`.
 
 Applications still own business job semantics:
 
 - command enums and payload models
-- command parsing
 - handler functions
 - application job/task metadata
 - failure bookkeeping

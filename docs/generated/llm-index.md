@@ -11,12 +11,12 @@ Use this file as a compact starting point before opening source files.
 
 ## Packages
 
-- `cp`: 56 modules, 111 classes, 89 functions, 54 routes
+- `cp`: 57 modules, 111 classes, 87 functions, 55 routes
 - `tools`: 1 modules, 5 classes, 32 functions, 0 routes
 
 ## API Route Count
 
-- `54` FastAPI routes
+- `55` FastAPI routes
 
 ## Command Handlers
 

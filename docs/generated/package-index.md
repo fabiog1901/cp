@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 56 | 111 | 89 | 54 |
+| `cp` | 57 | 111 | 87 | 55 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -23,6 +23,7 @@
 | `cp.api.alerts` | `cp/api/alerts.py` | Alert API routes. |
 | `cp.api.cluster_recovery` | `cp/api/cluster_recovery.py` | Cluster recovery API routes. |
 | `cp.api.clusters` | `cp/api/clusters.py` | Cluster API routes. |
+| `cp.api.prometheus` | `cp/api/prometheus.py` | Prometheus target API routes. |
 | `cp.cluster_database` | `cp/cluster_database.py` | Managed-cluster database connection helpers. |
 | `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |

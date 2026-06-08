@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Security
+from pydantic import BaseModel
 
 from .admin import create_cpkit_admin_router
 from .audit import (
@@ -29,6 +30,7 @@ AuditRecordFactory = Callable[..., Any]
 PayloadParser = Callable[[Any, dict[str, Any]], Any]
 QueueMessageParser = Callable[[QueueMessage], Any]
 QueueHandlerResolver = Callable[[QueueMessage], QueueHandler | None]
+CommandModelMap = Mapping[Any, type[BaseModel]]
 
 
 @dataclass(frozen=True)
@@ -67,16 +69,26 @@ class CpkitBundle:
 
 def create_cpkit_bundle(
     *,
-    parse_job_payload: PayloadParser,
+    command_models: CommandModelMap | None = None,
+    command_handlers: Mapping[Any, QueueHandler] | None = None,
+    parse_job_payload: PayloadParser | None = None,
     reschedule_type_map: Mapping[Any, Any] | None = None,
-    resolve_queue_handler: QueueHandlerResolver,
-    parse_queue_message: QueueMessageParser,
+    resolve_queue_handler: QueueHandlerResolver | None = None,
+    parse_queue_message: QueueMessageParser | None = None,
     audit_record_factory: AuditRecordFactory = build_audit_log_record,
     audit_event_hook: AuditHook | None = None,
 ) -> CpkitBundle:
     """Create the standard cpkit capability bundle for an application."""
     configure_audit_logging(audit_record_factory)
     effective_audit_event_hook = audit_event_hook or log_event
+    normalized_command_models = _normalize_mapping(command_models)
+    effective_parse_job_payload = parse_job_payload or _command_model_parser(
+        normalized_command_models
+    )
+    effective_parse_queue_message = parse_queue_message or _queue_message_parser(
+        effective_parse_job_payload
+    )
+    normalized_command_handlers = _normalize_mapping(command_handlers)
     effective_reschedule_type_map = {
         _type_value(source): _type_value(target)
         for source, target in (reschedule_type_map or {}).items()
@@ -102,7 +114,7 @@ def create_cpkit_bundle(
     def get_jobs_service():
         return JobsService(
             get_repo(),
-            parse_payload=parse_job_payload,
+            parse_payload=effective_parse_job_payload,
             reschedule_type_resolver=lambda job_type: effective_reschedule_type_map.get(
                 _type_value(job_type),
                 job_type,
@@ -153,8 +165,9 @@ def create_cpkit_bundle(
     queue_worker = create_queue_worker(
         get_pool=get_pool,
         get_repo=get_repo,
+        handlers=normalized_command_handlers,
         resolve_handler=resolve_queue_handler,
-        parse_message=parse_queue_message,
+        parse_message=effective_parse_queue_message,
     )
 
     bundle = CpkitBundle(
@@ -213,3 +226,27 @@ def _setting_reset_hook(
 
 def _type_value(value: Any) -> Any:
     return getattr(value, "value", value)
+
+
+def _normalize_mapping(mapping: Mapping[Any, Any] | None) -> dict[Any, Any] | None:
+    if mapping is None:
+        return None
+    return {_type_value(key): value for key, value in mapping.items()}
+
+
+def _command_model_parser(command_models: Mapping[Any, type[BaseModel]] | None):
+    if command_models is None:
+        raise ValueError("command_models or parse_job_payload is required.")
+
+    def parse(command_type: Any, payload: dict[str, Any] | None) -> BaseModel:
+        model_type = command_models[_type_value(command_type)]
+        return model_type.model_validate(payload or {})
+
+    return parse
+
+
+def _queue_message_parser(parse_payload: PayloadParser) -> QueueMessageParser:
+    def parse(message: QueueMessage) -> Any:
+        return parse_payload(message.msg_type, message.msg_data)
+
+    return parse

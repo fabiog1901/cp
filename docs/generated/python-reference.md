@@ -94,6 +94,14 @@
       show_root_heading: false
       show_root_toc_entry: false
 
+### `cp.api.prometheus`
+
+::: cp.api.prometheus
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
 ## `cp.cluster_database`
 
 ### `cp.cluster_database`

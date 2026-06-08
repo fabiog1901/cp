@@ -18,7 +18,6 @@ from cpkit.repository import get_repo as get_configured_repo
 
 StartupHook = Callable[[], Any]
 BackgroundTaskFactory = Callable[[], Awaitable[Any]]
-ConfigureApi = Callable[[FastAPI], None]
 RepoClass = Callable[[Any], Any]
 
 
@@ -29,9 +28,9 @@ def create_cpkit_app(
     repo_class: RepoClass | None = None,
     get_repo: Callable[[], Any] | None = None,
     db_url: str | None,
+    capabilities: Iterable[CpkitBundle] | None = None,
     bundles: Iterable[CpkitBundle] = (),
     routers: Iterable[APIRouter] = (),
-    configure_api: ConfigureApi | None = None,
     startup_hooks: Iterable[StartupHook] = (),
     background_tasks: Iterable[BackgroundTaskFactory] = (),
     static_directory: str | Path | None = None,
@@ -39,7 +38,7 @@ def create_cpkit_app(
     default_journald_identifier: str = "cp",
 ) -> FastAPI:
     """Create a cpkit-managed FastAPI app with an application API subapp."""
-    bundle_tuple = tuple(bundles)
+    capability_tuple = tuple(capabilities if capabilities is not None else bundles)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -60,7 +59,11 @@ def create_cpkit_app(
             default_journald_identifier=default_journald_identifier,
         )
         effective_startup_hooks = (
-            *(hook for bundle in bundle_tuple for hook in bundle.startup_hooks),
+            *(
+                hook
+                for capability in capability_tuple
+                for hook in capability.startup_hooks
+            ),
             *startup_hooks,
         )
         for hook in effective_startup_hooks:
@@ -69,7 +72,11 @@ def create_cpkit_app(
                 await result
 
         effective_background_tasks = (
-            *(task for bundle in bundle_tuple for task in bundle.background_tasks),
+            *(
+                task
+                for capability in capability_tuple
+                for task in capability.background_tasks
+            ),
             *background_tasks,
         )
         running_tasks = [
@@ -93,14 +100,11 @@ def create_cpkit_app(
     api = FastAPI(title=title, version=version)
 
     effective_routers = (
-        *(router for bundle in bundle_tuple for router in bundle.routers),
+        *(router for capability in capability_tuple for router in capability.routers),
         *routers,
     )
     for router in effective_routers:
         api.include_router(router)
-
-    if configure_api is not None:
-        configure_api(api)
 
     app.mount(api_prefix, api)
 

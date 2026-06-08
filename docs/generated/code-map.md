@@ -231,6 +231,19 @@ Routes:
 - `POST /clusters/{cluster_id}/users/{username}/password` -> `update_cluster_user_password()`
 - `GET /clusters/{cluster_id}/dashboard` -> `get_cluster_dashboard()`
 
+### `cp.api.prometheus`
+
+Path: `cp/api/prometheus.py`
+
+Prometheus target API routes.
+
+Functions:
+
+- `async get_targets()` — line 11: _No docstring._
+
+Routes:
+- `GET /prom-targets` -> `get_targets()`
+
 ### `cp.cluster_database`
 
 Path: `cp/cluster_database.py`
@@ -251,10 +264,6 @@ Path: `cp/main.py`
 
 CP FastAPI application wiring.
 
-Functions:
-
-- `configure_api(api: FastAPI) -> None` — line 37: _No docstring._
-
 ### `cp.models`
 
 Path: `cp/models.py`
@@ -262,100 +271,98 @@ Path: `cp/models.py`
 Shared CP domain, API, command, and persistence models.
 
 Classes:
-- `AutoNameStrEnum` — line 20: _No docstring._
-- `PlaybookName` — line 28: _No docstring._
-- `CommandType` — line 41: _No docstring._
-- `ClusterState` — line 58: _No docstring._
-- `JobState` — line 74: _No docstring._
-- `ClusterArtifactState` — line 81: _No docstring._
-- `AuditEvent` — line 87: _No docstring._
-- `SettingKey` — line 128: _No docstring._
-- `StrID` — line 139: _No docstring._
-- `ClusterIDRef` — line 143: _No docstring._
-- `WebUser` — line 150: _No docstring._
-- `ClusterStatsResponse` — line 156: _No docstring._
-- `ErrorResponse` — line 164: _No docstring._
-- `ClusterOverview` — line 171: _No docstring._
-- `InventoryRegion` — line 182: _No docstring._
-- `InventoryLB` — line 188: _No docstring._
-- `ClusterPublic` — line 194: _No docstring._
-- `Cluster` — line 210: _No docstring._
-- `ExternalConnection` — line 231: _No docstring._
-- `ExternalConnectionUpsert` — line 248: _No docstring._
-- `ClusterRequest` — line 261: _No docstring._
-- `CommandModel` — line 271: _No docstring._
-- `CreateClusterCommand` — line 275: _No docstring._
-- `ClusterUpgradeRequest` — line 285: _No docstring._
-- `DeleteClusterCommand` — line 291: _No docstring._
-- `HealthcheckClusterCommand` — line 295: _No docstring._
-- `DebugZipOptions` — line 299: _No docstring._
-- `DebugZipRequest` — line 343: _No docstring._
-- `DebugZipClusterCommand` — line 347: _No docstring._
-- `PollDebugZipCommand` — line 351: _No docstring._
-- `RestoreRequest` — line 361: _No docstring._
-- `RestoreClusterObjectRequest` — line 371: _No docstring._
-- `RestoreFullClusterRequest` — line 421: _No docstring._
-- `PollClusterRestoreRequest` — line 451: _No docstring._
-- `SyncBackupCatalogRequest` — line 458: _No docstring._
-- `SyncClusterBackupCatalogRequest` — line 462: _No docstring._
-- `ClusterScaleRequest` — line 466: _No docstring._
-- `BackupDetails` — line 503: _No docstring._
-- `BackupPathOption` — line 513: _No docstring._
-- `BackupCatalogObject` — line 517: _No docstring._
-- `BackupCatalogEntry` — line 535: _No docstring._
-- `BackupCatalogSnapshot` — line 551: _No docstring._
-- `ClusterRecoveryRestoreApiRequest` — line 555: _No docstring._
-- `BackupCatalogObjectUpsert` — line 585: _No docstring._
-- `BackupCatalogEntryUpsert` — line 600: _No docstring._
-- `DatabaseUser` — line 614: _No docstring._
-- `DatabaseRoleTemplateConfig` — line 620: _No docstring._
-- `ClusterDatabaseRole` — line 626: _No docstring._
-- `ClusterDatabaseRoleDetails` — line 636: _No docstring._
-- `ClusterDatabaseRoleGroupMapping` — line 645: _No docstring._
-- `ClusterDatabaseObject` — line 655: _No docstring._
-- `ClusterDatabaseObjectDetails` — line 664: _No docstring._
-- `CreateClusterDatabaseObjectRequest` — line 668: _No docstring._
-- `NewDatabaseUserRequest` — line 672: _No docstring._
-- `ClusterArtifactUpsert` — line 678: _No docstring._
-- `ClusterArtifactUpdate` — line 696: _No docstring._
-- `ClusterArtifact` — line 709: _No docstring._
-- `ArtifactDownloadUrlResponse` — line 729: _No docstring._
-- `ClusterArtifactsSnapshot` — line 740: _No docstring._
-- `Region` — line 749: _No docstring._
-- `Version` — line 760: _No docstring._
-- `RegionOption` — line 764: _No docstring._
-- `NodeCountOption` — line 768: _No docstring._
-- `CpuCountOption` — line 772: _No docstring._
-- `DiskSizeOption` — line 776: _No docstring._
-- `Nodes` — line 780: _No docstring._
-- `DashboardMetrics` — line 785: _No docstring._
-- `DashboardSnapshot` — line 790: _No docstring._
-- `ClusterJobsSnapshot` — line 795: _No docstring._
-- `ClusterUsersSnapshot` — line 800: _No docstring._
-- `ClusterBackupsSnapshot` — line 809: _No docstring._
-- `ClusterCreateOptionsResponse` — line 814: _No docstring._
-- `ClusterDialogOptionsResponse` — line 822: _No docstring._
-- `ClusterCreateApiRequest` — line 830: _No docstring._
-- `ClusterRestoreApiRequest` — line 840: _No docstring._
-- `ClusterObjectRestoreApiRequest` — line 849: _No docstring._
-- `ClusterDatabaseRolesUpdateRequest` — line 897: _No docstring._
-- `ClusterDatabaseRoleGroupsUpdateRequest` — line 901: _No docstring._
-- `ClusterPasswordUpdateRequest` — line 905: _No docstring._
-- `NoFreeComputeUnitError` — line 909: _No docstring._
-- `ComputeUnitNotFoundError` — line 913: _No docstring._
-- `ComputeUnitStateError` — line 917: _No docstring._
-- `ComputeUnitOperationError` — line 921: _No docstring._
-- `AllocatePlaybookError` — line 925: _No docstring._
-- `DeferredTask` — line 929: _No docstring._
-- `Alert` — line 935: _No docstring._
-- `AlertmanagerPayload` — line 944: _No docstring._
-- `LiveAlert` — line 954: _No docstring._
+- `AutoNameStrEnum` — line 18: _No docstring._
+- `PlaybookName` — line 26: _No docstring._
+- `CommandType` — line 39: _No docstring._
+- `ClusterState` — line 56: _No docstring._
+- `JobState` — line 72: _No docstring._
+- `ClusterArtifactState` — line 79: _No docstring._
+- `AuditEvent` — line 85: _No docstring._
+- `SettingKey` — line 126: _No docstring._
+- `StrID` — line 137: _No docstring._
+- `ClusterIDRef` — line 141: _No docstring._
+- `WebUser` — line 148: _No docstring._
+- `ClusterStatsResponse` — line 154: _No docstring._
+- `ErrorResponse` — line 162: _No docstring._
+- `ClusterOverview` — line 169: _No docstring._
+- `InventoryRegion` — line 180: _No docstring._
+- `InventoryLB` — line 186: _No docstring._
+- `ClusterPublic` — line 192: _No docstring._
+- `Cluster` — line 208: _No docstring._
+- `ExternalConnection` — line 229: _No docstring._
+- `ExternalConnectionUpsert` — line 246: _No docstring._
+- `ClusterRequest` — line 259: _No docstring._
+- `CommandModel` — line 269: _No docstring._
+- `CreateClusterCommand` — line 273: _No docstring._
+- `ClusterUpgradeRequest` — line 283: _No docstring._
+- `DeleteClusterCommand` — line 289: _No docstring._
+- `HealthcheckClusterCommand` — line 293: _No docstring._
+- `DebugZipOptions` — line 297: _No docstring._
+- `DebugZipRequest` — line 341: _No docstring._
+- `DebugZipClusterCommand` — line 345: _No docstring._
+- `PollDebugZipCommand` — line 349: _No docstring._
+- `RestoreRequest` — line 359: _No docstring._
+- `RestoreClusterObjectRequest` — line 369: _No docstring._
+- `RestoreFullClusterRequest` — line 419: _No docstring._
+- `PollClusterRestoreRequest` — line 449: _No docstring._
+- `SyncBackupCatalogRequest` — line 456: _No docstring._
+- `SyncClusterBackupCatalogRequest` — line 460: _No docstring._
+- `ClusterScaleRequest` — line 464: _No docstring._
+- `BackupDetails` — line 490: _No docstring._
+- `BackupPathOption` — line 500: _No docstring._
+- `BackupCatalogObject` — line 504: _No docstring._
+- `BackupCatalogEntry` — line 522: _No docstring._
+- `BackupCatalogSnapshot` — line 538: _No docstring._
+- `ClusterRecoveryRestoreApiRequest` — line 542: _No docstring._
+- `BackupCatalogObjectUpsert` — line 572: _No docstring._
+- `BackupCatalogEntryUpsert` — line 587: _No docstring._
+- `DatabaseUser` — line 601: _No docstring._
+- `DatabaseRoleTemplateConfig` — line 607: _No docstring._
+- `ClusterDatabaseRole` — line 613: _No docstring._
+- `ClusterDatabaseRoleDetails` — line 623: _No docstring._
+- `ClusterDatabaseRoleGroupMapping` — line 632: _No docstring._
+- `ClusterDatabaseObject` — line 642: _No docstring._
+- `ClusterDatabaseObjectDetails` — line 651: _No docstring._
+- `CreateClusterDatabaseObjectRequest` — line 655: _No docstring._
+- `NewDatabaseUserRequest` — line 659: _No docstring._
+- `ClusterArtifactUpsert` — line 665: _No docstring._
+- `ClusterArtifactUpdate` — line 683: _No docstring._
+- `ClusterArtifact` — line 696: _No docstring._
+- `ArtifactDownloadUrlResponse` — line 716: _No docstring._
+- `ClusterArtifactsSnapshot` — line 727: _No docstring._
+- `Region` — line 736: _No docstring._
+- `Version` — line 747: _No docstring._
+- `RegionOption` — line 751: _No docstring._
+- `NodeCountOption` — line 755: _No docstring._
+- `CpuCountOption` — line 759: _No docstring._
+- `DiskSizeOption` — line 763: _No docstring._
+- `Nodes` — line 767: _No docstring._
+- `DashboardMetrics` — line 772: _No docstring._
+- `DashboardSnapshot` — line 777: _No docstring._
+- `ClusterJobsSnapshot` — line 782: _No docstring._
+- `ClusterUsersSnapshot` — line 787: _No docstring._
+- `ClusterBackupsSnapshot` — line 796: _No docstring._
+- `ClusterCreateOptionsResponse` — line 801: _No docstring._
+- `ClusterDialogOptionsResponse` — line 809: _No docstring._
+- `ClusterCreateApiRequest` — line 817: _No docstring._
+- `ClusterRestoreApiRequest` — line 827: _No docstring._
+- `ClusterObjectRestoreApiRequest` — line 836: _No docstring._
+- `ClusterDatabaseRolesUpdateRequest` — line 884: _No docstring._
+- `ClusterDatabaseRoleGroupsUpdateRequest` — line 888: _No docstring._
+- `ClusterPasswordUpdateRequest` — line 892: _No docstring._
+- `NoFreeComputeUnitError` — line 896: _No docstring._
+- `ComputeUnitNotFoundError` — line 900: _No docstring._
+- `ComputeUnitStateError` — line 904: _No docstring._
+- `ComputeUnitOperationError` — line 908: _No docstring._
+- `AllocatePlaybookError` — line 912: _No docstring._
+- `DeferredTask` — line 916: _No docstring._
+- `Alert` — line 922: _No docstring._
+- `AlertmanagerPayload` — line 931: _No docstring._
+- `LiveAlert` — line 941: _No docstring._
 
 Functions:
 
-- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 227: _No docstring._
-- `command_model_for_type(command_type: CommandType) -> type[CommandModel]` — line 492: _No docstring._
-- `parse_command_payload(command_type: CommandType, payload: dict[str, Any] | None) -> CommandModel` — line 496: _No docstring._
+- `to_public_cluster(cluster: Cluster) -> ClusterPublic` — line 225: _No docstring._
 
 ### `cp.prometheus`
 
