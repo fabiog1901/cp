@@ -28,7 +28,6 @@ limited to persistence.
 | `cp/api/` | FastAPI routers. Converts HTTP/auth context into service calls. |
 | `cp/api/admin/` | Admin option CRUD endpoints such as versions, regions, role templates, and playbooks. |
 | `cp/auth.py` | CP-specific cpkit OIDC wiring and exported auth dependencies. |
-| `cp/infra/` | Cross-cutting infrastructure: DB connection helpers, dependency factories, logging, errors, cluster connection utilities. |
 | `cp/repos/` | CP metadata persistence. Repos should not execute SQL against managed clusters. |
 | `cp/repos/admin/` | Persistence for admin-configured options and cluster database access metadata. |
 | `cp/services/` | Business workflows. Coordinates repos, managed-cluster SQL, audit events, and workers. |
@@ -45,7 +44,7 @@ limited to persistence.
 | `cp/repository.py` | App repository factory and app-specific database error translation. |
 | `cp/cluster_database.py` | Managed-cluster SQL connection helper. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |
-| `cp/infra/dependencies.py` | Service/repo dependency factories used by API routes. |
+| `cp/cpkit_integration.py` | CP-specific hooks supplied to cpkit routers and background workers. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |
 | `resources/cpkit_ddl.sql` | Framework-owned schema and tables. |
 | `resources/ddl.sql` | Canonical CP metadata schema. |

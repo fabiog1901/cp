@@ -6,7 +6,7 @@ CPU counts, disk sizes, and database role templates.
 
 from pydantic import ValidationError
 
-from ...infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ...models import (
     AuditEvent,
     CpuCountOption,

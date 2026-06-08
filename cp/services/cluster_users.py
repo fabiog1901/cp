@@ -13,7 +13,7 @@ from psycopg.rows import class_row
 from pydantic import ValidationError
 
 from ..repository import get_repo, translate_database_error
-from ..infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ..models import (
     AuditEvent,
     Cluster,

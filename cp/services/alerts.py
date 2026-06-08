@@ -1,7 +1,7 @@
 """Business logic for the alerts vertical."""
 
 from ..repository import get_repo
-from ..infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ..models import AlertmanagerPayload, LiveAlert
 from .errors import from_repository_error
 

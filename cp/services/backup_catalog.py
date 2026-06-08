@@ -5,7 +5,7 @@ object storage. It bridges API requests, catalog metadata, and worker jobs.
 """
 
 from ..repository import get_repo
-from ..infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ..models import (
     AuditEvent,
     BackupCatalogEntry,

@@ -7,7 +7,7 @@ coordinates CP metadata, and enqueues worker jobs for long-running operations.
 from pydantic import ValidationError
 
 from ..repository import get_repo
-from ..infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ..models import (
     AuditEvent,
     ArtifactDownloadUrlResponse,

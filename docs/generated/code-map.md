@@ -304,18 +304,6 @@ Functions:
 - `create_jobs_router()` — line 41: Create job management routes owned by cpkit and wired to CP hooks.
 - `create_queue_worker()` — line 54: Create the cpkit queue worker with CP command handlers.
 
-### `cp.infra`
-
-Path: `cp/infra/__init__.py`
-
-Shared infrastructure entrypoints for DB lifecycle.
-
-### `cp.infra.errors`
-
-Path: `cp/infra/errors.py`
-
-Compatibility exports for repository exception types.
-
 ### `cp.main`
 
 Path: `cp/main.py`

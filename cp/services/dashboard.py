@@ -11,7 +11,7 @@ from typing import Any
 import requests
 
 from ..repository import get_repo
-from ..infra.errors import RepositoryError, RepositoryUnavailableError
+from cpkit.errors import RepositoryError, RepositoryUnavailableError
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
 from .errors import ServiceValidationError, from_repository_error
 

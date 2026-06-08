@@ -2,7 +2,7 @@
 
 from pydantic import ValidationError
 
-from ...infra.errors import RepositoryError
+from cpkit.errors import RepositoryError
 from ...models import AuditEvent, Version
 from ..base import log_event
 from ..errors import ServiceValidationError, from_repository_error

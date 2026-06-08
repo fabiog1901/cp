@@ -150,24 +150,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.infra`
-
-### `cp.infra`
-
-::: cp.infra
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.infra.errors`
-
-::: cp.infra.errors
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.main`
 
 ### `cp.main`
