@@ -1,6 +1,6 @@
 """Shared base for admin-facing services."""
 
-from ...infra.db import get_repo
+from ...infra.repository import get_repo
 from ...repos import Repo
 
 

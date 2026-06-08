@@ -1,6 +1,7 @@
 """Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies."""
 
-from .db import close_db, get_pool, get_repo, initialize_postgres
+from cpkit.db import close_db, get_pool, initialize_postgres
+
 from .dependencies import (
     get_admin_service,
     get_alerts_service,
@@ -20,6 +21,7 @@ from .dependencies import (
     get_settings_service,
     get_versions_service,
 )
+from .repository import get_repo
 from .util import (
     as_bool,
     connect_cluster_db,

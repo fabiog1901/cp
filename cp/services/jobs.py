@@ -2,7 +2,7 @@
 
 import yaml
 
-from ..infra.db import get_repo
+from ..infra.repository import get_repo
 from ..infra.errors import RepositoryError
 from ..models import (
     AuditEvent,

@@ -4,7 +4,7 @@ This repo persists queued command state, task progress, and job history for the
 CP worker framework.
 """
 
-from ..infra.db import execute_stmt, fetch_all, fetch_one
+from cpkit.db import execute_stmt, fetch_all, fetch_one
 from cpkit.jobs import QUEUE_TABLE
 from ..models import (
     ClusterIDRef,

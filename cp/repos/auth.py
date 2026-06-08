@@ -2,7 +2,7 @@
 
 from cpkit.auth import OIDCSessionsRepositoryMixin
 
-from ..infra.db import fetch_all, fetch_scalar
+from cpkit.db import fetch_all, fetch_scalar
 from ..models import OIDCSessionRecord, RoleGroupMap
 
 

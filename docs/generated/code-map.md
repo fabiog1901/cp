@@ -363,17 +363,6 @@ Path: `cp/infra/__init__.py`
 
 Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies.
 
-### `cp.infra.db`
-
-Path: `cp/infra/db.py`
-
-CP metadata database infrastructure adapter.
-
-Functions:
-
-- `get_repo()` — line 21: _No docstring._
-- `translate_database_error(err: Exception, operation: str | None)` — line 27: _No docstring._
-
 ### `cp.infra.dependencies`
 
 Path: `cp/infra/dependencies.py`
@@ -391,6 +380,17 @@ Functions:
 Path: `cp/infra/errors.py`
 
 Compatibility exports for repository exception types.
+
+### `cp.infra.repository`
+
+Path: `cp/infra/repository.py`
+
+CP repository factory and application-specific database error handling.
+
+Functions:
+
+- `get_repo()` — line 9: _No docstring._
+- `translate_database_error(err: Exception, operation: str | None)` — line 15: _No docstring._
 
 ### `cp.infra.util`
 

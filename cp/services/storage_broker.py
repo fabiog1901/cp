@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
-from ..infra.db import get_repo
+from ..infra.repository import get_repo
 from ..infra.util import decrypt_secret, encrypt_secret
 from ..models import ExternalConnection, ExternalConnectionUpsert, SettingKey
 from ..repos import Repo

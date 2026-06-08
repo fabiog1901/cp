@@ -44,7 +44,7 @@ limited to persistence.
 | `cp/main.py` | FastAPI application setup and router registration. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |
 | `cp/infra/dependencies.py` | Service/repo dependency factories used by API routes. |
-| `cp/infra/db.py` | CP metadata DB helpers and database error translation. |
+| `cp/infra/repository.py` | CP repository factory and app-specific database error translation. |
 | `cp/infra/util.py` | Managed-cluster connection utilities and cluster config helpers. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |
 | `resources/cpkit_ddl.sql` | Framework-owned schema and tables. |

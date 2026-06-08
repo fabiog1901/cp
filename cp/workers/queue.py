@@ -7,10 +7,10 @@ import datetime as dt
 import logging
 from typing import Callable
 
+from cpkit.db import get_pool
 from cpkit.jobs import QueueMessage, run_queue_worker
 
 from ..infra import get_repo
-from ..infra.db import get_pool
 from ..models import (
     ClusterState,
     CommandModel,

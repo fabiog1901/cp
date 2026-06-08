@@ -10,7 +10,7 @@ from psycopg import sql
 from psycopg.rows import dict_row
 
 from ...infra import get_repo
-from ...infra.db import get_pool
+from cpkit.db import get_pool
 from ...models import (
     BackupCatalogEntryUpsert,
     BackupCatalogObjectUpsert,

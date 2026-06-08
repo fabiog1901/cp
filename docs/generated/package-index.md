@@ -32,9 +32,9 @@
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth.py` | CP's cpkit OIDC integration. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
-| `cp.infra.db` | `cp/infra/db.py` | CP metadata database infrastructure adapter. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
+| `cp.infra.repository` | `cp/infra/repository.py` | CP repository factory and application-specific database error handling. |
 | `cp.infra.util` | `cp/infra/util.py` | Shared operational utilities. |
 | `cp.main` | `cp/main.py` | FastAPI application entry point. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |

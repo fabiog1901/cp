@@ -14,7 +14,7 @@ from ..services.cluster_users import ClusterUsersService
 from ..services.dashboard import DashboardService
 from ..services.events import EventsService
 from ..services.jobs import JobsService
-from .db import get_repo as _get_repo
+from .repository import get_repo as _get_repo
 
 __all__ = [
     "get_repo",

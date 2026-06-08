@@ -1,6 +1,6 @@
 """External connections repository."""
 
-from ..infra.db import execute_stmt, fetch_all, fetch_one
+from cpkit.db import execute_stmt, fetch_all, fetch_one
 from ..models import ExternalConnection, ExternalConnectionUpsert
 
 

@@ -5,7 +5,7 @@ database objects, generated database roles, and IdP group mappings. It should
 not execute SQL against managed clusters.
 """
 
-from ...infra.db import execute_stmt, fetch_all
+from cpkit.db import execute_stmt, fetch_all
 from ...models import (
     ClusterDatabaseObject,
     ClusterDatabaseRole,

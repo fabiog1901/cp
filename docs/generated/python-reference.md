@@ -172,14 +172,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.infra.db`
-
-::: cp.infra.db
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.infra.dependencies`
 
 ::: cp.infra.dependencies
@@ -191,6 +183,14 @@
 ### `cp.infra.errors`
 
 ::: cp.infra.errors
+    options:
+      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+
+### `cp.infra.repository`
+
+::: cp.infra.repository
     options:
       show_source: true
       show_root_heading: false

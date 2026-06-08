@@ -1,6 +1,6 @@
 """Business logic for auth-related shared operations."""
 
-from ..infra.db import get_repo
+from ..infra.repository import get_repo
 from ..infra.errors import RepositoryError
 from ..repos import Repo
 from .errors import from_repository_error

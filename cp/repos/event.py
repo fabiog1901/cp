@@ -1,6 +1,6 @@
 """Event repository."""
 
-from ..infra.db import execute_stmt, fetch_all, fetch_scalar
+from cpkit.db import execute_stmt, fetch_all, fetch_scalar
 from ..models import LogMsg
 
 

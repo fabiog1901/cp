@@ -1,6 +1,6 @@
 """Cluster jobs repository."""
 
-from ..infra.db import fetch_all
+from cpkit.db import fetch_all
 from ..models import Job
 
 

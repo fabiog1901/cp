@@ -1,6 +1,6 @@
 """Alerts repository."""
 
-from ..infra.db import execute_stmt, fetch_all
+from cpkit.db import execute_stmt, fetch_all
 from ..models import LiveAlert
 
 
