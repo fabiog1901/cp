@@ -316,14 +316,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.services.base`
-
-::: cp.services.base
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.services.cluster`
 
 ::: cp.services.cluster

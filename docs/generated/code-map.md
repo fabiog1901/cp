@@ -263,7 +263,7 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 36: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 34: _No docstring._
 
 ### `cp.models`
 
@@ -557,16 +557,6 @@ Backup catalog service.
 
 Classes:
 - `BackupCatalogService` — line 30: _No docstring._
-
-### `cp.services.base`
-
-Path: `cp/services/base.py`
-
-Shared service-layer helpers.
-
-Functions:
-
-- `log_event(repo: Repo, actor_id: str, action: AuditEvent | str, details: dict[str, Any] | None=None) -> None` — line 16: Best-effort audit logging for service-layer actions.
 
 ### `cp.services.cluster`
 

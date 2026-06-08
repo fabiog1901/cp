@@ -13,6 +13,7 @@ from psycopg.rows import class_row
 from pydantic import ValidationError
 
 from cpkit import get_repo
+from cpkit.audit import log_event
 from cpkit.errors import (
     RepositoryError,
     ServiceNotFoundError,
@@ -35,7 +36,6 @@ from ..models import (
     NewDatabaseUserRequest,
     to_public_cluster,
 )
-from .base import log_event
 from .cluster_db import connect_to_cluster_db
 
 logger = logging.getLogger(__name__)

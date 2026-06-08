@@ -5,7 +5,10 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import Any, Protocol
 
+from cpkit.logging import request_id_ctx
+
 logger = logging.getLogger(__name__)
+_audit_record_factory: Callable[..., Any] | None = None
 
 
 class AuditRecordWriter(Protocol):
@@ -124,3 +127,68 @@ class AuditRecorder:
             metadata=metadata,
             request_id=effective_request_id,
         )
+
+
+def configure_audit_logging(record_factory: Callable[..., Any]) -> None:
+    """Configure the default audit record factory for framework logging APIs."""
+    global _audit_record_factory
+    _audit_record_factory = record_factory
+
+
+def create_audit_event_hook(
+    record_factory: Callable[..., Any],
+    *,
+    request_id_provider: Callable[[], str | None] = request_id_ctx.get,
+    best_effort: bool = True,
+    event_logger: logging.Logger | None = None,
+) -> Callable[[Any, str, str | StrEnum, dict[str, Any] | None], None]:
+    """Create a reusable audit hook backed by an application record factory."""
+
+    def emit_audit_event(
+        repo: Any,
+        actor_id: str,
+        action: str | StrEnum,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        recorder = AuditRecorder(
+            repo,
+            record_factory,
+            request_id_provider=request_id_provider,
+            event_logger=event_logger,
+        )
+        if best_effort:
+            recorder.emit_best_effort(
+                action,
+                actor_id=actor_id,
+                metadata=details,
+            )
+            return
+
+        recorder.emit(
+            action,
+            actor_id=actor_id,
+            metadata=details,
+        )
+
+    return emit_audit_event
+
+
+def log_event(
+    repo: Any,
+    actor_id: str,
+    action: str | StrEnum,
+    details: dict[str, Any] | None = None,
+) -> None:
+    """Best-effort audit logging for cpkit-backed service actions."""
+    if _audit_record_factory is None:
+        raise RuntimeError("cpkit audit logging has not been configured.")
+
+    create_audit_event_hook(
+        _audit_record_factory,
+        event_logger=logger,
+    )(
+        repo,
+        actor_id,
+        action,
+        details,
+    )

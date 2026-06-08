@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 60 | 113 | 91 | 54 |
+| `cp` | 59 | 113 | 90 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -49,7 +49,6 @@
 | `cp.services.admin.versions` | `cp/services/admin/versions.py` | Business logic for the admin versions vertical. |
 | `cp.services.alerts` | `cp/services/alerts.py` | Business logic for the alerts vertical. |
 | `cp.services.backup_catalog` | `cp/services/backup_catalog.py` | Backup catalog service. |
-| `cp.services.base` | `cp/services/base.py` | Shared service-layer helpers. |
 | `cp.services.cluster` | `cp/services/cluster.py` | Cluster lifecycle service. |
 | `cp.services.cluster_backups` | `cp/services/cluster_backups.py` | Backup and restore service for individual clusters. |
 | `cp.services.cluster_db` | `cp/services/cluster_db.py` | Shared helpers for connecting to a cluster SQL endpoint. |

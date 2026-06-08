@@ -10,12 +10,10 @@ from .audit import build_log_msg
 from .models import CommandType, parse_command_payload
 from .prometheus import get_nodes
 from .repos import Repo
-from .services.base import log_event
 from .workers.commands import COMMAND_HANDLERS
 
 cpkit_bundle = create_cpkit_bundle(
     audit_record_factory=build_log_msg,
-    audit_event_hook=log_event,
     parse_job_payload=lambda command_type, payload: parse_command_payload(
         CommandType(command_type),
         payload,

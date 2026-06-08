@@ -5,6 +5,7 @@ object storage. It bridges API requests, catalog metadata, and worker jobs.
 """
 
 from cpkit import get_repo
+from cpkit.audit import log_event
 from cpkit.errors import (
     RepositoryError,
     ServiceAuthorizationError,
@@ -24,7 +25,6 @@ from ..models import (
     SyncBackupCatalogRequest,
     SyncClusterBackupCatalogRequest,
 )
-from .base import log_event
 
 
 class BackupCatalogService:

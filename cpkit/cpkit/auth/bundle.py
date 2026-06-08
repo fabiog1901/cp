@@ -6,8 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from cpkit.audit import AuditRecorder
-from cpkit.logging import request_id_ctx
+from cpkit.audit import create_audit_event_hook
 
 from .dependencies import AuthDependencies, create_auth_dependencies
 from .oidc import OIDCManager
@@ -85,6 +84,10 @@ def create_auth_bundle(
         user_roles=user_roles,
         admin_roles=admin_roles,
     )
+    emit_auth_event = create_audit_event_hook(
+        audit_record_factory,
+        best_effort=False,
+    )
 
     def log_auth_event(
         repo: Any,
@@ -93,14 +96,11 @@ def create_auth_bundle(
         details: dict[str, Any] | None = None,
     ) -> None:
         event_type = login_event if action == "LOGIN" else logout_event
-        AuditRecorder(
+        emit_auth_event(
             repo,
-            audit_record_factory,
-            request_id_provider=request_id_ctx.get,
-        ).emit(
+            actor_id,
             event_type,
-            actor_id=actor_id,
-            metadata=details,
+            details,
         )
 
     router = create_oidc_router(

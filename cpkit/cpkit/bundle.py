@@ -7,7 +7,12 @@ from typing import Any
 from fastapi import APIRouter, Security
 
 from .admin import create_cpkit_admin_router
-from .audit import AuditEventsService, create_events_router
+from .audit import (
+    AuditEventsService,
+    configure_audit_logging,
+    create_events_router,
+    log_event,
+)
 from .auth import ApiKeysService, AuthBundle, create_auth_bundle
 from .db import get_pool
 from .dependencies import configure_cpkit_dependencies
@@ -62,13 +67,15 @@ class CpkitBundle:
 def create_cpkit_bundle(
     *,
     audit_record_factory: AuditRecordFactory,
-    audit_event_hook: AuditHook | None = None,
     parse_job_payload: PayloadParser,
     reschedule_type_map: Mapping[Any, Any] | None = None,
     resolve_queue_handler: QueueHandlerResolver,
     parse_queue_message: QueueMessageParser,
+    audit_event_hook: AuditHook | None = None,
 ) -> CpkitBundle:
     """Create the standard cpkit capability bundle for an application."""
+    configure_audit_logging(audit_record_factory)
+    effective_audit_event_hook = audit_event_hook or log_event
     effective_reschedule_type_map = {
         _type_value(source): _type_value(target)
         for source, target in (reschedule_type_map or {}).items()
@@ -84,8 +91,8 @@ def create_cpkit_bundle(
     def get_api_keys_service():
         return ApiKeysService(
             get_repo(),
-            created_hook=audit_event_hook,
-            deleted_hook=audit_event_hook,
+            created_hook=effective_audit_event_hook,
+            deleted_hook=effective_audit_event_hook,
         )
 
     def get_events_service():
@@ -99,22 +106,22 @@ def create_cpkit_bundle(
                 _type_value(job_type),
                 job_type,
             ),
-            rescheduled_hook=audit_event_hook,
+            rescheduled_hook=effective_audit_event_hook,
         )
 
     def get_playbooks_service():
         return PlaybooksService(
             get_repo(),
-            version_created_hook=audit_event_hook,
-            version_deleted_hook=audit_event_hook,
-            default_set_hook=audit_event_hook,
+            version_created_hook=effective_audit_event_hook,
+            version_deleted_hook=effective_audit_event_hook,
+            default_set_hook=effective_audit_event_hook,
         )
 
     def get_settings_service():
         return SettingsService(
             get_repo(),
-            setting_updated_hook=_setting_updated_hook(audit_event_hook),
-            setting_reset_hook=_setting_reset_hook(audit_event_hook),
+            setting_updated_hook=_setting_updated_hook(effective_audit_event_hook),
+            setting_reset_hook=_setting_reset_hook(effective_audit_event_hook),
         )
 
     admin_router = create_cpkit_admin_router(

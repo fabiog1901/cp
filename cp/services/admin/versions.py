@@ -2,10 +2,10 @@
 
 from pydantic import ValidationError
 
+from cpkit.audit import log_event
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
 
 from ...models import AuditEvent, Version
-from ..base import log_event
 from .base import AdminService
 
 

@@ -7,6 +7,7 @@ coordinates CP metadata, and enqueues worker jobs for long-running operations.
 from pydantic import ValidationError
 
 from cpkit import get_repo
+from cpkit.audit import log_event
 from cpkit.errors import (
     RepositoryError,
     ServiceConflictError,
@@ -35,7 +36,6 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from .base import log_event
 from .storage_broker import StorageBrokerService
 
 
