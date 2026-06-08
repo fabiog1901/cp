@@ -6,11 +6,13 @@ from .base import AdminRepo
 
 
 class ApiKeysRepo(AdminRepo):
+    api_keys_table_name = "cpkit.api_keys"
+
     def get_api_key(self, access_key: str) -> ApiKeyRecord | None:
         return fetch_one(
-            """
+            f"""
                     SELECT access_key, encrypted_secret_access_key, owner, valid_until, roles
-                    FROM api_keys
+                    FROM {self.api_keys_table_name}
                     WHERE access_key = %s
                     """,
             (access_key,),
@@ -20,9 +22,9 @@ class ApiKeysRepo(AdminRepo):
 
     def list_api_keys(self, access_key: str | None = None) -> list[ApiKeySummary]:
         params: list[str] = []
-        sql = """
+        sql = f"""
             SELECT access_key, owner, valid_until, roles
-            FROM api_keys
+            FROM {self.api_keys_table_name}
         """
 
         if access_key is not None:
@@ -41,8 +43,8 @@ class ApiKeysRepo(AdminRepo):
         encrypted_secret_access_key: bytes,
     ) -> ApiKeySummary:
         return fetch_one(
-            """
-                    INSERT INTO api_keys (
+            f"""
+                    INSERT INTO {self.api_keys_table_name} (
                         access_key,
                         encrypted_secret_access_key,
                         owner,
@@ -65,9 +67,9 @@ class ApiKeysRepo(AdminRepo):
 
     def delete_api_key(self, access_key: str) -> None:
         execute_stmt(
-            """
+            f"""
                 DELETE
-                FROM api_keys
+                FROM {self.api_keys_table_name}
                 WHERE access_key = %s
                 """,
             (access_key,),

@@ -251,7 +251,7 @@ CREATE TABLE cpkit.settings (
     updated_by STRING NULL,
     CONSTRAINT pk_settings PRIMARY KEY (key ASC)
 );
-CREATE TABLE public.api_keys (
+CREATE TABLE cpkit.api_keys (
     access_key STRING NOT NULL,
     encrypted_secret_access_key BYTES NOT NULL,
     owner STRING NOT NULL,
