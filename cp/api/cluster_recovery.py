@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 
 from cpkit.errors import ServiceError, raise_http_from_service_error
 
-from ..cpkit_integration import (
+from cpkit import (
     get_access_scope,
     get_audit_actor,
     require_readonly,

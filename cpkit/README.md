@@ -50,7 +50,8 @@ startup validation, and exposes the configured repository through
 
 OIDC is configured through framework settings stored in the `cpkit.settings`
 table. `create_cpkit_bundle` wires the OIDC/API-key auth router and exposes
-auth dependencies through the returned bundle for application routers.
+auth dependencies through stable cpkit exports such as `require_user`,
+`require_readonly`, `require_admin`, `get_access_scope`, and `get_audit_actor`.
 
 After wiring this router into the app, cpkit handles the `/auth/login`,
 `/auth/callback`, `/auth/logout`, and `/auth/me` flow, plus API-key header

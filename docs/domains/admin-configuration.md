@@ -77,4 +77,4 @@ Admin UI lives in the Admin page sections in:
 | Add a new option type | `resources/ddl.sql`, `cp/models.py`, admin repo/service/API |
 | Change create-cluster options | `cp/services/cluster.py`, admin option repos |
 | Change role templates | `cp/services/admin/cluster_options.py`, `cp/repos/admin/cluster_options.py` |
-| Change playbook behavior | `cpkit/cpkit/playbooks/`; CP supplies only bundle callbacks in `cp/cpkit_integration.py` |
+| Change playbook behavior | `cpkit/cpkit/playbooks/`; CP supplies only bundle callbacks in `cp/main.py` |

@@ -254,12 +254,6 @@ Functions:
 
 - `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 21: _No docstring._
 
-### `cp.cpkit_integration`
-
-Path: `cp/cpkit_integration.py`
-
-CP callbacks and auth dependencies supplied to cpkit.
-
 ### `cp.main`
 
 Path: `cp/main.py`
@@ -268,7 +262,7 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 14: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 36: _No docstring._
 
 ### `cp.models`
 

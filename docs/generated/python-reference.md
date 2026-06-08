@@ -114,16 +114,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.cpkit_integration`
-
-### `cp.cpkit_integration`
-
-::: cp.cpkit_integration
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.main`
 
 ### `cp.main`

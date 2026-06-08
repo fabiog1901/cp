@@ -2,13 +2,35 @@
 
 from fastapi import FastAPI
 
-from cpkit import create_cpkit_app
+from cpkit import create_cpkit_app, create_cpkit_bundle
 
 from . import DB_URL
+from .audit import build_log_msg
 from .api import admin, alerts, cluster_recovery, clusters
-from .cpkit_integration import cpkit_bundle
+from .models import CommandType, parse_command_payload
 from .prometheus import get_nodes
 from .repos import Repo
+from .services.base import log_event
+from .workers.commands import COMMAND_HANDLERS
+
+cpkit_bundle = create_cpkit_bundle(
+    audit_record_factory=build_log_msg,
+    audit_event_hook=log_event,
+    parse_job_payload=lambda command_type, payload: parse_command_payload(
+        CommandType(command_type),
+        payload,
+    ),
+    reschedule_type_map={
+        CommandType.CREATE_CLUSTER: CommandType.RECREATE_CLUSTER,
+    },
+    resolve_queue_handler=lambda message: COMMAND_HANDLERS.get(
+        CommandType(message.msg_type)
+    ),
+    parse_queue_message=lambda message: parse_command_payload(
+        CommandType(message.msg_type),
+        message.msg_data,
+    ),
+)
 
 
 def configure_api(api: FastAPI) -> None:

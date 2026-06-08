@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 
 from cpkit.errors import ServiceError, raise_http_from_service_error
 
-from ..cpkit_integration import require_readonly
+from cpkit import require_readonly
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
 

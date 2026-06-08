@@ -43,7 +43,6 @@ limited to persistence.
 | `cp/repository.py` | Compatibility helpers for app repository access and app-specific database error translation. |
 | `cp/cluster_database.py` | Managed-cluster SQL connection helper. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |
-| `cp/cpkit_integration.py` | CP-specific callbacks supplied to `cpkit.create_cpkit_bundle` plus auth dependency exports for CP routers. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |
 | `cpkit/resources/ddl.sql` | Framework-owned schema and tables. |
 | `resources/ddl.sql` | Canonical CP metadata schema. |
@@ -191,7 +190,7 @@ This area controls web/API authentication and CP-level visibility.
 
 | Concern | Entry points |
 | --- | --- |
-| App auth dependencies | `cp/cpkit_integration.py` |
+| App auth dependencies | `cpkit` exports consumed by CP routers |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
 | Services | `cpkit/cpkit/auth/*.py` |
 | Repos | `cpkit/cpkit/auth/*.py` |

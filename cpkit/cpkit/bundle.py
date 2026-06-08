@@ -11,6 +11,7 @@ from .audit import AuditEventsService
 from .audit import create_events_router
 from .auth import ApiKeysService, AuthBundle, create_auth_bundle
 from .db import get_pool
+from .dependencies import configure_cpkit_dependencies
 from .errors import ServiceError, raise_http_from_service_error
 from .jobs import JobsService, QueueMessage
 from .jobs import create_jobs_router, create_queue_worker
@@ -150,7 +151,7 @@ def create_cpkit_bundle(
         parse_message=parse_queue_message,
     )
 
-    return CpkitBundle(
+    bundle = CpkitBundle(
         auth=auth,
         routers=(
             auth.router,
@@ -161,6 +162,8 @@ def create_cpkit_bundle(
         startup_hooks=(validate_auth_config,),
         background_tasks=(queue_worker,),
     )
+    configure_cpkit_dependencies(bundle)
+    return bundle
 
 
 def _setting_updated_hook(

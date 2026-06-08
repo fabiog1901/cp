@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from cpkit.errors import ServiceError, raise_http_from_service_error
 
-from ...cpkit_integration import get_audit_actor
+from cpkit import get_audit_actor
 from ...models import DatabaseRoleTemplateConfig
 from ...services.admin.cluster_options import ClusterOptionsService
 
