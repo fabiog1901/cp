@@ -354,16 +354,7 @@ _No docstring._
 
 Path: `cp/auth/common.py`
 
-Shared authentication primitives.
-
-Classes:
-- `OIDCConfig` — line 59: Configuration derived from settings for OIDC login and authz.
-
-Functions:
-
-- `claim_groups(claim_value: Any) -> set[str]` — line 28: Normalize a groups claim into a trimmed set of group names.
-- `claims_groups(claims: dict[str, Any], groups_claim_name: str='groups') -> set[str]` — line 43: Extract the configured groups claim from a JWT or synthetic claims payload.
-- `jsonable_role_groups(role_groups: dict[str, Any]) -> dict[str, list[str]]` — line 50: Convert role-to-groups mappings into JSON-friendly sorted lists.
+Shared authentication constants and compatibility exports.
 
 ### `cp.auth.dependencies`
 

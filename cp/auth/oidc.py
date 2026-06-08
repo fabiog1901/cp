@@ -176,7 +176,9 @@ class OIDCManager(OIDCProviderClient):
             else self.config.role_groups
         )
         for role in roles:
-            role_groups = effective_roles.get(role, set())
+            role_groups = effective_roles.get(role, set()) or effective_roles.get(
+                role.value, set()
+            )
             if role_groups and not role_groups.isdisjoint(user_groups):
                 return claims
 

@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 89 | 157 | 138 | 77 |
+| `cp` | 89 | 156 | 135 | 77 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -31,7 +31,7 @@
 | `cp.api.jobs` | `cp/api/jobs.py` | Job API routes. |
 | `cp.audit` | `cp/audit.py` | CP-specific audit record construction helpers. |
 | `cp.auth` | `cp/auth/__init__.py` | _No docstring._ |
-| `cp.auth.common` | `cp/auth/common.py` | Shared authentication primitives. |
+| `cp.auth.common` | `cp/auth/common.py` | Shared authentication constants and compatibility exports. |
 | `cp.auth.dependencies` | `cp/auth/dependencies.py` | Authentication and authorization dependencies. |
 | `cp.auth.oidc` | `cp/auth/oidc.py` | OIDC client helpers. |
 | `cp.auth.router` | `cp/auth/router.py` | Authentication HTTP routes. |
