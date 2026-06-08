@@ -250,16 +250,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-## `cp.repository`
-
-### `cp.repository`
-
-::: cp.repository
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.services`
 
 ### `cp.services`

@@ -248,11 +248,12 @@ Path: `cp/cluster_database.py`
 Managed-cluster database connection helpers.
 
 Classes:
-- `ClusterDatabaseConnectionError` — line 12: Raised when a cluster database cannot be reached in normal operation.
+- `ClusterDatabaseConnectionError` — line 14: Raised when a cluster database cannot be reached in normal operation.
 
 Functions:
 
-- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 21: _No docstring._
+- `connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection` — line 23: _No docstring._
+- `translate_database_error(err: Exception, operation: str | None)` — line 51: _No docstring._
 
 ### `cp.main`
 
@@ -374,7 +375,7 @@ Prometheus scrape target helpers.
 
 Functions:
 
-- `get_nodes()` — line 11: Return Prometheus scrape targets for active cluster nodes.
+- `get_nodes()` — line 12: Return Prometheus scrape targets for active cluster nodes.
 
 ### `cp.repos`
 
@@ -491,16 +492,6 @@ External connections repository.
 Classes:
 - `ExternalConnectionsRepo` — line 8: _No docstring._
 
-### `cp.repository`
-
-Path: `cp/repository.py`
-
-CP repository compatibility helpers.
-
-Functions:
-
-- `translate_database_error(err: Exception, operation: str | None)` — line 9: _No docstring._
-
 ### `cp.services`
 
 Path: `cp/services/__init__.py`
@@ -593,7 +584,7 @@ Path: `cp/services/cluster_backups.py`
 Backup and restore service for individual clusters.
 
 Classes:
-- `ClusterBackupsService` — line 39: _No docstring._
+- `ClusterBackupsService` — line 40: _No docstring._
 
 ### `cp.services.cluster_db`
 
@@ -623,7 +614,7 @@ Path: `cp/services/cluster_users.py`
 Database access workflows for managed clusters.
 
 Classes:
-- `ClusterUsersService` — line 47: _No docstring._
+- `ClusterUsersService` — line 48: _No docstring._
 
 ### `cp.services.dashboard`
 

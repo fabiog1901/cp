@@ -1,6 +1,6 @@
 """Shared base for admin-facing services."""
 
-from ...repository import get_repo
+from cpkit import get_repo
 
 
 class AdminService:

@@ -7,6 +7,7 @@ zip collection and reconciles CP job/artifact metadata.
 import datetime as dt
 import logging
 
+from cpkit import get_repo
 from cpkit.playbooks import run_playbook
 
 from ...models import (
@@ -17,7 +18,6 @@ from ...models import (
     PlaybookName,
     PollDebugZipCommand,
 )
-from ...repository import get_repo
 
 logger = logging.getLogger(__name__)
 

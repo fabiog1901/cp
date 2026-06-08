@@ -18,7 +18,7 @@ from cpkit.errors import (
 )
 
 from ..models import DashboardMetrics, DashboardSnapshot, SettingKey, to_public_cluster
-from ..repository import get_repo
+from cpkit import get_repo
 
 PROMETHEUS_TIMEOUT_SECS = 10
 logger = logging.getLogger(__name__)

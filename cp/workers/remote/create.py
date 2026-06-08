@@ -9,6 +9,7 @@ import logging
 import secrets
 from threading import Thread
 
+from cpkit import get_repo
 from cpkit.auth import encrypt_secret
 from cpkit.playbooks import run_playbook
 
@@ -23,7 +24,6 @@ from ...models import (
     Region,
     SettingKey,
 )
-from ...repository import get_repo
 from ...services.storage_broker import StorageBrokerService
 from .common import get_node_count_per_zone
 

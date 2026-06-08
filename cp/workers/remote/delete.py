@@ -8,10 +8,10 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from cpkit import get_repo
 from cpkit.playbooks import run_playbook
 
 from ...models import ClusterState, DeleteClusterCommand, JobState, PlaybookName
-from ...repository import get_repo
 
 logger = logging.getLogger(__name__)
 

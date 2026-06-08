@@ -3,6 +3,8 @@
 import psycopg
 from psycopg import OperationalError
 
+from cpkit.db import translate_database_error as _translate_database_error
+
 CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257
 CLUSTER_DB_NAME = "defaultdb"
@@ -44,3 +46,11 @@ def connect_cluster_db(dns_address: str, password: str) -> psycopg.Connection:
 def _is_cluster_connection_timeout(err: OperationalError) -> bool:
     message = str(err).lower()
     return "timeout" in message or "timed out" in message
+
+
+def translate_database_error(err: Exception, operation: str | None):
+    return _translate_database_error(
+        err,
+        operation,
+        unavailable_error_types=(ClusterDatabaseConnectionError,),
+    )

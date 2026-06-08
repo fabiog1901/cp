@@ -3,7 +3,7 @@
 from cpkit.errors import RepositoryError, from_repository_error
 
 from ..models import ClusterJobsSnapshot, to_public_cluster
-from ..repository import get_repo
+from cpkit import get_repo
 
 
 class ClusterJobsService:

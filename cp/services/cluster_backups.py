@@ -16,6 +16,7 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit import get_repo
 
 from ..models import (
     AuditEvent,
@@ -29,7 +30,7 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repository import get_repo, translate_database_error
+from ..cluster_database import translate_database_error
 from .base import log_event
 from .cluster_db import connect_to_cluster_db
 

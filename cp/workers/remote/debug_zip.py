@@ -9,6 +9,7 @@ import logging
 from threading import Thread
 from uuid import uuid4
 
+from cpkit import get_repo
 from cpkit.playbooks import run_playbook
 
 from ...models import (
@@ -21,7 +22,6 @@ from ...models import (
     PlaybookName,
     PollDebugZipCommand,
 )
-from ...repository import get_repo
 from ...services.storage_broker import StorageBrokerService
 
 logger = logging.getLogger(__name__)

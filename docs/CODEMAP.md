@@ -40,7 +40,6 @@ limited to persistence.
 | Path | Why it matters |
 | --- | --- |
 | `cp/main.py` | CP app bootstrap: passes the repo class, cpkit bundle, and CP domain routers to `cpkit.create_cpkit_app`. |
-| `cp/repository.py` | Compatibility helpers for app repository access and app-specific database error translation. |
 | `cp/cluster_database.py` | Managed-cluster SQL connection helper. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |

@@ -13,6 +13,7 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit import get_repo
 
 from ..models import (
     ArtifactDownloadUrlResponse,
@@ -34,7 +35,6 @@ from ..models import (
     RestoreRequest,
     to_public_cluster,
 )
-from ..repository import get_repo
 from .base import log_event
 from .storage_broker import StorageBrokerService
 

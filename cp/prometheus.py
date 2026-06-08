@@ -2,8 +2,9 @@
 
 import logging
 
+from cpkit import get_repo
+
 from .models import ClusterState, Nodes
-from .repository import get_repo
 
 logger = logging.getLogger(__name__)
 

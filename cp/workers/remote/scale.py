@@ -8,6 +8,7 @@ import datetime as dt
 import logging
 from threading import Thread
 
+from cpkit import get_repo
 from cpkit.playbooks import run_playbook
 
 from ...models import (
@@ -20,7 +21,6 @@ from ...models import (
     PlaybookName,
     Region,
 )
-from ...repository import get_repo
 from .common import get_node_count_per_zone
 
 logger = logging.getLogger(__name__)
