@@ -5,12 +5,34 @@ from typing import Any
 
 from psycopg_pool import ConnectionPool
 
+from cpkit.audit import AuditEventsRepositoryMixin
+from cpkit.auth import (
+    APIKeysRepositoryMixin,
+    OIDCSessionsRepositoryMixin,
+    RoleGroupMappingsRepositoryMixin,
+)
 from cpkit.db import get_pool
+from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
+from cpkit.playbooks import PlaybooksRepositoryMixin
+from cpkit.settings import SettingsRepositoryMixin
 
 RepoFactory = Callable[[], Any]
 RepoClass = Callable[[ConnectionPool], Any]
 
 _repo_factory: RepoFactory | None = None
+
+
+class CPKitRepo(
+    APIKeysRepositoryMixin,
+    AuditEventsRepositoryMixin,
+    JobsRepositoryMixin,
+    OIDCSessionsRepositoryMixin,
+    PlaybooksRepositoryMixin,
+    QueueJobRepositoryMixin,
+    RoleGroupMappingsRepositoryMixin,
+    SettingsRepositoryMixin,
+):
+    """Base repository with all framework-owned storage capabilities."""
 
 
 def configure_repository(

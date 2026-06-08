@@ -389,7 +389,7 @@ Path: `cp/repos/__init__.py`
 Repository-layer package.
 
 Classes:
-- `Repo` — line 24: _No docstring._
+- `Repo` — line 16: _No docstring._
 
 ### `cp.repos.admin`
 

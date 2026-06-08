@@ -93,8 +93,8 @@ headers.
 ## Jobs Integration
 
 The framework owns the durable message queue and worker polling loop. The queue
-table lives in `cpkit.mq`; applications enqueue messages through
-`QueueRepositoryMixin` and run workers through `run_queue_worker`.
+table lives in `cpkit.mq`; applications extend `CPKitRepo` and supply command
+parsing plus handler resolution through `create_cpkit_bundle`.
 
 Applications still own business job semantics:
 
@@ -105,20 +105,11 @@ Applications still own business job semantics:
 - failure bookkeeping
 
 ```python
-from cpkit.jobs import QueueMessage, QueueRepositoryMixin, run_queue_worker
+from cpkit import CPKitRepo
 
 
-class Repo(QueueRepositoryMixin, ...):
+class Repo(AppDomainRepo, CPKitRepo):
     ...
-
-
-async def pull_from_queue():
-    await run_queue_worker(
-        get_pool=get_pool,
-        resolve_handler=resolve_handler,
-        parse_message=parse_message,
-        handle_failure=handle_failure,
-    )
 ```
 
 This keeps queue claiming, dispatch, deletion, polling jitter, and cancellation
@@ -127,8 +118,8 @@ handling in cpkit while leaving job behavior to the consuming app.
 ## Playbooks and Ansible
 
 The framework owns versioned playbook storage and the generic Ansible execution
-engine. The playbook table lives in `cpkit.playbooks`; applications use
-`PlaybooksRepositoryMixin` for default/versioned playbook lookup and writes.
+engine. The playbook table lives in `cpkit.playbooks`; applications extend
+`CPKitRepo` for default/versioned playbook lookup and writes.
 The admin playbooks API is provided by `create_playbooks_router`; applications
 supply their service dependency, audit actor dependency, and service error
 handler.
@@ -144,10 +135,11 @@ Remote workers can ask cpkit to run a stored playbook with application-specific
 repository and status values:
 
 ```python
-from cpkit.playbooks import PlaybooksRepositoryMixin, run_playbook
+from cpkit import CPKitRepo
+from cpkit.playbooks import run_playbook
 
 
-class Repo(PlaybooksRepositoryMixin, ...):
+class Repo(AppDomainRepo, CPKitRepo):
     ...
 
 

@@ -3,9 +3,10 @@
 from .admin import create_cpkit_admin_router
 from .app import create_cpkit_app
 from .bundle import CpkitBundle, create_cpkit_bundle
-from .repository import configure_repository, get_repo
+from .repository import CPKitRepo, configure_repository, get_repo
 
 __all__ = [
+    "CPKitRepo",
     "CpkitBundle",
     "configure_repository",
     "create_cpkit_bundle",
