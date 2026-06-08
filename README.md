@@ -77,12 +77,12 @@ The backend is organized in layers. The intended dependency direction is API to 
 - `cp/infra/` contains shared infrastructure such as DB helpers, dependency factories, logging, and cluster connection utilities.
 - `cp/workers/` contains queued and background execution paths.
 - `webapp/` contains the AlpineJS SPA, including UI state, hash routing, API calls, HTML templates, and CSS.
-- `resources/` contains the canonical CP schema, seed/dev SQL, and playbook examples.
+- `resources/` contains the canonical cpkit/CP schemas, seed/dev SQL, and playbook examples.
 
 When adding a feature, prefer following the existing vertical slice:
 
 1. Add or update models in `cp/models.py`.
-2. Add CP metadata SQL in `resources/ddl.sql` when persistence changes.
+2. Add framework SQL in `resources/cpkit_ddl.sql` or CP metadata SQL in `resources/ddl.sql` when persistence changes.
 3. Add repository methods for metadata access.
 4. Add service methods for business behavior.
 5. Add API routes that delegate to the service.

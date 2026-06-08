@@ -8,7 +8,8 @@ For the broader map, see [`../docs/CODEMAP.md`](../docs/CODEMAP.md).
 
 | File or directory | Purpose |
 | --- | --- |
-| `ddl.sql` | Canonical CP metadata schema. Start here for table definitions. |
+| `cpkit_ddl.sql` | Framework-owned schema and tables. Run before CP schema setup. |
+| `ddl.sql` | Canonical CP metadata schema for public-schema application tables. |
 | `init.sql` | Initial/default data loaded with the schema. |
 | `post_schema.sql` | SQL that runs after the main schema setup. |
 | `.dev-setup.sql` | Local development setup helpers. |
@@ -18,7 +19,7 @@ For the broader map, see [`../docs/CODEMAP.md`](../docs/CODEMAP.md).
 
 When adding a persisted feature:
 
-1. Add or modify tables in `ddl.sql`.
+1. Add or modify framework tables in `cpkit_ddl.sql`, or CP application tables in `ddl.sql`.
 2. Add seed/default rows to `init.sql` only when the application needs them.
 3. Add or update Pydantic models in `cp/models.py` or the relevant `cpkit`
    package for framework-owned tables.

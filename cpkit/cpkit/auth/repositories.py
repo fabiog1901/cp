@@ -3,6 +3,7 @@
 from cpkit.db import execute_stmt, fetch_all, fetch_one
 
 API_KEYS_TABLE = "cpkit.api_keys"
+OIDC_SESSIONS_TABLE = "cpkit.oidc_sessions"
 
 
 class APIKeysRepositoryMixin:
@@ -77,4 +78,81 @@ class APIKeysRepositoryMixin:
                 """,
             (access_key,),
             operation="api_keys.delete",
+        )
+
+
+class OIDCSessionsRepositoryMixin:
+    def get_oidc_session(self, session_id: str):
+        return fetch_one(
+            f"""
+            SELECT
+                session_id,
+                encrypted_id_token,
+                encrypted_refresh_token,
+                token_expires_at,
+                session_expires_at,
+                created_at,
+                updated_at
+            FROM {OIDC_SESSIONS_TABLE}
+            WHERE session_id = %s
+                AND session_expires_at > now()
+            """,
+            (session_id,),
+            self.oidc_session_record_type,
+            operation="auth.get_oidc_session",
+        )
+
+    def create_oidc_session(self, session) -> None:
+        execute_stmt(
+            f"""
+            INSERT INTO {OIDC_SESSIONS_TABLE}
+                (session_id, encrypted_id_token, encrypted_refresh_token,
+                 token_expires_at, session_expires_at)
+            VALUES
+                (%s, %s, %s, %s, %s)
+            """,
+            (
+                session.session_id,
+                session.encrypted_id_token,
+                session.encrypted_refresh_token,
+                session.token_expires_at,
+                session.session_expires_at,
+            ),
+            operation="auth.create_oidc_session",
+        )
+
+    def update_oidc_session(
+        self,
+        session_id: str,
+        *,
+        encrypted_id_token: bytes,
+        encrypted_refresh_token: bytes | None,
+        token_expires_at,
+    ) -> None:
+        execute_stmt(
+            f"""
+            UPDATE {OIDC_SESSIONS_TABLE}
+            SET
+                encrypted_id_token = %s,
+                encrypted_refresh_token = %s,
+                token_expires_at = %s
+            WHERE session_id = %s
+            """,
+            (
+                encrypted_id_token,
+                encrypted_refresh_token,
+                token_expires_at,
+                session_id,
+            ),
+            operation="auth.update_oidc_session",
+        )
+
+    def delete_oidc_session(self, session_id: str) -> None:
+        execute_stmt(
+            f"""
+            DELETE FROM {OIDC_SESSIONS_TABLE}
+            WHERE session_id = %s
+            """,
+            (session_id,),
+            operation="auth.delete_oidc_session",
         )

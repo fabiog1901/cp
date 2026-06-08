@@ -47,6 +47,7 @@ limited to persistence.
 | `cp/infra/db.py` | CP metadata DB helpers and database error translation. |
 | `cp/infra/util.py` | Managed-cluster connection utilities and cluster config helpers. |
 | `cp/repos/__init__.py` | Composes repo mixins into the concrete `Repo` class. |
+| `resources/cpkit_ddl.sql` | Framework-owned schema and tables. |
 | `resources/ddl.sql` | Canonical CP metadata schema. |
 | `webapp/index.html` | UI layout and Alpine template bindings. |
 | `webapp/script.js` | UI state, hash routing, API calls, and client-side data shaping. |
@@ -215,13 +216,14 @@ should not be conflated with CP session auth.
 | Task | Start here |
 | --- | --- |
 | Add or change an API route | `cp/api/`, then matching service in `cp/services/` |
+| Add a framework metadata table | `resources/cpkit_ddl.sql`, then the relevant `cpkit` package |
 | Add a CP metadata table | `resources/ddl.sql`, then `cp/models.py`, then a repo method |
 | Add business behavior | service file for that domain |
 | Add an admin option | `cp/api/admin/`, `cp/services/admin/`, `cp/repos/admin/`, `webapp/` admin view |
 | Add a webapp view | hash routing and state in `webapp/script.js`, markup in `webapp/index.html`, styles in `webapp/style.css` |
 | Add a queued cluster operation | command model in `cp/models.py`, service enqueue path, worker implementation |
 | Change database user or role behavior | `cp/services/cluster_users.py`, then `cp/api/clusters.py`, then Database/User Management UI |
-| Change schema defaults/dev data | `resources/ddl.sql`, `resources/init.sql`, `resources/.dev-setup.sql` |
+| Change schema defaults/dev data | `resources/cpkit_ddl.sql`, `resources/ddl.sql`, `resources/init.sql`, `resources/.dev-setup.sql` |
 
 ## Naming And Documentation Conventions
 
@@ -255,3 +257,4 @@ Useful search patterns:
 - `rg "response_model|@router" cp/api`
 - `rg "x-show=\"view|setView|hash" webapp`
 - `rg "CREATE TABLE public" resources/ddl.sql`
+- `rg "CREATE TABLE cpkit" resources/cpkit_ddl.sql`

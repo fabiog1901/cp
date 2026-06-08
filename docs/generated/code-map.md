@@ -637,7 +637,7 @@ Path: `cp/repos/auth.py`
 Auth/support repository.
 
 Classes:
-- `AuthRepo` — line 7: _No docstring._
+- `AuthRepo` — line 9: _No docstring._
 
 ### `cp.repos.backup_catalog`
 

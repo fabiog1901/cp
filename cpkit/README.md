@@ -62,6 +62,9 @@ After wiring this router into the app, cpkit handles the `/auth/login`,
 `/auth/callback`, `/auth/logout`, and `/auth/me` flow, plus API-key header
 authentication through `X-CP-Access-Key`, `X-CP-Signature`, and `X-Timestamp`.
 
+OIDC session persistence is stored in `cpkit.oidc_sessions`; OIDC configuration
+is stored as settings rows in `cpkit.settings`.
+
 ## Logging Integration
 
 Logging is provided by `cpkit.logging`. Framework settings in `cpkit.settings`

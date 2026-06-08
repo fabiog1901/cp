@@ -22,7 +22,7 @@ from .dependencies import (
     timestamp_scheme,
 )
 from .redirects import safe_next_path
-from .repositories import APIKeysRepositoryMixin
+from .repositories import APIKeysRepositoryMixin, OIDCSessionsRepositoryMixin
 from .router import (
     OIDC_NEXT_COOKIE_NAME,
     OIDC_NONCE_COOKIE_NAME,
@@ -57,6 +57,7 @@ __all__ = [
     "APIKeyAuthenticator",
     "APIKeyRepository",
     "APIKeysRepositoryMixin",
+    "OIDCSessionsRepositoryMixin",
     "ACCESS_KEY_HEADER_NAME",
     "AuthDependencies",
     "OIDCConfig",
