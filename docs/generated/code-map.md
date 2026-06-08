@@ -375,10 +375,10 @@ Functions:
 
 Path: `cp/auth/oidc.py`
 
-CP FastAPI adapter for the reusable OIDC manager.
+CP OIDC manager configuration.
 
 Classes:
-- `OIDCManager` — line 21: Translate reusable auth manager failures into FastAPI responses.
+- `OIDCManager` — line 10: Configure CP-specific dependencies for cpkit OIDC auth.
 
 ### `cp.auth.router`
 

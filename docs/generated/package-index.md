@@ -33,7 +33,7 @@
 | `cp.auth` | `cp/auth/__init__.py` | _No docstring._ |
 | `cp.auth.common` | `cp/auth/common.py` | Shared authentication constants and compatibility exports. |
 | `cp.auth.dependencies` | `cp/auth/dependencies.py` | Authentication and authorization dependencies. |
-| `cp.auth.oidc` | `cp/auth/oidc.py` | CP FastAPI adapter for the reusable OIDC manager. |
+| `cp.auth.oidc` | `cp/auth/oidc.py` | CP OIDC manager configuration. |
 | `cp.auth.router` | `cp/auth/router.py` | Authentication HTTP routes. |
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
 | `cp.infra.db` | `cp/infra/db.py` | CP metadata database infrastructure adapter. |

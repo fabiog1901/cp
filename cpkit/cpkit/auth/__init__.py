@@ -15,7 +15,6 @@ from .redirects import safe_next_path
 from .repositories import APIKeysRepositoryMixin
 from .oidc import (
     OIDCAuthenticationError,
-    OIDCAuthorizationError,
     OIDCManager,
     OIDCProviderClient,
     OIDCSessionManager,
@@ -31,7 +30,6 @@ from .secrets import (
 __all__ = [
     "ENCRYPTED_SECRET_VERSION",
     "OIDCAuthenticationError",
-    "OIDCAuthorizationError",
     "OIDCManager",
     "OIDCProviderClient",
     "OIDCSessionManager",

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 
+from fastapi import HTTPException, status
 import jwt
 
 from .api_keys import APIKeyAuthenticationError, APIKeyAuthenticator
@@ -21,10 +22,6 @@ class OIDCAuthenticationError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
         super().__init__(detail)
-
-
-class OIDCAuthorizationError(OIDCAuthenticationError):
-    """Raised when authenticated OIDC claims are not authorized."""
 
 
 class OIDCSessionRepository(Protocol):
@@ -297,7 +294,7 @@ class OIDCSessionManager:
             encrypted_refresh_token=(
                 self.encrypt_secret(refresh_token) if refresh_token else None
             ),
-            token_expires_at=self.provider_client.token_expires_at(claims),
+            token_expires_at=OIDCProviderClient.token_expires_at(claims),
             session_expires_at=now
             + timedelta(
                 seconds=self.provider_client.config.session_max_age_seconds,
@@ -335,7 +332,8 @@ class OIDCSessionManager:
                 id_token = self.decrypt_secret(session.encrypted_id_token).decode(
                     "utf-8"
                 )
-                claims = self.provider_client.validate_jwt(
+                claims = OIDCProviderClient.validate_jwt(
+                    self.provider_client,
                     id_token,
                     strict_client_audience=True,
                 )
@@ -379,7 +377,8 @@ class OIDCSessionManager:
                 "OIDC refresh response missing id_token. Please sign in again."
             )
 
-        claims = self.provider_client.validate_jwt(
+        claims = OIDCProviderClient.validate_jwt(
+            self.provider_client,
             id_token,
             strict_client_audience=True,
         )
@@ -395,7 +394,7 @@ class OIDCSessionManager:
             session.session_id,
             encrypted_id_token=self.encrypt_secret(id_token),
             encrypted_refresh_token=self.encrypt_secret(effective_refresh_token),
-            token_expires_at=self.provider_client.token_expires_at(claims),
+            token_expires_at=OIDCProviderClient.token_expires_at(claims),
         )
         return claims
 
@@ -415,6 +414,7 @@ class OIDCManager(OIDCProviderClient):
             "Access key, signature, and timestamp are required."
         ),
         auth_disabled_claims: dict[str, Any] | None = None,
+        validate_secret_crypto_config: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(config or OIDCConfig())
         self.sessions = OIDCSessionManager(
@@ -430,6 +430,7 @@ class OIDCManager(OIDCProviderClient):
             "sub": "anonymous",
             "auth_disabled": True,
         }
+        self.validate_secret_crypto_config = validate_secret_crypto_config
         self._config_loaded_at = 0.0
         self._config_cache_ttl_seconds = 300
 
@@ -464,8 +465,43 @@ class OIDCManager(OIDCProviderClient):
         """Validate auth configuration at startup."""
         self.load_config(repo, force=True)
         self.config.validate()
-        if validate_secret_crypto_config is not None:
-            validate_secret_crypto_config()
+        crypto_validator = (
+            validate_secret_crypto_config or self.validate_secret_crypto_config
+        )
+        if crypto_validator is not None:
+            crypto_validator()
+
+    def validate_jwt(
+        self,
+        token: str,
+        *,
+        expected_nonce: str | None = None,
+        strict_client_audience: bool = False,
+    ) -> dict[str, Any]:
+        """Validate a JWT and translate auth failures into FastAPI errors."""
+        try:
+            return OIDCProviderClient.validate_jwt(
+                self,
+                token,
+                expected_nonce=expected_nonce,
+                strict_client_audience=strict_client_audience,
+            )
+        except OIDCAuthenticationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=exc.detail,
+            ) from exc
+
+    @staticmethod
+    def token_expires_at(claims: dict[str, Any]) -> datetime:
+        """Return a JWT expiration timestamp and translate auth failures."""
+        try:
+            return OIDCProviderClient.token_expires_at(claims)
+        except OIDCAuthenticationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=exc.detail,
+            ) from exc
 
     def build_session_record(
         self,
@@ -493,13 +529,15 @@ class OIDCManager(OIDCProviderClient):
         )
         user_groups = claims_groups(claims, groups_claim_name)
         if not user_groups:
-            raise OIDCAuthorizationError(
-                f"Forbidden: no groups found in claim '{groups_claim_name}'."
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Forbidden: no groups found in claim '{groups_claim_name}'.",
             )
 
         if self.config.authorized_groups.isdisjoint(user_groups):
-            raise OIDCAuthorizationError(
-                "Forbidden: user is not in any allowed group."
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: user is not in any allowed group.",
             )
 
         return claims
@@ -539,8 +577,9 @@ class OIDCManager(OIDCProviderClient):
         )
         user_groups = claims_groups(claims, groups_claim_name)
         if not user_groups:
-            raise OIDCAuthorizationError(
-                f"Forbidden: no groups found in claim '{groups_claim_name}'."
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Forbidden: no groups found in claim '{groups_claim_name}'.",
             )
 
         effective_roles = (
@@ -560,8 +599,9 @@ class OIDCManager(OIDCProviderClient):
                 return claims
 
         role_list = ", ".join(_role_value(role) for role in roles)
-        raise OIDCAuthorizationError(
-            f"Forbidden: requires one of roles [{role_list}]."
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Forbidden: requires one of roles [{role_list}].",
         )
 
     async def validate_api_key(
@@ -573,14 +613,20 @@ class OIDCManager(OIDCProviderClient):
         timestamp: str,
     ) -> dict[str, Any]:
         """Authenticate an API request using HMAC-signed API key headers."""
-        return await self.api_keys.authenticate_request(
-            request,
-            repo,
-            access_key=access_key,
-            signature=signature,
-            timestamp=timestamp,
-            max_age_seconds=self.config.api_key_signature_ttl_seconds,
-        )
+        try:
+            return await self.api_keys.authenticate_request(
+                request,
+                repo,
+                access_key=access_key,
+                signature=signature,
+                timestamp=timestamp,
+                max_age_seconds=self.config.api_key_signature_ttl_seconds,
+            )
+        except APIKeyAuthenticationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=exc.detail,
+            ) from exc
 
     async def current_claims(
         self,
@@ -595,7 +641,10 @@ class OIDCManager(OIDCProviderClient):
         """Resolve request claims from API-key headers or an OIDC session."""
         if access_key or signature or timestamp:
             if not access_key or not signature or not timestamp:
-                raise APIKeyAuthenticationError(self.missing_api_key_headers_detail)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=self.missing_api_key_headers_detail,
+                )
             return await self.validate_api_key(
                 request,
                 repo,
@@ -610,7 +659,7 @@ class OIDCManager(OIDCProviderClient):
         if session_token:
             return self.claims_from_session(repo, session_token)
 
-        raise OIDCAuthenticationError("Not authenticated.")
+        raise self.not_authenticated_exception()
 
     def claims_from_session(
         self,
@@ -618,11 +667,14 @@ class OIDCManager(OIDCProviderClient):
         session_id: str,
     ) -> dict[str, Any]:
         """Load a server-side OIDC session, refreshing token material when needed."""
-        return self.sessions.claims_from_session(
-            repo,
-            session_id,
-            authorize_claims=self.ensure_authorized,
-        )
+        try:
+            return self.sessions.claims_from_session(
+                repo,
+                session_id,
+                authorize_claims=self.ensure_authorized,
+            )
+        except OIDCAuthenticationError as exc:
+            raise self.not_authenticated_exception(exc.detail) from exc
 
     def refresh_session(
         self,
@@ -630,10 +682,24 @@ class OIDCManager(OIDCProviderClient):
         session: Any,
     ) -> dict[str, Any]:
         """Refresh an OIDC session using its stored refresh token."""
-        return self.sessions.refresh_session(
-            repo,
-            session,
-            authorize_claims=self.ensure_authorized,
+        try:
+            return self.sessions.refresh_session(
+                repo,
+                session,
+                authorize_claims=self.ensure_authorized,
+            )
+        except OIDCAuthenticationError as exc:
+            raise self.not_authenticated_exception(exc.detail) from exc
+
+    def not_authenticated_exception(
+        self,
+        detail: str = "Not authenticated.",
+    ) -> HTTPException:
+        """Return the standard unauthenticated exception for OIDC session flows."""
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"X-Auth-Login-Url": self.config.login_path},
         )
 
 
