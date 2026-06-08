@@ -5,11 +5,10 @@ from typing import Any
 from cpkit.db import execute_stmt, fetch_all, fetch_one
 
 from .maintenance import FAIL_ZOMBIE_JOBS_MESSAGE_TYPE
-from .types import ClusterIDRef, IntID, Job, JobID, JobStatsResponse, Task
+from .types import IntID, Job, JobID, JobStatsResponse, LinkedResourceRef, Task
 
 QUEUE_TABLE = "cpkit.mq"
 JOBS_TABLE = "cpkit.jobs"
-JOB_CLUSTER_MAP_TABLE = "public.map_clusters_jobs"
 TASKS_TABLE = "cpkit.tasks"
 
 
@@ -119,7 +118,7 @@ class JobsRepositoryMixin:
                 ),
                 cj AS (
                     SELECT DISTINCT job_id
-                    FROM {JOB_CLUSTER_MAP_TABLE}
+                    FROM {self.job_cluster_map_table}
                     WHERE cluster_id IN (SELECT * FROM c)
                 )
                 SELECT
@@ -158,7 +157,7 @@ class JobsRepositoryMixin:
             ),
             cj AS (
                 SELECT job_id
-                FROM {JOB_CLUSTER_MAP_TABLE}
+                FROM {self.job_cluster_map_table}
                 WHERE cluster_id IN (SELECT * FROM c)
             )
             SELECT *
@@ -196,7 +195,7 @@ class JobsRepositoryMixin:
             ),
             cj AS (
                 SELECT job_id
-                FROM {JOB_CLUSTER_MAP_TABLE}
+                FROM {self.job_cluster_map_table}
                 WHERE cluster_id IN (SELECT * FROM c)
             )
             SELECT *
@@ -221,34 +220,15 @@ class JobsRepositoryMixin:
             Task,
         )
 
-    def list_linked_clusters(self, job_id: int) -> list[ClusterIDRef]:
-        return fetch_all(
-            f"""
-            SELECT cluster_id AS cluster_id
-            FROM {JOB_CLUSTER_MAP_TABLE}
-            WHERE job_id = %s
-            ORDER BY cluster_id
-            """,
-            (job_id,),
-            ClusterIDRef,
+    @property
+    def job_cluster_map_table(self) -> str:
+        raise NotImplementedError(
+            "Applications using group-scoped job visibility must provide "
+            "a job-cluster mapping table."
         )
 
-    def link_job_to_cluster(self, cluster_id: str, job_id: int, status: str) -> None:
-        execute_stmt(
-            f"""
-            WITH
-            create_job_linked AS (
-                INSERT INTO {JOB_CLUSTER_MAP_TABLE}
-                    (cluster_id, job_id)
-                VALUES (%s, %s)
-                RETURNING 1
-            )
-            UPDATE {JOBS_TABLE}
-            SET status = %s
-            WHERE job_id = %s
-            """,
-            (cluster_id, job_id, _message_type_value(status), job_id),
-        )
+    def list_linked_resources(self, job_id: int) -> list[LinkedResourceRef]:
+        return []
 
     def update_job(self, job_id: int, status: str) -> None:
         execute_stmt(

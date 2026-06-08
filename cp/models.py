@@ -11,31 +11,32 @@ from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from cpkit.models import (
+from cpkit.auth import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
     ApiKeyCreateResponse,
     ApiKeyRecord,
     ApiKeySummary,
-    ClusterIDRef,
+    OIDCSessionRecord,
+    RoleGroupMap,
+)
+from cpkit.jobs import (
     IntID,
     Job,
     JobDetailsResponse,
     JobID,
     JobRescheduleResponse,
     JobStatsResponse,
-    OIDCSessionRecord,
     Task,
+)
+from cpkit.playbooks import (
     Playbook,
     PlaybookOverview,
     PlaybookResponse,
     PlaybookSaveRequest,
     PlaybookVersionResponse,
-    RoleGroupMap,
-    SettingNotFoundError,
-    SettingRecord,
-    SettingUpdateRequest,
 )
+from cpkit.settings import SettingNotFoundError, SettingRecord, SettingUpdateRequest
 
 TS_FORMAT = "YYYY-MM-DD HH:mm:ss"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
@@ -162,6 +163,10 @@ class SettingKey(AutoNameStrEnum):
 
 class StrID(BaseModel):
     id: str
+
+
+class ClusterIDRef(BaseModel):
+    cluster_id: str
 
 
 #

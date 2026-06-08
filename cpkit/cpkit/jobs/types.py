@@ -25,8 +25,9 @@ class IntID(BaseModel):
     id: int
 
 
-class ClusterIDRef(BaseModel):
-    cluster_id: str
+class LinkedResourceRef(BaseModel):
+    resource_type: str
+    resource_id: str
 
 
 class JobStatsResponse(BaseModel):
@@ -58,7 +59,7 @@ class JobDetailsResponse(BaseModel):
     job: Job
     description_yaml: str
     tasks: list[Task]
-    linked_clusters: list[ClusterIDRef]
+    linked_resources: list[LinkedResourceRef]
 
 
 class JobRescheduleResponse(BaseModel):

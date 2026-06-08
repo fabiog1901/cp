@@ -82,7 +82,7 @@ class JobsService:
                 "job": selected_job,
                 "description_yaml": yaml.dump(selected_job.description),
                 "tasks": self.repo.list_tasks(job_id),
-                "linked_clusters": self.repo.list_linked_clusters(job_id),
+                "linked_resources": self.repo.list_linked_resources(job_id),
             }
         except RepositoryError as err:
             raise from_repository_error(
