@@ -4,8 +4,8 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 83 | 147 | 119 | 73 |
-| `tools` | 1 | 5 | 31 | 0 |
+| `cp` | 81 | 147 | 110 | 64 |
+| `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
 
@@ -20,9 +20,7 @@
 | `cp.api.admin.database_role_templates` | `cp/api/admin/database_role_templates.py` | _No docstring._ |
 | `cp.api.admin.disk_sizes` | `cp/api/admin/disk_sizes.py` | _No docstring._ |
 | `cp.api.admin.node_counts` | `cp/api/admin/node_counts.py` | _No docstring._ |
-| `cp.api.admin.playbooks` | `cp/api/admin/playbooks.py` | _No docstring._ |
 | `cp.api.admin.regions` | `cp/api/admin/regions.py` | _No docstring._ |
-| `cp.api.admin.settings` | `cp/api/admin/settings.py` | _No docstring._ |
 | `cp.api.admin.versions` | `cp/api/admin/versions.py` | _No docstring._ |
 | `cp.api.alerts` | `cp/api/alerts.py` | Alert API routes. |
 | `cp.api.cluster_recovery` | `cp/api/cluster_recovery.py` | Cluster recovery API routes. |

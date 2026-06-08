@@ -364,6 +364,7 @@ def build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]:
         for module in modules
         for route in module.routes
     ]
+    routes.extend(synthetic_factory_routes(modules))
     routes = sorted(routes, key=route_sort_key)
     commands = [
         {"command": command, "handler": handler, "module": module.module_name}
@@ -397,6 +398,108 @@ def build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]:
         "modules": module_dicts,
         "routes": routes,
         "command_handlers": commands,
+    }
+
+
+def synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]:
+    """Represent known cpkit router factories wired by CP modules."""
+    admin_module = next(
+        (module for module in modules if module.module_name == "cp.api.admin"),
+        None,
+    )
+    if admin_module is None:
+        return []
+
+    imports = {
+        name
+        for import_info in admin_module.imports
+        for name in import_info.names
+    }
+    routes: list[dict[str, Any]] = []
+    if "create_settings_router" in imports:
+        routes.extend(
+            [
+                _synthetic_route(
+                    "GET", "/settings", "cpkit.settings.router", "list_settings"
+                ),
+                _synthetic_route(
+                    "GET",
+                    "/settings/{setting_id}",
+                    "cpkit.settings.router",
+                    "get_setting",
+                ),
+                _synthetic_route(
+                    "PATCH",
+                    "/settings/{setting_id}",
+                    "cpkit.settings.router",
+                    "update_setting",
+                ),
+                _synthetic_route(
+                    "PUT",
+                    "/settings/{setting_id}/reset",
+                    "cpkit.settings.router",
+                    "reset_setting",
+                ),
+            ]
+        )
+    if "create_playbooks_router" in imports:
+        routes.extend(
+            [
+                _synthetic_route(
+                    "GET",
+                    "/playbooks/{name}",
+                    "cpkit.playbooks.router",
+                    "get_playbook",
+                    "PlaybookResponse",
+                ),
+                _synthetic_route(
+                    "POST",
+                    "/playbooks/{name}",
+                    "cpkit.playbooks.router",
+                    "save_playbook",
+                    "PlaybookVersionResponse",
+                ),
+                _synthetic_route(
+                    "DELETE",
+                    "/playbooks/{name}/{version}",
+                    "cpkit.playbooks.router",
+                    "delete_playbook_version",
+                    "PlaybookVersionResponse",
+                ),
+                _synthetic_route(
+                    "GET",
+                    "/playbooks/{name}/{version}",
+                    "cpkit.playbooks.router",
+                    "get_playbook_version",
+                    "PlaybookVersionResponse",
+                ),
+                _synthetic_route(
+                    "PUT",
+                    "/playbooks/{name}/{version}",
+                    "cpkit.playbooks.router",
+                    "set_default_playbook",
+                ),
+            ]
+        )
+    return routes
+
+
+def _synthetic_route(
+    method: str,
+    path: str,
+    module: str,
+    function: str,
+    response_model: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "method": method,
+        "path": path,
+        "full_path": path,
+        "function": function,
+        "lineno": 0,
+        "response_model": response_model,
+        "dependencies": [],
+        "module": module,
     }
 
 

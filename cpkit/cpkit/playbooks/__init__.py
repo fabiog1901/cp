@@ -9,6 +9,7 @@ from .ansible import (
     run_playbook_lite,
 )
 from .repository import PLAYBOOKS_TABLE, PlaybooksRepositoryMixin
+from .router import create_playbooks_router
 from .types import (
     Playbook,
     PlaybookOverview,
@@ -29,6 +30,7 @@ __all__ = [
     "PlaybookVersionResponse",
     "PlaybooksRepositoryMixin",
     "RunnerResult",
+    "create_playbooks_router",
     "run_playbook",
     "run_playbook_lite",
 ]

@@ -88,6 +88,10 @@ authentication through `X-CP-Access-Key`, `X-CP-Signature`, and `X-Timestamp`.
 OIDC session persistence is stored in `cpkit.oidc_sessions`; OIDC configuration
 is stored as settings rows in `cpkit.settings`.
 
+The admin settings API is provided by `create_settings_router`; applications
+supply their service dependency, audit actor dependency, and service error
+handler.
+
 ## Logging Integration
 
 Logging is provided by `cpkit.logging`. Framework settings in `cpkit.settings`
@@ -154,6 +158,9 @@ handling in cpkit while leaving job behavior to the consuming app.
 The framework owns versioned playbook storage and the generic Ansible execution
 engine. The playbook table lives in `cpkit.playbooks`; applications use
 `PlaybooksRepositoryMixin` for default/versioned playbook lookup and writes.
+The admin playbooks API is provided by `create_playbooks_router`; applications
+supply their service dependency, audit actor dependency, and service error
+handler.
 
 Applications still own the domain contract around playbooks:
 

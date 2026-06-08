@@ -119,27 +119,6 @@ Routes:
 - `POST /node_counts` -> `create_node_count()`
 - `DELETE /node_counts/{node_count}` -> `delete_node_count()`
 
-### `cp.api.admin.playbooks`
-
-Path: `cp/api/admin/playbooks.py`
-
-_No docstring._
-
-Functions:
-
-- `async get_playbook(name: PlaybookName, service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookResponse` — line 19: _No docstring._
-- `async get_playbook_version(name: PlaybookName, version: str, service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookVersionResponse` — line 30: _No docstring._
-- `async save_playbook(name: PlaybookName, request: PlaybookSaveRequest, actor_id: str=Depends(get_audit_actor), service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookVersionResponse` — line 42: _No docstring._
-- `async set_default_playbook(name: PlaybookName, version: str, actor_id: str=Depends(get_audit_actor), service: PlaybooksService=Depends(get_playbooks_service)) -> None` — line 55: _No docstring._
-- `async delete_playbook_version(name: PlaybookName, version: str, actor_id: str=Depends(get_audit_actor), service: PlaybooksService=Depends(get_playbooks_service)) -> PlaybookVersionResponse` — line 68: _No docstring._
-
-Routes:
-- `GET /playbooks/{name}` -> `get_playbook()`
-- `GET /playbooks/{name}/{version}` -> `get_playbook_version()`
-- `POST /playbooks/{name}` -> `save_playbook()`
-- `PUT /playbooks/{name}/{version}` -> `set_default_playbook()`
-- `DELETE /playbooks/{name}/{version}` -> `delete_playbook_version()`
-
 ### `cp.api.admin.regions`
 
 Path: `cp/api/admin/regions.py`
@@ -156,25 +135,6 @@ Routes:
 - `GET /regions` -> `list_regions()`
 - `POST /regions` -> `create_region()`
 - `DELETE /regions/{cloud}/{region}/{zone}` -> `delete_region()`
-
-### `cp.api.admin.settings`
-
-Path: `cp/api/admin/settings.py`
-
-_No docstring._
-
-Functions:
-
-- `async list_settings(service: SettingsService=Depends(get_settings_service)) -> list[SettingRecord]` — line 14: _No docstring._
-- `async get_setting(setting_id: str, service: SettingsService=Depends(get_settings_service)) -> str` — line 24: _No docstring._
-- `async update_setting(setting_id: str, request: SettingUpdateRequest, actor_id: str=Depends(get_audit_actor), service: SettingsService=Depends(get_settings_service)) -> None` — line 35: _No docstring._
-- `async reset_setting(setting_id: str, actor_id: str=Depends(get_audit_actor), service: SettingsService=Depends(get_settings_service)) -> None` — line 48: _No docstring._
-
-Routes:
-- `GET /settings` -> `list_settings()`
-- `GET /settings/{setting_id}` -> `get_setting()`
-- `PATCH /settings/{setting_id}` -> `update_setting()`
-- `PUT /settings/{setting_id}/reset` -> `reset_setting()`
 
 ### `cp.api.admin.versions`
 
@@ -1092,14 +1052,15 @@ Functions:
 - `first_sentence(text: str | None) -> str` — line 346: Return a short docstring summary suitable for tables.
 - `route_sort_key(route: dict[str, Any]) -> tuple[str, str, str]` — line 354: Sort routes by path, method, then handler.
 - `build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]` — line 359: Build the machine-readable project index consumed by docs and agents.
-- `generated_header(title: str) -> list[str]` — line 403: Return a standard generated Markdown header.
-- `render_code_map(index: dict[str, Any]) -> str` — line 408: Render a module-oriented generated code map.
-- `render_package_index(index: dict[str, Any]) -> str` — line 460: Render package/module summary tables.
-- `render_api_routes(index: dict[str, Any]) -> str` — line 487: Render FastAPI route inventory.
-- `render_llm_index(index: dict[str, Any]) -> str` — line 505: Render a compact agent-facing navigation index.
-- `render_python_reference(index: dict[str, Any]) -> str` — line 552: Render a MkDocstrings reference page for importable Python modules.
-- `json_dumps(data: dict[str, Any]) -> str` — line 588: Serialize JSON deterministically with a trailing newline.
-- `file_hash(content: str) -> str` — line 593: Return a stable content hash.
-- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 598: Write a generated file or report it stale in check mode.
-- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 614: Return all deterministic generated outputs.
-- `main() -> int` — line 626: CLI entry point.
+- `synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]` — line 404: Represent known cpkit router factories wired by CP modules.
+- `generated_header(title: str) -> list[str]` — line 506: Return a standard generated Markdown header.
+- `render_code_map(index: dict[str, Any]) -> str` — line 511: Render a module-oriented generated code map.
+- `render_package_index(index: dict[str, Any]) -> str` — line 563: Render package/module summary tables.
+- `render_api_routes(index: dict[str, Any]) -> str` — line 590: Render FastAPI route inventory.
+- `render_llm_index(index: dict[str, Any]) -> str` — line 608: Render a compact agent-facing navigation index.
+- `render_python_reference(index: dict[str, Any]) -> str` — line 655: Render a MkDocstrings reference page for importable Python modules.
+- `json_dumps(data: dict[str, Any]) -> str` — line 691: Serialize JSON deterministically with a trailing newline.
+- `file_hash(content: str) -> str` — line 696: Return a stable content hash.
+- `write_or_check(path: Path, content: str, check: bool) -> bool` — line 701: Write a generated file or report it stale in check mode.
+- `generated_outputs(index: dict[str, Any]) -> dict[Path, str]` — line 717: Return all deterministic generated outputs.
+- `main() -> int` — line 729: CLI entry point.

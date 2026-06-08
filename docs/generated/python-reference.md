@@ -70,25 +70,9 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.api.admin.playbooks`
-
-::: cp.api.admin.playbooks
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.api.admin.regions`
 
 ::: cp.api.admin.regions
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.api.admin.settings`
-
-::: cp.api.admin.settings
     options:
       show_source: true
       show_root_heading: false
