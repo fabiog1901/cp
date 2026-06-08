@@ -17,12 +17,13 @@ static webapp mount, startup hooks, and background task cancellation.
 The application supplies its domain routers and lifecycle hooks:
 
 ```python
+from cp.repos import Repo
 from cpkit import create_cpkit_app
 
 app = create_cpkit_app(
     title="my-control-plane",
     version="0.1.0",
-    get_repo=get_repo,
+    repo_class=Repo,
     db_url=DB_URL,
     routers=(auth_router, admin_router, domain_router),
     startup_hooks=(validate_oidc_config,),
@@ -30,6 +31,9 @@ app = create_cpkit_app(
     static_directory="webapp",
 )
 ```
+
+cpkit initializes the database pool from `db_url`, configures the repository
+factory, and exposes the configured repository through `cpkit.get_repo()`.
 
 ## OIDC Integration
 
@@ -43,6 +47,7 @@ cpkit cannot know:
 The integration should fit in the app's cpkit bootstrap file:
 
 ```python
+from cpkit import get_repo
 from cpkit.auth import create_auth_bundle
 
 auth = create_auth_bundle(

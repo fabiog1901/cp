@@ -12,11 +12,11 @@ from cpkit.jobs import JobsService, QueueMessage
 from cpkit.jobs import create_jobs_router as create_cpkit_jobs_router
 from cpkit.jobs import create_queue_worker as create_cpkit_queue_worker
 from cpkit.playbooks import PlaybooksService
+from cpkit.repository import get_repo
 from cpkit.settings import SettingsService
 
 from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
-from .repository import get_repo
 from .services.base import log_event
 from .workers.commands import COMMAND_HANDLERS
 

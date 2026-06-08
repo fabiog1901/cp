@@ -508,12 +508,11 @@ Classes:
 
 Path: `cp/repository.py`
 
-CP repository factory and application-specific database error handling.
+CP repository compatibility helpers.
 
 Functions:
 
-- `get_repo()` — line 9: _No docstring._
-- `translate_database_error(err: Exception, operation: str | None)` — line 15: _No docstring._
+- `translate_database_error(err: Exception, operation: str | None)` — line 9: _No docstring._
 
 ### `cp.services`
 

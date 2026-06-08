@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 62 | 113 | 96 | 54 |
+| `cp` | 62 | 113 | 95 | 54 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -42,7 +42,7 @@
 | `cp.repos.cluster_jobs` | `cp/repos/cluster_jobs.py` | Cluster jobs repository. |
 | `cp.repos.common` | `cp/repos/common.py` | Shared helpers for repository models. |
 | `cp.repos.external_connections` | `cp/repos/external_connections.py` | External connections repository. |
-| `cp.repository` | `cp/repository.py` | CP repository factory and application-specific database error handling. |
+| `cp.repository` | `cp/repository.py` | CP repository compatibility helpers. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
 | `cp.services.admin` | `cp/services/admin/__init__.py` | Admin service package. |
 | `cp.services.admin.base` | `cp/services/admin/base.py` | Shared base for admin-facing services. |

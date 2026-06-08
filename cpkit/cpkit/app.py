@@ -12,17 +12,20 @@ from fastapi.staticfiles import StaticFiles
 
 from cpkit.db import close_db, initialize_postgres
 from cpkit.logging import configure_logging, request_logging_middleware
+from cpkit.repository import configure_repository, get_repo as get_configured_repo
 
 StartupHook = Callable[[], Any]
 BackgroundTaskFactory = Callable[[], Awaitable[Any]]
 ConfigureApi = Callable[[FastAPI], None]
+RepoClass = Callable[[Any], Any]
 
 
 def create_cpkit_app(
     *,
     title: str,
     version: str,
-    get_repo: Callable[[], Any],
+    repo_class: RepoClass | None = None,
+    get_repo: Callable[[], Any] | None = None,
     db_url: str | None,
     routers: Iterable[APIRouter] = (),
     configure_api: ConfigureApi | None = None,
@@ -39,7 +42,14 @@ def create_cpkit_app(
         running_tasks: list[asyncio.Task[Any]] = []
 
         initialize_postgres(db_url)
-        repo = get_repo()
+        if repo_class is not None:
+            configure_repository(repo_class=repo_class)
+        elif get_repo is not None:
+            configure_repository(repo_factory=get_repo)
+        else:
+            raise ValueError("repo_class or get_repo is required.")
+
+        repo = get_configured_repo()
         configure_logging(
             repo,
             force=True,

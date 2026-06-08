@@ -15,7 +15,7 @@ from .cpkit_integration import (
     validate_auth_config,
 )
 from .prometheus import get_nodes
-from .repository import get_repo
+from .repos import Repo
 
 
 def configure_api(api: FastAPI) -> None:
@@ -27,7 +27,7 @@ def configure_api(api: FastAPI) -> None:
 app = create_cpkit_app(
     title="cp",
     version="0.1.0",
-    get_repo=get_repo,
+    repo_class=Repo,
     db_url=DB_URL,
     routers=(
         auth_router,
