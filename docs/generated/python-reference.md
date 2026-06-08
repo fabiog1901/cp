@@ -162,38 +162,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.auth.common`
-
-::: cp.auth.common
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.auth.dependencies`
-
-::: cp.auth.dependencies
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.auth.oidc`
-
-::: cp.auth.oidc
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.auth.router`
-
-::: cp.auth.router
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ## `cp.infra`
 
 ### `cp.infra`

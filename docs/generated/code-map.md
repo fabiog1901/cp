@@ -348,38 +348,14 @@ Functions:
 
 Path: `cp/auth/__init__.py`
 
-_No docstring._
-
-### `cp.auth.common`
-
-Path: `cp/auth/common.py`
-
-Shared authentication constants and compatibility exports.
-
-### `cp.auth.dependencies`
-
-Path: `cp/auth/dependencies.py`
-
-CP auth dependency wiring.
-
-### `cp.auth.oidc`
-
-Path: `cp/auth/oidc.py`
-
-CP OIDC manager configuration.
+CP's cpkit OIDC integration.
 
 Classes:
-- `OIDCManager` — line 10: Configure CP-specific dependencies for cpkit OIDC auth.
-
-### `cp.auth.router`
-
-Path: `cp/auth/router.py`
-
-CP auth router wiring.
+- `OIDCManager` — line 41: Configure CP-specific dependencies for cpkit OIDC auth.
 
 Functions:
 
-- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 16: Persist a login or logout event using the current request id context.
+- `log_auth_event(repo: Repo, actor_id: str, action: str, details: dict[str, Any] | None=None) -> None` — line 76: Persist a login or logout event using the current request id context.
 
 ### `cp.infra`
 
