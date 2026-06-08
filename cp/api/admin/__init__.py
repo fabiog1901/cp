@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Security
 
 from ...cpkit_integration import require_admin
-from ...cpkit_integration import create_admin_router
 from . import (
     cpu_counts,
     database_role_templates,
@@ -16,7 +15,6 @@ router = APIRouter(
     dependencies=[Security(require_admin)],
 )
 
-router.include_router(create_admin_router())
 router.include_router(versions.router)
 router.include_router(node_counts.router)
 router.include_router(cpu_counts.router)

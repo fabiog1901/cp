@@ -1,6 +1,6 @@
 """Admin router assembly for framework-owned capabilities."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from fastapi import APIRouter
@@ -18,9 +18,14 @@ def create_cpkit_admin_router(
     get_audit_actor: Callable[..., Any],
     handle_service_error: Callable[[Exception], None],
     service_error_type: type[Exception] = Exception,
+    prefix: str = "/admin",
+    dependencies: Sequence[Any] | None = None,
 ) -> APIRouter:
     """Create the standard admin routes provided by cpkit."""
-    router = APIRouter()
+    router = APIRouter(
+        prefix=prefix,
+        dependencies=list(dependencies or ()),
+    )
     router.include_router(
         create_settings_router(
             get_service=get_settings_service,

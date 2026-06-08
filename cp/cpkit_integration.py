@@ -1,5 +1,7 @@
 """CP wiring for cpkit-provided capabilities."""
 
+from fastapi import Security
+
 from cpkit import create_cpkit_admin_router
 from cpkit.audit import AuditEventsService
 from cpkit.audit import create_events_router as create_cpkit_events_router
@@ -11,6 +13,7 @@ from cpkit.jobs import create_jobs_router as create_cpkit_jobs_router
 from cpkit.jobs import create_queue_worker as create_cpkit_queue_worker
 from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
+from cpkit.errors import raise_http_from_service_error
 
 from .audit import build_log_msg
 from .models import AuditEvent, CommandType, parse_command_payload
@@ -35,10 +38,10 @@ get_audit_actor = auth.get_audit_actor
 __all__ = [
     "auth",
     "auth_router",
-    "create_admin_router",
     "create_events_router",
     "create_jobs_router",
     "create_queue_worker",
+    "cpkit_admin_router",
     "get_access_scope",
     "get_audit_actor",
     "oidc",
@@ -55,24 +58,8 @@ def validate_auth_config() -> None:
     oidc.validate_config(get_repo())
 
 
-def create_admin_router():
-    """Create admin routes owned by cpkit and wired to CP hooks."""
-    from cpkit.errors import raise_http_from_service_error
-
-    return create_cpkit_admin_router(
-        get_api_keys_service=_get_api_keys_service,
-        get_settings_service=_get_settings_service,
-        get_playbooks_service=_get_playbooks_service,
-        get_audit_actor=get_audit_actor,
-        handle_service_error=raise_http_from_service_error,
-        service_error_type=ServiceError,
-    )
-
-
 def create_events_router():
     """Create audit event routes owned by cpkit and wired to CP hooks."""
-    from cpkit.errors import raise_http_from_service_error
-
     return create_cpkit_events_router(
         get_service=_get_events_service,
         get_access_scope=get_access_scope,
@@ -84,8 +71,6 @@ def create_events_router():
 
 def create_jobs_router():
     """Create job management routes owned by cpkit and wired to CP hooks."""
-    from cpkit.errors import raise_http_from_service_error
-
     return create_cpkit_jobs_router(
         get_service=_get_jobs_service,
         get_access_scope=get_access_scope,
@@ -179,3 +164,14 @@ def _parse_queue_message(message: QueueMessage):
         CommandType(message.msg_type),
         message.msg_data,
     )
+
+
+cpkit_admin_router = create_cpkit_admin_router(
+    get_api_keys_service=_get_api_keys_service,
+    get_settings_service=_get_settings_service,
+    get_playbooks_service=_get_playbooks_service,
+    get_audit_actor=get_audit_actor,
+    handle_service_error=raise_http_from_service_error,
+    service_error_type=ServiceError,
+    dependencies=(Security(require_admin),),
+)

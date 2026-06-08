@@ -262,11 +262,10 @@ CP wiring for cpkit-provided capabilities.
 
 Functions:
 
-- `validate_auth_config() -> None` — line 53: Validate cpkit auth settings at startup.
-- `create_admin_router()` — line 58: Create admin routes owned by cpkit and wired to CP hooks.
-- `create_events_router()` — line 72: Create audit event routes owned by cpkit and wired to CP hooks.
-- `create_jobs_router()` — line 85: Create job management routes owned by cpkit and wired to CP hooks.
-- `create_queue_worker()` — line 100: Create the cpkit queue worker with CP command handlers.
+- `validate_auth_config() -> None` — line 56: Validate cpkit auth settings at startup.
+- `create_events_router()` — line 61: Create audit event routes owned by cpkit and wired to CP hooks.
+- `create_jobs_router()` — line 72: Create job management routes owned by cpkit and wired to CP hooks.
+- `create_queue_worker()` — line 85: Create the cpkit queue worker with CP command handlers.
 
 ### `cp.main`
 
@@ -276,7 +275,7 @@ CP FastAPI application wiring.
 
 Functions:
 
-- `configure_api(api: FastAPI) -> None` — line 20: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 21: _No docstring._
 
 ### `cp.models`
 
