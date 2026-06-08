@@ -706,7 +706,7 @@ Path: `cp/repos/jobs.py`
 Job and task metadata repository.
 
 Classes:
-- `JobsRepo` — line 22: _No docstring._
+- `JobsRepo` — line 23: _No docstring._
 
 ### `cp.repos.mq`
 
@@ -715,7 +715,7 @@ Path: `cp/repos/mq.py`
 Message queue repository.
 
 Classes:
-- `MqRepo` — line 7: _No docstring._
+- `MqRepo` — line 9: _No docstring._
 
 ### `cp.services`
 
@@ -966,9 +966,9 @@ Queue worker entry point.
 
 Functions:
 
-- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 45: Mark stale running jobs as failed from a scheduled queue command.
-- `get_nodes()` — line 77: Return Prometheus scrape targets for active cluster nodes.
-- `async pull_from_mq()` — line 104: Continuously claim due MQ messages and dispatch them to command handlers.
+- `fail_zombie_jobs(_job_id: int, _command: FailZombieJobsCommand, _requested_by: str)` — line 41: Mark stale running jobs as failed from a scheduled queue command.
+- `get_nodes()` — line 73: Return Prometheus scrape targets for active cluster nodes.
+- `async pull_from_mq()` — line 100: Continuously claim due MQ messages and dispatch them to command handlers.
 
 ### `cp.workers.remote`
 

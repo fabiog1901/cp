@@ -5,6 +5,7 @@ CP worker framework.
 """
 
 from ..infra.db import execute_stmt, fetch_all, fetch_one
+from cpkit.jobs import QUEUE_TABLE
 from ..models import (
     ClusterIDRef,
     CommandType,
@@ -200,10 +201,10 @@ class JobsRepo:
 
     def fail_zombie_jobs(self):
         return fetch_all(
-            """
+            f"""
             WITH
             fail_zombie_jobs AS (
-                INSERT INTO mq (msg_type, start_after)
+                INSERT INTO {QUEUE_TABLE} (msg_type, start_after)
                 VALUES (%s, now() + INTERVAL '300s' + (random()*10)::INTERVAL)
                 RETURNING 1
             )

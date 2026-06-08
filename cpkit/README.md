@@ -87,3 +87,37 @@ async def dispatch(request, call_next):
 `request_logging_middleware` manages the request id context, emits inbound and
 outbound request logs, and adds `X-Request-ID` plus `X-Process-Time-ms` response
 headers.
+
+## Jobs Integration
+
+The framework owns the durable message queue and worker polling loop. The queue
+table lives in `cpkit.mq`; applications enqueue messages through
+`QueueRepositoryMixin` and run workers through `run_queue_worker`.
+
+Applications still own business job semantics:
+
+- command enums and payload models
+- command parsing
+- handler functions
+- application job/task metadata
+- failure bookkeeping
+
+```python
+from cpkit.jobs import QueueMessage, QueueRepositoryMixin, run_queue_worker
+
+
+class Repo(QueueRepositoryMixin, ...):
+    ...
+
+
+async def pull_from_queue():
+    await run_queue_worker(
+        get_pool=get_pool,
+        resolve_handler=resolve_handler,
+        parse_message=parse_message,
+        handle_failure=handle_failure,
+    )
+```
+
+This keeps queue claiming, dispatch, deletion, polling jitter, and cancellation
+handling in cpkit while leaving job behavior to the consuming app.

@@ -22,6 +22,7 @@ For the broader map, see [`../../docs/CODEMAP.md`](../../docs/CODEMAP.md).
 
 ## Common Pattern
 
-The API/service layer should enqueue work and return a job id. Workers should
-claim the queued command, execute it, and update job/task state. Keep direct user
+The API/service layer should enqueue work and return a job id. `cpkit.jobs`
+owns queue polling and message claiming; CP workers resolve the queued command,
+execute it, and update job/task state. Keep direct user
 request concerns out of workers.

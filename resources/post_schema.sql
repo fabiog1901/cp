@@ -1,7 +1,7 @@
-INSERT INTO mq (msg_type, start_after)
+INSERT INTO cpkit.mq (msg_type, start_after)
 VALUES ('FAIL_ZOMBIE_JOBS', now() + INTERVAL '300s' + (random()*10)::INTERVAL);
 
-INSERT INTO mq (msg_type, start_after)
+INSERT INTO cpkit.mq (msg_type, start_after)
 VALUES ('SYNC_BACKUP_CATALOG', now() + INTERVAL '120s' + (random()*10)::INTERVAL);
 
 INSERT INTO cpkit.settings (
