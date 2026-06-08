@@ -1,8 +1,9 @@
 """CP logging configuration adapter."""
 
 from cpkit.logging import configure_logging as _configure_logging
+from cpkit.settings import FrameworkSettingKey
 
-from ..models import SettingKey
+SettingKey = FrameworkSettingKey
 
 
 def configure_logging(repo=None, *, force: bool = False) -> None:

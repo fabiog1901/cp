@@ -13,9 +13,10 @@ from cpkit.auth import (
     parse_api_key_timestamp,
     request_target_bytes,
 )
+from cpkit.settings import FrameworkSettingKey
 
 from ..infra import as_bool, safe_csv_set, safe_json_string_dict
-from ..models import CPRole, SettingKey
+from ..models import CPRole
 from ..repos import Repo
 
 OIDC_SESSION_COOKIE_NAME = "cp_session"
@@ -83,6 +84,7 @@ class OIDCConfig:
 
     @classmethod
     def from_repo(cls, repo: Repo) -> "OIDCConfig":
+        SettingKey = FrameworkSettingKey
         settings = {setting.key: setting for setting in repo.list_settings()}
         enabled = as_bool(settings[SettingKey.oidc_enabled].value, default=False)
         if not enabled:
