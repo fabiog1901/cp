@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 75 | 134 | 110 | 64 |
+| `cp` | 72 | 125 | 108 | 61 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -14,7 +14,6 @@
 | `cp` | `cp/__init__.py` | _No docstring._ |
 | `cp.api` | `cp/api/__init__.py` | FastAPI router packages for the cp application. |
 | `cp.api.admin` | `cp/api/admin/__init__.py` | _No docstring._ |
-| `cp.api.admin.api_keys` | `cp/api/admin/api_keys.py` | _No docstring._ |
 | `cp.api.admin.common` | `cp/api/admin/common.py` | _No docstring._ |
 | `cp.api.admin.cpu_counts` | `cp/api/admin/cpu_counts.py` | _No docstring._ |
 | `cp.api.admin.database_role_templates` | `cp/api/admin/database_role_templates.py` | _No docstring._ |
@@ -37,7 +36,6 @@
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
 | `cp.repos` | `cp/repos/__init__.py` | Repository-layer package. |
 | `cp.repos.admin` | `cp/repos/admin/__init__.py` | Admin repository package. |
-| `cp.repos.admin.api_keys` | `cp/repos/admin/api_keys.py` | Admin API keys repository. |
 | `cp.repos.admin.base` | `cp/repos/admin/base.py` | Shared base for admin-oriented repositories. |
 | `cp.repos.admin.cluster_options` | `cp/repos/admin/cluster_options.py` | Admin option and cluster database-access metadata repository. |
 | `cp.repos.admin.regions` | `cp/repos/admin/regions.py` | Admin regions repository. |
@@ -54,7 +52,6 @@
 | `cp.repository` | `cp/repository.py` | CP repository factory and application-specific database error handling. |
 | `cp.services` | `cp/services/__init__.py` | Service-layer package. |
 | `cp.services.admin` | `cp/services/admin/__init__.py` | Admin service package. |
-| `cp.services.admin.api_keys` | `cp/services/admin/api_keys.py` | Admin API key service. |
 | `cp.services.admin.base` | `cp/services/admin/base.py` | Shared base for admin-facing services. |
 | `cp.services.admin.cluster_options` | `cp/services/admin/cluster_options.py` | Admin cluster option service. |
 | `cp.services.admin.regions` | `cp/services/admin/regions.py` | Business logic for the admin regions vertical. |

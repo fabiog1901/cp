@@ -10,6 +10,13 @@ from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from cpkit.auth import (
+    ApiKeyCreateRequest,
+    ApiKeyCreateRequestInDB,
+    ApiKeyCreateResponse,
+    ApiKeyRecord,
+    ApiKeySummary,
+)
 from cpkit.jobs import (
     ClusterIDRef,
     IntID,
@@ -968,35 +975,12 @@ class AllocatePlaybookError(Exception):
     pass
 
 
-class ApiKeyNotFoundError(Exception):
-    pass
-
-
-class InvalidApiKeyValidityError(Exception):
-    pass
-
-
 class LogMsg(BaseModel):
     ts: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.timezone.utc))
     user_id: str
     action: str
     details: dict[str, Any] | None = None
     request_id: str | None = None
-
-
-class ApiKeyRecord(BaseModel):
-    access_key: str
-    encrypted_secret_access_key: bytes
-    owner: str
-    valid_until: dt.datetime
-    roles: list[CPRole] | None = None
-
-
-class ApiKeySummary(BaseModel):
-    access_key: str
-    owner: str
-    valid_until: dt.datetime
-    roles: list[CPRole] | None = None
 
 
 class OIDCSessionRecord(BaseModel):
@@ -1007,19 +991,6 @@ class OIDCSessionRecord(BaseModel):
     session_expires_at: dt.datetime
     created_at: dt.datetime | None = None
     updated_at: dt.datetime | None = None
-
-
-class ApiKeyCreateRequest(BaseModel):
-    valid_until: dt.datetime
-    roles: list[CPRole] | None = None
-
-
-class ApiKeyCreateRequestInDB(ApiKeyCreateRequest):
-    access_key: str
-
-
-class ApiKeyCreateResponse(ApiKeySummary):
-    secret_access_key: str
 
 
 class DeferredTask(BaseModel):

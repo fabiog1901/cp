@@ -6,9 +6,6 @@
 | --- | --- | --- | --- |
 | `GET` | `/alerts` | `cp.api.alerts.list_alerts` | `list[LiveAlert]` |
 | `POST` | `/alerts/webhook` | `cp.api.alerts.receive_alert` | `-` |
-| `GET` | `/api_keys` | `cp.api.admin.api_keys.list_api_keys` | `-` |
-| `POST` | `/api_keys` | `cp.api.admin.api_keys.create_api_key` | `ApiKeyCreateResponse` |
-| `DELETE` | `/api_keys/{access_key}` | `cp.api.admin.api_keys.delete_api_key` | `-` |
 | `GET` | `/cluster-recovery/backups` | `cp.api.cluster_recovery.list_recovery_backups` | `BackupCatalogSnapshot` |
 | `POST` | `/cluster-recovery/backups/sync` | `cp.api.cluster_recovery.sync_recovery_backups` | `-` |
 | `POST` | `/cluster-recovery/restores` | `cp.api.cluster_recovery.restore_full_cluster` | `JobID` |

@@ -22,14 +22,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.api.admin.api_keys`
-
-::: cp.api.admin.api_keys
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.api.admin.common`
 
 ::: cp.api.admin.common
@@ -220,14 +212,6 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.repos.admin.api_keys`
-
-::: cp.repos.admin.api_keys
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.repos.admin.base`
 
 ::: cp.repos.admin.base
@@ -355,14 +339,6 @@
 ### `cp.services.admin`
 
 ::: cp.services.admin
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.admin.api_keys`
-
-::: cp.services.admin.api_keys
     options:
       show_source: true
       show_root_heading: false

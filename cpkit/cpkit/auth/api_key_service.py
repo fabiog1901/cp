@@ -1,28 +1,40 @@
-"""Admin API key service.
-
-This service validates, creates, lists, and revokes CP API keys while keeping
-secret generation and audit logging out of the API layer.
-"""
+"""Service helpers for framework API-key management."""
 
 import secrets
+from collections.abc import Callable
 from datetime import datetime, timezone
+from typing import Any
 
-from cpkit.auth import encrypt_secret
+from cpkit.errors import (
+    RepositoryError,
+    ServiceNotFoundError,
+    ServiceValidationError,
+    from_repository_error,
+)
 
-from ...infra.errors import RepositoryError
-from ...models import (
+from .secrets import encrypt_secret
+from .types import (
     ApiKeyCreateRequest,
     ApiKeyCreateRequestInDB,
     ApiKeyCreateResponse,
     ApiKeySummary,
-    AuditEvent,
 )
-from ..base import log_event
-from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
-from .base import AdminService
+
+APIKeyAuditHook = Callable[[Any, str, str, dict[str, Any]], None]
 
 
-class ApiKeysService(AdminService):
+class ApiKeysService:
+    def __init__(
+        self,
+        repo,
+        *,
+        created_hook: APIKeyAuditHook | None = None,
+        deleted_hook: APIKeyAuditHook | None = None,
+    ) -> None:
+        self.repo = repo
+        self.created_hook = created_hook
+        self.deleted_hook = deleted_hook
+
     def list_api_keys(self, access_key: str | None = None) -> list[ApiKeySummary]:
         try:
             return self.repo.list_api_keys(access_key)
@@ -65,16 +77,17 @@ class ApiKeysService(AdminService):
                 fallback_message="Unable to create API key.",
             ) from err
 
-        log_event(
-            self.repo,
-            actor_id,
-            action=AuditEvent.API_KEY_CREATED,
-            details={
-                "access_key": created.access_key,
-                "valid_until": created.valid_until.isoformat(),
-                "roles": [role.value for role in created.roles or []],
-            },
-        )
+        if self.created_hook is not None:
+            self.created_hook(
+                self.repo,
+                actor_id,
+                "API_KEY_CREATED",
+                {
+                    "access_key": created.access_key,
+                    "valid_until": created.valid_until.isoformat(),
+                    "roles": [_role_value(role) for role in created.roles or []],
+                },
+            )
 
         return ApiKeyCreateResponse(
             access_key=created.access_key,
@@ -106,20 +119,25 @@ class ApiKeysService(AdminService):
                 fallback_message=f"Unable to delete API key '{access_key}'.",
             ) from err
 
-        log_event(
-            self.repo,
-            actor_id,
-            action=AuditEvent.API_KEY_DELETED,
-            details={
-                "access_key": existing_key.access_key,
-                "owner": existing_key.owner,
-                "valid_until": existing_key.valid_until.isoformat(),
-                "roles": [role.value for role in existing_key.roles or []],
-            },
-        )
+        if self.deleted_hook is not None:
+            self.deleted_hook(
+                self.repo,
+                actor_id,
+                "API_KEY_DELETED",
+                {
+                    "access_key": existing_key.access_key,
+                    "owner": existing_key.owner,
+                    "valid_until": existing_key.valid_until.isoformat(),
+                    "roles": [_role_value(role) for role in existing_key.roles or []],
+                },
+            )
 
     @staticmethod
     def _normalize_valid_until(value: datetime) -> datetime:
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+
+def _role_value(role: Any) -> str:
+    return str(getattr(role, "value", role))

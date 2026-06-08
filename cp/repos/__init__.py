@@ -1,12 +1,12 @@
 """Repository-layer package."""
 
+from cpkit.auth import APIKeysRepositoryMixin
 from cpkit.jobs import JobsRepositoryMixin, QueueJobRepositoryMixin
 from cpkit.playbooks import PlaybooksRepositoryMixin
 from cpkit.settings import SettingsRepositoryMixin
 from psycopg_pool import ConnectionPool
 
 from .admin import (
-    ApiKeysRepo,
     ClusterOptionsRepo,
     RegionsRepo,
     VersionsRepo,
@@ -22,7 +22,7 @@ from .external_connections import ExternalConnectionsRepo
 
 
 class Repo(
-    ApiKeysRepo,
+    APIKeysRepositoryMixin,
     AlertsRepo,
     BackupCatalogRepo,
     ClusterOptionsRepo,

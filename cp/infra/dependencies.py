@@ -1,3 +1,4 @@
+from cpkit.auth import ApiKeysService
 from cpkit.jobs import JobsService
 from cpkit.playbooks import PlaybooksService
 from cpkit.settings import SettingsService
@@ -7,10 +8,19 @@ from ..services.base import log_event
 from ..repository import get_repo
 
 __all__ = [
+    "get_api_keys_service",
     "get_jobs_service",
     "get_playbooks_service",
     "get_settings_service",
 ]
+
+
+def get_api_keys_service():
+    return ApiKeysService(
+        get_repo(),
+        created_hook=log_event,
+        deleted_hook=log_event,
+    )
 
 
 def get_jobs_service():

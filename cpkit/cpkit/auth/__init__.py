@@ -9,6 +9,8 @@ from .api_keys import (
     parse_api_key_timestamp,
     request_target_bytes,
 )
+from .api_key_router import create_api_keys_router
+from .api_key_service import ApiKeysService
 from .claims import claim_groups, claims_groups, jsonable_role_groups
 from .config import OIDCConfig
 from .dependencies import (
@@ -42,6 +44,13 @@ from .secrets import (
     encrypt_secret,
     validate_secret_crypto_config,
 )
+from .types import (
+    ApiKeyCreateRequest,
+    ApiKeyCreateRequestInDB,
+    ApiKeyCreateResponse,
+    ApiKeyRecord,
+    ApiKeySummary,
+)
 
 __all__ = [
     "ENCRYPTED_SECRET_VERSION",
@@ -57,6 +66,12 @@ __all__ = [
     "APIKeyAuthenticator",
     "APIKeyRepository",
     "APIKeysRepositoryMixin",
+    "ApiKeyCreateRequest",
+    "ApiKeyCreateRequestInDB",
+    "ApiKeyCreateResponse",
+    "ApiKeyRecord",
+    "ApiKeySummary",
+    "ApiKeysService",
     "OIDCSessionsRepositoryMixin",
     "ACCESS_KEY_HEADER_NAME",
     "AuthDependencies",
@@ -69,6 +84,7 @@ __all__ = [
     "claim_groups",
     "claims_groups",
     "create_oidc_router",
+    "create_api_keys_router",
     "create_auth_dependencies",
     "decrypt_secret",
     "encrypt_secret",

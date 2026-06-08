@@ -4,6 +4,7 @@ from cpkit.db import close_db, get_pool, initialize_postgres
 
 from ..repository import get_repo
 from .dependencies import (
+    get_api_keys_service,
     get_jobs_service,
     get_playbooks_service,
     get_settings_service,
@@ -11,6 +12,7 @@ from .dependencies import (
 
 __all__ = [
     "close_db",
+    "get_api_keys_service",
     "get_pool",
     "get_repo",
     "get_jobs_service",

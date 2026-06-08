@@ -36,8 +36,8 @@ authentication or authorization.
 | --- | --- |
 | App integration | `cp/auth.py` |
 | Framework auth | `cpkit/cpkit/auth/*.py` |
-| Services | `cp/services/auth.py`, `cp/services/admin/api_keys.py` |
-| Repos | `cp/repos/auth.py`, `cp/repos/admin/api_keys.py` |
+| Services | `cp/services/auth.py`, `cpkit/cpkit/auth/` |
+| Repos | `cp/repos/auth.py`, `cpkit/cpkit/auth/` |
 
 ## API Resources
 
@@ -77,4 +77,4 @@ Important auth resources include:
 | Change framework OIDC behavior | `cpkit/cpkit/auth/oidc.py`, `cpkit/cpkit/auth/router.py` |
 | Change route access dependencies | `cpkit/cpkit/auth/dependencies.py`, API routes |
 | Change cluster visibility | `cp/auth.py`, `cp/repos/cluster.py` |
-| Change API keys | `cp/services/admin/api_keys.py`, `cp/repos/admin/api_keys.py` |
+| Change API keys | `cpkit/cpkit/auth/`, then CP wiring in `cp/infra/dependencies.py` if audit hooks change |

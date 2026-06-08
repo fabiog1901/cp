@@ -2,11 +2,16 @@
 
 from cpkit.db import execute_stmt, fetch_all, fetch_one
 
+from .types import ApiKeyRecord, ApiKeySummary
+
 API_KEYS_TABLE = "cpkit.api_keys"
 OIDC_SESSIONS_TABLE = "cpkit.oidc_sessions"
 
 
 class APIKeysRepositoryMixin:
+    api_key_record_type = ApiKeyRecord
+    api_key_summary_type = ApiKeySummary
+
     def get_api_key(self, access_key: str):
         return fetch_one(
             f"""
