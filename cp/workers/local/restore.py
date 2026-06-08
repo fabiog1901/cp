@@ -7,11 +7,10 @@ CP job/task metadata without using remote SSH.
 import datetime as dt
 import logging
 
-from psycopg import sql
-from psycopg.rows import dict_row
-
 from cpkit import get_repo
 from cpkit.db import get_pool
+from psycopg import sql
+from psycopg.rows import dict_row
 
 from ...models import (
     ClusterState,

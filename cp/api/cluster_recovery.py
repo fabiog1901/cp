@@ -4,11 +4,10 @@ This router exposes backup catalog views and restore entry points used by the
 cluster recovery page. Restore orchestration is delegated to BackupCatalogService.
 """
 
-from fastapi import APIRouter, Depends, Query
-
 from cpkit import get_access_scope, get_audit_actor, require_readonly, require_user
 from cpkit.errors import ServiceError, raise_http_from_service_error
 from cpkit.jobs import JobID
+from fastapi import APIRouter, Depends, Query
 
 from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest
 from ..services.backup_catalog import BackupCatalogService

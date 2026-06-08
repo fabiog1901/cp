@@ -2,9 +2,8 @@
 
 import os
 
-from dotenv import load_dotenv
-
 from cpkit import create_cpkit_app, create_cpkit_bundle
+from dotenv import load_dotenv
 
 from .api import admin, alerts, cluster_recovery, clusters, prometheus
 from .models import COMMAND_MODELS, CommandType

@@ -6,10 +6,6 @@ restore commands, and coordinates backup-related metadata with worker flows.
 
 import logging
 
-from psycopg import sql
-from psycopg.rows import class_row
-from pydantic import ValidationError
-
 from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import (
@@ -19,6 +15,9 @@ from cpkit.errors import (
     from_repository_error,
 )
 from cpkit.jobs import JobID
+from psycopg import sql
+from psycopg.rows import class_row
+from pydantic import ValidationError
 
 from ..cluster_database import translate_database_error
 from ..models import (

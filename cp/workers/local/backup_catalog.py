@@ -6,11 +6,10 @@ entries that power backup browsing and recovery flows.
 
 import logging
 
-from psycopg import sql
-from psycopg.rows import dict_row
-
 from cpkit import get_repo
 from cpkit.db import get_pool
+from psycopg import sql
+from psycopg.rows import dict_row
 
 from ...models import (
     BackupCatalogEntryUpsert,

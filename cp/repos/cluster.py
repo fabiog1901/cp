@@ -4,9 +4,8 @@ This repo reads and writes CP metadata for managed clusters, including
 visibility-scoped cluster listings used by the API and webapp.
 """
 
-from pydantic import TypeAdapter
-
 from cpkit.db import execute_stmt, fetch_all, fetch_one
+from pydantic import TypeAdapter
 
 from ..models import (
     Cluster,

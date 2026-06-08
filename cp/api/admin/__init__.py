@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Security
-
 from cpkit import require_admin
+from fastapi import APIRouter, Security
 
 from . import (
     cpu_counts,

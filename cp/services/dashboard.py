@@ -9,7 +9,6 @@ import time
 from typing import Any
 
 import requests
-
 from cpkit import get_repo
 from cpkit.errors import (
     RepositoryError,

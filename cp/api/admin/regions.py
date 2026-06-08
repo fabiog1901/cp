@@ -1,9 +1,8 @@
 import json
 
-from fastapi import APIRouter, Depends
-
 from cpkit import get_audit_actor
 from cpkit.errors import ServiceError, raise_http_from_service_error
+from fastapi import APIRouter, Depends
 
 from ...models import Region
 from ...services.admin.regions import RegionsService

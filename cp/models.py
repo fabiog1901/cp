@@ -9,10 +9,9 @@ import datetime as dt
 from enum import StrEnum, auto
 from typing import Any, Callable, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 from cpkit.jobs import Job
 from cpkit.time import STRFTIME, TS_FORMAT
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class AutoNameStrEnum(StrEnum):

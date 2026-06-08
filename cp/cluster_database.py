@@ -1,9 +1,8 @@
 """Managed-cluster database connection helpers."""
 
 import psycopg
-from psycopg import OperationalError
-
 from cpkit.db import translate_database_error as _translate_database_error
+from psycopg import OperationalError
 
 CONNECT_TIMEOUT_SECS = 2
 CLUSTER_DB_PORT = 26257

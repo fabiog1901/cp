@@ -1,10 +1,9 @@
 """Business logic for the admin versions vertical."""
 
-from pydantic import ValidationError
-
 from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
+from pydantic import ValidationError
 
 from ...models import AuditEvent, Version
 

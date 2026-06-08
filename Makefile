@@ -45,4 +45,4 @@ docs-clean: ## Remove the temporary MkDocs build output.
 	rm -rf $(MKDOCS_SITE_DIR)
 
 py-compile: ## Compile all Python files to catch syntax errors.
-	poetry run python -m py_compile $$(find cp cpkit/cpkit tools -type f -name '*.py' -not -path '*/__pycache__/*')
+	poetry run python -m py_compile $$(find cp tools -type f -name '*.py' -not -path '*/__pycache__/*')

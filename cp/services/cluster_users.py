@@ -8,10 +8,6 @@ the main place where CP metadata is coordinated with SQL executed on a cluster.
 import logging
 import re
 
-from psycopg import sql
-from psycopg.rows import class_row
-from pydantic import ValidationError
-
 from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import (
@@ -20,6 +16,9 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from psycopg import sql
+from psycopg.rows import class_row
+from pydantic import ValidationError
 
 from ..cluster_database import translate_database_error
 from ..models import (

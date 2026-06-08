@@ -1,8 +1,7 @@
 """Repository-layer package."""
 
-from psycopg_pool import ConnectionPool
-
 from cpkit import CPKitRepo
+from psycopg_pool import ConnectionPool
 
 from .admin import ClusterOptionsRepo, RegionsRepo, VersionsRepo
 from .alerts import AlertsRepo

@@ -4,8 +4,6 @@ This service validates cluster create/delete/scale/upgrade/debug commands,
 coordinates CP metadata, and enqueues worker jobs for long-running operations.
 """
 
-from pydantic import ValidationError
-
 from cpkit import get_repo
 from cpkit.audit import log_event
 from cpkit.errors import (
@@ -16,6 +14,7 @@ from cpkit.errors import (
     from_repository_error,
 )
 from cpkit.jobs import JobID
+from pydantic import ValidationError
 
 from ..models import (
     ArtifactDownloadUrlResponse,

@@ -4,10 +4,9 @@ This router exposes Alertmanager-backed alert data for the webapp and API
 clients. Alert retrieval and filtering live in AlertsService.
 """
 
-from fastapi import APIRouter, Depends, Query
-
 from cpkit import require_readonly
 from cpkit.errors import ServiceError, raise_http_from_service_error
+from fastapi import APIRouter, Depends, Query
 
 from ..models import AlertmanagerPayload, LiveAlert
 from ..services.alerts import AlertsService
