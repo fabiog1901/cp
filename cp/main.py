@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from cpkit import create_cpkit_app
 
-from . import DB_ENGINE, DB_URL
+from . import DB_URL
 from .api import admin, alerts, cluster_recovery, clusters, events, jobs
 from .auth import oidc
 from .auth import router as auth_router
@@ -27,7 +27,6 @@ app = create_cpkit_app(
     version="0.1.0",
     get_repo=get_repo,
     db_url=DB_URL,
-    db_engine=DB_ENGINE,
     routers=(
         auth_router,
         admin.router,

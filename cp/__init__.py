@@ -6,6 +6,5 @@ from cpkit.logging import configure_logging
 
 load_dotenv(override=True)
 
-DB_URL = os.getenv("DB_URL", "sqlite.cp")
-DB_ENGINE = "postgres" if DB_URL.startswith("postgres") else "sqlite"
+DB_URL = os.getenv("DB_URL")
 configure_logging(default_journald_identifier="cp")

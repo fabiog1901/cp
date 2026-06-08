@@ -24,7 +24,6 @@ def create_cpkit_app(
     version: str,
     get_repo: Callable[[], Any],
     db_url: str | None,
-    db_engine: str = "postgres",
     routers: Iterable[APIRouter] = (),
     configure_api: ConfigureApi | None = None,
     startup_hooks: Iterable[StartupHook] = (),
@@ -39,23 +38,22 @@ def create_cpkit_app(
     async def lifespan(_app: FastAPI):
         running_tasks: list[asyncio.Task[Any]] = []
 
-        if db_engine == "postgres":
-            initialize_postgres(db_url)
-            repo = get_repo()
-            configure_logging(
-                repo,
-                force=True,
-                default_journald_identifier=default_journald_identifier,
-            )
-            for hook in startup_hooks:
-                result = hook()
-                if inspect.isawaitable(result):
-                    await result
+        initialize_postgres(db_url)
+        repo = get_repo()
+        configure_logging(
+            repo,
+            force=True,
+            default_journald_identifier=default_journald_identifier,
+        )
+        for hook in startup_hooks:
+            result = hook()
+            if inspect.isawaitable(result):
+                await result
 
-            running_tasks = [
-                asyncio.create_task(task_factory())
-                for task_factory in background_tasks
-            ]
+        running_tasks = [
+            asyncio.create_task(task_factory())
+            for task_factory in background_tasks
+        ]
 
         yield
 

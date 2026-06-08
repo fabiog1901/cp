@@ -24,7 +24,6 @@ app = create_cpkit_app(
     version="0.1.0",
     get_repo=get_repo,
     db_url=DB_URL,
-    db_engine=DB_ENGINE,
     routers=(auth_router, admin_router, domain_router),
     startup_hooks=(validate_oidc_config,),
     background_tasks=(pull_from_queue,),
