@@ -41,7 +41,7 @@ limited to persistence.
 
 | Path | Why it matters |
 | --- | --- |
-| `cp/main.py` | FastAPI application setup and router registration. |
+| `cp/main.py` | CP router/hook/worker contribution to `cpkit.create_cpkit_app`. |
 | `cp/repository.py` | App repository factory and app-specific database error translation. |
 | `cp/cluster_database.py` | Managed-cluster SQL connection helper. |
 | `cp/models.py` | Pydantic models, enums, command payloads, and API response shapes. |

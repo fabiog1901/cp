@@ -398,13 +398,12 @@ Compatibility exports for repository exception types.
 
 Path: `cp/main.py`
 
-FastAPI application entry point.
+CP FastAPI application wiring.
 
 Functions:
 
-- `async lifespan(_app: FastAPI)` — line 25: _No docstring._
-- `async get_targets()` — line 66: _No docstring._
-- `async dispatch(request: Request, call_next)` — line 79: _No docstring._
+- `configure_api(api: FastAPI) -> None` — line 15: _No docstring._
+- `validate_oidc_config() -> None` — line 21: _No docstring._
 
 ### `cp.models`
 

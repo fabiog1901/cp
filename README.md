@@ -74,6 +74,7 @@ The backend is organized in layers. The intended dependency direction is API to 
 - `cp/api/` contains FastAPI routers. Route handlers should stay thin: enforce authentication and authorization dependencies, call services, and translate service errors into HTTP responses.
 - `cp/services/` contains business workflows. Services validate domain input, coordinate repositories, execute managed-cluster SQL when needed, enqueue jobs, and write audit events.
 - `cp/repos/` contains CP metadata persistence. Repositories should read and write CP tables only; they should not contain business decisions or connect to managed clusters.
+- `cp/main.py` contributes CP routers, hooks, and workers to `cpkit.create_cpkit_app`; cpkit owns the FastAPI app shell.
 - `cp/infra/` contains FastAPI dependency factories. Root modules such as `cp/repository.py` and `cp/cluster_database.py` are thin app integration points over cpkit and CP services. Shared DB helpers live in `cpkit.db`.
 - `cp/workers/` contains queued and background execution paths.
 - `webapp/` contains the AlpineJS SPA, including UI state, hash routing, API calls, HTML templates, and CSS.

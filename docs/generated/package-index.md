@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 83 | 147 | 120 | 73 |
+| `cp` | 83 | 147 | 119 | 73 |
 | `tools` | 1 | 5 | 31 | 0 |
 
 ## Modules
@@ -35,7 +35,7 @@
 | `cp.infra` | `cp/infra/__init__.py` | Shared infrastructure entrypoints for DB lifecycle and FastAPI dependencies. |
 | `cp.infra.dependencies` | `cp/infra/dependencies.py` | _No docstring._ |
 | `cp.infra.errors` | `cp/infra/errors.py` | Compatibility exports for repository exception types. |
-| `cp.main` | `cp/main.py` | FastAPI application entry point. |
+| `cp.main` | `cp/main.py` | CP FastAPI application wiring. |
 | `cp.models` | `cp/models.py` | Shared CP domain, API, command, and persistence models. |
 | `cp.repos` | `cp/repos/__init__.py` | Repository-layer package. |
 | `cp.repos.admin` | `cp/repos/admin/__init__.py` | Admin repository package. |

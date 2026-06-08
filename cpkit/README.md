@@ -8,6 +8,30 @@ cpkit application should get consistently. Product-specific domains, request
 models, event catalogs, and lifecycle behavior stay in the applications that
 consume it.
 
+## App Bootstrap
+
+Applications create their FastAPI app through `create_cpkit_app`. The framework
+owns the root app, `/api` subapp, database lifecycle, request logging middleware,
+static webapp mount, startup hooks, and background task cancellation.
+
+The application supplies its domain routers and lifecycle hooks:
+
+```python
+from cpkit import create_cpkit_app
+
+app = create_cpkit_app(
+    title="my-control-plane",
+    version="0.1.0",
+    get_repo=get_repo,
+    db_url=DB_URL,
+    db_engine=DB_ENGINE,
+    routers=(auth_router, admin_router, domain_router),
+    startup_hooks=(validate_oidc_config,),
+    background_tasks=(pull_from_queue,),
+    static_directory="webapp",
+)
+```
+
 ## OIDC Integration
 
 OIDC is configured through framework settings stored in the `cpkit.settings`
@@ -73,8 +97,9 @@ control the runtime log level and journald identifier:
 - `logging.level`
 - `logging.journald_identifier`
 
-Applications should configure logging and install the request logging middleware
-through the cpkit API:
+`create_cpkit_app` configures logging and installs request logging middleware.
+Applications that need lower-level control can still use the logging helpers
+directly:
 
 ```python
 from cpkit.logging import configure_logging, request_logging_middleware
