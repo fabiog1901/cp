@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from cpkit import get_access_scope, get_audit_actor, require_readonly, require_user
 from cpkit.errors import ServiceError, raise_http_from_service_error
+from cpkit.jobs import JobID
 
 from ..models import (
     ArtifactDownloadUrlResponse,
@@ -38,7 +39,6 @@ from ..models import (
     DebugZipOptions,
     DebugZipRequest,
     ErrorResponse,
-    JobID,
     NewDatabaseUserRequest,
 )
 from ..services.cluster import ClusterService

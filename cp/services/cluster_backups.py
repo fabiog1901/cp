@@ -18,6 +18,7 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit.jobs import JobID
 
 from ..cluster_database import translate_database_error
 from ..models import (
@@ -27,7 +28,6 @@ from ..models import (
     Cluster,
     ClusterBackupsSnapshot,
     CommandType,
-    JobID,
     RestoreClusterObjectRequest,
     RestoreRequest,
     to_public_cluster,

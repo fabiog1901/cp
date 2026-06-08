@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, Query
 
 from cpkit import get_access_scope, get_audit_actor, require_readonly, require_user
 from cpkit.errors import ServiceError, raise_http_from_service_error
+from cpkit.jobs import JobID
 
-from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest, JobID
+from ..models import BackupCatalogSnapshot, ClusterRecoveryRestoreApiRequest
 from ..services.backup_catalog import BackupCatalogService
 
 router = APIRouter(

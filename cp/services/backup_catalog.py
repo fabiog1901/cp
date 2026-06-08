@@ -13,6 +13,7 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit.jobs import JobID
 
 from ..models import (
     AuditEvent,
@@ -20,7 +21,6 @@ from ..models import (
     ClusterRecoveryRestoreApiRequest,
     ClusterState,
     CommandType,
-    JobID,
     RestoreFullClusterRequest,
     SyncBackupCatalogRequest,
     SyncClusterBackupCatalogRequest,

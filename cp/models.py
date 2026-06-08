@@ -24,7 +24,6 @@ from cpkit.jobs import (
     IntID,
     Job,
     JobDetailsResponse,
-    JobID,
     JobRescheduleResponse,
     JobStatsResponse,
     Task,

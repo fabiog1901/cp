@@ -15,6 +15,7 @@ from cpkit.errors import (
     ServiceValidationError,
     from_repository_error,
 )
+from cpkit.jobs import JobID
 
 from ..models import (
     ArtifactDownloadUrlResponse,
@@ -32,7 +33,6 @@ from ..models import (
     DebugZipRequest,
     DeleteClusterCommand,
     HealthcheckClusterCommand,
-    JobID,
     RestoreRequest,
     to_public_cluster,
 )
