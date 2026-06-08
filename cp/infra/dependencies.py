@@ -1,8 +1,11 @@
+from cpkit.playbooks import PlaybooksService
+from cpkit.settings import SettingsService
+
+from ..models import AuditEvent
+from ..services.base import log_event
 from ..services.admin.api_keys import ApiKeysService
 from ..services.admin.cluster_options import ClusterOptionsService
-from ..services.admin.playbooks import PlaybooksService
 from ..services.admin.regions import RegionsService
-from ..services.admin.settings import SettingsService
 from ..services.admin.versions import VersionsService
 from ..services.alerts import AlertsService
 from ..services.auth import AuthService
@@ -65,12 +68,45 @@ get_cluster_users_service = _build_service(ClusterUsersService)
 get_dashboard_service = _build_service(DashboardService)
 get_events_service = _build_service(EventsService)
 get_jobs_service = _build_service(JobsService)
-get_playbooks_service = _build_service(PlaybooksService)
 get_regions_service = _build_service(RegionsService)
-get_settings_service = _build_service(SettingsService)
 get_versions_service = _build_service(VersionsService)
 get_cluster_options_service = _build_service(ClusterOptionsService)
 get_api_keys_service = _build_service(ApiKeysService)
+
+
+def get_playbooks_service():
+    return PlaybooksService(
+        get_repo(),
+        version_created_hook=log_event,
+        version_deleted_hook=log_event,
+        default_set_hook=log_event,
+    )
+
+
+def get_settings_service():
+    return SettingsService(
+        get_repo(),
+        setting_updated_hook=_log_setting_updated,
+        setting_reset_hook=_log_setting_reset,
+    )
+
+
+def _log_setting_updated(repo, setting_id: str, value: str, updated_by: str) -> None:
+    log_event(
+        repo,
+        updated_by,
+        AuditEvent.SETTING_UPDATED,
+        {"ID": setting_id, "value": value},
+    )
+
+
+def _log_setting_reset(repo, setting_id: str, updated_by: str) -> None:
+    log_event(
+        repo,
+        updated_by,
+        AuditEvent.SETTING_RESET,
+        {"ID": setting_id},
+    )
 
 
 # Backward-compatible alias for the legacy admin API slice on this branch.

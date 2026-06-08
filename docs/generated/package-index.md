@@ -4,7 +4,7 @@
 
 | Package | Modules | Classes | Functions | Routes |
 | --- | ---: | ---: | ---: | ---: |
-| `cp` | 81 | 147 | 110 | 64 |
+| `cp` | 77 | 143 | 112 | 64 |
 | `tools` | 1 | 5 | 32 | 0 |
 
 ## Modules
@@ -40,9 +40,7 @@
 | `cp.repos.admin.api_keys` | `cp/repos/admin/api_keys.py` | Admin API keys repository. |
 | `cp.repos.admin.base` | `cp/repos/admin/base.py` | Shared base for admin-oriented repositories. |
 | `cp.repos.admin.cluster_options` | `cp/repos/admin/cluster_options.py` | Admin option and cluster database-access metadata repository. |
-| `cp.repos.admin.playbooks` | `cp/repos/admin/playbooks.py` | Admin playbooks repository. |
 | `cp.repos.admin.regions` | `cp/repos/admin/regions.py` | Admin regions repository. |
-| `cp.repos.admin.settings` | `cp/repos/admin/settings.py` | Admin settings repository. |
 | `cp.repos.admin.versions` | `cp/repos/admin/versions.py` | Admin versions repository. |
 | `cp.repos.alerts` | `cp/repos/alerts.py` | Alerts repository. |
 | `cp.repos.auth` | `cp/repos/auth.py` | Auth/support repository. |
@@ -60,9 +58,7 @@
 | `cp.services.admin.api_keys` | `cp/services/admin/api_keys.py` | Admin API key service. |
 | `cp.services.admin.base` | `cp/services/admin/base.py` | Shared base for admin-facing services. |
 | `cp.services.admin.cluster_options` | `cp/services/admin/cluster_options.py` | Admin cluster option service. |
-| `cp.services.admin.playbooks` | `cp/services/admin/playbooks.py` | Admin playbook service. |
 | `cp.services.admin.regions` | `cp/services/admin/regions.py` | Business logic for the admin regions vertical. |
-| `cp.services.admin.settings` | `cp/services/admin/settings.py` | Business logic for the admin settings vertical. |
 | `cp.services.admin.versions` | `cp/services/admin/versions.py` | Business logic for the admin versions vertical. |
 | `cp.services.alerts` | `cp/services/alerts.py` | Business logic for the alerts vertical. |
 | `cp.services.auth` | `cp/services/auth.py` | Business logic for auth-related shared operations. |

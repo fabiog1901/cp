@@ -3,7 +3,7 @@
 from .keys import FrameworkSettingKey
 from .repository import SettingsRepositoryMixin
 from .router import create_settings_router
-from .service import SettingsServiceMixin
+from .service import SettingsService, SettingsServiceMixin
 from .types import SettingNotFoundError, SettingRecord, SettingUpdateRequest
 
 __all__ = [
@@ -12,6 +12,7 @@ __all__ = [
     "SettingUpdateRequest",
     "FrameworkSettingKey",
     "SettingsRepositoryMixin",
+    "SettingsService",
     "SettingsServiceMixin",
     "create_settings_router",
 ]

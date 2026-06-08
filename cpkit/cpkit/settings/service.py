@@ -1,5 +1,6 @@
 """Service helpers for settings management."""
 
+from collections.abc import Callable
 from typing import Any
 
 from cpkit.errors import RepositoryError, ServiceValidationError, from_repository_error
@@ -19,7 +20,7 @@ class SettingsServiceMixin:
             raise from_repository_error(
                 err,
                 unavailable_message="Settings are temporarily unavailable.",
-                fallback_message="Unable to load SettingsRepo.",
+                fallback_message="Unable to load settings.",
             ) from err
 
     def get_setting(self, setting_id: str) -> str:
@@ -76,3 +77,29 @@ class SettingsServiceMixin:
 
     def after_setting_reset(self, setting_id: str, updated_by: str) -> None:
         pass
+
+
+class SettingsService(SettingsServiceMixin):
+    def __init__(
+        self,
+        repo,
+        *,
+        setting_updated_hook: Callable[[Any, str, str, str], None] | None = None,
+        setting_reset_hook: Callable[[Any, str, str], None] | None = None,
+    ) -> None:
+        self.repo = repo
+        self.setting_updated_hook = setting_updated_hook
+        self.setting_reset_hook = setting_reset_hook
+
+    def after_setting_updated(
+        self,
+        setting_id: str,
+        value: str,
+        updated_by: str,
+    ) -> None:
+        if self.setting_updated_hook is not None:
+            self.setting_updated_hook(self.repo, setting_id, value, updated_by)
+
+    def after_setting_reset(self, setting_id: str, updated_by: str) -> None:
+        if self.setting_reset_hook is not None:
+            self.setting_reset_hook(self.repo, setting_id, updated_by)

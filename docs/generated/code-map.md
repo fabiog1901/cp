@@ -344,9 +344,11 @@ _No docstring._
 
 Functions:
 
-- `get_repo()` — line 42: _No docstring._
-- `get_compute_unit_service()` — line 46: Legacy placeholder for an unfinished compute-unit API slice on this branch.
-- `get_admin_service() -> AuthService` — line 77: _No docstring._
+- `get_repo()` — line 45: _No docstring._
+- `get_compute_unit_service()` — line 49: Legacy placeholder for an unfinished compute-unit API slice on this branch.
+- `get_playbooks_service()` — line 77: _No docstring._
+- `get_settings_service()` — line 86: _No docstring._
+- `get_admin_service() -> AuthService` — line 113: _No docstring._
 
 ### `cp.infra.errors`
 
@@ -530,15 +532,6 @@ Admin option and cluster database-access metadata repository.
 Classes:
 - `ClusterOptionsRepo` — line 23: _No docstring._
 
-### `cp.repos.admin.playbooks`
-
-Path: `cp/repos/admin/playbooks.py`
-
-Admin playbooks repository.
-
-Classes:
-- `PlaybooksRepo` — line 8: _No docstring._
-
 ### `cp.repos.admin.regions`
 
 Path: `cp/repos/admin/regions.py`
@@ -547,15 +540,6 @@ Admin regions repository.
 
 Classes:
 - `RegionsRepo` — line 9: _No docstring._
-
-### `cp.repos.admin.settings`
-
-Path: `cp/repos/admin/settings.py`
-
-Admin settings repository.
-
-Classes:
-- `SettingsRepo` — line 9: _No docstring._
 
 ### `cp.repos.admin.versions`
 
@@ -707,15 +691,6 @@ Admin cluster option service.
 Classes:
 - `ClusterOptionsService` — line 22: _No docstring._
 
-### `cp.services.admin.playbooks`
-
-Path: `cp/services/admin/playbooks.py`
-
-Admin playbook service.
-
-Classes:
-- `PlaybooksService` — line 23: _No docstring._
-
 ### `cp.services.admin.regions`
 
 Path: `cp/services/admin/regions.py`
@@ -724,15 +699,6 @@ Business logic for the admin regions vertical.
 
 Classes:
 - `RegionsService` — line 13: _No docstring._
-
-### `cp.services.admin.settings`
-
-Path: `cp/services/admin/settings.py`
-
-Business logic for the admin settings vertical.
-
-Classes:
-- `SettingsService` — line 10: _No docstring._
 
 ### `cp.services.admin.versions`
 

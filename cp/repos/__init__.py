@@ -1,13 +1,13 @@
 """Repository-layer package."""
 
 from psycopg_pool import ConnectionPool
+from cpkit.playbooks import PlaybooksRepositoryMixin
+from cpkit.settings import SettingsRepositoryMixin
 
 from .admin import (
     ApiKeysRepo,
     ClusterOptionsRepo,
-    PlaybooksRepo,
     RegionsRepo,
-    SettingsRepo,
     VersionsRepo,
 )
 from .alerts import AlertsRepo
@@ -29,8 +29,8 @@ class Repo(
     ClusterJobsRepo,
     RegionsRepo,
     VersionsRepo,
-    SettingsRepo,
-    PlaybooksRepo,
+    SettingsRepositoryMixin,
+    PlaybooksRepositoryMixin,
     AuthRepo,
     ClusterRepo,
     EventRepo,

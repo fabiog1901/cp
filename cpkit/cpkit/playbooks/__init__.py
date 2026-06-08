@@ -10,6 +10,7 @@ from .ansible import (
 )
 from .repository import PLAYBOOKS_TABLE, PlaybooksRepositoryMixin
 from .router import create_playbooks_router
+from .service import PlaybooksService
 from .types import (
     Playbook,
     PlaybookOverview,
@@ -29,6 +30,7 @@ __all__ = [
     "PlaybookSaveRequest",
     "PlaybookVersionResponse",
     "PlaybooksRepositoryMixin",
+    "PlaybooksService",
     "RunnerResult",
     "create_playbooks_router",
     "run_playbook",

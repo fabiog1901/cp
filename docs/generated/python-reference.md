@@ -244,25 +244,9 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.repos.admin.playbooks`
-
-::: cp.repos.admin.playbooks
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.repos.admin.regions`
 
 ::: cp.repos.admin.regions
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.repos.admin.settings`
-
-::: cp.repos.admin.settings
     options:
       show_source: true
       show_root_heading: false
@@ -408,25 +392,9 @@
       show_root_heading: false
       show_root_toc_entry: false
 
-### `cp.services.admin.playbooks`
-
-::: cp.services.admin.playbooks
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
 ### `cp.services.admin.regions`
 
 ::: cp.services.admin.regions
-    options:
-      show_source: true
-      show_root_heading: false
-      show_root_toc_entry: false
-
-### `cp.services.admin.settings`
-
-::: cp.services.admin.settings
     options:
       show_source: true
       show_root_heading: false

@@ -1,26 +1,41 @@
-"""Admin playbook service.
-
-This service reads and writes versioned playbook content used by worker-driven
-cluster lifecycle automation.
-"""
+"""Service helpers for versioned playbook management."""
 
 import gzip
+from collections.abc import Callable
+from typing import Any
 
-from ...infra.errors import RepositoryError
-from ...models import (
-    STRFTIME,
-    AuditEvent,
+from cpkit.errors import (
+    RepositoryError,
+    ServiceNotFoundError,
+    ServiceValidationError,
+    from_repository_error,
+)
+
+from .types import (
     Playbook,
     PlaybookOverview,
     PlaybookResponse,
     PlaybookVersionResponse,
 )
-from ..base import log_event
-from ..errors import ServiceNotFoundError, ServiceValidationError, from_repository_error
-from .base import AdminService
+
+STRFTIME = "%Y-%m-%d %H:%M:%S"
+PlaybookAuditHook = Callable[[Any, str, str, dict[str, Any]], None]
 
 
-class PlaybooksService(AdminService):
+class PlaybooksService:
+    def __init__(
+        self,
+        repo,
+        *,
+        version_created_hook: PlaybookAuditHook | None = None,
+        version_deleted_hook: PlaybookAuditHook | None = None,
+        default_set_hook: PlaybookAuditHook | None = None,
+    ) -> None:
+        self.repo = repo
+        self.version_created_hook = version_created_hook
+        self.version_deleted_hook = version_deleted_hook
+        self.default_set_hook = default_set_hook
+
     def get_playbook(self, name: str) -> PlaybookResponse:
         try:
             versions = self.repo.list_playbook_versions(name)
@@ -31,7 +46,7 @@ class PlaybooksService(AdminService):
                 fallback_message=f"Unable to load playbook '{name}'.",
             ) from err
         version_strings = sorted([x.version.strftime(STRFTIME) for x in versions])
-        selected_version = PlaybooksService._find_default_version(versions)
+        selected_version = self._find_default_version(versions)
 
         try:
             playbook = self.repo.get_playbook(name, selected_version)
@@ -41,7 +56,7 @@ class PlaybooksService(AdminService):
                 unavailable_message="Playbooks are temporarily unavailable.",
                 fallback_message=f"Unable to load playbook '{name}'.",
             ) from err
-        content = PlaybooksService._decode_playbook(playbook)
+        content = self._decode_playbook(playbook)
 
         return PlaybookResponse(
             name=name,
@@ -61,7 +76,7 @@ class PlaybooksService(AdminService):
                 unavailable_message="Playbooks are temporarily unavailable.",
                 fallback_message=f"Unable to load playbook '{name}'.",
             ) from err
-        content = PlaybooksService._decode_playbook(playbook)
+        content = self._decode_playbook(playbook)
         return PlaybookVersionResponse(
             playbook_version=version,
             original_content=content,
@@ -71,12 +86,13 @@ class PlaybooksService(AdminService):
     def set_default_playbook(self, name: str, version: str, updated_by: str) -> None:
         try:
             self.repo.set_default_playbook(name, version, updated_by)
-            log_event(
-                self.repo,
-                updated_by,
-                AuditEvent.PLAYBOOK_DEFAULT_SET,
-                {"name": name, "version": version},
-            )
+            if self.default_set_hook is not None:
+                self.default_set_hook(
+                    self.repo,
+                    updated_by,
+                    "PLAYBOOK_DEFAULT_SET",
+                    {"name": name, "version": version},
+                )
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -105,17 +121,18 @@ class PlaybooksService(AdminService):
 
         try:
             self.repo.delete_playbook(name, version)
-            log_event(
-                self.repo,
-                deleted_by,
-                AuditEvent.PLAYBOOK_VERSION_DELETED,
-                {"name": name, "version": version},
-            )
+            if self.version_deleted_hook is not None:
+                self.version_deleted_hook(
+                    self.repo,
+                    deleted_by,
+                    "PLAYBOOK_VERSION_DELETED",
+                    {"name": name, "version": version},
+                )
 
             versions = self.repo.list_playbook_versions(name)
             selected_version = default_version
             playbook = self.repo.get_playbook(name, selected_version)
-            content = PlaybooksService._decode_playbook(playbook)
+            content = self._decode_playbook(playbook)
         except RepositoryError as err:
             raise from_repository_error(
                 err,
@@ -141,12 +158,13 @@ class PlaybooksService(AdminService):
                 created_by,
             )
             saved_version = saved.version.strftime(STRFTIME)
-            log_event(
-                self.repo,
-                created_by,
-                AuditEvent.PLAYBOOK_VERSION_CREATED,
-                {"name": name, "version": saved_version},
-            )
+            if self.version_created_hook is not None:
+                self.version_created_hook(
+                    self.repo,
+                    created_by,
+                    "PLAYBOOK_VERSION_CREATED",
+                    {"name": name, "version": saved_version},
+                )
 
             versions = self.repo.list_playbook_versions(name)
         except RepositoryError as err:
