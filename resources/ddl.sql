@@ -190,3 +190,42 @@ ALTER TABLE public.map_clusters_jobs ADD CONSTRAINT cluster_id_in_clusters FOREI
 ALTER TABLE public.external_connections ADD CONSTRAINT cluster_id_in_external_connections FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
 ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT job_id_in_cluster_artifact_catalog FOREIGN KEY (job_id) REFERENCES cpkit.jobs(job_id) ON DELETE CASCADE;
 ALTER TABLE public.cluster_artifact_catalog ADD CONSTRAINT cluster_id_in_cluster_artifact_catalog FOREIGN KEY (cluster_id) REFERENCES public.clusters(cluster_id) ON DELETE CASCADE;
+
+
+-- seed recurring job
+INSERT INTO cpkit.mq (msg_type, start_after)
+VALUES ('SYNC_BACKUP_CATALOG', now() + INTERVAL '120s' + (random()*10)::INTERVAL);
+
+-- cp specific settings
+INSERT INTO cpkit.settings (
+    key,
+    default_value,
+    value_type,
+    category,
+    is_secret,
+    description
+) VALUES
+    ('storage.s3.url',                    '', 'url',     'storage',       false, 'Base S3 endpoint used for tenant external connections.'),
+    ('storage.s3.admin_access_key',       '', 'string',  'storage',       true,  'Administrative access key used by the control plane to provision buckets and tenant credentials.'),
+    ('storage.s3.admin_secret_key',       '', 'string',  'storage',       true,  'Administrative secret key used by the control plane to provision buckets and tenant credentials.'),
+    ('storage.s3.default_retention_days', '', 'integer', 'storage',       false, 'Default lifecycle retention applied to tenant backup buckets in days.'),
+    ('cluster.default_username',          '', 'string',  'cluster',       false, 'Default administrative username created in tenant clusters.'),
+    ('cockroach.license_key',             '', 'string',  'cockroach',     true,  'CockroachDB enterprise license key used during provisioning.'),
+    ('cockroach.license_org',             '', 'string',  'cockroach',     false, 'CockroachDB enterprise license organization used during provisioning.'),
+    ('observability.prometheus_url',      '', 'url',     'observability', false, 'Prometheus base URL used for dashboard and health queries.')
+ON CONFLICT (key) DO NOTHING;
+
+-- cp specific playbooks. the yaml content is done via the webapp.
+INSERT INTO cpkit.playbooks (name, content, created_by, default_version, updated_by)
+VALUES
+    ('CREATE_CLUSTER',      NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('DELETE_CLUSTER',      NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_CLUSTER_IN',    NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_CLUSTER_OUT',   NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_DISK_SIZE',     NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('SCALE_NODE_CPUS',     NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('UPGRADE_CLUSTER',     NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('HEALTHCHECK_CLUSTER', NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('DEBUG_ZIP_CLUSTER',   NULL, 'system', now():::TIMESTAMPTZ, 'system'),
+    ('POLL_DEBUG_ZIP',      NULL, 'system', now():::TIMESTAMPTZ, 'system')
+;

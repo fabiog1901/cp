@@ -30,6 +30,19 @@ mkdocs = "^1.6.1"
 mkdocs-material = "^9.7.1"
 mkdocstrings = {extras = ["python"], version = "^1.0.4"}
 
+[project.scripts]
+cp = "cpkit.cli:main"
+
+[tool.cpkit]
+app_import = "cp.main:app"
+ddl = [
+    "resources/ddl.sql",
+    "resources/post_schema.sql",
+]
+schema_checks = [
+    "public.clusters",
+]
+
 [tool.black]
 target-version = ["py314"]
 

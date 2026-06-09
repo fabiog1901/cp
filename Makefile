@@ -12,15 +12,20 @@
 # - MkDocs renders generated and human-authored Markdown.
 # - Human-authored architecture/domain docs remain curated by developers.
 
-.PHONY: help format pre-commit docs-write docs-check docs-build docs-serve docs-clean py-compile
+.PHONY: help run serve migrate format pre-commit docs-write docs-check docs-build docs-serve docs-clean py-compile
 
 MKDOCS_SITE_DIR ?= /private/tmp/cp-mkdocs-site
 
 help: ## Show this help message.
 	@awk 'BEGIN {FS = ":.*##"; printf "Available targets:\n"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-run: ## Run in development mode.
-	poetry run fastapi run --reload cp/main.py
+run: serve ## Run in development mode.
+
+serve: ## Serve the app through the application CLI.
+	poetry run cp serve --reload
+
+migrate: ## Apply cpkit and CP database migrations.
+	poetry run cp migrate
 
 format: ## Format Python code with isort and black.
 	poetry run isort .
