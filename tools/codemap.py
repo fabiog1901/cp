@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""Generate deterministic documentation indexes from the CP codebase.
-
-`docsync.py` owns structural facts: packages, modules, symbols, imports, API
-routes, and command-handler maps. It does not summarize intent; human-authored
-docs and LLM-assisted summaries should use this output as their source map.
-"""
+"""Generate deterministic code maps for Python projects."""
 
 from __future__ import annotations
 
 import argparse
 import ast
-import hashlib
 import json
 import sys
+import tomllib
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
-PYTHON_ROOTS = (ROOT / "cp", ROOT / "tools")
-DOCS = ROOT / "docs"
-GENERATED = DOCS / "generated"
-GENERATED_API = GENERATED / "api"
-BUILD = ROOT / ".build"
-PROJECT_INDEX = BUILD / "project-index.json"
 GENERATED_MARKER = "<!-- GENERATED FILE: DO NOT EDIT -->"
-SKIP_PARTS = {"__pycache__", ".venv", ".ruff_cache", ".git", ".archive"}
+SKIP_DIRS = {
+    ".archive",
+    ".build",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "site",
+}
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
 
@@ -96,25 +96,87 @@ def literal_string(node: ast.AST | None) -> str | None:
     return None
 
 
-def module_name_from_path(path: Path) -> str:
-    """Convert a Python file path under the repo into an import-style name."""
-    rel = path.relative_to(ROOT).with_suffix("")
-    if rel.name == "__init__":
-        rel = rel.parent
-    return ".".join(rel.parts)
+def rel(root: Path, path: Path) -> str:
+    """Return a POSIX relative path."""
+    return path.relative_to(root).as_posix()
 
 
-def iter_python_files() -> list[Path]:
-    """Return all Python source files that should be part of the docs index."""
-    files: list[Path] = []
-    for root in PYTHON_ROOTS:
-        if not root.exists():
+def load_pyproject(root: Path) -> dict[str, Any]:
+    """Load pyproject metadata when present."""
+    path = root / "pyproject.toml"
+    if not path.exists():
+        return {}
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
+def project_name(root: Path, pyproject: dict[str, Any]) -> str:
+    """Return the package/project name from pyproject metadata."""
+    poetry = pyproject.get("tool", {}).get("poetry", {})
+    project = pyproject.get("project", {})
+    return poetry.get("name") or project.get("name") or root.name
+
+
+def script_rows(pyproject: dict[str, Any]) -> list[str]:
+    """Return deterministic CLI entry point rows."""
+    poetry_scripts = pyproject.get("tool", {}).get("poetry", {}).get("scripts", {})
+    project_scripts = pyproject.get("project", {}).get("scripts", {})
+    scripts = {**project_scripts, **poetry_scripts}
+    return [f"- `{name}` -> `{target}`" for name, target in sorted(scripts.items())]
+
+
+def package_roots(root: Path, pyproject: dict[str, Any]) -> list[Path]:
+    """Discover importable package roots for a Python project."""
+    poetry = pyproject.get("tool", {}).get("poetry", {})
+    roots: set[Path] = set()
+
+    for package in poetry.get("packages", []):
+        include = package.get("include")
+        if include:
+            path = root / include
+            if path.exists():
+                roots.add(path)
+
+    name_root = root / project_name(root, pyproject).replace("-", "_")
+    if name_root.exists():
+        roots.add(name_root)
+
+    for path in root.iterdir():
+        if path.name in SKIP_DIRS or path.name.startswith("."):
             continue
+        if path.is_dir() and (path / "__init__.py").exists():
+            roots.add(path)
+
+    return sorted(roots)
+
+
+def source_roots(root: Path, extra_roots: list[str]) -> list[Path]:
+    """Resolve source roots from CLI input or project metadata."""
+    pyproject = load_pyproject(root)
+    roots = package_roots(root, pyproject)
+    for value in extra_roots:
+        path = root / value
+        if path.exists():
+            roots.append(path)
+    return sorted(set(roots))
+
+
+def iter_python_files(roots: list[Path]) -> list[Path]:
+    """Return all Python source files under known roots."""
+    files: list[Path] = []
+    for root in roots:
         for path in root.rglob("*.py"):
-            if any(part in SKIP_PARTS for part in path.parts):
+            if any(part in SKIP_DIRS for part in path.parts):
                 continue
             files.append(path)
     return sorted(files)
+
+
+def module_name_from_path(root: Path, path: Path) -> str:
+    """Convert a Python file path under the repo into an import-style name."""
+    module_path = path.relative_to(root).with_suffix("")
+    if module_path.name == "__init__":
+        module_path = module_path.parent
+    return ".".join(module_path.parts)
 
 
 def extract_imports(tree: ast.Module) -> list[ImportInfo]:
@@ -170,7 +232,7 @@ def extract_router_prefix(tree: ast.Module) -> str:
 
 
 def function_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    """Build a readable signature for a function without importing the module."""
+    """Build a readable signature for a function without importing it."""
     args = ast_to_str(node.args)
     returns = f" -> {ast_to_str(node.returns)}" if node.returns else ""
     return f"{node.name}({args}){returns}"
@@ -309,9 +371,7 @@ def extract_command_handlers(tree: ast.Module) -> dict[str, str]:
         ):
             value = node.value
 
-        if value is None:
-            continue
-        if not isinstance(value, ast.Dict):
+        if value is None or not isinstance(value, ast.Dict):
             continue
         for key, handler in zip(value.keys, value.values, strict=False):
             if key is None:
@@ -320,13 +380,13 @@ def extract_command_handlers(tree: ast.Module) -> dict[str, str]:
     return dict(sorted(handlers.items()))
 
 
-def parse_python_file(path: Path) -> ModuleInfo:
+def parse_python_file(root: Path, path: Path) -> ModuleInfo:
     """Parse one Python file into deterministic metadata."""
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
-    module_name = module_name_from_path(path)
+    module_name = module_name_from_path(root, path)
     return ModuleInfo(
-        path=str(path.relative_to(ROOT)),
+        path=rel(root, path),
         module_name=module_name,
         package=module_name.split(".")[0],
         docstring=ast.get_docstring(tree),
@@ -338,9 +398,9 @@ def parse_python_file(path: Path) -> ModuleInfo:
     )
 
 
-def scan_project() -> list[ModuleInfo]:
+def scan_project(root: Path, roots: list[Path]) -> list[ModuleInfo]:
     """Scan Python source roots and return sorted module metadata."""
-    return [parse_python_file(path) for path in iter_python_files()]
+    return [parse_python_file(root, path) for path in iter_python_files(roots)]
 
 
 def first_sentence(text: str | None) -> str:
@@ -356,15 +416,16 @@ def route_sort_key(route: dict[str, Any]) -> tuple[str, str, str]:
     return (route["full_path"], route["method"], route["function"])
 
 
-def build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]:
-    """Build the machine-readable project index consumed by docs and agents."""
+def build_project_index(
+    root: Path, roots: list[Path], modules: list[ModuleInfo]
+) -> dict[str, Any]:
+    """Build the machine-readable project index consumed by agents."""
     module_dicts = [asdict(module) for module in modules]
     routes = [
         asdict(route) | {"module": module.module_name}
         for module in modules
         for route in module.routes
     ]
-    routes.extend(synthetic_factory_routes(modules))
     routes = sorted(routes, key=route_sort_key)
     commands = [
         {"command": command, "handler": handler, "module": module.module_name}
@@ -391,9 +452,7 @@ def build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]:
 
     return {
         "schema_version": 1,
-        "source_roots": [
-            str(path.relative_to(ROOT)) for path in PYTHON_ROOTS if path.exists()
-        ],
+        "source_roots": [rel(root, path) for path in roots],
         "packages": dict(sorted(packages.items())),
         "modules": module_dicts,
         "routes": routes,
@@ -401,191 +460,36 @@ def build_project_index(modules: list[ModuleInfo]) -> dict[str, Any]:
     }
 
 
-def synthetic_factory_routes(modules: list[ModuleInfo]) -> list[dict[str, Any]]:
-    """Represent known cpkit router factories wired by CP modules."""
-    admin_module = next(
-        (module for module in modules if module.module_name == "cp.api.admin"),
-        None,
-    )
-    routes: list[dict[str, Any]] = []
-    main_module = next(
-        (module for module in modules if module.module_name == "cp.main"),
-        None,
-    )
-    main_imports = (
-        {name for import_info in main_module.imports for name in import_info.names}
-        if main_module is not None
-        else set()
-    )
-    if "create_events_router" in main_imports:
-        routes.extend(
-            [
-                _synthetic_route("GET", "/events", "cpkit.audit.router", "list_events"),
-                _synthetic_route(
-                    "GET",
-                    "/events/count",
-                    "cpkit.audit.router",
-                    "get_event_count",
-                    "AuditEventCountResponse",
-                ),
-            ]
-        )
-
-    if admin_module is None:
-        return routes
-
-    imports = {
-        name for import_info in admin_module.imports for name in import_info.names
-    }
-    if "create_settings_router" in imports:
-        routes.extend(
-            [
-                _synthetic_route(
-                    "GET", "/settings", "cpkit.settings.router", "list_settings"
-                ),
-                _synthetic_route(
-                    "GET",
-                    "/settings/{setting_id}",
-                    "cpkit.settings.router",
-                    "get_setting",
-                ),
-                _synthetic_route(
-                    "PATCH",
-                    "/settings/{setting_id}",
-                    "cpkit.settings.router",
-                    "update_setting",
-                ),
-                _synthetic_route(
-                    "PUT",
-                    "/settings/{setting_id}/reset",
-                    "cpkit.settings.router",
-                    "reset_setting",
-                ),
-            ]
-        )
-    if "create_playbooks_router" in imports:
-        routes.extend(
-            [
-                _synthetic_route(
-                    "GET",
-                    "/playbooks/{name}",
-                    "cpkit.playbooks.router",
-                    "get_playbook",
-                    "PlaybookResponse",
-                ),
-                _synthetic_route(
-                    "POST",
-                    "/playbooks/{name}",
-                    "cpkit.playbooks.router",
-                    "save_playbook",
-                    "PlaybookVersionResponse",
-                ),
-                _synthetic_route(
-                    "DELETE",
-                    "/playbooks/{name}/{version}",
-                    "cpkit.playbooks.router",
-                    "delete_playbook_version",
-                    "PlaybookVersionResponse",
-                ),
-                _synthetic_route(
-                    "GET",
-                    "/playbooks/{name}/{version}",
-                    "cpkit.playbooks.router",
-                    "get_playbook_version",
-                    "PlaybookVersionResponse",
-                ),
-                _synthetic_route(
-                    "PUT",
-                    "/playbooks/{name}/{version}",
-                    "cpkit.playbooks.router",
-                    "set_default_playbook",
-                ),
-            ]
-        )
-    return routes
-
-
-def _synthetic_route(
-    method: str,
-    path: str,
-    module: str,
-    function: str,
-    response_model: str | None = None,
-) -> dict[str, Any]:
-    return {
-        "method": method,
-        "path": path,
-        "full_path": path,
-        "function": function,
-        "lineno": 0,
-        "response_model": response_model,
-        "dependencies": [],
-        "module": module,
-    }
-
-
-def generated_header(title: str) -> list[str]:
-    """Return a standard generated Markdown header."""
-    return [GENERATED_MARKER, "", f"# {title}", ""]
-
-
-def render_code_map(index: dict[str, Any]) -> str:
-    """Render a module-oriented generated code map."""
-    lines = generated_header("Generated Code Map")
-    lines.append("> Generated by `tools/docsync.py`. Do not edit manually.")
-    lines.append("")
-
-    current_package = None
-    for module in index["modules"]:
-        package = module["package"]
-        if package != current_package:
-            current_package = package
-            lines.append(f"## `{package}`")
-            lines.append("")
-
-        lines.append(f"### `{module['module_name']}`")
-        lines.append("")
-        lines.append(f"Path: `{module['path']}`")
-        lines.append("")
-        lines.append(first_sentence(module["docstring"]))
-        lines.append("")
-
-        if module["classes"]:
-            lines.append("Classes:")
-            for cls in module["classes"]:
-                lines.append(
-                    f"- `{cls['name']}` — line {cls['lineno']}: "
-                    f"{first_sentence(cls['docstring'])}"
-                )
-            lines.append("")
-
-        if module["functions"]:
-            lines.append("Functions:\n")
-            for fn in module["functions"]:
-                async_marker = "async " if fn["is_async"] else ""
-                lines.append(
-                    f"- `{async_marker}{fn['signature']}` — line {fn['lineno']}: "
-                    f"{first_sentence(fn['docstring'])}"
-                )
-            lines.append("")
-
-        if module["routes"]:
-            lines.append("Routes:")
-            for route in module["routes"]:
-                lines.append(
-                    f"- `{route['method']} {route['full_path']}` -> "
-                    f"`{route['function']}()`"
-                )
-            lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def render_package_index(index: dict[str, Any]) -> str:
-    """Render package/module summary tables."""
-    lines = generated_header("Generated Package Index")
+def render_code_map(
+    root: Path, pyproject: dict[str, Any], index: dict[str, Any]
+) -> str:
+    """Render a deterministic root code map."""
+    lines = [
+        "# Code Map",
+        "",
+        GENERATED_MARKER,
+        "",
+        "This file is a deterministic map of the Python package surface in this repository.",
+        "Regenerate it after structural code changes with:",
+        "",
+        "```bash",
+        "python tools/codemap.py --write",
+        "```",
+        "",
+        "## Project",
+        "",
+        f"- Name: `{project_name(root, pyproject)}`",
+        f"- Package roots: {', '.join(f'`{item}`' for item in index['source_roots']) or 'none found'}",
+        "",
+        "## Entry Points",
+        "",
+    ]
+    lines.extend(script_rows(pyproject) or ["- none found"])
     lines.extend(
         [
+            "",
+            "## Packages",
+            "",
             "| Package | Modules | Classes | Functions | Routes |",
             "| --- | ---: | ---: | ---: | ---: |",
         ]
@@ -595,116 +499,69 @@ def render_package_index(index: dict[str, Any]) -> str:
             f"| `{package}` | {stats['modules']} | {stats['classes']} | "
             f"{stats['functions']} | {stats['routes']} |"
         )
-    lines.append("")
-    lines.append("## Modules")
-    lines.append("")
-    lines.append("| Module | Path | Summary |")
-    lines.append("| --- | --- | --- |")
-    for module in index["modules"]:
-        lines.append(
-            f"| `{module['module_name']}` | `{module['path']}` | "
-            f"{first_sentence(module['docstring'])} |"
-        )
-    return "\n".join(lines).rstrip() + "\n"
 
-
-def render_api_routes(index: dict[str, Any]) -> str:
-    """Render FastAPI route inventory."""
-    lines = generated_header("Generated API Route Index")
-    if not index["routes"]:
-        lines.append("_No routes found._")
-        return "\n".join(lines).rstrip() + "\n"
-
-    lines.append("| Method | Path | Handler | Response Model |")
-    lines.append("| --- | --- | --- | --- |")
-    for route in index["routes"]:
-        response_model = route["response_model"] or "-"
-        lines.append(
-            f"| `{route['method']}` | `{route['full_path']}` | "
-            f"`{route['module']}.{route['function']}` | `{response_model}` |"
-        )
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def render_llm_index(index: dict[str, Any]) -> str:
-    """Render a compact agent-facing navigation index."""
-    lines = generated_header("Generated LLM Index")
     lines.extend(
         [
-            "Use this file as a compact starting point before opening source files.",
             "",
-            "## Source Roots",
+            "## API Routes",
             "",
         ]
     )
-    for source_root in index["source_roots"]:
-        lines.append(f"- `{source_root}`")
-    lines.append("")
-    lines.append("## Packages")
-    lines.append("")
-    for package, stats in index["packages"].items():
-        lines.append(
-            f"- `{package}`: {stats['modules']} modules, "
-            f"{stats['classes']} classes, {stats['functions']} functions, "
-            f"{stats['routes']} routes"
-        )
-    lines.append("")
-    lines.append("## API Route Count")
-    lines.append("")
-    lines.append(f"- `{len(index['routes'])}` FastAPI routes")
-    lines.append("")
-    lines.append("## Command Handlers")
-    lines.append("")
+    if index["routes"]:
+        lines.append("| Method | Path | Handler | Response Model |")
+        lines.append("| --- | --- | --- | --- |")
+        for route in index["routes"]:
+            response_model = route["response_model"] or "-"
+            lines.append(
+                f"| `{route['method']}` | `{route['full_path']}` | "
+                f"`{route['module']}.{route['function']}` | `{response_model}` |"
+            )
+    else:
+        lines.append("- none found")
+
+    lines.extend(
+        [
+            "",
+            "## Command Handlers",
+            "",
+        ]
+    )
     if index["command_handlers"]:
         for command in index["command_handlers"]:
             lines.append(
                 f"- `{command['command']}` -> `{command['module']}.{command['handler']}`"
             )
     else:
-        lines.append("- _No command handlers found._")
-    lines.append("")
-    lines.append("## Generated Files")
-    lines.append("")
-    lines.append("- `docs/generated/code-map.md`")
-    lines.append("- `docs/generated/package-index.md`")
-    lines.append("- `docs/generated/api/routes.md`")
-    lines.append("- `docs/generated/python-reference.md`")
-    lines.append("- `.build/project-index.json`")
-    return "\n".join(lines).rstrip() + "\n"
+        lines.append("- none found")
 
-
-def render_python_reference(index: dict[str, Any]) -> str:
-    """Render a MkDocstrings reference page for importable Python modules."""
-    lines = generated_header("Generated Python Reference")
     lines.extend(
         [
-            "> Generated by `tools/docsync.py` using MkDocstrings directives.",
             "",
+            "## Modules",
+            "",
+            "| File | Public Surface |",
+            "| --- | --- |",
         ]
     )
-
-    current_package = None
     for module in index["modules"]:
-        module_name = module["module_name"]
-        if module_name.endswith(".__init__"):
-            continue
-        if module_name == "cp" or module_name.startswith("tools"):
-            continue
-
-        package = ".".join(module_name.split(".")[:2])
-        if package != current_package:
-            current_package = package
-            lines.append(f"## `{package}`")
-            lines.append("")
-
-        lines.append(f"### `{module_name}`")
-        lines.append("")
-        lines.append(f"::: {module_name}")
-        lines.append("    options:")
-        lines.append("      show_source: true")
-        lines.append("      show_root_heading: false")
-        lines.append("      show_root_toc_entry: false")
-        lines.append("")
+        details = []
+        if module["docstring"]:
+            details.append(first_sentence(module["docstring"]))
+        if module["classes"]:
+            details.append(
+                "classes: " + ", ".join(cls["name"] for cls in module["classes"])
+            )
+        if module["functions"]:
+            details.append(
+                "functions: " + ", ".join(fn["name"] for fn in module["functions"])
+            )
+        if module["routes"]:
+            details.append(f"routes: {len(module['routes'])}")
+        if module["command_handlers"]:
+            details.append(f"command handlers: {len(module['command_handlers'])}")
+        lines.append(
+            f"| `{module['path']}` | {'; '.join(details) if details else 'no public surface'} |"
+        )
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -714,53 +571,66 @@ def json_dumps(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
 
 
-def file_hash(content: str) -> str:
-    """Return a stable content hash."""
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
-
-
-def write_or_check(path: Path, content: str, check: bool) -> bool:
+def write_or_check(path: Path, content: str, check: bool, root: Path) -> bool:
     """Write a generated file or report it stale in check mode."""
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
-    if file_hash(existing) == file_hash(content):
+    if existing == content:
         return True
-
     if check:
-        print(f"STALE: {path.relative_to(ROOT)}")
+        print(f"STALE: {rel(root, path)}")
         return False
-
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-    print(f"WROTE: {path.relative_to(ROOT)}")
+    print(f"WROTE: {rel(root, path)}")
     return True
 
 
-def generated_outputs(index: dict[str, Any]) -> dict[Path, str]:
-    """Return all deterministic generated outputs."""
-    return {
-        PROJECT_INDEX: json_dumps(index),
-        GENERATED / "code-map.md": render_code_map(index),
-        GENERATED / "package-index.md": render_package_index(index),
-        GENERATED_API / "routes.md": render_api_routes(index),
-        GENERATED / "llm-index.md": render_llm_index(index),
-        GENERATED / "python-reference.md": render_python_reference(index),
-    }
+def build_outputs(
+    root: Path,
+    output: Path,
+    index_output: Path | None,
+    extra_roots: list[str],
+) -> dict[Path, str]:
+    """Build all generated outputs for the requested project."""
+    pyproject = load_pyproject(root)
+    roots = source_roots(root, extra_roots)
+    modules = scan_project(root, roots)
+    index = build_project_index(root, roots, modules)
+    outputs = {output: render_code_map(root, pyproject, index)}
+    if index_output is not None:
+        outputs[index_output] = json_dumps(index)
+    return outputs
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true", help="write generated outputs")
     mode.add_argument("--check", action="store_true", help="verify generated outputs")
-    args = parser.parse_args()
+    parser.add_argument("--root", default=".", help="project root; defaults to cwd")
+    parser.add_argument("--output", default="CODEMAP.md", help="codemap output path")
+    parser.add_argument(
+        "--index-output",
+        default=".build/project-index.json",
+        help="machine-readable project index path; use an empty value to disable",
+    )
+    parser.add_argument(
+        "--source-root",
+        action="append",
+        default=[],
+        help="extra source root to scan, relative to --root; can be repeated",
+    )
+    args = parser.parse_args(argv)
+
+    root = Path(args.root).resolve()
+    output = root / args.output
+    index_output = root / args.index_output if args.index_output else None
 
     try:
-        modules = scan_project()
-        index = build_project_index(modules)
-        outputs = generated_outputs(index)
+        outputs = build_outputs(root, output, index_output, args.source_root)
         ok = all(
-            write_or_check(path, content, check=args.check)
+            write_or_check(path, content, check=args.check, root=root)
             for path, content in outputs.items()
         )
         return 0 if ok else 1
