@@ -2,7 +2,7 @@
 
 import os
 
-from cpkit import create_cpkit_app, create_cpkit_bundle
+from cpkit import create_cpkit_app, create_cpkit_bundle, template_webapp_directory
 from dotenv import load_dotenv
 
 from .api import admin, alerts, cluster_recovery, clusters, prometheus
@@ -35,6 +35,7 @@ app = create_cpkit_app(
         clusters.router,
         prometheus.router,
     ),
-    static_directory="webapp",
+    static_directory=template_webapp_directory(),
+    app_static_directory="webapp",
     default_journald_identifier="cp",
 )

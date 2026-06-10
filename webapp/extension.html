@@ -1,0 +1,3291 @@
+<template
+  id="cpkit-extension-brand"
+  data-logo-text="CP"
+  data-app-name="CP"
+  data-login-subtitle="Authenticate to access the control plane"
+></template>
+
+<main class="layout" x-show="view === 'clusters'">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Clusters</div>
+              <div class="metric-value" x-text="servers.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" x-show="canManageCompute()" @click="openClusterCreateModal()"
+                :disabled="clusterLoading.create">
+                <span x-show="!clusterLoading.create">Create Cluster</span>
+                <span x-show="clusterLoading.create">Loading…</span>
+              </button>
+
+              <button class="btn" @click="refreshServers()" :disabled="serversLoading.list">
+                <span x-show="!serversLoading.list">Refresh</span>
+                <span x-show="serversLoading.list">Loading…</span>
+              </button>
+
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="serversAutoRefreshEnabled" />
+                Auto-refresh (15s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main dashboard-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Clusters</div>
+              <div class="main-subtitle">List of visible clusters from the clusters API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by cluster id, group, owner, version…"
+                x-model="serversFilterQuery" @input="persistServersFilter(); applyServersFilterSort();" />
+
+              <button class="btn" type="button" x-show="canManageCompute()" @click="openClusterCreateModal()"
+                :disabled="clusterLoading.create">
+                <span x-show="!clusterLoading.create">Create Cluster</span>
+                <span x-show="clusterLoading.create">Loading…</span>
+              </button>
+
+              <div class="pill">Updated (UTC): <span x-text="serversLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="string" :class="serversSortClass(0)" @click="toggleServersSort(0)">Cluster ID</th>
+                    <th data-sort="string" :class="serversSortClass(1)" @click="toggleServersSort(1)">Group</th>
+                    <th data-sort="string" :class="serversSortClass(2)" @click="toggleServersSort(2)">Created By</th>
+                    <th data-sort="string" :class="serversSortClass(3)" @click="toggleServersSort(3)">Status</th>
+                    <th data-sort="string" :class="serversSortClass(4)" @click="toggleServersSort(4)">Version</th>
+                    <th data-sort="number" :class="serversSortClass(5)" @click="toggleServersSort(5)">Nodes</th>
+                    <th data-sort="number" :class="serversSortClass(6)" @click="toggleServersSort(6)">CPU / Node</th>
+                    <th data-sort="number" :class="serversSortClass(7)" @click="toggleServersSort(7)">Disk GB</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <template x-for="s in serversVisibleRows" :key="s.cluster_id">
+                    <tr>
+                      <td>
+                        <a href="#" class="dashboard-link" @click.prevent="openCluster(s.cluster_id)">
+                          <span class="ip-pill clickable" x-text="s.cluster_id || '-'"></span>
+                        </a>
+                      </td>
+                      <td><span class="service-pill" x-text="s.grp || '-'"></span></td>
+                      <td><span x-text="s.created_by || '-'"></span></td>
+                      <td>
+                        <span class="status" :class="serversStatusClass(s.status)">
+                          <span class="status-dot"></span>
+                          <span x-text="String(s.status || 'unknown').toUpperCase()"></span>
+                        </span>
+                      </td>
+                      <td><span x-text="s.version || '-'"></span></td>
+                      <td><span x-text="s.node_count ?? '-'"></span></td>
+                      <td><span x-text="s.node_cpus ?? '-'"></span></td>
+                      <td><span x-text="s.disk_size ?? '-'"></span></td>
+                    </tr>
+                  </template>
+
+                  <template x-if="!serversLoading.list && serversVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="8" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster'">
+        <aside class="sidebar">
+          <div>
+            <h2>Navigation</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusters()">Back to Clusters</button>
+              <button class="btn" @click="refreshSelectedCluster()" :disabled="clusterLoading.details || !selectedClusterId">
+                <span x-show="!clusterLoading.details">Refresh</span>
+                <span x-show="clusterLoading.details">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDetailsAutoRefreshEnabled" />
+                Auto-refresh (5s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-detail-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title cluster-detail-title" x-text="selectedCluster?.cluster_id || selectedClusterId || 'Cluster'"></div>
+            </div>
+            <div class="main-actions">
+              <span class="ip-pill cluster-detail-version" x-text="selectedCluster?.version || '-'"></span>
+              <span class="status cluster-detail-status" :class="serversStatusClass(selectedCluster?.status)">
+                <span class="status-dot"></span>
+                <span x-text="String(selectedCluster?.status || 'unknown').toUpperCase()"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="dashboard-home cluster-detail-home" x-show="selectedCluster">
+            <section class="dashboard-card cluster-toolbar-card">
+              <div class="dashboard-card-head cluster-toolbar-head">
+                <div>
+                  <div class="dashboard-card-kicker">Operations</div>
+                </div>
+              </div>
+
+              <div class="cluster-toolbar-grid">
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterUpgradeModal()"
+                  :disabled="clusterLoading.upgrade"
+                  title="Open upgrade options for this cluster."
+                  aria-label="Upgrade cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4v11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M8 8l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Upgrade</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.upgrade ? 'Loading options…' : 'Move to a newer version'"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterScaleModal()"
+                  :disabled="clusterLoading.scale"
+                  title="Adjust node count, CPU, disk, and regions."
+                  aria-label="Scale cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 18V9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M12 18V5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M19 18v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <circle cx="5" cy="7" r="2" stroke="currentColor" stroke-width="1.8" />
+                      <circle cx="12" cy="18" r="2" stroke="currentColor" stroke-width="1.8" />
+                      <circle cx="19" cy="10" r="2" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Scale</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.scale ? 'Loading options…' : 'Resize nodes and regions'"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterUsers()"
+                  title="Open database user management for this cluster."
+                  aria-label="Open user management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M17 20a5 5 0 0 0-10 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <circle cx="12" cy="10" r="4" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Users</span>
+                    <span class="cluster-toolbar-sub">Manage database accounts</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterDatabases()"
+                  title="Open database object management for this cluster."
+                  aria-label="Open database object management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <ellipse cx="12" cy="6" rx="7" ry="3" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Databases</span>
+                    <span class="cluster-toolbar-sub" x-text="`${clusterDatabaseObjects.length || 0} managed database objects`"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterBackups()"
+                  title="Open backup management for this cluster."
+                  aria-label="Open backup management">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 8.5h14v9A2.5 2.5 0 0 1 16.5 20h-9A2.5 2.5 0 0 1 5 17.5v-9Z" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M9 8.5V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5v2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Backups</span>
+                    <span class="cluster-toolbar-sub">Inspect backup paths</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterDebugZips()"
+                  title="Open debug ZIP artifacts for this cluster."
+                  aria-label="Open debug ZIP artifacts">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M7 4.5h7l3 3v12H7v-15Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                      <path d="M14 4.5v3h3" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                      <path d="M10 10h2M10 13h2M10 16h2M14 13h1.5M14 16h1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Debug ZIPs</span>
+                    <span class="cluster-toolbar-sub">Download diagnostics</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterRecovery()"
+                  title="Restore this cluster from a cataloged full backup."
+                  aria-label="Open cluster recovery">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M4 12a8 8 0 1 0 2.7-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M4 4v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M7 20h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Recovery</span>
+                    <span class="cluster-toolbar-sub">Restore from full backup</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterHealthcheckConfirm()"
+                  :disabled="clusterLoading.healthcheck"
+                  title="Run the configured healthcheck playbook for this cluster."
+                  aria-label="Run cluster healthcheck">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M20 12a8 8 0 1 1-4-6.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M20 5v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Healthcheck</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.healthcheck ? 'Submitting request…' : 'Run playbook checks'"></span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterJobs()"
+                  title="Open jobs related to this cluster."
+                  aria-label="Open cluster jobs">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <rect x="4.5" y="5.5" width="15" height="13" rx="2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Jobs</span>
+                    <span class="cluster-toolbar-sub">See recent operations</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn" type="button" @click="openClusterDashboard()"
+                  title="Open the metrics dashboard for this cluster."
+                  aria-label="Open cluster dashboard">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 18.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M7.5 15l3-4 3 2 3-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                      <circle cx="7.5" cy="15" r="1" fill="currentColor" />
+                      <circle cx="10.5" cy="11" r="1" fill="currentColor" />
+                      <circle cx="13.5" cy="13" r="1" fill="currentColor" />
+                      <circle cx="16.5" cy="8" r="1" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Dashboard</span>
+                    <span class="cluster-toolbar-sub">Open live metrics</span>
+                  </span>
+                </button>
+
+                <button class="cluster-toolbar-btn cluster-toolbar-btn-danger" type="button"
+                  @click="openClusterDeleteConfirm()"
+                  :disabled="clusterLoading.delete"
+                  title="Delete this cluster."
+                  aria-label="Delete cluster">
+                  <span class="cluster-toolbar-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 7h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M8 10v7M12 10v7M16 10v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                      <path d="M6.5 7l.7 10.1A2 2 0 0 0 9.2 19h5.6a2 2 0 0 0 2-1.9L17.5 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="cluster-toolbar-copy">
+                    <span class="cluster-toolbar-title">Delete</span>
+                    <span class="cluster-toolbar-sub" x-text="clusterLoading.delete ? 'Submitting request…' : 'Danger zone action'"></span>
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <section class="dashboard-grid">
+              <article class="dashboard-card cluster-compact-card cluster-footprint-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Overview</div>
+                  </div>
+                  <div class="dashboard-stat"
+                    x-text="selectedCluster ? (Number(selectedCluster.node_count ?? 0) * Number(selectedCluster.node_cpus ?? 0)) : '-'"></div>
+                </div>
+                <div class="cluster-facts">
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">CPU / Node</span>
+                    <span x-text="selectedCluster?.node_cpus ?? '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Node Count</span>
+                    <span x-text="selectedCluster?.node_count ?? '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Disk GB</span>
+                    <span x-text="selectedCluster?.disk_size ?? '-'"></span>
+                  </div>
+                  
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created By</span>
+                    <span x-text="selectedCluster?.created_by || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Group</span>
+                    <span x-text="selectedCluster?.grp || '-'"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Created</span>
+                    <span x-text="toUtcStringMaybe(selectedCluster?.created_at)"></span>
+                  </div>
+                  <div class="cluster-fact">
+                    <span class="cluster-fact-label">Updated</span>
+                    <span x-text="toUtcStringMaybe(selectedCluster?.updated_at)"></span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="dashboard-card cluster-compact-card cluster-connect-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Load Balancer Access</div>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterLbEndpoints().length || '--'"></div>
+                </div>
+                <div class="cluster-list" x-show="clusterLbEndpoints().length > 0">
+                  <template x-for="lb in clusterLbEndpoints()" :key="`${lb.cloud}-${lb.region}-${lb.dns_address}`">
+                    <div class="cluster-list-item cluster-endpoint-row">
+                      <div class="cluster-endpoint-main cluster-list-title">
+                        <img x-show="cloudLogoForCloud(lb.cloud)" :src="cloudLogoForCloud(lb.cloud)" alt=""
+                          class="cluster-cloud-logo" />
+                        <span x-text="lb.region || '-'"></span>
+                        <span class="ip-pill" x-text="lb.dns_address || '-'"></span>
+                      </div>
+                      <div class="cluster-endpoint-actions">
+                        <button class="icon-btn" type="button"
+                          title="Copy endpoint address"
+                          @click="copyClusterEndpointAddress(lb)"
+                          :disabled="!clusterEndpointAddress(lb)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8" />
+                            <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                          </svg>
+                        </button>
+                        <span class="metric-sub cluster-endpoint-copied"
+                          x-show="clusterConnectCopiedFor === (lb.dns_address || '')">Copied</span>
+                        <a class="dashboard-link" :class="{ 'is-disabled': !clusterDbConsoleUrl(lb) }"
+                          :href="clusterDbConsoleUrl(lb) || '#'" target="_blank" rel="noopener"
+                          @click.prevent="openDbConsole(lb)">Open DBConsole</a>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <div class="cluster-list-copy" x-show="clusterLbEndpoints().length === 0">
+                  No load balancer endpoints returned.
+                </div>
+              </article>
+
+              <article class="dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Inventory</div>
+                  </div>
+                  <div class="dashboard-stat" x-text="Array.isArray(selectedCluster?.cluster_inventory) ? selectedCluster.cluster_inventory.length : 0"></div>
+                </div>
+                <div class="cluster-list">
+                  <template x-for="region in (selectedCluster?.cluster_inventory || [])" :key="`${region.cloud}-${region.region}`">
+                    <div class="cluster-list-item">
+                      <div class="cluster-list-title">
+                        <img x-show="cloudLogoForCloud(region.cloud)" :src="cloudLogoForCloud(region.cloud)" alt=""
+                          class="cluster-cloud-logo" />
+                        <span x-text="region.region || '-'"></span>
+                      </div>
+                      <div class="cluster-list-copy cluster-list-pills" x-show="Array.isArray(region.nodes) && region.nodes.length">
+                        <template x-for="node in region.nodes" :key="`${region.region}-${node}`">
+                          <span class="ip-pill" x-text="node"></span>
+                        </template>
+                      </div>
+                      <div class="cluster-list-copy" x-show="!Array.isArray(region.nodes) || region.nodes.length === 0">
+                        No nodes listed
+                      </div>
+                    </div>
+                  </template>
+                  <div class="cluster-list-item" x-show="!selectedCluster?.cluster_inventory || selectedCluster.cluster_inventory.length === 0">
+                    <div class="cluster-list-copy">No cluster inventory returned.</div>
+                  </div>
+                </div>
+              </article>
+
+            </section>
+          </div>
+
+          <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!selectedCluster && !clusterLoading.details">
+            <div class="main-title">Cluster not loaded</div>
+            <div class="main-subtitle">Select a cluster from the clusters page to view its details.</div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_backups'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterBackups()" :disabled="clusterBackupsLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterBackupsLoading.snapshot">Refresh</span>
+                <span x-show="clusterBackupsLoading.snapshot">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterBackupsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-backups-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Backup Management</div>
+              <div class="main-subtitle">Select a backup path to inspect the objects stored within it.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterBackupsLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="dashboard-home cluster-backups-home">
+            <section class="dashboard-card cluster-actions-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Backups</div>
+                  <h3 class="dashboard-card-title">Available Backups</h3>
+                </div>
+                <div class="dashboard-stat" x-text="clusterBackups.length || 0"></div>
+              </div>
+              <div class="cluster-list cluster-backup-list">
+                <template x-for="backup in clusterBackups" :key="backup.path">
+                  <button type="button" class="cluster-list-item cluster-backup-item"
+                    style="width:100%; text-align:left; color:inherit; cursor:pointer;"
+                    :style="selectedClusterBackupPath === (backup.path || '') ? 'border-color: rgba(56, 189, 248, 0.75); box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);' : ''"
+                    @click="selectClusterBackup(backup.path)">
+                    <div class="cluster-list-title">
+                      <span class="ip-pill" x-text="backup.path || '-'"></span>
+                    </div>
+                  </button>
+                </template>
+                <div class="cluster-list-item" x-show="!clusterBackupsLoading.snapshot && clusterBackups.length === 0">
+                  <div class="cluster-list-copy">No backups returned.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="dashboard-card cluster-actions-card cluster-backup-details-card">
+              <div class="dashboard-card-head">
+                <div>
+                  <div class="dashboard-card-kicker">Details</div>
+                  <h3 class="dashboard-card-title">Backup Contents</h3>
+                </div>
+                <div class="dashboard-stat" x-text="clusterBackupDetails.length || 0"></div>
+              </div>
+              <div class="metric-sub" x-show="selectedClusterBackupPath">
+                Showing details for <span class="ip-pill" x-text="selectedClusterBackupPath"></span>
+              </div>
+              <div class="table-container cluster-backup-details-table">
+                <div class="table-scroll cluster-backup-details-scroll">
+                  <table class="cluster-backup-contents-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Database</th>
+                        <th>Schema</th>
+                        <th>Object</th>
+                        <th>Backup Type</th>
+                        <th>Start Time (UTC)</th>
+                        <th>End Time (UTC)</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="row in clusterBackupDetails" :key="`${row.database_name || '-'}-${row.parent_schema_name || '-'}-${row.object_name}-${row.object_type}-${row.backup_type}-${row.start_time}-${row.end_time}`">
+                        <tr>
+                          <td>
+                            <span class="backup-object-type-icon" :title="backupObjectTypeLabel(row.object_type)" :aria-label="backupObjectTypeLabel(row.object_type)">
+                              <svg x-show="backupObjectType(row.object_type) === 'database'" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M5 5v6c0 1.66 3.13 3 7 3s7-1.34 7-3V5" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M5 11v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6" stroke="currentColor" stroke-width="1.8" />
+                              </svg>
+                              <svg x-show="backupObjectType(row.object_type) === 'table'" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.8" />
+                                <path d="M4 10h16M9 5v14M15 5v14" stroke="currentColor" stroke-width="1.8" />
+                              </svg>
+                              <span x-show="!['database', 'table'].includes(backupObjectType(row.object_type))" x-text="backupObjectTypeLabel(row.object_type)"></span>
+                            </span>
+                          </td>
+                          <td><span x-text="row.database_name || '-'"></span></td>
+                          <td><span x-text="row.parent_schema_name || '-'"></span></td>
+                          <td><span x-text="row.object_name || '-'"></span></td>
+                          <td><span class="service-pill" x-text="row.backup_type || '-'"></span></td>
+                          <td><span x-text="toUtcStringMaybe(row.start_time)"></span></td>
+                          <td><span x-text="toUtcStringMaybe(row.end_time)"></span></td>
+                          <td>
+                            <button class="icon-btn backup-restore-btn" type="button"
+                              x-show="canManageCompute() && ['database', 'table'].includes(backupObjectType(row.object_type))"
+                              @click="openClusterBackupObjectRestoreModal(row)"
+                              title="Restore object"
+                              aria-label="Restore object">
+                              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M3 12a9 9 0 1 0 3-6.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                <path d="M3 4v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      </template>
+                      <template x-if="selectedClusterBackupPath && !clusterBackupsLoading.details && clusterBackupDetails.length === 0">
+                        <tr>
+                          <td colspan="8" style="padding: 18px; color: var(--muted);">No backup details returned.</td>
+                        </tr>
+                      </template>
+                      <template x-if="!selectedClusterBackupPath">
+                        <tr>
+                          <td colspan="8" style="padding: 18px; color: var(--muted);">Select a backup path to load its details.</td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_artifacts'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              <div class="metric-sub" x-text="clusterArtifactKindLabel()"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterArtifacts()" :disabled="clusterArtifactsLoading.list || !selectedClusterId">
+                <span x-show="!clusterArtifactsLoading.list">Refresh</span>
+                <span x-show="clusterArtifactsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterArtifactsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title" x-text="clusterArtifactKindLabel()"></div>
+              <div class="main-subtitle">Ready artifacts can be downloaded through short-lived S3 URLs.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by name, status, job, checksum…"
+                x-model="clusterArtifactsFilterQuery" @input="applyClusterArtifactsFilterSort()" />
+              <div class="pill">Updated (UTC): <span x-text="clusterArtifactsLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="string" :class="clusterArtifactsSortClass(0)" @click="toggleClusterArtifactsSort(0)">Name</th>
+                    <th data-sort="string" :class="clusterArtifactsSortClass(1)" @click="toggleClusterArtifactsSort(1)">Status</th>
+                    <th data-sort="number" :class="clusterArtifactsSortClass(2)" @click="toggleClusterArtifactsSort(2)">Size</th>
+                    <th data-sort="string" :class="clusterArtifactsSortClass(3)" @click="toggleClusterArtifactsSort(3)">Redacted</th>
+                    <th data-sort="date" :class="clusterArtifactsSortClass(4)" @click="toggleClusterArtifactsSort(4)">Created (UTC)</th>
+                    <th data-sort="date" :class="clusterArtifactsSortClass(5)" @click="toggleClusterArtifactsSort(5)">Expires (UTC)</th>
+                    <th data-sort="number" :class="clusterArtifactsSortClass(6)" @click="toggleClusterArtifactsSort(6)">Job</th>
+                    <th data-sort="string" :class="clusterArtifactsSortClass(7)" @click="toggleClusterArtifactsSort(7)">SHA256</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="artifact in clusterArtifactsVisibleRows" :key="artifact.artifact_id">
+                    <tr>
+                      <td><span x-text="artifact.artifact_name || '-'"></span></td>
+                      <td>
+                        <span class="status" :class="serversStatusClass(artifact.status)">
+                          <span class="status-dot"></span>
+                          <span x-text="String(artifact.status || 'unknown').toUpperCase()"></span>
+                        </span>
+                      </td>
+                      <td><span x-text="formatBytes(artifact.size_bytes)"></span></td>
+                      <td><span class="service-pill" x-text="artifact.redacted ? 'yes' : 'no'"></span></td>
+                      <td><span x-text="toUtcStringMaybe(artifact.created_at)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(artifact.expires_at)"></span></td>
+                      <td>
+                        <a href="#" class="dashboard-link" @click.prevent="openJob(artifact.job_id)">
+                          <span class="ip-pill clickable" x-text="artifact.job_id || '-'"></span>
+                        </a>
+                      </td>
+                      <td>
+                        <span class="ip-pill" :title="artifact.sha256 || ''"
+                          x-text="artifact.sha256 ? `${String(artifact.sha256).slice(0, 12)}…` : '-'"></span>
+                      </td>
+                      <td>
+                        <button class="icon-btn" type="button"
+                          :disabled="!canDownloadClusterArtifact(artifact) || clusterArtifactsLoading.download"
+                          :title="canDownloadClusterArtifact(artifact) ? 'Download artifact' : 'Artifact is not ready for download'"
+                          aria-label="Download artifact"
+                          @click="downloadClusterArtifact(artifact)">
+                          <svg x-show="clusterArtifactDownloadingId !== artifact.artifact_id" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 4v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                            <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                          </svg>
+                          <span x-show="clusterArtifactDownloadingId === artifact.artifact_id">…</span>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!clusterArtifactsLoading.list && clusterArtifactsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="9" style="padding: 18px; color: var(--muted);">No artifacts returned.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_recovery'">
+        <aside class="sidebar">
+          <div>
+            <h2>Target Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Restore Into</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterRecoveryBackups()" :disabled="clusterRecoveryLoading.list || !selectedClusterId">
+                <span x-show="!clusterRecoveryLoading.list">Refresh Catalog</span>
+                <span x-show="clusterRecoveryLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterRecoveryAutoRefreshEnabled" />
+                Auto-refresh (30s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-recovery-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Cluster Recovery</div>
+              <div class="main-subtitle">Choose a source cluster, then select a full-cluster backup path to restore into the selected target cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterRecoveryLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container cluster-recovery-table-container">
+            <div class="table-scroll">
+              <table class="cluster-recovery-table">
+                <thead>
+                  <tr>
+                    <th>Source Cluster</th>
+                    <th>Group</th>
+                    <th>Backups</th>
+                    <th>Latest Backup (UTC)</th>
+                    <th>Last Catalog Sync (UTC)</th>
+                  </tr>
+                </thead>
+                <template x-for="source in clusterRecoverySourceRows()" :key="source.cluster_id">
+                  <tbody>
+                    <tr class="cluster-recovery-source-row" @click="toggleClusterRecoverySource(source.cluster_id)">
+                      <td>
+                        <div class="cluster-recovery-source-cell">
+                          <span class="cluster-recovery-chevron" :class="{ 'is-open': isClusterRecoveryExpanded(source.cluster_id) }" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </span>
+                          <span class="ip-pill" x-text="source.cluster_id"></span>
+                          <span class="service-pill" x-show="source.cluster_id === selectedClusterId">target</span>
+                        </div>
+                      </td>
+                      <td><span x-text="source.grp || '-'"></span></td>
+                      <td><span x-text="clusterRecoveryBackupCountForSource(source)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(source.latest_end_time)"></span></td>
+                      <td><span x-text="toUtcStringMaybe(source.latest_seen_at)"></span></td>
+                    </tr>
+                    <tr x-show="isClusterRecoveryExpanded(source.cluster_id)">
+                      <td colspan="5" class="cluster-recovery-expanded-cell">
+                        <div class="cluster-recovery-path-list">
+                          <template x-for="backup in source.backups" :key="`${backup.cluster_id}-${backup.backup_path}`">
+                            <div class="cluster-recovery-path-row">
+                              <div class="cluster-recovery-path-main">
+                                <div class="cluster-recovery-path" x-text="backup.backup_path || '-'"></div>
+                                <div class="cluster-recovery-path-meta">
+                                  <span>Start <strong x-text="toUtcStringMaybe(backup.start_time)"></strong></span>
+                                  <span>End <strong x-text="toUtcStringMaybe(backup.end_time)"></strong></span>
+                                  <span>Objects <strong x-text="backup.object_count ?? 0"></strong></span>
+                                  <span>Status <strong x-text="backup.status || '-'"></strong></span>
+                                </div>
+                              </div>
+                              <button class="btn btn-warn" type="button"
+                                x-show="canManageCompute()"
+                                :disabled="source.cluster_id === selectedClusterId || clusterRecoveryLoading.restore"
+                                :title="source.cluster_id === selectedClusterId ? 'Source and target clusters must be different.' : 'Restore this full backup into the selected target cluster.'"
+                                @click.stop="openClusterRecoveryRestoreConfirm(backup)">
+                                Restore
+                              </button>
+                            </div>
+                          </template>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </template>
+                <tbody>
+                  <tr x-show="!clusterRecoveryLoading.list && clusterRecoverySourceRows().length === 0">
+                    <td colspan="5" style="padding: 18px; color: var(--muted);">No available full-cluster backups found in the catalog.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_users'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterUsers()" :disabled="clusterUsersLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterUsersLoading.snapshot">Refresh</span>
+                <span x-show="clusterUsersLoading.snapshot">Loading…</span>
+              </button>
+              <button class="btn btn-warn" @click="openClusterUserCreateModal()">Create User…</button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterUsersAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">User Management</div>
+              <div class="main-subtitle">List database users, create new ones, update passwords, revoke roles, and delete users for the selected cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by username, option, or role…"
+                x-model="clusterUsersFilterQuery" @input="persistClusterUsersFilter(); applyClusterUsersFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="clusterUsersLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Options</th>
+                    <th>Member Of</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in clusterUsersVisibleRows" :key="row.username">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.username || '-'"></span></td>
+                      <td><span x-text="row.options || '-'"></span></td>
+                      <td>
+                        <div class="roles-wrap" x-show="Array.isArray(row.member_of) && row.member_of.filter(Boolean).length > 0">
+                          <template x-for="role in (row.member_of || []).filter(Boolean)" :key="`${row.username}-${role}`">
+                            <span class="service-pill" x-text="role"></span>
+                          </template>
+                        </div>
+                        <span x-show="!Array.isArray(row.member_of) || row.member_of.filter(Boolean).length === 0"
+                          style="color: var(--muted);">-</span>
+                      </td>
+                      <td>
+                        <div class="cluster-list-pills">
+                          <button class="btn btn-secondary" type="button" @click="openClusterUserPasswordModal(row)">Password</button>
+                          <button class="btn btn-secondary" type="button" @click="openClusterUserRolesModal(row)">Roles</button>
+                          <button class="btn btn-danger" type="button" @click="openClusterUserDeleteConfirm(row)">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!clusterUsersLoading.snapshot && clusterUsersVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="4" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_databases'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterDatabaseObjects()" :disabled="clusterDatabaseObjectsLoading.list || !selectedClusterId">
+                <span x-show="!clusterDatabaseObjectsLoading.list">Refresh</span>
+                <span x-show="clusterDatabaseObjectsLoading.list">Loading…</span>
+              </button>
+              <button class="btn btn-warn" @click="openClusterDatabaseObjectCreateModal()">Create Database…</button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDatabaseObjectsAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-databases-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Database Management</div>
+              <div class="main-subtitle">Create, inspect, and remove managed database objects for the selected cluster.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by database, owner, or timestamp…"
+                x-model="clusterDatabaseObjectsFilterQuery" @input="persistClusterDatabaseObjectsFilter(); applyClusterDatabaseObjectsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="clusterDatabaseObjectsLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="database-object-grid">
+            <template x-for="databaseObject in clusterDatabaseObjectsVisibleRows" :key="`${databaseObject.cluster_id}-${databaseObject.database_name}`">
+              <article class="database-object-card">
+                <div class="database-object-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Database</div>
+                    <h3 class="database-object-card-title" x-text="databaseObject.database_name || '-'"></h3>
+                  </div>
+                  <button class="btn btn-danger" type="button"
+                    @click="openClusterDatabaseObjectDeleteConfirm(databaseObject)"
+                    :disabled="clusterDatabaseObjectsLoading.delete">Delete</button>
+                </div>
+
+                <div class="database-object-meta">
+                  <span>Created by <strong x-text="databaseObject.created_by || '-'"></strong></span>
+                  <span>Created <strong x-text="toUtcStringMaybe(databaseObject.created_at)"></strong></span>
+                  <span>Updated by <strong x-text="databaseObject.updated_by || '-'"></strong></span>
+                  <span>Updated <strong x-text="toUtcStringMaybe(databaseObject.updated_at)"></strong></span>
+                </div>
+
+                <div class="database-role-table-wrap">
+                  <template x-if="!Array.isArray(databaseObject.database_roles) || databaseObject.database_roles.length === 0">
+                    <div class="database-role-empty">No generated database roles found for this database.</div>
+                  </template>
+                  <template x-if="Array.isArray(databaseObject.database_roles) && databaseObject.database_roles.length > 0">
+                    <div class="database-role-table-scroll">
+                      <table class="database-role-table">
+                        <thead>
+                          <tr>
+                            <th>Role</th>
+                            <th>Template</th>
+                            <th>Scope</th>
+                            <th>Schema</th>
+                            <th>IdP Groups</th>
+                            <th>Mapped</th>
+                            <th>Act</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template x-for="databaseRole in databaseObject.database_roles || []" :key="databaseRole.database_role">
+                            <tr>
+                              <td><span class="database-role-name" x-text="databaseRole.database_role || '-'"></span></td>
+                              <td><span x-text="databaseRole.database_role_template || '-'"></span></td>
+                              <td><span x-text="databaseRole.scope_type || '-'"></span></td>
+                              <td><span x-text="databaseRole.schema_name || '-'"></span></td>
+                              <td>
+                                <textarea class="input database-role-group-editor" rows="3"
+                                  placeholder="staging_rw_app1&#10;dev_admin_app1"
+                                  x-model="clusterDatabaseRoleGroupDrafts[databaseRole.database_role]"></textarea>
+                              </td>
+                              <td><span class="service-pill" x-text="databaseRoleGroupSummary(databaseRole)"></span></td>
+                              <td>
+                                <button class="btn btn-warn" type="button"
+                                  @click="updateClusterDatabaseRoleGroups(databaseRole)"
+                                  :disabled="isDatabaseRoleGroupMappingSaving(databaseRole)">
+                                  <span x-show="!isDatabaseRoleGroupMappingSaving(databaseRole)">Save</span>
+                                  <span x-show="isDatabaseRoleGroupMappingSaving(databaseRole)">Saving…</span>
+                                </button>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </template>
+                </div>
+              </article>
+            </template>
+
+            <div class="database-object-empty" x-show="!clusterDatabaseObjectsLoading.list && clusterDatabaseObjectsVisibleRows.length === 0">
+              No results.
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cluster_dashboard'">
+        <aside class="sidebar">
+          <div>
+            <h2>Cluster</h2>
+            <div class="metric">
+              <div class="metric-label">Selected Cluster</div>
+              <div class="metric-value" x-text="clusterDashboardSnapshot?.cluster?.cluster_id || selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Navigation</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="backToClusterDetail()">Back to Cluster</button>
+              <button class="btn" @click="refreshClusterDashboard()" :disabled="clusterDashboardLoading.snapshot || !selectedClusterId">
+                <span x-show="!clusterDashboardLoading.snapshot">Refresh</span>
+                <span x-show="clusterDashboardLoading.snapshot">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="clusterDashboardAutoRefreshEnabled" />
+                Auto-refresh (10s)
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h2>Query Window</h2>
+            <div class="metric" style="display:grid; gap:10px;">
+              <div>
+                <div class="metric-label">Period</div>
+                <div class="metric-value" x-text="`${clusterDashboardPeriodMins}m`"></div>
+              </div>
+              <div>
+                <div class="metric-label">Prometheus Step</div>
+                <div class="metric-value" x-text="`${clusterDashboardIntervalSecs}s`"></div>
+              </div>
+              <div class="metric-sub">Charts refresh from the cluster dashboard endpoint and keep the last 30 minutes in view.</div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main cluster-dashboard-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Cluster Dashboard</div>
+              <div class="main-subtitle">Live Prometheus-backed charts for CPU utilization, SQL query throughput, and p99 latency.</div>
+            </div>
+
+            <div class="main-actions">
+              <div class="pill">Updated (UTC): <span x-text="clusterDashboardLastUpdatedUtc || '-'"></span></div>
+            </div>
+          </div>
+
+          <div class="dashboard-home cluster-dashboard-home" x-show="clusterDashboardSnapshot">
+            <section class="dashboard-grid">
+              <article class="dashboard-card cluster-dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Gauge</div>
+                    <h3 class="dashboard-card-title">CPU Util</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterDashboardCurrentNodes.length || '--'"></div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardCpuChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No CPU data returned for the selected time window.
+                </div>
+                <div class="cluster-list-copy" x-show="clusterDashboardHasData() && clusterDashboardCurrentNodes.length === 0">
+                  No node CPU series returned.
+                </div>
+              </article>
+
+              <article class="dashboard-card cluster-dashboard-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Counter</div>
+                    <h3 class="dashboard-card-title">SQL Queries per Second</h3>
+                  </div>
+                  <div class="dashboard-stat">5</div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardQueriesChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No query throughput data returned for the selected time window.
+                </div>
+              </article>
+
+              <article class="dashboard-card cluster-dashboard-card" style="grid-column: 1 / -1;">
+                <div class="dashboard-card-head">
+                  <div>
+                    <div class="dashboard-card-kicker">Histogram</div>
+                    <h3 class="dashboard-card-title">Service Latency p99</h3>
+                  </div>
+                  <div class="dashboard-stat" x-text="clusterDashboardCurrentNodes.length || '--'"></div>
+                </div>
+                <div class="cluster-dashboard-chart" id="clusterDashboardLatencyChart" x-show="clusterDashboardHasData()"></div>
+                <div class="cluster-list-copy" x-show="!clusterDashboardHasData()">
+                  No latency data returned for the selected time window.
+                </div>
+                <div class="cluster-list-copy" x-show="clusterDashboardHasData() && clusterDashboardCurrentNodes.length === 0">
+                  No node latency series returned.
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <div class="metric" style="max-width: 720px; margin: 40px auto;" x-show="!clusterDashboardSnapshot && !clusterDashboardLoading.snapshot">
+            <div class="main-title">Dashboard not loaded</div>
+            <div class="main-subtitle">Select a cluster and open its dashboard to view time-series charts.</div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout events-layout" x-show="view === 'alerts'">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Alerts</div>
+              <div class="metric-value" x-text="alerts.length"></div>
+              <div class="metric-sub">Live alert inventory for clusters and nodes under management.</div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Impact</h2>
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="legend">
+                <span class="legend-pill">Clusters: <strong x-text="alertClusterCount()"></strong></span>
+                <span class="legend-pill">Nodes: <strong x-text="alertNodeCount()"></strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button class="btn" @click="refreshAlerts()" :disabled="alertsLoading.list">
+                <span x-show="!alertsLoading.list">Refresh</span>
+                <span x-show="alertsLoading.list">Loading…</span>
+              </button>
+
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="alertsAutoRefreshEnabled" />
+                Auto-refresh (15s)
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main events-main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Alerts</div>
+              <div class="main-subtitle">Current live alerts from Alertmanager.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by alert type, cluster, or node…"
+                x-model="alertsFilterQuery" @input="persistAlertsFilter(); applyAlertsFilterSort();" />
+
+              <div class="pill">Updated (UTC): <span x-text="alertsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container events-table-container">
+            <div class="table-scroll events-table-scroll">
+              <table class="events-table">
+                <thead>
+                  <tr>
+                    <th data-sort="date" :class="alertsSortClass(0)" @click="toggleAlertsSort(0)">Started</th>
+                    <th data-sort="string" :class="alertsSortClass(1)" @click="toggleAlertsSort(1)">Alert Type</th>
+                    <th data-sort="string" :class="alertsSortClass(2)" @click="toggleAlertsSort(2)">Cluster</th>
+                    <th data-sort="string" :class="alertsSortClass(3)" @click="toggleAlertsSort(3)">Nodes</th>
+                    <th data-sort="string" :class="alertsSortClass(4)" @click="toggleAlertsSort(4)">Summary</th>
+                    <th data-sort="date" :class="alertsSortClass(5)" @click="toggleAlertsSort(5)">Ended</th>
+                    <th data-sort="date" :class="alertsSortClass(6)" @click="toggleAlertsSort(6)">Age</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <template x-for="alert in alertsVisibleRows" :key="alert.alert_id">
+                    <tr>
+                      <td><span x-text="toUtcStringMaybe(alert.starts_at)"></span></td>
+                      <td>
+                        <span class="service-pill alert-type-pill" :style="alertTypePillStyle(alert.alert_type)"
+                          x-text="alert.alert_type || '-'"></span>
+                      </td>
+                      <td>
+                        <template x-if="alert.cluster">
+                          <a href="#" class="ip-pill clickable" @click.prevent="openCluster(alert.cluster)"
+                            x-text="alert.cluster"></a>
+                        </template>
+                        <template x-if="!alert.cluster">
+                          <span>-</span>
+                        </template>
+                      </td>
+                      <td><span x-text="alert.nodes_text"></span></td>
+                      <td class="events-details-cell">
+                        <pre class="events-yaml" x-text="alert.summary"></pre>
+                        <pre class="events-yaml" x-text="alert.description"></pre>
+                      </td>
+                      <td><span x-text="toUtcStringMaybe(alert.ends_at)"></span></td>
+                      <td><span x-text="relativeTimeFromNow(alert.starts_at)"></span></td>
+                    </tr>
+                  </template>
+
+                  <template x-if="!alertsLoading.list && alertsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="7" style="padding: 18px; color: var(--muted);">No alerts.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'versions' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Versions</div>
+              <div class="metric-value" x-text="versions.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshVersions()" :disabled="versionsLoading.list">
+                <span x-show="!versionsLoading.list">Refresh</span>
+                <span x-show="versionsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="versionsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn"
+                @click="modal.versionCreate.version = ''; clearModalError('versionCreate'); modal.versionCreate.open = true">
+                Add version…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Versions</div>
+              <div class="main-subtitle">Configured versions from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by version…"
+                x-model="versionsFilterQuery" @input="persistVersionsFilter(); applyVersionsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="versionsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in versionsVisibleRows" :key="row.version">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.version || '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete version"
+                          @click="modal.versionDeleteConfirm.version = row.version || ''; clearModalError('versionDeleteConfirm'); modal.versionDeleteConfirm.open = true">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!versionsLoading.list && versionsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'versions' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('versions')"></div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'node_counts' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Node Counts</div>
+              <div class="metric-value" x-text="nodeCounts.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshNodeCounts()" :disabled="nodeCountsLoading.list">
+                <span x-show="!nodeCountsLoading.list">Refresh</span>
+                <span x-show="nodeCountsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="nodeCountsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openNodeCountCreateModal()">
+                Add node count…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Node Counts</div>
+              <div class="main-subtitle">Configured node-per-region options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by node count…"
+                x-model="nodeCountsFilterQuery" @input="persistNodeCountsFilter(); applyNodeCountsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="nodeCountsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Node Count</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in nodeCountsVisibleRows" :key="row.node_count">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.node_count ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete node count"
+                          @click="openNodeCountDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!nodeCountsLoading.list && nodeCountsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'node_counts' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('node_counts')"></div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cpu_counts' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Node CPUs</div>
+              <div class="metric-value" x-text="cpuCounts.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshCpuCounts()" :disabled="cpuCountsLoading.list">
+                <span x-show="!cpuCountsLoading.list">Refresh</span>
+                <span x-show="cpuCountsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="cpuCountsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openCpuCountCreateModal()">
+                Add node CPU…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Node CPUs</div>
+              <div class="main-subtitle">Configured CPU-per-node options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by CPU count…"
+                x-model="cpuCountsFilterQuery" @input="persistCpuCountsFilter(); applyCpuCountsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="cpuCountsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CPU Count</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in cpuCountsVisibleRows" :key="row.cpu_count">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.cpu_count ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete CPU count"
+                          @click="openCpuCountDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!cpuCountsLoading.list && cpuCountsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'cpu_counts' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('cpu_counts')"></div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'disk_sizes' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Disk Sizes</div>
+              <div class="metric-value" x-text="diskSizes.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshDiskSizes()" :disabled="diskSizesLoading.list">
+                <span x-show="!diskSizesLoading.list">Refresh</span>
+                <span x-show="diskSizesLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="diskSizesAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openDiskSizeCreateModal()">
+                Add disk size…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Disk Sizes</div>
+              <div class="main-subtitle">Configured disk size options from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by disk size…"
+                x-model="diskSizesFilterQuery" @input="persistDiskSizesFilter(); applyDiskSizesFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="diskSizesLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Size (GB)</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in diskSizesVisibleRows" :key="row.size_gb">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.size_gb ?? '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete disk size"
+                          @click="openDiskSizeDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!diskSizesLoading.list && diskSizesVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="2" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'disk_sizes' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('disk_sizes')"></div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'database_role_templates' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Database Role Templates</div>
+              <div class="metric-value" x-text="databaseRoleTemplates.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshDatabaseRoleTemplates()" :disabled="databaseRoleTemplatesLoading.list">
+                <span x-show="!databaseRoleTemplatesLoading.list">Refresh</span>
+                <span x-show="databaseRoleTemplatesLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="databaseRoleTemplatesAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openDatabaseRoleTemplateCreateModal()">
+                Add database role template…
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Database Role Templates</div>
+              <div class="main-subtitle">Reusable SQL templates for future cluster-level database roles.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by template…"
+                x-model="databaseRoleTemplatesFilterQuery" @input="persistDatabaseRoleTemplatesFilter(); applyDatabaseRoleTemplatesFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="databaseRoleTemplatesLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Database Role Template</th>
+                    <th>Scope</th>
+                    <th>SQL Statement</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in databaseRoleTemplatesVisibleRows" :key="row.database_role_template">
+                    <tr>
+                      <td><span class="ip-pill" x-text="row.database_role_template || '-'"></span></td>
+                      <td><span class="service-pill" x-text="row.scope_type || '-'"></span></td>
+                      <td>
+                        <div class="sql-preview-editor" x-init="$nextTick(() => renderDatabaseRoleTemplateSqlEditors())"
+                          :data-database-role-template-sql="row.sql_statement || '-'"></div>
+                      </td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete database role template"
+                          @click="openDatabaseRoleTemplateDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!databaseRoleTemplatesLoading.list && databaseRoleTemplatesVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="4" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'database_role_templates' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('database_role_templates')"></div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'regions' && canViewAdmin()">
+        <aside class="sidebar">
+          <div>
+            <h2>Summary</h2>
+            <div class="metric">
+              <div class="metric-label">Total Regions</div>
+              <div class="metric-value" x-text="regions.length"></div>
+            </div>
+          </div>
+
+          <div>
+            <h2>Actions</h2>
+            <div class="metric" style="display:flex; flex-direction:column; gap:10px;">
+              <button type="button" class="btn" @click="refreshRegions()" :disabled="regionsLoading.list">
+                <span x-show="!regionsLoading.list">Refresh</span>
+                <span x-show="regionsLoading.list">Loading…</span>
+              </button>
+              <label
+                style="display:flex; align-items:center; gap:10px; font-size:12px; color: var(--muted); margin-top: 4px;">
+                <input type="checkbox" x-model="regionsAutoRefreshEnabled" />
+                Auto-refresh (20s)
+              </label>
+              <button type="button" class="btn btn-warn" @click="openRegionCreateModal()">Add region…</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="main">
+          <div class="main-header">
+            <div class="main-header-left">
+              <div class="main-title">Regions</div>
+              <div class="main-subtitle">Configured deployment regions from the admin API.</div>
+            </div>
+
+            <div class="main-actions">
+              <input type="search" class="search-input" placeholder="Filter by cloud, region, zone, or image…"
+                x-model="regionsFilterQuery" @input="persistRegionsFilter(); applyRegionsFilter();" />
+              <div class="pill">Updated (UTC): <span x-text="regionsLastUpdatedUtc"></span></div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cloud</th>
+                    <th>Region</th>
+                    <th>Zone</th>
+                    <th>VPC ID</th>
+                    <th>Subnet</th>
+                    <th>Image</th>
+                    <th>Security Groups</th>
+                    <th>Act</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in regionsVisibleRows" :key="`${row.cloud}-${row.region}-${row.zone}`">
+                    <tr>
+                      <td><span class="service-pill" x-text="row.cloud || '-'"></span></td>
+                      <td><span x-text="row.region || '-'"></span></td>
+                      <td><span x-text="row.zone || '-'"></span></td>
+                      <td><span class="ip-pill" x-text="row.vpc_id || '-'"></span></td>
+                      <td><span x-text="row.subnet || '-'"></span></td>
+                      <td><span x-text="row.image || '-'"></span></td>
+                      <td><span x-text="Array.isArray(row.security_groups) && row.security_groups.length ? row.security_groups.join(', ') : '-'"></span></td>
+                      <td>
+                        <button type="button" class="icon-btn" title="Delete region"
+                          @click="openRegionDeleteConfirm(row)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            <path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" />
+                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="!regionsLoading.list && regionsVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="8" style="padding: 18px; color: var(--muted);">No results.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+<main class="layout" x-show="view === 'regions' && !canViewAdmin()">
+        <section class="main">
+          <div class="metric" style="max-width: 720px; margin: 40px auto;">
+            <div class="main-title">Not authorized</div>
+            <div class="main-subtitle" x-text="unauthorizedViewMessage('regions')"></div>
+          </div>
+        </section>
+      </main>
+
+<div class="modal-backdrop" x-show="modal.serverDetails.open" x-transition
+        @keydown.escape.window="closeServerDetails()">
+        <div class="modal" @click.outside="closeServerDetails()">
+          <div class="modal-header">
+            <h3 class="modal-title">Server Details</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeServerDetails()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:10px;">
+            <div style="color: var(--muted); font-size: 13px;">
+              Full record for <span class="ip-pill" x-text="modal.serverDetails.row?.hostname || '-'"></span>
+            </div>
+
+            <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
+              <pre class="inspector-pre" style="max-height: 50vh; white-space: pre-wrap;"
+                x-text="modal.serverDetails.row ? (inspectorFormat === 'json' ? JSON.stringify(modal.serverDetails.row, null, 2) : toYaml(modal.serverDetails.row)) : ''"></pre>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeServerDetails()">CLOSE</button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterCreate.open" x-transition
+        @keydown.escape.window="closeClusterCreateModal()">
+        <div class="modal" @click.outside="closeClusterCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterCreate" x-text="modalErrors.clusterCreate"></div>
+
+            <label class="field">
+              <span class="field-label">Cluster Name</span>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input class="search-input" type="text" x-model="modal.clusterCreate.name" placeholder="funny-cluster-name" />
+                <button class="btn btn-secondary" type="button" @click="refreshClusterCreateName()">Regenerate</button>
+              </div>
+            </label>
+
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px;">
+              <label class="field">
+                <span class="field-label">Node Count</span>
+                <select class="search-input" x-model="modal.clusterCreate.node_count">
+                  <template x-for="count in clusterCreateOptions.node_counts" :key="`node-count-${count}`">
+                    <option :value="String(count)" x-text="count"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Node vCPUs</span>
+                <select class="search-input" x-model="modal.clusterCreate.node_cpus">
+                  <template x-for="cpu in clusterCreateOptions.cpus_per_node" :key="`node-cpu-${cpu}`">
+                    <option :value="String(cpu)" x-text="cpu"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px;">
+              <label class="field">
+                <span class="field-label">Disk Size</span>
+                <select class="search-input" x-model="modal.clusterCreate.disk_size">
+                  <template x-for="size in clusterCreateOptions.disk_sizes" :key="`disk-size-${size}`">
+                    <option :value="String(size)" x-text="clusterCreateDiskSizeLabel(size)"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Cluster Version</span>
+                <select class="search-input" x-model="modal.clusterCreate.version">
+                  <template x-for="version in clusterCreateOptions.versions" :key="`cluster-version-${version}`">
+                    <option :value="version" x-text="version"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Owner</span>
+              <select class="search-input" x-model="modal.clusterCreate.owner">
+                <template x-for="group in clusterOwnerGroups()" :key="`cluster-owner-${group}`">
+                  <option :value="group" x-text="group"></option>
+                </template>
+              </select>
+            </label>
+
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="metric-label">Regions</div>
+
+              <div class="cluster-region-pane">
+                <div class="cluster-region-pane-title">Selected</div>
+                <div class="cluster-region-selected" x-show="clusterCreateSelectedRegions().length > 0">
+                  <template x-for="regionId in clusterCreateSelectedRegions()" :key="`selected-region-${regionId}`">
+                    <button type="button" class="region-pill region-pill-selected"
+                      @click="removeClusterCreateRegion(regionId)">
+                      <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionLabel(regionId)"></span>
+                      <span class="region-pill-remove">Remove</span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterCreateSelectedRegions().length === 0">
+                  Click a region from Available to add it here.
+                </div>
+              </div>
+
+              <div class="cluster-region-pane">
+                <div class="cluster-region-pane-title">Available</div>
+                <div class="cluster-region-options" x-show="clusterCreateAvailableRegions().length > 0">
+                  <template x-for="region in clusterCreateAvailableRegions()" :key="`region-option-${region.region_id}`">
+                    <button type="button" class="region-pill"
+                      @click="addClusterCreateRegion(region.region_id)">
+                      <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionLabel(region.region_id)"></span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterCreateAvailableRegions().length === 0">
+                  All available regions are already selected.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterCreateModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.create || !modal.clusterCreate.owner" @click="createCluster()">
+              <span x-show="!clusterLoading.create">CREATE CLUSTER</span>
+              <span x-show="clusterLoading.create">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterRecoveryRestoreConfirm.open" x-transition
+        @keydown.escape.window="closeClusterRecoveryRestoreConfirm()">
+        <div class="modal" @click.outside="closeClusterRecoveryRestoreConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Restore Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterRecoveryRestoreConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body backup-restore-modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterRecoveryRestoreConfirm"
+              x-text="modalErrors.clusterRecoveryRestoreConfirm"></div>
+
+            <section class="backup-restore-section backup-restore-two-col">
+              <label class="field">
+                <span class="field-label">Source Cluster</span>
+                <div class="backup-restore-backup-path" x-text="modal.clusterRecoveryRestoreConfirm.source_cluster_id || '-'"></div>
+              </label>
+              <label class="field">
+                <span class="field-label">Target Cluster</span>
+                <div class="backup-restore-backup-path" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+              </label>
+            </section>
+
+            <section class="backup-restore-section">
+              <label class="field">
+                <span class="field-label">Backup Path</span>
+                <div class="backup-restore-backup-path" x-text="modal.clusterRecoveryRestoreConfirm.backup_path || '-'"></div>
+              </label>
+            </section>
+
+            <section class="backup-restore-section">
+              <label class="field">
+                <span class="field-label">AOST (UTC)</span>
+                <input class="input" type="datetime-local" step="1"
+                  x-model="modal.clusterRecoveryRestoreConfirm.restore_aost" />
+              </label>
+            </section>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterRecoveryRestoreConfirm()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterRecoveryLoading.restore" @click="restoreClusterFromCatalogBackup()">
+              <span x-show="!clusterRecoveryLoading.restore">REQUEST RESTORE</span>
+              <span x-show="clusterRecoveryLoading.restore">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterBackupObjectRestore.open" x-transition
+        @keydown.escape.window="closeClusterBackupObjectRestoreModal()">
+        <div class="modal" @click.outside="closeClusterBackupObjectRestoreModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Restore Backup Object</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterBackupObjectRestoreModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body backup-restore-modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterBackupObjectRestore"
+              x-text="modalErrors.clusterBackupObjectRestore"></div>
+
+            <section class="backup-restore-section">
+              <div class="backup-restore-object-line">
+                <span class="backup-object-type-icon" :title="backupObjectTypeLabel(modal.clusterBackupObjectRestore.object_type)" :aria-label="backupObjectTypeLabel(modal.clusterBackupObjectRestore.object_type)">
+                  <svg x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'database'" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M5 5v6c0 1.66 3.13 3 7 3s7-1.34 7-3V5" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M5 11v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6" stroke="currentColor" stroke-width="1.8" />
+                  </svg>
+                  <svg x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'table'" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M4 10h16M9 5v14M15 5v14" stroke="currentColor" stroke-width="1.8" />
+                  </svg>
+                </span>
+                <div>
+                  <div class="metric-label">Object</div>
+                  <div class="backup-restore-object-name" x-text="modal.clusterBackupObjectRestore.object_name || '-'"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="backup-restore-section backup-restore-two-col">
+              <label class="field">
+                <span class="field-label">Backup Path</span>
+                <div class="backup-restore-backup-path" x-text="modal.clusterBackupObjectRestore.backup_path || '-'"></div>
+              </label>
+
+              <label class="field">
+                <span class="field-label">AOST (UTC)</span>
+                <input class="input" type="datetime-local" step="1"
+                  x-model="modal.clusterBackupObjectRestore.restore_aost" />
+              </label>
+            </section>
+
+            <section class="backup-restore-section">
+              <label class="backup-restore-option-toggle">
+                <input type="checkbox" x-model="modal.clusterBackupObjectRestore.use_restore_option" />
+                <span x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'table'">Restore into a different database</span>
+                <span x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'database'">Restore with a new database name</span>
+              </label>
+
+              <label class="field" x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'table' && modal.clusterBackupObjectRestore.use_restore_option">
+                <span class="field-label">Restore Into Database</span>
+                <input class="input" x-model="modal.clusterBackupObjectRestore.into_db" placeholder="target_database" />
+              </label>
+
+              <label class="field" x-show="backupObjectType(modal.clusterBackupObjectRestore.object_type) === 'database' && modal.clusterBackupObjectRestore.use_restore_option">
+                <span class="field-label">New Database Name</span>
+                <input class="input" x-model="modal.clusterBackupObjectRestore.new_db_name" placeholder="restored_database" />
+              </label>
+            </section>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterBackupObjectRestoreModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterBackupsLoading.restore" @click="restoreClusterBackupObject()">
+              <span x-show="!clusterBackupsLoading.restore">REQUEST RESTORE</span>
+              <span x-show="clusterBackupsLoading.restore">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterScale.open" x-transition
+        @keydown.escape.window="closeClusterScaleModal()">
+        <div class="modal" @click.outside="closeClusterScaleModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Scale Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterScaleModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterScale" x-text="modalErrors.clusterScale"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              Update the cluster footprint and regions, then submit <span class="ip-pill">POST /api/clusters/scale</span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:12px;">
+              <div class="form-grid">
+                <div style="display:grid; gap:8px;">
+                  <div class="metric-label">Cluster</div>
+                  <div class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+                </div>
+                <div style="display:grid; gap:8px;">
+                  <div class="metric-label">Original State</div>
+                  <div class="metric-sub"
+                    x-text="clusterScaleOriginalState() ? `${clusterScaleOriginalState().node_count} nodes, ${clusterScaleOriginalState().node_cpus} vCPUs, ${clusterCreateDiskSizeLabel(clusterScaleOriginalState().disk_size)}` : '-'"></div>
+                  <div class="metric-sub"
+                    x-text="clusterScaleOriginalState() ? clusterScaleOriginalState().regions.join(', ') || '-' : '-'"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-secondary" type="button" @click="clusterScaleResetToOriginal()">
+                  Reset To Original
+                </button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Node Count</span>
+                <select class="search-input" x-model="modal.clusterScale.node_count">
+                  <template x-for="count in modal.clusterScale.options.node_counts" :key="`scale-node-count-${count}`">
+                    <option :value="String(count)" x-text="count"></option>
+                  </template>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Node vCPUs</span>
+                <select class="search-input" x-model="modal.clusterScale.node_cpus">
+                  <template x-for="cpu in modal.clusterScale.options.cpus_per_node" :key="`scale-node-cpu-${cpu}`">
+                    <option :value="String(cpu)" x-text="cpu"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span class="field-label">Disk Size</span>
+                <select class="search-input" x-model="modal.clusterScale.disk_size">
+                  <template x-for="size in modal.clusterScale.options.disk_sizes" :key="`scale-disk-size-${size}`">
+                    <option :value="String(size)" x-text="clusterCreateDiskSizeLabel(size)"></option>
+                  </template>
+                </select>
+              </label>
+
+              <div></div>
+            </div>
+
+            <div class="form-grid">
+              <div class="metric" style="display:grid; gap:10px;">
+                <div class="metric-label">Selected Regions</div>
+                <div class="cluster-region-selected" x-show="clusterScaleSelectedRegions().length > 0">
+                  <template x-for="regionId in clusterScaleSelectedRegions()" :key="`scale-selected-region-${regionId}`">
+                    <button type="button" class="region-pill region-pill-selected"
+                      @click="removeClusterScaleRegion(regionId)">
+                      <img x-show="cloudLogoForRegion(regionId)" :src="cloudLogoForRegion(regionId)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionLabel(regionId)"></span>
+                      <span class="region-pill-remove">Remove</span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterScaleSelectedRegions().length === 0">
+                  Click a region from Available to add it here.
+                </div>
+              </div>
+
+              <div class="metric" style="display:grid; gap:10px;">
+                <div class="metric-label">Available Regions</div>
+                <div class="cluster-region-options" x-show="clusterScaleAvailableRegions().length > 0">
+                  <template x-for="region in clusterScaleAvailableRegions()" :key="`scale-region-option-${region.region_id}`">
+                    <button type="button" class="region-pill"
+                      @click="addClusterScaleRegion(region.region_id)">
+                      <img x-show="cloudLogoForRegion(region.region_id)" :src="cloudLogoForRegion(region.region_id)" alt=""
+                        class="region-pill-logo" />
+                      <span x-text="regionLabel(region.region_id)"></span>
+                    </button>
+                  </template>
+                </div>
+                <div class="metric-sub" x-show="clusterScaleAvailableRegions().length === 0">
+                  All available regions are already selected.
+                </div>
+              </div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:10px;">
+              <div class="metric-label">Delta</div>
+              <div class="metric-sub" x-show="clusterScaleChanges().length === 0">
+                No changes yet.
+              </div>
+              <div class="cluster-delta-list" x-show="clusterScaleChanges().length > 0">
+                <template x-for="change in clusterScaleChanges()" :key="`${change.label}-${change.from}-${change.to}`">
+                  <div class="cluster-delta-item">
+                    <div class="cluster-delta-label" x-text="change.label"></div>
+                    <div class="cluster-delta-values">
+                      <span class="cluster-delta-from" x-text="change.from"></span>
+                      <span class="cluster-delta-arrow">→</span>
+                      <span class="cluster-delta-to" x-text="change.to"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterScaleModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.scale" @click="confirmClusterScale()">
+              <span x-show="!clusterLoading.scale">REQUEST SCALE</span>
+              <span x-show="clusterLoading.scale">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterUpgrade.open" x-transition
+        @keydown.escape.window="closeClusterUpgradeModal()">
+        <div class="modal" @click.outside="closeClusterUpgradeModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Upgrade Cluster</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUpgradeModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:14px;">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUpgrade" x-text="modalErrors.clusterUpgrade"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              Select the target version returned by <span class="ip-pill">GET /api/clusters/{cluster_id}/options</span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Cluster</div>
+              <div class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></div>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Upgrade Version</span>
+              <select class="search-input" x-model="modal.clusterUpgrade.version"
+                :disabled="clusterLoading.upgrade || modal.clusterUpgrade.upgrade_versions.length === 0">
+                <template x-for="version in modal.clusterUpgrade.upgrade_versions" :key="`upgrade-version-${version}`">
+                  <option :value="version" x-text="version"></option>
+                </template>
+              </select>
+            </label>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUpgradeModal()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.upgrade || !modal.clusterUpgrade.version"
+              @click="confirmClusterUpgrade()">
+              <span x-show="!clusterLoading.upgrade">REQUEST UPGRADE</span>
+              <span x-show="clusterLoading.upgrade">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterHealthcheckConfirm.open" x-transition
+        @keydown.escape.window="closeClusterHealthcheckConfirm()">
+        <div class="modal" @click.outside="closeClusterHealthcheckConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Cluster Healthcheck</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterHealthcheckConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterHealthcheckConfirm"
+              x-text="modalErrors.clusterHealthcheckConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will request the configured healthcheck playbook for cluster
+              <span class="ip-pill" x-text="modal.clusterHealthcheckConfirm.cluster_id"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterHealthcheckConfirm()">CANCEL</button>
+            <button class="btn" :disabled="clusterLoading.healthcheck" @click="confirmClusterHealthcheck()">
+              <span x-show="!clusterLoading.healthcheck">RUN HEALTHCHECK</span>
+              <span x-show="clusterLoading.healthcheck">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Cluster Delete</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDeleteConfirm"
+              x-text="modalErrors.clusterDeleteConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will request deletion for cluster
+              <span class="ip-pill" x-text="modal.clusterDeleteConfirm.cluster_id"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterLoading.delete" @click="confirmClusterDelete()">
+              <span x-show="!clusterLoading.delete">YES, DELETE</span>
+              <span x-show="clusterLoading.delete">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterDatabaseObjectCreate.open" x-transition
+        @keydown.escape.window="closeClusterDatabaseObjectCreateModal()">
+        <div class="modal" @click.outside="closeClusterDatabaseObjectCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database Object</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDatabaseObjectCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDatabaseObjectCreate"
+              x-text="modalErrors.clusterDatabaseObjectCreate"></div>
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Cluster</div>
+              <div><span class="ip-pill" x-text="selectedCluster?.cluster_id || selectedClusterId || '-'"></span></div>
+            </div>
+            <div class="form-row">
+              <div class="label">database_name</div>
+              <input class="input" x-model="modal.clusterDatabaseObjectCreate.database_name" placeholder="application_db" />
+              <div class="hint">Default database roles will be materialized from the configured templates.</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDatabaseObjectCreateModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterDatabaseObjectsLoading.create"
+              @click="createClusterDatabaseObject()">
+              <span x-show="!clusterDatabaseObjectsLoading.create">CREATE DATABASE</span>
+              <span x-show="clusterDatabaseObjectsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterDatabaseObjectDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterDatabaseObjectDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterDatabaseObjectDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Delete Database Object</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterDatabaseObjectDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterDatabaseObjectDeleteConfirm"
+              x-text="modalErrors.clusterDatabaseObjectDeleteConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will drop database
+              <span class="ip-pill" x-text="modal.clusterDatabaseObjectDeleteConfirm.database_name || '-'"></span>
+              and remove its managed database roles.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterDatabaseObjectDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterDatabaseObjectsLoading.delete"
+              @click="confirmClusterDatabaseObjectDelete()">
+              <span x-show="!clusterDatabaseObjectsLoading.delete">DELETE DATABASE</span>
+              <span x-show="clusterDatabaseObjectsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.serverActionConfirm.open" x-transition
+        @keydown.escape.window="closeServerActionConfirm()">
+        <div class="modal" @click.outside="closeServerActionConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title"
+              x-text="modal.serverActionConfirm.action === 'delete' ? 'Confirm Delete' : 'Confirm Decommission'"></h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeServerActionConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.serverActionConfirm"
+              x-text="modalErrors.serverActionConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              <template x-if="modal.serverActionConfirm.action === 'decommission'">
+                <div>
+                  This will start decommissioning for <span class="ip-pill"
+                    x-text="modal.serverActionConfirm.hostname"></span>.
+                </div>
+              </template>
+              <template x-if="modal.serverActionConfirm.action === 'delete'">
+                <div>
+                  This will permanently delete the server record for <span class="ip-pill"
+                    x-text="modal.serverActionConfirm.hostname"></span>.
+                </div>
+              </template>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <template x-if="modal.serverActionConfirm.action === 'decommission'">
+                  <span class="ip-pill">PUT /api/admin/servers/<span
+                      x-text="modal.serverActionConfirm.hostname"></span></span>
+                </template>
+                <template x-if="modal.serverActionConfirm.action === 'delete'">
+                  <span class="ip-pill">DELETE /api/admin/servers/<span
+                      x-text="modal.serverActionConfirm.hostname"></span></span>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeServerActionConfirm()">CANCEL</button>
+            <button class="btn" :class="modal.serverActionConfirm.action === 'delete' ? 'btn-danger' : 'btn-warn'"
+              :disabled="serversLoading.action" @click="confirmServerAction()">
+              <span x-show="!serversLoading.action"
+                x-text="modal.serverActionConfirm.action === 'delete' ? 'YES, DELETE' : 'YES, DECOMMISSION'"></span>
+              <span x-show="serversLoading.action">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.versionCreate.open" x-transition
+        @keydown.escape.window="closeVersionCreateModal()">
+        <div class="modal" @click.outside="closeVersionCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Version</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeVersionCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.versionCreate" x-text="modalErrors.versionCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">version</div>
+              <input class="input" x-model="modal.versionCreate.version" placeholder="v25.1.0" />
+              <div class="hint">Creates a new version entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/versions/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeVersionCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="versionsLoading.create" @click="createVersion()">
+              <span x-show="!versionsLoading.create">CREATE VERSION</span>
+              <span x-show="versionsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.versionDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeVersionDeleteConfirm()">
+        <div class="modal" @click.outside="closeVersionDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Version Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeVersionDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.versionDeleteConfirm"
+              x-text="modalErrors.versionDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove version
+              <span class="ip-pill" x-text="modal.versionDeleteConfirm.version"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/versions/<span
+                    x-text="modal.versionDeleteConfirm.version"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeVersionDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="versionsLoading.delete" @click="confirmVersionDelete()">
+              <span x-show="!versionsLoading.delete">YES, DELETE</span>
+              <span x-show="versionsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.nodeCountCreate.open" x-transition
+        @keydown.escape.window="closeNodeCountCreateModal()">
+        <div class="modal" @click.outside="closeNodeCountCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Node Count</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeNodeCountCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.nodeCountCreate" x-text="modalErrors.nodeCountCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">node_count</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.nodeCountCreate.node_count" placeholder="3" />
+              <div class="hint">Creates a new node count entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/node_counts/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeNodeCountCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="nodeCountsLoading.create" @click="createNodeCount()">
+              <span x-show="!nodeCountsLoading.create">CREATE NODE COUNT</span>
+              <span x-show="nodeCountsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.nodeCountDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeNodeCountDeleteConfirm()">
+        <div class="modal" @click.outside="closeNodeCountDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Node Count Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeNodeCountDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.nodeCountDeleteConfirm"
+              x-text="modalErrors.nodeCountDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove node count
+              <span class="ip-pill" x-text="modal.nodeCountDeleteConfirm.node_count"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/node_counts/<span
+                    x-text="modal.nodeCountDeleteConfirm.node_count"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeNodeCountDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="nodeCountsLoading.delete" @click="confirmNodeCountDelete()">
+              <span x-show="!nodeCountsLoading.delete">YES, DELETE</span>
+              <span x-show="nodeCountsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.cpuCountCreate.open" x-transition
+        @keydown.escape.window="closeCpuCountCreateModal()">
+        <div class="modal" @click.outside="closeCpuCountCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create CPU Count</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeCpuCountCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.cpuCountCreate" x-text="modalErrors.cpuCountCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">cpu_count</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.cpuCountCreate.cpu_count" placeholder="4" />
+              <div class="hint">Creates a new CPU count entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/cpu_counts/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeCpuCountCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="cpuCountsLoading.create" @click="createCpuCount()">
+              <span x-show="!cpuCountsLoading.create">CREATE CPU COUNT</span>
+              <span x-show="cpuCountsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.cpuCountDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeCpuCountDeleteConfirm()">
+        <div class="modal" @click.outside="closeCpuCountDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm CPU Count Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeCpuCountDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.cpuCountDeleteConfirm"
+              x-text="modalErrors.cpuCountDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove CPU count
+              <span class="ip-pill" x-text="modal.cpuCountDeleteConfirm.cpu_count"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/cpu_counts/<span
+                    x-text="modal.cpuCountDeleteConfirm.cpu_count"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeCpuCountDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="cpuCountsLoading.delete" @click="confirmCpuCountDelete()">
+              <span x-show="!cpuCountsLoading.delete">YES, DELETE</span>
+              <span x-show="cpuCountsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.diskSizeCreate.open" x-transition
+        @keydown.escape.window="closeDiskSizeCreateModal()">
+        <div class="modal" @click.outside="closeDiskSizeCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Disk Size</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDiskSizeCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.diskSizeCreate" x-text="modalErrors.diskSizeCreate">
+            </div>
+
+            <div class="form-row">
+              <div class="label">size_gb</div>
+              <input class="input" type="number" min="1" step="1" x-model="modal.diskSizeCreate.size_gb" placeholder="50" />
+              <div class="hint">Creates a new disk size entry in the admin catalog.</div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/disk_sizes/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDiskSizeCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="diskSizesLoading.create" @click="createDiskSize()">
+              <span x-show="!diskSizesLoading.create">CREATE DISK SIZE</span>
+              <span x-show="diskSizesLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.diskSizeDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeDiskSizeDeleteConfirm()">
+        <div class="modal" @click.outside="closeDiskSizeDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Disk Size Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDiskSizeDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.diskSizeDeleteConfirm"
+              x-text="modalErrors.diskSizeDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove disk size
+              <span class="ip-pill" x-text="modal.diskSizeDeleteConfirm.size_gb"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/disk_sizes/<span
+                    x-text="modal.diskSizeDeleteConfirm.size_gb"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDiskSizeDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="diskSizesLoading.delete" @click="confirmDiskSizeDelete()">
+              <span x-show="!diskSizesLoading.delete">YES, DELETE</span>
+              <span x-show="diskSizesLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.databaseRoleTemplateCreate.open" x-transition
+        @keydown.escape.window="closeDatabaseRoleTemplateCreateModal()">
+        <div class="modal" @click.outside="closeDatabaseRoleTemplateCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database Role Template</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDatabaseRoleTemplateCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.databaseRoleTemplateCreate" x-text="modalErrors.databaseRoleTemplateCreate">
+            </div>
+
+            <div class="form-grid">
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">database_role_template</div>
+                <input class="input" x-model="modal.databaseRoleTemplateCreate.database_role_template" placeholder="read_only" />
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">scope_type</div>
+                <select class="input" x-model="modal.databaseRoleTemplateCreate.scope_type">
+                  <option value="schema">schema</option>
+                  <option value="database">database</option>
+                </select>
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">sql_statement</div>
+                <div class="modal-ace-editor" x-ref="databaseRoleTemplateSqlEditor"></div>
+                <div class="hint">Available placeholders: {database_role}, {database_name}, and {schema_name} for schema-scoped templates.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDatabaseRoleTemplateCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="databaseRoleTemplatesLoading.create" @click="createDatabaseRoleTemplate()">
+              <span x-show="!databaseRoleTemplatesLoading.create">CREATE TEMPLATE</span>
+              <span x-show="databaseRoleTemplatesLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.databaseRoleTemplateDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeDatabaseRoleTemplateDeleteConfirm()">
+        <div class="modal" @click.outside="closeDatabaseRoleTemplateDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Database Role Template Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeDatabaseRoleTemplateDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.databaseRoleTemplateDeleteConfirm"
+              x-text="modalErrors.databaseRoleTemplateDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove database role template
+              <span class="ip-pill" x-text="modal.databaseRoleTemplateDeleteConfirm.database_role_template"></span>.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeDatabaseRoleTemplateDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="databaseRoleTemplatesLoading.delete" @click="confirmDatabaseRoleTemplateDelete()">
+              <span x-show="!databaseRoleTemplatesLoading.delete">YES, DELETE</span>
+              <span x-show="databaseRoleTemplatesLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.regionCreate.open" x-transition
+        @keydown.escape.window="closeRegionCreateModal()">
+        <div class="modal" @click.outside="closeRegionCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Region</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeRegionCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.regionCreate" x-text="modalErrors.regionCreate">
+            </div>
+
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">cloud</div>
+                <input class="input" x-model="modal.regionCreate.cloud" placeholder="aws" />
+              </div>
+              <div class="form-row">
+                <div class="label">region</div>
+                <input class="input" x-model="modal.regionCreate.region" placeholder="us-east-1" />
+              </div>
+              <div class="form-row">
+                <div class="label">zone</div>
+                <input class="input" x-model="modal.regionCreate.zone" placeholder="us-east-1a" />
+              </div>
+              <div class="form-row">
+                <div class="label">vpc_id</div>
+                <input class="input" x-model="modal.regionCreate.vpc_id" placeholder="vpc-123456" />
+              </div>
+              <div class="form-row">
+                <div class="label">subnet</div>
+                <input class="input" x-model="modal.regionCreate.subnet" placeholder="subnet-123456" />
+              </div>
+              <div class="form-row">
+                <div class="label">image</div>
+                <input class="input" x-model="modal.regionCreate.image" placeholder="ami-123456" />
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">security_groups</div>
+                <input class="input" x-model="modal.regionCreate.security_groups_text"
+                  placeholder="sg-123456, sg-abcdef" />
+                <div class="hint">Comma-separated security group ids.</div>
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">extras</div>
+                <textarea class="textarea" x-model="modal.regionCreate.extras_text"
+                  placeholder='{"key":"value"}'></textarea>
+                <div class="hint">Enter a JSON object for any provider-specific extras.</div>
+              </div>
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div><span class="ip-pill">POST /api/admin/regions/</span></div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeRegionCreateModal()">CANCEL</button>
+            <button type="button" class="btn btn-warn" :disabled="regionsLoading.create" @click="createRegion()">
+              <span x-show="!regionsLoading.create">CREATE REGION</span>
+              <span x-show="regionsLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.regionDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeRegionDeleteConfirm()">
+        <div class="modal" @click.outside="closeRegionDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Region Delete</h3>
+            <button type="button" class="btn" style="padding:7px 12px;" @click="closeRegionDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.regionDeleteConfirm"
+              x-text="modalErrors.regionDeleteConfirm"></div>
+
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will permanently remove region
+              <span class="ip-pill"
+                x-text="`${modal.regionDeleteConfirm.cloud}/${modal.regionDeleteConfirm.region}/${modal.regionDeleteConfirm.zone}`"></span>.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+              <div>
+                <span class="ip-pill">DELETE /api/admin/regions/<span
+                    x-text="modal.regionDeleteConfirm.cloud"></span>/<span
+                    x-text="modal.regionDeleteConfirm.region"></span>/<span
+                    x-text="modal.regionDeleteConfirm.zone"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="closeRegionDeleteConfirm()">CANCEL</button>
+            <button type="button" class="btn btn-danger" :disabled="regionsLoading.delete" @click="confirmRegionDelete()">
+              <span x-show="!regionsLoading.delete">YES, DELETE</span>
+              <span x-show="regionsLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterUserCreate.open" x-transition
+        @keydown.escape.window="closeClusterUserCreateModal()">
+        <div class="modal modal-constrained" @click.outside="closeClusterUserCreateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Create Database User</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserCreateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserCreate" x-text="modalErrors.clusterUserCreate"></div>
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">username</div>
+                <input class="input" x-model="modal.clusterUserCreate.username" placeholder="app_user" />
+              </div>
+              <div class="form-row">
+                <div class="label">password</div>
+                <input class="input" type="password" x-model="modal.clusterUserCreate.password" placeholder="strong password" />
+              </div>
+              <div class="form-row modal-scroll-row">
+                <div class="label">database_roles</div>
+                <div class="roles-editor roles-editor-scroll">
+                  <template x-for="databaseRole in databaseRoles" :key="`create-user-database-role-${databaseRole.database_role}`">
+                    <label class="check-card">
+                      <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserCreate.database_roles" />
+                      <span x-text="databaseRoleLabel(databaseRole)"></span>
+                    </label>
+                  </template>
+                </div>
+                <div class="hint" x-show="databaseRoles.length === 0">No database roles have been materialized for this cluster.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserCreateModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterUsersLoading.create" @click="createClusterUser()">
+              <span x-show="!clusterUsersLoading.create">CREATE USER</span>
+              <span x-show="clusterUsersLoading.create">CREATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterUserDeleteConfirm.open" x-transition
+        @keydown.escape.window="closeClusterUserDeleteConfirm()">
+        <div class="modal" @click.outside="closeClusterUserDeleteConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Delete Database User</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserDeleteConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserDeleteConfirm" x-text="modalErrors.clusterUserDeleteConfirm"></div>
+            <p>
+              This will permanently remove
+              <span class="ip-pill" x-text="modal.clusterUserDeleteConfirm.username || '-'"></span>
+              from the selected cluster.
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserDeleteConfirm()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="clusterUsersLoading.delete" @click="confirmClusterUserDelete()">
+              <span x-show="!clusterUsersLoading.delete">DELETE USER</span>
+              <span x-show="clusterUsersLoading.delete">DELETING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterUserPassword.open" x-transition
+        @keydown.escape.window="closeClusterUserPasswordModal()">
+        <div class="modal" @click.outside="closeClusterUserPasswordModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Update User Password</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserPasswordModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserPassword" x-text="modalErrors.clusterUserPassword"></div>
+            <div class="metric" style="display:grid; gap:8px; margin-bottom: 14px;">
+              <div class="metric-label">User</div>
+              <div><span class="ip-pill" x-text="modal.clusterUserPassword.username || '-'"></span></div>
+            </div>
+            <div class="form-row">
+              <div class="label">new password</div>
+              <input class="input" type="password" x-model="modal.clusterUserPassword.password" placeholder="new strong password" />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserPasswordModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="clusterUsersLoading.password" @click="updateClusterUserPassword()">
+              <span x-show="!clusterUsersLoading.password">UPDATE PASSWORD</span>
+              <span x-show="clusterUsersLoading.password">UPDATING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.clusterUserRoles.open" x-transition
+        @keydown.escape.window="closeClusterUserRolesModal()">
+        <div class="modal modal-constrained" @click.outside="closeClusterUserRolesModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Manage User Roles</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeClusterUserRolesModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.clusterUserRoles" x-text="modalErrors.clusterUserRoles"></div>
+            <div class="metric" style="display:grid; gap:8px; margin-bottom: 14px;">
+              <div class="metric-label">User</div>
+              <div><span class="ip-pill" x-text="modal.clusterUserRoles.username || '-'"></span></div>
+            </div>
+
+            <div class="metric modal-scroll-row" style="display:grid; gap:10px;">
+              <div class="metric-label">Current Database Roles</div>
+              <div class="cluster-list-pills roles-pills-scroll" x-show="modal.clusterUserRoles.databaseRoles.length > 0">
+                <template x-for="databaseRole in modal.clusterUserRoles.databaseRoles" :key="`${modal.clusterUserRoles.username}-${databaseRole}`">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="service-pill" x-text="databaseRole"></span>
+                    <button class="icon-btn" title="Revoke database role" @click="revokeClusterUserDatabaseRole(databaseRole)" :disabled="clusterUsersLoading.revokeDatabaseRole">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+              </div>
+              <div class="cluster-list-copy" x-show="modal.clusterUserRoles.databaseRoles.length === 0">
+                No database roles returned for this user.
+              </div>
+            </div>
+
+            <div class="metric modal-scroll-row" style="display:grid; gap:8px; margin-top: 14px;">
+              <div class="metric-label">Grant Database Roles</div>
+              <div style="display:grid; gap:10px;">
+                <div class="roles-editor roles-editor-scroll">
+                  <template x-for="databaseRole in databaseRoles" :key="`grant-user-database-role-${databaseRole.database_role}`">
+                    <label class="check-card">
+                      <input type="checkbox" :value="databaseRole.database_role" x-model="modal.clusterUserRoles.grantDatabaseRoles" />
+                      <span x-text="databaseRoleLabel(databaseRole)"></span>
+                    </label>
+                  </template>
+                </div>
+                <button class="btn btn-warn" type="button" :disabled="clusterUsersLoading.grantDatabaseRoles || modal.clusterUserRoles.grantDatabaseRoles.length === 0"
+                  @click="grantClusterUserDatabaseRoles()">
+                  <span x-show="!clusterUsersLoading.grantDatabaseRoles">GRANT</span>
+                  <span x-show="clusterUsersLoading.grantDatabaseRoles">GRANTING…</span>
+                </button>
+              </div>
+              <div class="metric-sub" x-show="databaseRoles.length === 0">No materialized database roles are available for this cluster.</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeClusterUserRolesModal()">DONE</button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.allocate.open" x-transition
+        @keydown.escape.window="closeAllocateModal()">
+        <div class="modal" @click.outside="closeAllocateModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Allocate Compute Unit</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeAllocateModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.allocate" x-text="modalErrors.allocate"></div>
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">deployment id</div>
+                <input class="input" x-model="modal.allocate.deployment_id" placeholder="web_app_v1" />
+              </div>
+              <div class="form-row">
+                <div class="label">cpu_count (optional)</div>
+                <input class="input" type="number" min="1" x-model.number="modal.allocate.cpu_count"
+                  placeholder="cpu number" />
+              </div>
+              <div class="form-row">
+                <div class="label">region (optional)</div>
+                <input class="input" x-model="modal.allocate.region" placeholder="e.g. us-east-1" />
+              </div>
+              <div class="form-row">
+                <div class="label">zone (optional)</div>
+                <input class="input" x-model="modal.allocate.zone" placeholder="e.g. us-east-1a" />
+              </div>
+              <div class="form-row">
+                <div class="label">compute_id (optional)</div>
+                <input class="input" x-model="modal.allocate.compute_id"
+                  placeholder="e.g. cu-123 (leave blank for any)" />
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">ssh_public_key (required)</div>
+                <textarea class="textarea" x-model="modal.allocate.ssh_public_key"
+                  placeholder="ssh-ed25519 AAAA... user@host"></textarea>
+              </div>
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">tags (required, JSON object)</div>
+                <textarea class="textarea" x-model="modal.allocate.tagsText" spellcheck="false"
+                  placeholder='{"owner":"fabio","roles":["db","worker"]}'></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeAllocateModal()">CANCEL</button>
+            <button class="btn" :disabled="loading.allocate" @click="allocate()">
+              <span x-show="!loading.allocate">ALLOCATE</span>
+              <span x-show="loading.allocate">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.init.open" x-transition @keydown.escape.window="closeInitModal()">
+        <div class="modal" @click.outside="closeInitModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Init Server</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeInitModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.init" x-text="modalErrors.init"></div>
+            <div class="form-grid">
+              <div class="form-row">
+                <div class="label">ip</div>
+                <input class="input" x-model="modal.init.ip" placeholder="10.0.0.12" />
+              </div>
+              <div class="form-row">
+                <div class="label">hostname</div>
+                <input class="input" x-model="modal.init.hostname" placeholder="server-123" />
+              </div>
+              <div class="form-row">
+                <div class="label">user id</div>
+                <input class="input" x-model="modal.init.user_id" placeholder="default = ubuntu" />
+              </div>
+              <div class="form-row">
+                <div class="label">region</div>
+                <input class="input" x-model="modal.init.region" placeholder="us-east-1" />
+              </div>
+              <div class="form-row">
+                <div class="label">zone</div>
+                <input class="input" x-model="modal.init.zone" placeholder="us-east-1a" />
+              </div>
+
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                  <div class="label">server cpu count</div>
+                  <div class="label">desired CPUs per compute unit</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                  <input class="input" type="number" min="0" x-model.number="modal.init.cpuEnd"
+                    @input="recomputeInitCpuRanges()" placeholder="total server CPUs (e.g. 16)" />
+                  <input class="input" type="number" min="1" x-model.number="modal.init.cpuStep"
+                    @input="recomputeInitCpuRanges()" placeholder="(e.g. 4)" />
+                </div>
+
+                <div style="margin-top:8px; color: var(--muted); font-size: 12px;">
+                  Produces an array of ranges like <span class="ip-pill">["0-3","4-7"]</span> and an expanded CPU set.
+                </div>
+                <div x-show="modal.init.cpuRangesError" style="margin-top:6px; color: var(--danger); font-size: 12px;"
+                  x-text="modal.init.cpuRangesError"></div>
+              </div>
+
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">computed cpu_ranges</div>
+                <pre class="inspector-pre" style="max-height: 140px; white-space: pre-wrap;"
+                  x-text="modal.init.cpuRangesPreview || '-'"></pre>
+              </div>
+
+              <details class="form-row" style="grid-column: 1 / -1;">
+                <summary style="cursor:pointer; color: var(--muted); font-size: 12px; user-select:none;">
+                  Advanced: edit cpu_ranges JSON directly
+                </summary>
+                <div style="margin-top:8px;">
+                  <textarea class="textarea" x-model="modal.init.cpuRangesText" spellcheck="false"
+                    @input="recomputeInitCpuRanges(true)" placeholder='["0-3","4-7"]'></textarea>
+                </div>
+              </details>
+
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeInitModal()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="loading.init" @click="initServer()">
+              <span x-show="!loading.init">RUN INIT</span>
+              <span x-show="loading.init">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.decommission.open" x-transition
+        @keydown.escape.window="closeDecommissionModal()">
+        <div class="modal" @click.outside="closeDecommissionModal()">
+          <div class="modal-header">
+            <h3 class="modal-title">Decommission Server</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeDecommissionModal()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.decommission" x-text="modalErrors.decommission"></div>
+
+            <div class="form-grid">
+              <div class="form-row" style="grid-column: 1 / -1;">
+                <div class="label">hostname</div>
+                <input class="input" x-model="modal.decommission.hostname" placeholder="server-123" />
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeDecommissionModal()">CANCEL</button>
+            <button class="btn btn-danger" :disabled="loading.decommission" @click="decommissionByHostname()">
+              <span x-show="!loading.decommission">DECOMMISSION</span>
+              <span x-show="loading.decommission">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.deallocateConfirm.open" x-transition
+        @keydown.escape.window="closeDeallocateConfirm()">
+        <div class="modal" @click.outside="closeDeallocateConfirm()">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirm Deallocate</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeDeallocateConfirm()">CLOSE</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-error-banner" x-show="modalErrors.deallocateConfirm"
+              x-text="modalErrors.deallocateConfirm"></div>
+            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+              This will <span style="color:#e5f4ff;">release the compute unit back to the pool</span>.
+              Any workload depending on it may be disrupted.
+            </div>
+
+            <div class="metric" style="display:grid; gap:8px;">
+              <div class="metric-label">Request</div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="pill" style="margin:0;">compute_id: <span
+                    x-text="modal.deallocateConfirm.compute_id"></span>
+                </div>
+                <div class="pill" style="margin:0;">hostname: <span
+                    x-text="modal.deallocateConfirm.hostname || '-'"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeDeallocateConfirm()">CANCEL</button>
+            <button class="btn btn-warn" :disabled="loading.deallocateConfirm" @click="confirmDeallocate()">
+              <span x-show="!loading.deallocateConfirm">YES, DEALLOCATE</span>
+              <span x-show="loading.deallocateConfirm">WORKING…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div class="modal-backdrop" x-show="modal.computeDetails.open" x-transition
+        @keydown.escape.window="closeComputeDetails()">
+        <div class="modal" @click.outside="closeComputeDetails()">
+          <div class="modal-header">
+            <h3 class="modal-title">Compute Unit Details</h3>
+            <button class="btn" style="padding:7px 12px;" @click="closeComputeDetails()">CLOSE</button>
+          </div>
+
+          <div class="modal-body" style="display:grid; gap:10px;">
+            <div style="color: var(--muted); font-size: 13px;">
+              Full record for <span class="ip-pill" x-text="modal.computeDetails.row?.compute_id || '-'"></span>
+            </div>
+
+            <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
+              <pre class="inspector-pre" style="max-height: 50vh; white-space: pre-wrap;"
+                x-text="modal.computeDetails.row ? (inspectorFormat === 'json' ? JSON.stringify(modal.computeDetails.row, null, 2) : toYaml(modal.computeDetails.row)) : ''"></pre>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn" @click="closeComputeDetails()">CLOSE</button>
+          </div>
+        </div>
+      </div>
