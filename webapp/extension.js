@@ -73,15 +73,20 @@
     "loadExtensionHtml",
     "applyExtensionHooks",
     "applyExtensionBrand",
+    "applyRouteFromHash",
     "isPlainObject",
+    "ensureViewData",
     "restoreLocalState",
+    "setManagedInterval",
     "checkAuth",
     "setAuthRequired",
     "applyAuthMetadata",
     "refreshAuthMeSnapshot",
     "loginWithSSO",
     "logout",
+    "parseHashRoute",
     "routeForView",
+    "setView",
     "canAccessView",
     "handleForbiddenView",
     "viewLabel",
@@ -172,22 +177,35 @@
       }
     }
 
-    methods.ensureViewData = async function () {
-      if (typeof this.ensureCurrentView === "function") {
-        await this.ensureCurrentView();
-      }
-    };
-    methods.applyRouteFromHash = function () {
-      if (typeof this.applyHashRoute === "function") {
-        this.applyHashRoute();
-      }
-    };
-
     return { state, methods };
   }
 
-  function route(view, path, label, subtitle, ensure, adminOnly = false) {
-    return { path, label, subtitle, ensure, adminOnly };
+  function route(view, path, label, subtitle, ensure, adminOnly = false, match = null) {
+    const config = { path, label, subtitle, ensure, adminOnly };
+    if (match) config.match = match;
+    return config;
+  }
+
+  function splitPath(path) {
+    return String(path || "/")
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => {
+        try {
+          return decodeURIComponent(segment);
+        } catch (_e) {
+          return segment;
+        }
+      });
+  }
+
+  function matchClusterPath(section = "") {
+    return (path) => {
+      const parts = splitPath(path);
+      if (parts[0] !== "clusters" || !parts[1]) return false;
+      if (!section) return parts.length === 2;
+      return parts[2] === section;
+    };
   }
 
   function ensureScript(src) {
@@ -205,52 +223,109 @@
     navItems: [
       { view: "clusters", label: "Clusters" },
       { view: "alerts", label: "Alerts" },
-      { view: "versions", label: "CP Admin" },
+    ],
+    adminItems: [
+      {
+        view: "versions",
+        label: "Versions",
+        kicker: "Cluster Versions",
+        description: "Manage CockroachDB versions available for cluster operations.",
+      },
+      {
+        view: "node_counts",
+        label: "Node Counts",
+        kicker: "Cluster Shape",
+        description: "Manage allowed node counts for cluster sizing.",
+      },
+      {
+        view: "cpu_counts",
+        label: "Node CPUs",
+        kicker: "Compute Shape",
+        description: "Manage allowed CPU counts per node.",
+      },
+      {
+        view: "disk_sizes",
+        label: "Disk Sizes",
+        kicker: "Storage Shape",
+        description: "Manage allowed disk sizes for cluster nodes.",
+      },
+      {
+        view: "database_role_templates",
+        label: "Database Role Templates",
+        kicker: "Database Access",
+        description: "Manage SQL templates for generated database roles.",
+      },
+      {
+        view: "regions",
+        label: "Regions",
+        kicker: "Placement",
+        description: "Manage cloud regions, zones, network metadata, and images.",
+      },
     ],
     routes: {
       clusters: route("clusters", "/clusters", "Clusters", "Managed CockroachDB clusters", "ensureServersView"),
-      cluster: route("cluster", "/clusters/detail", "Cluster", "Cluster details", "ensureClusterDetailView"),
+      cluster: route(
+        "cluster",
+        "/clusters/detail",
+        "Cluster",
+        "Cluster details",
+        "ensureClusterRouteView",
+        false,
+        matchClusterPath(),
+      ),
       cluster_backups: route(
         "cluster_backups",
         "/clusters/backups",
         "Backups",
         "Cluster backup catalog",
-        "ensureClusterBackupsView",
+        "ensureClusterBackupsRouteView",
+        false,
+        matchClusterPath("backups"),
       ),
       cluster_artifacts: route(
         "cluster_artifacts",
         "/clusters/artifacts",
         "Artifacts",
         "Cluster artifacts",
-        "ensureClusterArtifactsView",
+        "ensureClusterArtifactsRouteView",
+        false,
+        matchClusterPath("artifacts"),
       ),
       cluster_recovery: route(
         "cluster_recovery",
         "/clusters/recovery",
         "Recovery",
         "Cluster recovery",
-        "ensureClusterRecoveryView",
+        "ensureClusterRecoveryRouteView",
+        false,
+        matchClusterPath("recovery"),
       ),
       cluster_users: route(
         "cluster_users",
         "/clusters/users",
         "Users",
         "Cluster users",
-        "ensureClusterUsersView",
+        "ensureClusterUsersRouteView",
+        false,
+        matchClusterPath("users"),
       ),
       cluster_databases: route(
         "cluster_databases",
         "/clusters/databases",
         "Databases",
         "Cluster databases",
-        "ensureClusterDatabasesView",
+        "ensureClusterDatabasesRouteView",
+        false,
+        matchClusterPath("databases"),
       ),
       cluster_dashboard: route(
         "cluster_dashboard",
         "/clusters/dashboard",
         "Cluster Dashboard",
         "Cluster metrics",
-        "ensureClusterDashboardView",
+        "ensureClusterDashboardRouteView",
+        false,
+        matchClusterPath("dashboard"),
       ),
       alerts: route("alerts", "/alerts", "Alerts", "Alertmanager alerts", "ensureAlertsView"),
       versions: route("versions", "/admin/versions", "Versions", "CP versions", "ensureVersionsView", true),
@@ -291,6 +366,92 @@
     state: legacy.state,
     methods: {
       ...legacy.methods,
+      syncClusterRouteState() {
+        const route =
+          typeof this.parseHashRoute === "function"
+            ? this.parseHashRoute()
+            : { parts: [], query: {} };
+        const parts = route.parts || [];
+        const query = route.query || {};
+        if (parts[0] !== "clusters" || !parts[1]) return;
+
+        const nextClusterId = String(parts[1] || "").trim();
+        const clusterChanged =
+          nextClusterId && String(this.selectedClusterId || "").trim() !== nextClusterId;
+        if (nextClusterId) {
+          this.selectedClusterId = nextClusterId;
+          localStorage.setItem("cp_selected_cluster_id", nextClusterId);
+          this.clusterConnectCopiedFor = "";
+        }
+        if (clusterChanged) {
+          this.selectedCluster = null;
+          this.clearClusterDatabaseObjectsState();
+          this.clearClusterUsersState();
+          this.clusterBackups = [];
+          this.clusterBackupDetails = [];
+          this.clearClusterArtifactsState();
+          this.clusterRecoveryBackups = [];
+          this.clusterRecoveryExpanded = {};
+          this.clusterRecoveryLastUpdatedUtc = null;
+          this.clusterDashboardSnapshot = null;
+          this.clusterDashboardChartData = [];
+          this.clusterDashboardCurrentNodes = [];
+        }
+
+        if (this.view === "cluster_backups") {
+          this.selectedClusterBackupPath = String(query.path || "").trim();
+        } else {
+          this.selectedClusterBackupPath = "";
+        }
+
+        if (this.view === "cluster_artifacts") {
+          this.selectedClusterArtifactKind = String(parts[3] || "debug_zip").trim();
+        }
+
+        if (this.view === "cluster_dashboard") {
+          const period = Number.parseInt(query.period, 10);
+          const step = Number.parseInt(query.step, 10);
+          if (Number.isFinite(period) && period > 0) this.clusterDashboardPeriodMins = period;
+          if (Number.isFinite(step) && step > 0) this.clusterDashboardIntervalSecs = step;
+        }
+
+        if (this.view !== "cluster" && this.view !== "cluster_databases") {
+          this.clearClusterDatabaseObjectsState();
+        }
+        if (this.view !== "cluster_users") {
+          this.clearClusterUsersState();
+        }
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+      },
+      async ensureClusterRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterDetailView();
+      },
+      async ensureClusterDashboardRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterDashboardView();
+      },
+      async ensureClusterUsersRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterUsersView();
+      },
+      async ensureClusterDatabasesRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterDatabasesView();
+      },
+      async ensureClusterBackupsRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterBackupsView();
+      },
+      async ensureClusterArtifactsRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterArtifactsView();
+      },
+      async ensureClusterRecoveryRouteView() {
+        this.syncClusterRouteState();
+        await this.ensureClusterRecoveryView();
+      },
       isAdminSectionView(viewName = this.view) {
         return CP_ADMIN_VIEWS.has(viewName) || ["admin", "api_keys", "settings", "playbooks"].includes(viewName);
       },
