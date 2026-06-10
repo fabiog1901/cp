@@ -2,7 +2,7 @@
 
 .PHONY: help run serve migrate format pre-commit docs-write docs-check docs-build docs-serve docs-clean py-compile
 
-MKDOCS_SITE_DIR ?= /private/tmp/kloigos-mkdocs-site
+MKDOCS_SITE_DIR ?= /private/tmp/cp-mkdocs-site
 
 help: ## Show this help message.
 	@awk 'BEGIN {FS = ":.*##"; printf "Available targets:\n"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -12,7 +12,7 @@ run: serve ## Run in development mode.
 serve: ## Serve the app through the application CLI.
 	poetry run cp serve --reload
 
-migrate: ## Apply cpkit and Kloigos database migrations.
+migrate: ## Apply cpkit and database migrations.
 	poetry run cp migrate
 
 format: ## Format Python code with isort and black.
@@ -40,4 +40,4 @@ docs-clean: ## Remove the temporary MkDocs build output.
 	rm -rf $(MKDOCS_SITE_DIR)
 
 py-compile: ## Compile all Python files to catch syntax errors.
-	poetry run python -m py_compile $$(find kloigos tools -type f -name '*.py' -not -path '*/__pycache__/*')
+	poetry run python -m py_compile $$(find cp tools -type f -name '*.py' -not -path '*/__pycache__/*')
