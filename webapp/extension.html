@@ -1686,8 +1686,8 @@
                       <td><span class="ip-pill" x-text="row.database_role_template || '-'"></span></td>
                       <td><span class="service-pill" x-text="row.scope_type || '-'"></span></td>
                       <td>
-                        <div class="sql-preview-editor" x-init="$nextTick(() => renderDatabaseRoleTemplateSqlEditors())"
-                          :data-database-role-template-sql="row.sql_statement || '-'"></div>
+                        <textarea class="textarea sql-preview-textarea" readonly
+                          :value="formatSqlStatement(row.sql_statement || '-')"></textarea>
                       </td>
                       <td>
                         <button type="button" class="icon-btn" title="Delete database role template"
@@ -2748,7 +2748,9 @@
               </div>
               <div class="form-row" style="grid-column: 1 / -1;">
                 <div class="label">sql_statement</div>
-                <div class="modal-ace-editor" x-ref="databaseRoleTemplateSqlEditor"></div>
+                <div id="databaseRoleTemplateSqlEditor" class="modal-ace-editor" x-ref="databaseRoleTemplateSqlEditor"></div>
+                <textarea class="textarea sql-editor-fallback" x-show="!_databaseRoleTemplateAceReady"
+                  x-model="modal.databaseRoleTemplateCreate.sql_statement"></textarea>
                 <div class="hint">Available placeholders: {database_role}, {database_name}, and {schema_name} for schema-scoped templates.</div>
               </div>
             </div>

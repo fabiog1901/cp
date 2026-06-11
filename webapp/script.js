@@ -632,7 +632,6 @@ window.app = function () {
     _aceReady: false,
     _databaseRoleTemplateAce: null,
     _databaseRoleTemplateAceReady: false,
-    _databaseRoleTemplatePreviewEditors: new WeakMap(),
 
     clusterDashboardPalette: [
       "#1f77b4",
@@ -6778,7 +6777,13 @@ window.app = function () {
         ),
       );
       this.databaseRoleTemplatesVisibleRows = rows;
-      this.$nextTick(() => this.renderDatabaseRoleTemplateSqlEditors());
+    },
+
+    formatSqlStatement(sqlStatement) {
+      return String(sqlStatement || "")
+        .replace(/;\s*/g, ";\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
     },
 
     persistDatabaseRoleTemplatesFilter() {
@@ -6798,10 +6803,12 @@ window.app = function () {
       this.$nextTick(() => {
         this.ensureDatabaseRoleTemplateAce();
         if (this._databaseRoleTemplateAceReady && this._databaseRoleTemplateAce) {
-          this._databaseRoleTemplateAce.setValue(
-            this.modal.databaseRoleTemplateCreate.sql_statement,
-            -1,
-          );
+          if (typeof this.setAceValue === "function") {
+            this.setAceValue(
+              this._databaseRoleTemplateAce,
+              this.modal.databaseRoleTemplateCreate.sql_statement,
+            );
+          }
           this._databaseRoleTemplateAce.resize();
           this._databaseRoleTemplateAce.focus();
         }
@@ -6868,7 +6875,7 @@ window.app = function () {
           body: {
             database_role_template: databaseRoleTemplate,
             scope_type: scopeType,
-            sql_statement: sqlStatement,
+            sql_statement: this.formatSqlStatement(sqlStatement),
           },
         });
         this.closeDatabaseRoleTemplateCreateModal();
@@ -7691,65 +7698,32 @@ window.app = function () {
     ensureDatabaseRoleTemplateAce() {
       if (this._databaseRoleTemplateAceReady) return;
 
-      if (!window.ace || !this.$refs.databaseRoleTemplateSqlEditor) {
-        this.setModalError(
-          "databaseRoleTemplateCreate",
-          new Error("SQL editor is not available."),
-          "SQL editor is not available.",
-        );
-        return;
-      }
+      const editorNode =
+        this.$refs.databaseRoleTemplateSqlEditor ||
+        document.getElementById("databaseRoleTemplateSqlEditor");
 
-      const editor = window.ace.edit(this.$refs.databaseRoleTemplateSqlEditor);
-      editor.setTheme("ace/theme/cobalt");
-      editor.session.setMode("ace/mode/sql");
-      editor.setOptions({
-        showPrintMargin: false,
-        useSoftTabs: true,
-        tabSize: 2,
-        wrap: true,
+      if (typeof this.createAceEditor !== "function") return;
+
+      const editor = this.createAceEditor(editorNode, {
+        mode: "sql",
+        value: this.modal.databaseRoleTemplateCreate.sql_statement,
         minLines: 10,
         maxLines: 18,
+        onChange: (value) => {
+          this.modal.databaseRoleTemplateCreate.sql_statement = value;
+        },
       });
+      if (!editor) return;
 
       this._databaseRoleTemplateAce = editor;
       this._databaseRoleTemplateAceReady = true;
     },
 
     renderDatabaseRoleTemplateSqlEditors() {
-      const nodes = document.querySelectorAll(".sql-preview-editor");
-      nodes.forEach((node) => {
-        const sqlStatement = String(node.dataset.databaseRoleTemplateSql || "-");
-        if (!window.ace) {
-          node.textContent = sqlStatement;
-          return;
-        }
-
-        let editor = this._databaseRoleTemplatePreviewEditors.get(node);
-        if (!editor) {
-          editor = window.ace.edit(node);
-          editor.setTheme("ace/theme/cobalt");
-          editor.session.setMode("ace/mode/sql");
-          editor.session.setUseWorker(false);
-          editor.setReadOnly(true);
-          editor.setOptions({
-            showPrintMargin: false,
-            highlightActiveLine: false,
-            highlightGutterLine: false,
-            wrap: true,
-            minLines: 4,
-            maxLines: 10,
-          });
-          editor.renderer.setShowGutter(true);
-          if (editor.renderer.$cursorLayer?.element) {
-            editor.renderer.$cursorLayer.element.style.display = "none";
-          }
-          this._databaseRoleTemplatePreviewEditors.set(node, editor);
-        }
-        if (editor.getValue() !== sqlStatement) {
-          editor.setValue(sqlStatement, -1);
-        }
-        editor.resize();
+      document.querySelectorAll(".sql-preview-editor").forEach((node) => {
+        node.textContent = this.formatSqlStatement(
+          node.dataset.databaseRoleTemplateSql || "-",
+        );
       });
     },
 
