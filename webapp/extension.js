@@ -426,31 +426,143 @@
       },
       async ensureClusterRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterDetailView();
+        if (this.clusterLoading.details) await this.ensureClusterDetailView();
+        else await this.refreshSelectedCluster();
       },
       async ensureClusterDashboardRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterDashboardView();
+        if (this.clusterDashboardLoading.snapshot) await this.ensureClusterDashboardView();
+        else await this.refreshClusterDashboard();
       },
       async ensureClusterUsersRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterUsersView();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        if (this.clusterUsersLoading.snapshot) await this.ensureClusterUsersView();
+        else await this.refreshClusterUsers();
       },
       async ensureClusterDatabasesRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterDatabasesView();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        if (this.clusterDatabaseObjectsLoading.list) await this.ensureClusterDatabasesView();
+        else await this.refreshClusterDatabaseObjects();
       },
       async ensureClusterBackupsRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterBackupsView();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        if (this.clusterBackupsLoading.snapshot) await this.ensureClusterBackupsView();
+        else await this.refreshClusterBackups();
+        if (this.selectedClusterBackupPath && !this.clusterBackupsLoading.details) {
+          await this.refreshSelectedBackupDetails();
+        }
       },
       async ensureClusterArtifactsRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterArtifactsView();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        if (this.clusterArtifactsLoading.list) await this.ensureClusterArtifactsView();
+        else await this.refreshClusterArtifacts();
       },
       async ensureClusterRecoveryRouteView() {
         this.syncClusterRouteState();
-        await this.ensureClusterRecoveryView();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        if (this.clusterRecoveryLoading.list) await this.ensureClusterRecoveryView();
+        else await this.refreshClusterRecoveryBackups();
+      },
+      async openCluster(clusterId) {
+        const nextId = String(clusterId || "").trim();
+        if (!nextId) return;
+        this.selectedClusterId = nextId;
+        localStorage.setItem("cp_selected_cluster_id", nextId);
+        this.clusterConnectCopiedFor = "";
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.clearClusterArtifactsState();
+        this.view = "cluster";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        await this.refreshSelectedCluster();
+      },
+      async openClusterDashboard() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.view = "cluster_dashboard";
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        await this.refreshClusterDashboard();
+      },
+      async openClusterUsers() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.clearClusterDatabaseObjectsState();
+        this.view = "cluster_users";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        await this.refreshClusterUsers();
+      },
+      async openClusterDatabases() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.clearClusterUsersState();
+        this.view = "cluster_databases";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        await this.refreshClusterDatabaseObjects();
+      },
+      async openClusterBackups() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.view = "cluster_backups";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        await this.refreshClusterBackups();
+      },
+      async openClusterDebugZips() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        this.selectedClusterArtifactKind = "debug_zip";
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.view = "cluster_artifacts";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        await this.refreshClusterArtifacts();
+      },
+      async openClusterRecovery() {
+        const clusterId = this.selectedCluster?.cluster_id || this.selectedClusterId;
+        if (!clusterId) return;
+        this.selectedClusterId = String(clusterId).trim();
+        localStorage.setItem("cp_selected_cluster_id", this.selectedClusterId);
+        this.clearClusterDatabaseObjectsState();
+        this.clearClusterUsersState();
+        this.view = "cluster_recovery";
+        localStorage.setItem("cp_view", this.view);
+        this.clearViewNotice();
+        this.syncHashFromState();
+        if (!this.clusterLoading.details) await this.refreshSelectedCluster();
+        await this.refreshClusterRecoveryBackups();
       },
       isAdminSectionView(viewName = this.view) {
         return CP_ADMIN_VIEWS.has(viewName) || ["admin", "api_keys", "settings", "playbooks"].includes(viewName);
