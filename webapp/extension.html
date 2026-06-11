@@ -79,7 +79,7 @@
                   <template x-for="s in serversVisibleRows" :key="s.cluster_id">
                     <tr>
                       <td>
-                        <a href="#" class="dashboard-link" @click.prevent="openCluster(s.cluster_id)">
+                        <a class="dashboard-link" :href="clusterHref(s.cluster_id)" @click="openCluster(s.cluster_id)">
                           <span class="ip-pill clickable" x-text="s.cluster_id || '-'"></span>
                         </a>
                       </td>
@@ -1228,7 +1228,7 @@
                       </td>
                       <td>
                         <template x-if="alert.cluster">
-                          <a href="#" class="ip-pill clickable" @click.prevent="openCluster(alert.cluster)"
+                          <a class="ip-pill clickable" :href="clusterHref(alert.cluster)" @click="openCluster(alert.cluster)"
                             x-text="alert.cluster"></a>
                         </template>
                         <template x-if="!alert.cluster">

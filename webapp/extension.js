@@ -467,6 +467,27 @@
         if (this.clusterRecoveryLoading.list) await this.ensureClusterRecoveryView();
         else await this.refreshClusterRecoveryBackups();
       },
+      clusterHref(clusterId, suffix = "") {
+        const nextId = String(clusterId || "").trim();
+        if (!nextId) return "#/clusters";
+        const tail = String(suffix || "").replace(/^\/+/, "");
+        const path = `/clusters/${encodeURIComponent(nextId)}${tail ? `/${tail}` : ""}`;
+        return `#${path}`;
+      },
+      setClusterHash(clusterId, suffix = "", query = null) {
+        if (typeof window === "undefined") return;
+        const nextId = String(clusterId || "").trim();
+        if (!nextId) return;
+        const tail = String(suffix || "").replace(/^\/+/, "");
+        const path = `/clusters/${encodeURIComponent(nextId)}${tail ? `/${tail}` : ""}`;
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(query || {})) {
+          const nextValue = String(value || "").trim();
+          if (nextValue) params.set(key, nextValue);
+        }
+        const nextHash = `#${path}${params.toString() ? `?${params.toString()}` : ""}`;
+        if (window.location.hash !== nextHash) window.location.hash = nextHash;
+      },
       async openCluster(clusterId) {
         const nextId = String(clusterId || "").trim();
         if (!nextId) return;
@@ -479,7 +500,7 @@
         this.view = "cluster";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(nextId);
         await this.refreshSelectedCluster();
       },
       async openClusterDashboard() {
@@ -492,7 +513,10 @@
         this.clearClusterUsersState();
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, "dashboard", {
+          period: this.clusterDashboardPeriodMins,
+          step: this.clusterDashboardIntervalSecs,
+        });
         await this.refreshClusterDashboard();
       },
       async openClusterUsers() {
@@ -504,7 +528,7 @@
         this.view = "cluster_users";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, "users");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterUsers();
       },
@@ -517,7 +541,7 @@
         this.view = "cluster_databases";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, "databases");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterDatabaseObjects();
       },
@@ -531,7 +555,7 @@
         this.view = "cluster_backups";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, "backups");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterBackups();
       },
@@ -546,7 +570,7 @@
         this.view = "cluster_artifacts";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, `artifacts/${encodeURIComponent(this.selectedClusterArtifactKind || "debug_zip")}`);
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterArtifacts();
       },
@@ -560,7 +584,7 @@
         this.view = "cluster_recovery";
         localStorage.setItem("cp_view", this.view);
         this.clearViewNotice();
-        this.syncHashFromState();
+        this.setClusterHash(this.selectedClusterId, "recovery");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterRecoveryBackups();
       },
