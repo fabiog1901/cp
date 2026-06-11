@@ -154,56 +154,6 @@ window.app = function () {
       regions: [],
     },
 
-    // ---------- Jobs state ----------
-    jobs: [],
-    jobStats: {
-      total: 0,
-      running: 0,
-      queued: 0,
-      failed: 0,
-    },
-    jobsVisibleRows: [],
-    jobsFilterQuery: "",
-    jobsLastUpdatedUtc: null,
-    jobsSortIndex: 0,
-    jobsSortDir: "desc",
-    jobsSortTypeByIndex: {
-      0: "number", // job_id
-      1: "string", // job_type
-      2: "string", // status
-      3: "string", // created_by
-      4: "date", // created_at
-      5: "date", // updated_at
-    },
-    jobsLoading: { list: false },
-    jobsAutoRefreshEnabled: true,
-    _jobsAutoTimer: null,
-    jobsLoadedContextClusterId: "",
-    jobDetailsAutoRefreshEnabled: true,
-    _jobDetailsAutoTimer: null,
-    jobsContextClusterId: "",
-    selectedJobId: "",
-    selectedJobDetails: null,
-    jobLoading: { details: false, reschedule: false },
-
-    // ---------- Events state ----------
-    events: [],
-    eventsVisibleRows: [],
-    eventsFilterQuery: "",
-    eventsLastUpdatedUtc: null,
-    eventsSortIndex: 0,
-    eventsSortDir: "desc",
-    eventsSortTypeByIndex: {
-      0: "date", // ts
-      1: "string", // user_id
-      2: "string", // action
-      3: "string", // details
-      4: "string", // request_id
-    },
-    eventsLoading: { list: false },
-    eventsAutoRefreshEnabled: true,
-    _eventsAutoTimer: null,
-
     // ---------- Alerts state ----------
     alerts: [],
     alertsVisibleRows: [],
@@ -223,47 +173,6 @@ window.app = function () {
     alertsLoading: { list: false },
     alertsAutoRefreshEnabled: true,
     _alertsAutoTimer: null,
-
-    // ---------- API keys state ----------
-    apiKeys: [],
-    apiKeysVisibleRows: [],
-    apiKeysFilterQuery: "",
-    apiKeysLastUpdatedUtc: null,
-    apiKeysSortIndex: 2,
-    apiKeysSortDir: "desc",
-    apiKeysSortTypeByIndex: {
-      0: "string", // access_key
-      1: "string", // owner
-      2: "date", // valid_until
-      3: "string", // roles
-    },
-    apiKeysLoading: { list: false, create: false, delete: false },
-    apiKeysAutoRefreshEnabled: true,
-    _apiKeysAutoTimer: null,
-    availableCPRoles: ["CP_READONLY", "CP_USER", "CP_ADMIN"],
-
-    // ---------- Settings state ----------
-    settings: [],
-    settingsVisibleRows: [],
-    settingsFilterQuery: "",
-    settingsCategoryTab: "all",
-    settingsLastUpdatedUtc: null,
-    settingsSortIndex: 0,
-    settingsSortDir: "asc",
-    settingsSortTypeByIndex: {
-      0: "string", // key
-      1: "string", // value_type
-      2: "string", // effective_value
-      3: "string", // default_value
-      4: "date", // updated_at
-    },
-    settingsLoading: { list: false, update: false, reset: false },
-    settingsAutoRefreshEnabled: true,
-    _settingsAutoTimer: null,
-    settingsDrafts: {},
-    settingsError: "",
-    settingsToast: { message: "", ok: true },
-    _settingsToastTimer: null,
 
     // ---------- Versions state ----------
     versions: [],
@@ -382,16 +291,6 @@ window.app = function () {
         action: "decommission",
       },
       serverDetails: { open: false, row: null },
-      apiKeyCreate: {
-        open: false,
-        valid_until: "",
-        roles: ["CP_ADMIN"],
-      },
-      apiKeyDeleteConfirm: {
-        open: false,
-        access_key: "",
-        owner: "",
-      },
       versionCreate: {
         open: false,
         version: "",
@@ -434,10 +333,6 @@ window.app = function () {
         open: false,
         database_role_template: "",
       },
-      playbookVersionDeleteConfirm: {
-        open: false,
-        version: "",
-      },
       regionCreate: {
         open: false,
         cloud: "",
@@ -462,10 +357,6 @@ window.app = function () {
       clusterHealthcheckConfirm: {
         open: false,
         cluster_id: "",
-      },
-      jobRescheduleConfirm: {
-        open: false,
-        job_id: "",
       },
       clusterCreate: {
         open: false,
@@ -543,24 +434,6 @@ window.app = function () {
         databaseRoles: [],
         grantDatabaseRoles: [],
       },
-      apiKeySecret: {
-        open: false,
-        access_key: "",
-        owner: "",
-        valid_until: "",
-        roles: [],
-        secret_access_key: "",
-        reveal: false,
-        copied: false,
-      },
-      settingResetConfirm: {
-        open: false,
-        key: "",
-        category: "",
-        value_type: "",
-        default_value: "",
-        is_secret: false,
-      },
     },
     modalErrors: {
       allocate: "",
@@ -568,8 +441,6 @@ window.app = function () {
       decommission: "",
       deallocateConfirm: "",
       serverActionConfirm: "",
-      apiKeyCreate: "",
-      apiKeyDeleteConfirm: "",
       versionCreate: "",
       versionDeleteConfirm: "",
       nodeCountCreate: "",
@@ -580,7 +451,6 @@ window.app = function () {
       diskSizeDeleteConfirm: "",
       databaseRoleTemplateCreate: "",
       databaseRoleTemplateDeleteConfirm: "",
-      playbookVersionDeleteConfirm: "",
       regionCreate: "",
       regionDeleteConfirm: "",
       clusterDeleteConfirm: "",
@@ -596,40 +466,10 @@ window.app = function () {
       clusterUserDeleteConfirm: "",
       clusterUserPassword: "",
       clusterUserRoles: "",
-      settingResetConfirm: "",
     },
-
-    // ---------- Playbooks state ----------
-    playbooks: [
-      "CREATE_CLUSTER",
-      "DELETE_CLUSTER",
-      "SCALE_CLUSTER_IN",
-      "SCALE_CLUSTER_OUT",
-      "SCALE_DISK_SIZE",
-      "SCALE_NODE_CPUS",
-      "UPGRADE_CLUSTER",
-      "HEALTHCHECK_CLUSTER",
-      "DEBUG_ZIP_CLUSTER",
-      "POLL_DEBUG_ZIP",
-    ],
-    selectedPlaybook: "",
-    pbEditorReady: false,
-    pbLoading: {
-      list: false,
-      save: false,
-      load: false,
-      setDefault: false,
-      delete: false,
-    },
-    pbToast: { message: "", ok: true },
-    pbLastUpdatedUtc: null,
-    pbDefaultVersion: "",
-    pbSelectedVersion: "",
-    pbVersions: [],
-
     // Ace
-    _ace: null,
-    _aceReady: false,
+
+
     _databaseRoleTemplateAce: null,
     _databaseRoleTemplateAceReady: false,
 
@@ -839,15 +679,11 @@ window.app = function () {
       return Number(this.clusterStats?.[kind] || 0);
     },
 
-    dashboardJobCount(kind) {
-      return Number(this.jobStats?.[kind] || 0);
-    },
 
     dashboardNeedsAttentionCount() {
       return (
         this.dashboardClusterCount("unhealthy") +
         this.dashboardClusterCount("failed") +
-        this.dashboardJobCount("failed") +
         this.alerts.length
       );
     },
@@ -859,12 +695,6 @@ window.app = function () {
         .slice(0, limit);
     },
 
-    recentEvents(limit = 10) {
-      return this.events
-        .slice()
-        .sort((a, b) => this.parseValue("date", b?.ts) - this.parseValue("date", a?.ts))
-        .slice(0, limit);
-    },
 
     alertNodesText(alert) {
       return Array.isArray(alert?.nodes) && alert.nodes.length
@@ -1052,21 +882,9 @@ window.app = function () {
         clearInterval(this._clusterArtifactsAutoTimer);
         this._clusterArtifactsAutoTimer = null;
       }
-      if (this._eventsAutoTimer) {
-        clearInterval(this._eventsAutoTimer);
-        this._eventsAutoTimer = null;
-      }
       if (this._alertsAutoTimer) {
         clearInterval(this._alertsAutoTimer);
         this._alertsAutoTimer = null;
-      }
-      if (this._jobsAutoTimer) {
-        clearInterval(this._jobsAutoTimer);
-        this._jobsAutoTimer = null;
-      }
-      if (this._jobDetailsAutoTimer) {
-        clearInterval(this._jobDetailsAutoTimer);
-        this._jobDetailsAutoTimer = null;
       }
       if (this._versionsAutoTimer) {
         clearInterval(this._versionsAutoTimer);
@@ -1087,18 +905,6 @@ window.app = function () {
       if (this._regionsAutoTimer) {
         clearInterval(this._regionsAutoTimer);
         this._regionsAutoTimer = null;
-      }
-      if (this._apiKeysAutoTimer) {
-        clearInterval(this._apiKeysAutoTimer);
-        this._apiKeysAutoTimer = null;
-      }
-      if (this._settingsAutoTimer) {
-        clearInterval(this._settingsAutoTimer);
-        this._settingsAutoTimer = null;
-      }
-      if (this._settingsToastTimer) {
-        clearTimeout(this._settingsToastTimer);
-        this._settingsToastTimer = null;
       }
       this.destroyClusterDashboardCharts();
     },
@@ -1377,14 +1183,11 @@ window.app = function () {
     isAdminSectionView(viewName = this.view) {
       return [
         "admin",
-        "settings",
-        "api_keys",
         "versions",
         "node_counts",
         "cpu_counts",
         "disk_sizes",
         "regions",
-        "playbooks",
       ].includes(viewName);
     },
 
@@ -1530,24 +1333,10 @@ window.app = function () {
                 `/clusters/${encodeURIComponent(this.selectedClusterId)}/recovery`,
               )
             : this.routeHash("/clusters");
-        case "jobs":
-          return this.routeHash("/jobs", {
-            cluster: this.jobsContextClusterId,
-          });
-        case "job":
-          return this.selectedJobId
-            ? this.routeHash(`/jobs/${encodeURIComponent(this.selectedJobId)}`)
-            : this.routeHash("/jobs");
-        case "events":
-          return this.routeHash("/events");
         case "alerts":
           return this.routeHash("/alerts");
         case "admin":
           return this.routeHash("/admin");
-        case "api_keys":
-          return this.routeHash("/admin/api-keys");
-        case "settings":
-          return this.routeHash("/admin/settings");
         case "versions":
           return this.routeHash("/admin/versions");
         case "node_counts":
@@ -1560,8 +1349,6 @@ window.app = function () {
           return this.routeHash("/admin/database-role-templates");
         case "regions":
           return this.routeHash("/admin/regions");
-        case "playbooks":
-          return this.routeHash("/admin/playbooks");
         default:
           return this.routeHash("/dashboard");
       }
@@ -1585,8 +1372,7 @@ window.app = function () {
     },
 
     async ensureCurrentView() {
-      if (this.view === "playbooks") await this.ensurePlaybooksView();
-      else if (this.view === "clusters") await this.ensureServersView();
+      if (this.view === "clusters") await this.ensureServersView();
       else if (this.view === "cluster") await this.ensureClusterDetailView();
       else if (this.view === "cluster_dashboard")
         await this.ensureClusterDashboardView();
@@ -1600,12 +1386,7 @@ window.app = function () {
         await this.ensureClusterArtifactsView();
       else if (this.view === "cluster_recovery")
         await this.ensureClusterRecoveryView();
-      else if (this.view === "jobs") await this.ensureJobsView();
-      else if (this.view === "job") await this.ensureJobDetailView();
-      else if (this.view === "events") await this.ensureEventsView();
       else if (this.view === "alerts") await this.ensureAlertsView();
-      else if (this.view === "api_keys") await this.ensureApiKeysView();
-      else if (this.view === "settings") await this.ensureSettingsView();
       else if (this.view === "versions") await this.ensureVersionsView();
       else if (this.view === "node_counts") await this.ensureNodeCountsView();
       else if (this.view === "cpu_counts") await this.ensureCpuCountsView();
@@ -1613,171 +1394,13 @@ window.app = function () {
       else if (this.view === "database_role_templates")
         await this.ensureDatabaseRoleTemplatesView();
       else if (this.view === "regions") await this.ensureRegionsView();
-      else if (this.view === "admin") await this.ensureAdminView();
       else await this.ensureDashboardView();
-    },
-
-    async applyHashRoute() {
-      const route = this.parseCurrentHashRoute();
-      if (!route.hasHash) return false;
-
-      const parts = route.parts;
-      const query = route.query || {};
-      const previousJobsContext = String(
-        this.jobsContextClusterId || "",
-      ).trim();
-
-      let nextView = "dashboard";
-      let nextClusterId = "";
-      let nextJobId = "";
-
-      if (parts.length === 0 || parts[0] === "dashboard") {
-        nextView = "dashboard";
-      } else if (parts[0] === "clusters") {
-        if (parts.length === 1) {
-          nextView = "clusters";
-        } else if (parts.length >= 2) {
-          nextClusterId = String(parts[1] || "").trim();
-          if (parts[2] === "dashboard") nextView = "cluster_dashboard";
-          else if (parts[2] === "users") nextView = "cluster_users";
-          else if (parts[2] === "databases") nextView = "cluster_databases";
-          else if (parts[2] === "backups") nextView = "cluster_backups";
-          else if (parts[2] === "artifacts") {
-            nextView = "cluster_artifacts";
-            this.selectedClusterArtifactKind = String(
-              parts[3] || "debug_zip",
-            ).trim();
-          }
-          else if (parts[2] === "recovery") nextView = "cluster_recovery";
-          else nextView = "cluster";
-        }
-      } else if (parts[0] === "jobs") {
-        if (parts.length >= 2) {
-          nextView = "job";
-          nextJobId = String(parts[1] || "").trim();
-        } else {
-          nextView = "jobs";
-          this.jobsContextClusterId = String(query.cluster || "").trim();
-          localStorage.setItem(
-            "cp_jobs_context_cluster_id",
-            this.jobsContextClusterId,
-          );
-          if (this.jobsContextClusterId) {
-            this.jobsFilterQuery = this.jobsContextClusterId;
-            this.persistJobsFilter();
-          } else if (
-            previousJobsContext &&
-            String(this.jobsFilterQuery || "").trim() === previousJobsContext
-          ) {
-            this.jobsFilterQuery = "";
-            this.persistJobsFilter();
-          }
-        }
-      } else if (parts[0] === "events") {
-        nextView = "events";
-      } else if (parts[0] === "alerts") {
-        nextView = "alerts";
-      } else if (parts[0] === "admin") {
-        if (parts[1] === "api-keys") nextView = "api_keys";
-        else if (parts[1] === "settings") nextView = "settings";
-        else if (parts[1] === "versions") nextView = "versions";
-        else if (parts[1] === "node-counts") nextView = "node_counts";
-        else if (parts[1] === "cpu-counts") nextView = "cpu_counts";
-        else if (parts[1] === "disk-sizes") nextView = "disk_sizes";
-        else if (
-          parts[1] === "database-role-templates" ||
-          parts[1] === "database-roles"
-        )
-          nextView = "database_role_templates";
-        else if (parts[1] === "regions") nextView = "regions";
-        else if (parts[1] === "playbooks") nextView = "playbooks";
-        else nextView = "admin";
-      } else {
-        nextView = "dashboard";
-      }
-
-      if (nextClusterId) {
-        const clusterChanged =
-          String(this.selectedClusterId || "").trim() !== nextClusterId;
-        this.selectedClusterId = nextClusterId;
-        localStorage.setItem("cp_selected_cluster_id", nextClusterId);
-        this.clusterConnectCopiedFor = "";
-        if (clusterChanged) {
-          this.selectedCluster = null;
-          this.clearClusterDatabaseObjectsState();
-          this.clearClusterUsersState();
-          this.clusterBackups = [];
-          this.clusterBackupDetails = [];
-          this.clearClusterArtifactsState();
-          this.clusterRecoveryBackups = [];
-          this.clusterRecoveryExpanded = {};
-          this.clusterRecoveryLastUpdatedUtc = null;
-          this.clusterDashboardSnapshot = null;
-          this.clusterDashboardChartData = [];
-          this.clusterDashboardCurrentNodes = [];
-        }
-      }
-
-      if (nextJobId) {
-        const changedJob =
-          String(this.selectedJobId || "").trim() !== nextJobId;
-        this.selectedJobId = nextJobId;
-        localStorage.setItem("cp_selected_job_id", nextJobId);
-        if (changedJob) this.selectedJobDetails = null;
-      }
-
-      if (nextView === "cluster_backups") {
-        this.selectedClusterBackupPath = String(query.path || "").trim();
-      } else {
-        this.selectedClusterBackupPath = "";
-      }
-
-      if (nextView === "cluster_dashboard") {
-        const period = Number.parseInt(query.period, 10);
-        const step = Number.parseInt(query.step, 10);
-        if (Number.isFinite(period) && period > 0) {
-          this.clusterDashboardPeriodMins = period;
-        }
-        if (Number.isFinite(step) && step > 0) {
-          this.clusterDashboardIntervalSecs = step;
-        }
-      }
-
-      this.view = nextView;
-      if (this.view !== "cluster" && this.view !== "cluster_databases") {
-        this.clearClusterDatabaseObjectsState();
-      }
-      if (this.view !== "cluster_users") {
-        this.clearClusterUsersState();
-      }
-      localStorage.setItem("cp_view", this.view);
-
-      if (!this.isViewAccessible(this.view)) {
-        this.handleForbiddenView(this.view);
-        this.syncHashFromState(true);
-        return true;
-      }
-
-      this.clearViewNotice();
-      await this.ensureCurrentView();
-      return true;
-    },
-
-    async handleHashChange() {
-      if (this._suppressNextHashChange) {
-        this._suppressNextHashChange = false;
-        return;
-      }
-      await this.applyHashRoute();
     },
 
     isViewAccessible(viewName) {
       if (
         [
           "admin",
-          "playbooks",
-          "api_keys",
-          "settings",
           "versions",
           "node_counts",
           "cpu_counts",
@@ -1809,13 +1432,8 @@ window.app = function () {
     unauthorizedViewMessage(viewName = this.view) {
       const labels = {
         clusters: "Clusters",
-        jobs: "Jobs",
-        events: "Events",
         alerts: "Alerts",
         admin: "Admin",
-        playbooks: "Playbooks",
-        api_keys: "API Keys",
-        settings: "Settings",
         versions: "Versions",
         node_counts: "Node Counts",
         cpu_counts: "Node CPUs",
@@ -1837,35 +1455,19 @@ window.app = function () {
         cluster_backups: "Cluster backups and backup object details",
         cluster_artifacts: "Cluster artifacts and diagnostic downloads",
         cluster_recovery: "Restore a cluster from cataloged full backups",
-        jobs: "Queued and completed orchestration work",
-        job: "Job details and task execution history",
-        events: "Cluster and platform activity stream",
         alerts: "Operational alerts and incident signals",
         admin: "Administrative landing page and tooling",
-        api_keys: "Manage API keys and one-time secret issuance",
-        settings: "Manage dynamic configuration settings",
         versions: "List database versions",
         node_counts: "List available node counts",
         cpu_counts: "List available CPU-per-node options",
         disk_sizes: "List available disk size options",
         database_role_templates: "Preconfigured database role templates",
         regions: "List configured deployment regions",
-        playbooks: "Playbooks editor",
       };
       return subtitles[this.view] || "Control plane workspace";
     },
 
-    jobsTitle() {
-      return this.jobsContextClusterId
-        ? `Jobs for ${this.jobsContextClusterId}`
-        : "Jobs";
-    },
 
-    jobsSubtitle() {
-      return this.jobsContextClusterId
-        ? "Cluster-scoped jobs loaded from the cluster jobs endpoint."
-        : "List of visible jobs from the jobs API.";
-    },
 
     handleForbiddenView(viewName, { fallback = true } = {}) {
       this.setActionNotice(this.unauthorizedViewMessage(viewName));
@@ -1991,299 +1593,7 @@ window.app = function () {
     },
 
     // ---------- Init ----------
-    async init() {
-      this.stopAutoRefreshTimers();
 
-      const sIdx = localStorage.getItem("cp_sort_index");
-      const sDir = localStorage.getItem("cp_sort_dir");
-      const sFilter = localStorage.getItem("cp_filter");
-      const sFmt = localStorage.getItem("cp_inspector_format");
-      const sViewRaw = localStorage.getItem("cp_view");
-      const sView = sViewRaw === "servers" ? "clusters" : sViewRaw;
-      const selectedClusterId = localStorage.getItem("cp_selected_cluster_id");
-      const ssIdx = localStorage.getItem("cp_servers_sort_index");
-      const ssDir = localStorage.getItem("cp_servers_sort_dir");
-      const ssFilter = localStorage.getItem("cp_servers_filter");
-      const seIdx = localStorage.getItem("cp_events_sort_index");
-      const seDir = localStorage.getItem("cp_events_sort_dir");
-      const seFilter = localStorage.getItem("cp_events_filter");
-      const saIdx = localStorage.getItem("cp_alerts_sort_index");
-      const saDir = localStorage.getItem("cp_alerts_sort_dir");
-      const saFilter = localStorage.getItem("cp_alerts_filter");
-      const sakIdx = localStorage.getItem("cp_api_keys_sort_index");
-      const sakDir = localStorage.getItem("cp_api_keys_sort_dir");
-      const sakFilter = localStorage.getItem("cp_api_keys_filter");
-      const setIdx = localStorage.getItem("cp_settings_sort_index");
-      const setDir = localStorage.getItem("cp_settings_sort_dir");
-      const setFilter = localStorage.getItem("cp_settings_filter");
-      const setCategory = localStorage.getItem("cp_settings_category");
-      const jobsFilter = localStorage.getItem("cp_jobs_filter");
-      const jobsIdx = localStorage.getItem("cp_jobs_sort_index");
-      const jobsDir = localStorage.getItem("cp_jobs_sort_dir");
-      const jobsContextClusterId = localStorage.getItem(
-        "cp_jobs_context_cluster_id",
-      );
-      const selectedJobId = localStorage.getItem("cp_selected_job_id");
-      const versionsFilter = localStorage.getItem("cp_versions_filter");
-      const nodeCountsFilter = localStorage.getItem("cp_node_counts_filter");
-      const cpuCountsFilter = localStorage.getItem("cp_cpu_counts_filter");
-      const diskSizesFilter = localStorage.getItem("cp_disk_sizes_filter");
-      const databaseRoleTemplatesFilter = localStorage.getItem(
-        "cp_database_role_templates_filter",
-      );
-      const regionsFilter = localStorage.getItem("cp_regions_filter");
-      const clusterUsersFilter = localStorage.getItem(
-        "cp_cluster_users_filter",
-      );
-      const clusterDatabaseObjectsFilter = localStorage.getItem(
-        "cp_cluster_database_objects_filter",
-      );
-
-      if (sIdx !== null && !Number.isNaN(+sIdx)) this.sortIndex = +sIdx;
-      if (sDir === "desc") this.sortDir = "desc";
-      if (sFilter !== null) this.filterQuery = sFilter;
-      if (ssFilter !== null) this.serversFilterQuery = ssFilter;
-      if (jobsFilter !== null) this.jobsFilterQuery = jobsFilter;
-      if (jobsContextClusterId !== null)
-        this.jobsContextClusterId = jobsContextClusterId;
-      if (selectedJobId !== null) this.selectedJobId = selectedJobId;
-      if (seFilter !== null) this.eventsFilterQuery = seFilter;
-      if (saFilter !== null) this.alertsFilterQuery = saFilter;
-      if (sakFilter !== null) this.apiKeysFilterQuery = sakFilter;
-      if (setFilter !== null) this.settingsFilterQuery = setFilter;
-      if (setCategory !== null) this.settingsCategoryTab = setCategory;
-      if (versionsFilter !== null) this.versionsFilterQuery = versionsFilter;
-      if (nodeCountsFilter !== null)
-        this.nodeCountsFilterQuery = nodeCountsFilter;
-      if (cpuCountsFilter !== null) this.cpuCountsFilterQuery = cpuCountsFilter;
-      if (diskSizesFilter !== null)
-        this.diskSizesFilterQuery = diskSizesFilter;
-      if (databaseRoleTemplatesFilter !== null)
-        this.databaseRoleTemplatesFilterQuery = databaseRoleTemplatesFilter;
-      if (regionsFilter !== null) this.regionsFilterQuery = regionsFilter;
-      if (clusterUsersFilter !== null)
-        this.clusterUsersFilterQuery = clusterUsersFilter;
-      if (clusterDatabaseObjectsFilter !== null)
-        this.clusterDatabaseObjectsFilterQuery = clusterDatabaseObjectsFilter;
-      if (selectedClusterId !== null)
-        this.selectedClusterId = selectedClusterId;
-      if (ssIdx !== null && !Number.isNaN(+ssIdx))
-        this.serversSortIndex = +ssIdx;
-      if (jobsIdx !== null && !Number.isNaN(+jobsIdx))
-        this.jobsSortIndex = +jobsIdx;
-      if (seIdx !== null && !Number.isNaN(+seIdx))
-        this.eventsSortIndex = +seIdx;
-      if (saIdx !== null && !Number.isNaN(+saIdx))
-        this.alertsSortIndex = +saIdx;
-      if (sakIdx !== null && !Number.isNaN(+sakIdx))
-        this.apiKeysSortIndex = +sakIdx;
-      if (setIdx !== null && !Number.isNaN(+setIdx))
-        this.settingsSortIndex = +setIdx;
-      if (ssDir === "desc") this.serversSortDir = "desc";
-      if (jobsDir === "asc" || jobsDir === "desc") this.jobsSortDir = jobsDir;
-      if (seDir === "asc" || seDir === "desc") this.eventsSortDir = seDir;
-      if (saDir === "asc" || saDir === "desc") this.alertsSortDir = saDir;
-      if (sakDir === "asc" || sakDir === "desc") this.apiKeysSortDir = sakDir;
-      if (setDir === "asc" || setDir === "desc") this.settingsSortDir = setDir;
-      if (sFmt === "json" || sFmt === "yaml") this.inspectorFormat = sFmt;
-      if (
-        sView === "dashboard" ||
-        sView === "clusters" ||
-        sView === "cluster" ||
-        sView === "cluster_dashboard" ||
-        sView === "cluster_users" ||
-        sView === "cluster_databases" ||
-        sView === "cluster_backups" ||
-        sView === "cluster_recovery" ||
-        sView === "jobs" ||
-        sView === "job" ||
-        sView === "admin" ||
-        sView === "playbooks" ||
-        sView === "events" ||
-        sView === "alerts" ||
-        sView === "api_keys" ||
-        sView === "settings" ||
-        sView === "versions" ||
-        sView === "node_counts" ||
-        sView === "cpu_counts" ||
-        sView === "disk_sizes" ||
-        sView === "database_role_templates" ||
-        sView === "regions"
-      )
-        this.view = sView;
-
-      this.renderedAtUtc = this.utcNowString();
-
-      const hasSession = await this.checkAuthSession();
-      if (!hasSession) return;
-
-      if (typeof window !== "undefined" && !this._hashChangeHandlerRegistered) {
-        window.addEventListener("hashchange", () => {
-          this.handleHashChange();
-        });
-        this._hashChangeHandlerRegistered = true;
-      }
-
-      const hasHashRoute = this.parseCurrentHashRoute().hasHash;
-      let routeHandled = false;
-      if (hasHashRoute) {
-        routeHandled = await this.applyHashRoute();
-      } else if (!this.isViewAccessible(this.view)) {
-        this.handleForbiddenView(this.view);
-      } else {
-        this.syncHashFromState(true);
-      }
-
-      if (!this.isViewAccessible(this.view)) {
-        this.handleForbiddenView(this.view);
-      }
-
-      // Start dashboard timer (only refresh if dashboard tab is active)
-      this.setManagedInterval("dashboard", "_autoTimer", () => {
-        if (this.autoRefreshEnabled && this.view === "dashboard")
-          this.refreshDashboardOverview();
-      }, 15_000);
-
-      // Start clusters timer (legacy internal state name is servers)
-      this.setManagedInterval("clusters", "_serversAutoTimer", () => {
-        if (this.serversAutoRefreshEnabled && this.view === "clusters")
-          this.refreshServers();
-      }, 15_000);
-
-      this.setManagedInterval("cluster_detail", "_clusterDetailsAutoTimer", () => {
-        if (
-          this.clusterDetailsAutoRefreshEnabled &&
-          this.view === "cluster" &&
-          this.selectedClusterId
-        )
-          this.refreshSelectedCluster();
-      }, 5_000);
-
-      this.setManagedInterval("cluster_dashboard", "_clusterDashboardAutoTimer", () => {
-        if (
-          this.clusterDashboardAutoRefreshEnabled &&
-          this.view === "cluster_dashboard" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterDashboard();
-      }, 10_000);
-
-      this.setManagedInterval("cluster_users", "_clusterUsersAutoTimer", () => {
-        if (
-          this.clusterUsersAutoRefreshEnabled &&
-          this.view === "cluster_users" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterUsers();
-      }, 10_000);
-
-      this.setManagedInterval("cluster_databases", "_clusterDatabasesAutoTimer", () => {
-        if (
-          this.clusterDatabaseObjectsAutoRefreshEnabled &&
-          this.view === "cluster_databases" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterDatabaseObjects();
-      }, 10_000);
-
-      this.setManagedInterval("cluster_backups", "_clusterBackupsAutoTimer", () => {
-        if (
-          this.clusterBackupsAutoRefreshEnabled &&
-          this.view === "cluster_backups" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterBackups();
-      }, 20_000);
-
-      this.setManagedInterval("cluster_artifacts", "_clusterArtifactsAutoTimer", () => {
-        if (
-          this.clusterArtifactsAutoRefreshEnabled &&
-          this.view === "cluster_artifacts" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterArtifacts();
-      }, 20_000);
-
-      this.setManagedInterval("cluster_recovery", "_clusterRecoveryAutoTimer", () => {
-        if (
-          this.clusterRecoveryAutoRefreshEnabled &&
-          this.view === "cluster_recovery" &&
-          this.selectedClusterId
-        )
-          this.refreshClusterRecoveryBackups();
-      }, 30_000);
-
-      this.setManagedInterval("jobs", "_jobsAutoTimer", () => {
-        if (this.jobsAutoRefreshEnabled && this.view === "jobs")
-          this.refreshJobs();
-      }, 15_000);
-
-      this.setManagedInterval("job_detail", "_jobDetailsAutoTimer", () => {
-        if (
-          this.jobDetailsAutoRefreshEnabled &&
-          this.view === "job" &&
-          this.selectedJobId
-        )
-          this.refreshSelectedJobDetails();
-      }, 15_000);
-
-      this.setManagedInterval("events", "_eventsAutoTimer", () => {
-        if (this.eventsAutoRefreshEnabled && this.view === "events")
-          this.refreshEvents();
-      }, 15_000);
-
-      this.setManagedInterval("alerts", "_alertsAutoTimer", () => {
-        if (this.alertsAutoRefreshEnabled && this.view === "alerts")
-          this.refreshAlerts();
-      }, 15_000);
-
-      this.setManagedInterval("api_keys", "_apiKeysAutoTimer", () => {
-        if (this.apiKeysAutoRefreshEnabled && this.view === "api_keys")
-          this.refreshApiKeys();
-      }, 20_000);
-
-      this.setManagedInterval("versions", "_versionsAutoTimer", () => {
-        if (this.versionsAutoRefreshEnabled && this.view === "versions")
-          this.refreshVersions();
-      }, 20_000);
-
-      this.setManagedInterval("node_counts", "_nodeCountsAutoTimer", () => {
-        if (this.nodeCountsAutoRefreshEnabled && this.view === "node_counts")
-          this.refreshNodeCounts();
-      }, 20_000);
-
-      this.setManagedInterval("cpu_counts", "_cpuCountsAutoTimer", () => {
-        if (this.cpuCountsAutoRefreshEnabled && this.view === "cpu_counts")
-          this.refreshCpuCounts();
-      }, 20_000);
-
-      this.setManagedInterval("disk_sizes", "_diskSizesAutoTimer", () => {
-        if (this.diskSizesAutoRefreshEnabled && this.view === "disk_sizes")
-          this.refreshDiskSizes();
-      }, 20_000);
-
-      this.setManagedInterval("database_role_templates", "_databaseRoleTemplatesAutoTimer", () => {
-        if (
-          this.databaseRoleTemplatesAutoRefreshEnabled &&
-          this.view === "database_role_templates"
-        )
-          this.refreshDatabaseRoleTemplates();
-      }, 20_000);
-
-      this.setManagedInterval("regions", "_regionsAutoTimer", () => {
-        if (this.regionsAutoRefreshEnabled && this.view === "regions")
-          this.refreshRegions();
-      }, 20_000);
-
-      this.setManagedInterval("settings", "_settingsAutoTimer", () => {
-        if (this.settingsAutoRefreshEnabled && this.view === "settings")
-          this.refreshSettings();
-      }, 20_000);
-
-      if (!routeHandled) {
-        await this.ensureCurrentView();
-      }
-    },
 
     setView(next) {
       if (next === this.view) return;
@@ -2305,53 +1615,8 @@ window.app = function () {
       this.ensureCurrentView();
     },
 
-    openJobsView(clusterId = "") {
-      const nextClusterId = String(clusterId || "").trim();
-      const contextChanged = this.jobsContextClusterId !== nextClusterId;
-      const previousClusterId = this.jobsContextClusterId;
-      this.jobsContextClusterId = nextClusterId;
-      localStorage.setItem("cp_jobs_context_cluster_id", nextClusterId);
-      if (nextClusterId) {
-        this.jobsFilterQuery = nextClusterId;
-        this.persistJobsFilter();
-      } else if (
-        previousClusterId &&
-        String(this.jobsFilterQuery || "").trim() === previousClusterId
-      ) {
-        this.jobsFilterQuery = "";
-        this.persistJobsFilter();
-      }
-      if (contextChanged) {
-        this.jobs = [];
-      }
-      if (this.view === "jobs") {
-        this.syncHashFromState();
-        this.ensureJobsView();
-        return;
-      }
-      this.setView("jobs");
-    },
 
-    openJob(jobId) {
-      const nextId = String(jobId || "").trim();
-      if (!nextId) return;
-      if (this.selectedJobId !== nextId) {
-        this.selectedJobDetails = null;
-      }
-      this.selectedJobId = nextId;
-      localStorage.setItem("cp_selected_job_id", nextId);
-      this.clearClusterDatabaseObjectsState();
-      this.clearClusterUsersState();
-      this.view = "job";
-      localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
-      this.syncHashFromState();
-      this.ensureJobDetailView();
-    },
 
-    backToJobs() {
-      this.openJobsView(this.jobsContextClusterId);
-    },
 
     async logout() {
       try {
@@ -2538,58 +1803,15 @@ window.app = function () {
       }
     },
 
-    async ensureJobsView() {
-      const expectedContext = String(this.jobsContextClusterId || "").trim();
-      const loadedContext = String(this.jobsLoadedContextClusterId || "").trim();
-      if (!this.jobsLoading.list) await this.refreshJobs();
-      else if (expectedContext === loadedContext) this.applyJobsFilterSort();
-    },
 
-    async ensureJobDetailView() {
-      if (!this.selectedJobId) {
-        this.clearClusterUsersState();
-        this.view = "jobs";
-        localStorage.setItem("cp_view", this.view);
-        this.syncHashFromState(true);
-        return;
-      }
-      if (!this.jobLoading.details) await this.refreshSelectedJobDetails();
-    },
 
-    async ensureEventsView() {
-      if (!this.eventsLoading.list) await this.refreshEvents();
-      else this.applyEventsFilterSort();
-    },
 
     async ensureAlertsView() {
       if (!this.alertsLoading.list) await this.refreshAlerts();
       else this.applyAlertsFilterSort();
     },
 
-    async ensureApiKeysView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("api_keys", { fallback: false });
-        return;
-      }
-      if (!this.apiKeysLoading.list) await this.refreshApiKeys();
-      else this.applyApiKeysFilterSort();
-    },
 
-    async ensureSettingsView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("settings", { fallback: false });
-        return;
-      }
-      if (this.settingsLoading.list) {
-        this.applySettingsFilterSort();
-        return;
-      }
-      if (Array.isArray(this.settings) && this.settings.length > 0) {
-        this.applySettingsFilterSort();
-        return;
-      }
-      await this.refreshSettings();
-    },
 
     async ensureVersionsView() {
       if (!this.canViewAdmin()) {
@@ -2645,48 +1867,6 @@ window.app = function () {
       else this.applyRegionsFilter();
     },
 
-    async ensureAdminView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("admin", { fallback: false });
-        return;
-      }
-      if (!this.settingsLoading.list) {
-        await this.refreshSettings();
-      } else {
-        this.applySettingsFilterSort();
-      }
-      if (!this.versionsLoading.list) {
-        await this.refreshVersions();
-      } else {
-        this.applyVersionsFilter();
-      }
-      if (!this.nodeCountsLoading.list) {
-        await this.refreshNodeCounts();
-      } else {
-        this.applyNodeCountsFilter();
-      }
-      if (!this.cpuCountsLoading.list) {
-        await this.refreshCpuCounts();
-      } else {
-        this.applyCpuCountsFilter();
-      }
-      if (!this.diskSizesLoading.list) {
-        await this.refreshDiskSizes();
-      } else {
-        this.applyDiskSizesFilter();
-      }
-      if (!this.databaseRoleTemplatesLoading.list) {
-        await this.refreshDatabaseRoleTemplates();
-      } else {
-        this.applyDatabaseRoleTemplatesFilter();
-      }
-      if (!this.regionsLoading.list) {
-        await this.refreshRegions();
-      } else {
-        this.applyRegionsFilter();
-      }
-    },
-
     serversRowText(s) {
       return [
         s.cluster_id,
@@ -2731,7 +1911,7 @@ window.app = function () {
 
       if (!s || s === "unknown") return "status-muted";
 
-      // Job states
+      // Async operation states
       if (s === "completed") return "status-online";
       if (s === "running") return "status-warning";
       if (s === "queued") return "status-pending status-pulse";
@@ -3398,7 +2578,7 @@ window.app = function () {
     },
 
     applyDatabaseRoleGroupMappings(databaseObjects, groupMappings) {
-      // The API returns raw mapping rows so playbooks and the UI consume one shape.
+      // The API returns raw mapping rows so the UI can display assigned groups.
       const groupsByRole = {};
       for (const mapping of groupMappings) {
         const roleName = String(mapping?.database_role || "").trim();
@@ -5280,372 +4460,31 @@ window.app = function () {
       }
     },
 
-    jobsDescriptionText(job) {
-      return this.toYaml(job?.description ?? null);
-    },
 
-    jobTaskDescriptionText(task) {
-      if (typeof task?.task_desc === "string") return task.task_desc;
-      return this.toYaml(task?.task_desc ?? null);
-    },
 
-    selectedJobPrimaryClusterId() {
-      const linkedClusters = Array.isArray(
-        this.selectedJobDetails?.linked_clusters,
-      )
-        ? this.selectedJobDetails.linked_clusters
-        : [];
-      return String(linkedClusters[0]?.cluster_id || "").trim();
-    },
 
-    selectedJobDescriptionClusterName() {
-      const description = this.selectedJobDetails?.job?.description;
-      if (!description || typeof description !== "object") return "";
 
-      const directName = String(
-        description.cluster_name ||
-          description.name ||
-          description.cluster_id ||
-          "",
-      ).trim();
-      if (directName) return directName;
 
-      const deployment = Array.isArray(description.deployment)
-        ? description.deployment
-        : [];
-      return String(deployment[0]?.cluster_name || "").trim();
-    },
 
-    selectedJobPrimaryClusterLabel() {
-      return (
-        this.selectedJobDescriptionClusterName() ||
-        this.selectedJobPrimaryClusterId() ||
-        "-"
-      );
-    },
 
-    selectedJobLinkedClusterMeta() {
-      const linkedClusters = Array.isArray(
-        this.selectedJobDetails?.linked_clusters,
-      )
-        ? this.selectedJobDetails.linked_clusters
-        : [];
-      if (linkedClusters.length === 0) {
-        return this.selectedJobDescriptionClusterName()
-          ? "Cluster name found in the job payload. The linked cluster record is not available yet."
-          : "No linked cluster has been recorded for this job yet.";
-      }
-      if (linkedClusters.length <= 1) {
-        return "Open the linked cluster details page.";
-      }
-      return `${linkedClusters.length} linked clusters returned. Opening the first linked cluster.`;
-    },
 
-    openJobRescheduleConfirm() {
-      const jobId = String(this.selectedJobId || "").trim();
-      if (!jobId) return;
-      this.modal.jobRescheduleConfirm.job_id = jobId;
-      this.clearModalError("jobRescheduleConfirm");
-      this.modal.jobRescheduleConfirm.open = true;
-    },
 
-    closeJobRescheduleConfirm() {
-      this.modal.jobRescheduleConfirm.open = false;
-      this.modal.jobRescheduleConfirm.job_id = "";
-      this.clearModalError("jobRescheduleConfirm");
-    },
 
-    async rescheduleSelectedJob() {
-      const jobId = String(
-        this.modal.jobRescheduleConfirm.job_id || this.selectedJobId || "",
-      ).trim();
-      if (!jobId) return;
-      this.jobLoading.reschedule = true;
-      this.clearModalError("jobRescheduleConfirm");
-      try {
-        const result = await this.apiFetch(
-          `/jobs/${encodeURIComponent(jobId)}/reschedule`,
-          { method: "POST" },
-        );
-        this.closeJobRescheduleConfirm();
-        this.setActionNotice(`Job '${jobId}' rescheduled.`, result?.job_id);
-        if (this.jobs.length > 0) {
-          await this.refreshJobs();
-        }
-      } catch (e) {
-        console.error(e);
-        this.setModalError(
-          "jobRescheduleConfirm",
-          e,
-          "Failed to reschedule job.",
-        );
-      } finally {
-        this.jobLoading.reschedule = false;
-      }
-    },
 
-    async refreshSelectedJobDetails() {
-      const jobId = String(this.selectedJobId || "").trim();
-      if (!jobId) return;
-      this.jobLoading.details = true;
-      try {
-        this.selectedJobDetails = await this.apiFetch(
-          `/jobs/${encodeURIComponent(jobId)}/details`,
-          { method: "GET" },
-        );
-      } catch (e) {
-        console.error(e);
-        this.setActionNotice(
-          this.errorMessage(e, "Failed to load job details."),
-        );
-        this.selectedJobDetails = null;
-      } finally {
-        this.jobLoading.details = false;
-      }
-    },
 
-    jobsRowText(job) {
-      return [
-        job?.job_id,
-        job?.job_type,
-        job?.status,
-        job?.created_by,
-        job?.created_at,
-        job?.updated_at,
-        this.jobsDescriptionText(job),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-    },
 
-    jobsCellText(job, colIndex) {
-      switch (colIndex) {
-        case 0:
-          return job?.job_id ?? "";
-        case 1:
-          return job?.job_type || "";
-        case 2:
-          return job?.status || "";
-        case 3:
-          return job?.created_by || "";
-        case 4:
-          return job?.created_at || "";
-        case 5:
-          return job?.updated_at || "";
-        default:
-          return "";
-      }
-    },
 
-    jobsSortClass(index) {
-      if (this.jobsSortIndex !== index) return "";
-      return this.jobsSortDir === "asc" ? "sort-asc" : "sort-desc";
-    },
 
-    toggleJobsSort(index) {
-      if (this.jobsSortIndex === index)
-        this.jobsSortDir = this.jobsSortDir === "asc" ? "desc" : "asc";
-      else {
-        this.jobsSortIndex = index;
-        this.jobsSortDir = index === 0 || index >= 4 ? "desc" : "asc";
-      }
 
-      localStorage.setItem("cp_jobs_sort_index", String(this.jobsSortIndex));
-      localStorage.setItem("cp_jobs_sort_dir", this.jobsSortDir);
-      this.applyJobsFilterSort();
-    },
 
-    applyJobsFilterSort() {
-      const q = (this.jobsFilterQuery || "").toLowerCase().trim();
-      let rows = this.jobs.slice();
-      if (q) rows = rows.filter((job) => this.jobsRowText(job).includes(q));
 
-      if (this.jobsSortIndex !== null) {
-        const type = this.jobsSortTypeByIndex[this.jobsSortIndex] || "string";
-        const idx = this.jobsSortIndex;
-        const dir = this.jobsSortDir;
 
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.jobsCellText(a, idx));
-          const bv = this.parseValue(type, this.jobsCellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
 
-      this.jobsVisibleRows = rows;
-    },
 
-    persistJobsFilter() {
-      localStorage.setItem("cp_jobs_filter", this.jobsFilterQuery || "");
-    },
 
-    async onJobsFilterInput() {
-      this.persistJobsFilter();
-      const query = String(this.jobsFilterQuery || "").trim();
-      if (!query && this.jobsContextClusterId) {
-        this.jobsContextClusterId = "";
-        localStorage.setItem("cp_jobs_context_cluster_id", "");
-        this.syncHashFromState();
-        this.jobs = [];
-        await this.refreshJobs();
-        return;
-      }
-      this.applyJobsFilterSort();
-    },
 
-    async refreshJobs() {
-      this.jobsLoading.list = true;
-      try {
-        if (this.jobsContextClusterId) {
-          const data = await this.apiFetch(
-            this.visibilityPath(
-              `/clusters/${encodeURIComponent(this.jobsContextClusterId)}/jobs`,
-            ),
-            { method: "GET" },
-          );
-          this.jobs = Array.isArray(data?.jobs) ? data.jobs : [];
-          this.jobsLoadedContextClusterId = this.jobsContextClusterId;
-          if (!this.jobsFilterQuery) {
-            this.jobsFilterQuery = this.jobsContextClusterId;
-            this.persistJobsFilter();
-          }
-        } else {
-          const data = await this.apiFetch(this.visibilityPath("/jobs/"), {
-            method: "GET",
-          });
-          this.jobs = Array.isArray(data) ? data : [];
-          this.jobsLoadedContextClusterId = "";
-        }
-        this.jobsLastUpdatedUtc = this.utcNowString();
-        this.applyJobsFilterSort();
-      } catch (e) {
-        console.error(e);
-        this.jobsLastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.jobsLoading.list = false;
-      }
-    },
 
-    async refreshJobStats() {
-      this.jobsLoading.list = true;
-      try {
-        const data = await this.apiFetch(this.visibilityPath("/jobs/stats"), {
-          method: "GET",
-        });
-        this.jobStats = {
-          total: Number(data?.total || 0),
-          running: Number(data?.running || 0),
-          queued: Number(data?.queued || 0),
-          failed: Number(data?.failed || 0),
-        };
-        this.jobsLastUpdatedUtc = this.utcNowString();
-      } catch (e) {
-        console.error(e);
-        this.jobsLastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.jobsLoading.list = false;
-      }
-    },
 
-    eventsDetailsText(event) {
-      return this.toYaml(event?.details ?? null);
-    },
-
-    eventsRowText(event) {
-      return [
-        event.ts,
-        event.user_id,
-        event.action,
-        event.request_id,
-        this.eventsDetailsText(event),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-    },
-
-    eventsCellText(event, colIndex) {
-      switch (colIndex) {
-        case 0:
-          return event.ts || "";
-        case 1:
-          return event.user_id || "";
-        case 2:
-          return event.action || "";
-        case 3:
-          return this.eventsDetailsText(event);
-        case 4:
-          return event.request_id || "";
-        default:
-          return "";
-      }
-    },
-
-    eventsSortClass(index) {
-      if (this.eventsSortIndex !== index) return "";
-      return this.eventsSortDir === "asc" ? "sort-asc" : "sort-desc";
-    },
-
-    toggleEventsSort(index) {
-      if (this.eventsSortIndex === index)
-        this.eventsSortDir = this.eventsSortDir === "asc" ? "desc" : "asc";
-      else {
-        this.eventsSortIndex = index;
-        this.eventsSortDir = index === 0 ? "desc" : "asc";
-      }
-
-      localStorage.setItem(
-        "cp_events_sort_index",
-        String(this.eventsSortIndex),
-      );
-      localStorage.setItem("cp_events_sort_dir", this.eventsSortDir);
-      this.applyEventsFilterSort();
-    },
-
-    applyEventsFilterSort() {
-      const q = (this.eventsFilterQuery || "").toLowerCase().trim();
-      let rows = this.events.slice();
-      if (q)
-        rows = rows.filter((event) => this.eventsRowText(event).includes(q));
-
-      if (this.eventsSortIndex !== null) {
-        const type =
-          this.eventsSortTypeByIndex[this.eventsSortIndex] || "string";
-        const idx = this.eventsSortIndex;
-        const dir = this.eventsSortDir;
-
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.eventsCellText(a, idx));
-          const bv = this.parseValue(type, this.eventsCellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
-
-      this.eventsVisibleRows = rows;
-    },
-
-    async refreshEvents({ limit = 200, offset = 0 } = {}) {
-      this.eventsLoading.list = true;
-      try {
-        const data = await this.apiFetch(
-          this.visibilityPath("/events/", { limit, offset }),
-          { method: "GET" },
-        );
-        this.events = Array.isArray(data) ? data : [];
-        this.eventsLastUpdatedUtc = this.utcNowString();
-        this.applyEventsFilterSort();
-      } catch (e) {
-        console.error(e);
-        this.eventsLastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.eventsLoading.list = false;
-      }
-    },
 
     alertsRowText(alert) {
       return [
@@ -5750,544 +4589,49 @@ window.app = function () {
       }
     },
 
-    apiKeysRolesText(row) {
-      return Array.isArray(row?.roles) && row.roles.length
-        ? row.roles.join(", ")
-        : "-";
-    },
 
-    apiKeysRowText(row) {
-      return [
-        row?.access_key,
-        row?.owner,
-        row?.valid_until,
-        this.apiKeysRolesText(row),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-    },
 
-    apiKeysCellText(row, colIndex) {
-      switch (colIndex) {
-        case 0:
-          return row?.access_key || "";
-        case 1:
-          return row?.owner || "";
-        case 2:
-          return row?.valid_until || "";
-        case 3:
-          return this.apiKeysRolesText(row);
-        default:
-          return "";
-      }
-    },
 
-    apiKeysSortClass(index) {
-      if (this.apiKeysSortIndex !== index) return "";
-      return this.apiKeysSortDir === "asc" ? "sort-asc" : "sort-desc";
-    },
 
-    toggleApiKeysSort(index) {
-      if (this.apiKeysSortIndex === index)
-        this.apiKeysSortDir = this.apiKeysSortDir === "asc" ? "desc" : "asc";
-      else {
-        this.apiKeysSortIndex = index;
-        this.apiKeysSortDir = index === 2 ? "desc" : "asc";
-      }
 
-      localStorage.setItem(
-        "cp_api_keys_sort_index",
-        String(this.apiKeysSortIndex),
-      );
-      localStorage.setItem("cp_api_keys_sort_dir", this.apiKeysSortDir);
-      this.applyApiKeysFilterSort();
-    },
 
-    applyApiKeysFilterSort() {
-      const q = (this.apiKeysFilterQuery || "").toLowerCase().trim();
-      let rows = this.apiKeys.slice();
-      if (q) rows = rows.filter((row) => this.apiKeysRowText(row).includes(q));
 
-      if (this.apiKeysSortIndex !== null) {
-        const type =
-          this.apiKeysSortTypeByIndex[this.apiKeysSortIndex] || "string";
-        const idx = this.apiKeysSortIndex;
-        const dir = this.apiKeysSortDir;
 
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.apiKeysCellText(a, idx));
-          const bv = this.parseValue(type, this.apiKeysCellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
 
-      this.apiKeysVisibleRows = rows;
-    },
 
-    persistApiKeysFilter() {
-      localStorage.setItem("cp_api_keys_filter", this.apiKeysFilterQuery || "");
-    },
 
-    async refreshApiKeys() {
-      this.apiKeysLoading.list = true;
-      try {
-        const data = await this.apiFetch("/admin/api_keys/", { method: "GET" });
-        this.apiKeys = Array.isArray(data) ? data : [];
-        this.apiKeysLastUpdatedUtc = this.utcNowString();
-        this.applyApiKeysFilterSort();
-      } catch (e) {
-        if (e?.forbidden) {
-          this.handleForbiddenView("api_keys", { fallback: false });
-        }
-        console.error(e);
-        this.apiKeysLastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.apiKeysLoading.list = false;
-      }
-    },
 
-    defaultApiKeyValidUntilUtc() {
-      return new Date(Date.now() + 24 * 60 * 60 * 1000)
-        .toISOString()
-        .replace(/\.\d{3}Z$/, "Z");
-    },
 
-    openApiKeyCreateModal() {
-      this.clearModalError("apiKeyCreate");
-      this.modal.apiKeyCreate.valid_until = this.defaultApiKeyValidUntilUtc();
-      this.modal.apiKeyCreate.roles = ["CP_ADMIN"];
-      this.modal.apiKeyCreate.open = true;
-    },
 
-    closeApiKeyCreateModal() {
-      this.modal.apiKeyCreate.open = false;
-      this.clearModalError("apiKeyCreate");
-    },
-
-    openApiKeyDeleteConfirm(row) {
-      this.modal.apiKeyDeleteConfirm.access_key = row?.access_key || "";
-      this.modal.apiKeyDeleteConfirm.owner = row?.owner || "";
-      this.clearModalError("apiKeyDeleteConfirm");
-      this.modal.apiKeyDeleteConfirm.open = true;
-    },
-
-    closeApiKeyDeleteConfirm() {
-      this.modal.apiKeyDeleteConfirm.open = false;
-      this.clearModalError("apiKeyDeleteConfirm");
-    },
-
-    closeApiKeySecretModal() {
-      this.modal.apiKeySecret.open = false;
-      this.modal.apiKeySecret.access_key = "";
-      this.modal.apiKeySecret.owner = "";
-      this.modal.apiKeySecret.valid_until = "";
-      this.modal.apiKeySecret.roles = [];
-      this.modal.apiKeySecret.secret_access_key = "";
-      this.modal.apiKeySecret.reveal = false;
-      this.modal.apiKeySecret.copied = false;
-    },
-
-    toggleApiKeySecretVisibility() {
-      this.modal.apiKeySecret.reveal = !this.modal.apiKeySecret.reveal;
-      this.modal.apiKeySecret.copied = false;
-    },
 
     maskedSecret(secret) {
       const value = String(secret || "");
       return value ? "•".repeat(Math.max(24, value.length)) : "";
     },
 
-    async copyApiKeySecret() {
-      if (!this.modal.apiKeySecret.reveal) return;
-      const secret = String(this.modal.apiKeySecret.secret_access_key || "");
-      if (!secret) return;
 
-      if (
-        typeof navigator !== "undefined" &&
-        navigator.clipboard &&
-        typeof navigator.clipboard.writeText === "function"
-      ) {
-        await navigator.clipboard.writeText(secret);
-      } else if (typeof document !== "undefined") {
-        const el = document.createElement("textarea");
-        el.value = secret;
-        el.setAttribute("readonly", "");
-        el.style.position = "absolute";
-        el.style.left = "-9999px";
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand("copy");
-        document.body.removeChild(el);
-      }
 
-      this.modal.apiKeySecret.copied = true;
-    },
 
-    async createApiKey() {
-      this.apiKeysLoading.create = true;
-      this.clearModalError("apiKeyCreate");
-      try {
-        const validUntil = String(
-          this.modal.apiKeyCreate.valid_until || "",
-        ).trim();
-        if (!validUntil) throw new Error("valid_until is required.");
-        if (!validUntil.endsWith("Z")) {
-          throw new Error("valid_until must be a UTC timestamp ending in Z.");
-        }
-        const parsedValidUntil = new Date(validUntil);
-        if (Number.isNaN(parsedValidUntil.getTime())) {
-          throw new Error("valid_until must be a valid UTC timestamp.");
-        }
 
-        const roles = Array.isArray(this.modal.apiKeyCreate.roles)
-          ? this.modal.apiKeyCreate.roles.filter(Boolean)
-          : [];
-        if (roles.length === 0) throw new Error("Select at least one role.");
 
-        const payload = {
-          valid_until: parsedValidUntil.toISOString(),
-          roles,
-        };
 
-        const created = await this.apiFetch("/admin/api_keys/", {
-          method: "POST",
-          body: payload,
-        });
 
-        this.closeApiKeyCreateModal();
-        this.modal.apiKeySecret.access_key = created?.access_key || "";
-        this.modal.apiKeySecret.owner = created?.owner || "";
-        this.modal.apiKeySecret.valid_until = created?.valid_until || "";
-        this.modal.apiKeySecret.roles = Array.isArray(created?.roles)
-          ? created.roles
-          : [];
-        this.modal.apiKeySecret.secret_access_key =
-          created?.secret_access_key || "";
-        this.modal.apiKeySecret.reveal = false;
-        this.modal.apiKeySecret.copied = false;
-        this.modal.apiKeySecret.open = true;
-        await this.refreshApiKeys();
-      } catch (e) {
-        this.setModalError("apiKeyCreate", e, "Failed to create API key.");
-      } finally {
-        this.apiKeysLoading.create = false;
-      }
-    },
 
-    async confirmApiKeyDelete() {
-      const accessKey = String(
-        this.modal.apiKeyDeleteConfirm.access_key || "",
-      ).trim();
-      if (!accessKey) return;
 
-      this.apiKeysLoading.delete = true;
-      this.clearModalError("apiKeyDeleteConfirm");
-      try {
-        await this.apiFetch(
-          `/admin/api_keys/${encodeURIComponent(accessKey)}`,
-          {
-            method: "DELETE",
-          },
-        );
-        this.closeApiKeyDeleteConfirm();
-        await this.refreshApiKeys();
-      } catch (e) {
-        this.setModalError(
-          "apiKeyDeleteConfirm",
-          e,
-          "Failed to delete API key.",
-        );
-      } finally {
-        this.apiKeysLoading.delete = false;
-      }
-    },
 
-    settingsRowText(row) {
-      return [
-        row?.key,
-        row?.category,
-        row?.value_type,
-        row?.value,
-        row?.default_value,
-        row?.updated_by,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-    },
 
-    settingsCellText(row, colIndex) {
-      switch (colIndex) {
-        case 0:
-          return row?.key || "";
-        case 1:
-          return row?.value_type || "";
-        case 2:
-          return row?.value || "";
-        case 3:
-          return row?.default_value || "";
-        case 4:
-          return row?.updated_at || "";
-        default:
-          return "";
-      }
-    },
 
-    settingsSortClass(index) {
-      if (this.settingsSortIndex !== index) return "";
-      return this.settingsSortDir === "asc" ? "sort-asc" : "sort-desc";
-    },
 
-    settingsCategories() {
-      return [...new Set(this.settings.map((row) => String(row?.category || "").trim()).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b),
-      );
-    },
 
-    settingsCategoryCount(category) {
-      if (category === "all") return this.settings.length;
-      return this.settings.filter(
-        (row) => String(row?.category || "").trim() === category,
-      ).length;
-    },
 
-    selectSettingsCategory(category) {
-      this.settingsCategoryTab = String(category || "all");
-      this.persistSettingsCategory();
-      this.applySettingsFilterSort();
-    },
 
-    persistSettingsCategory() {
-      localStorage.setItem(
-        "cp_settings_category",
-        this.settingsCategoryTab || "all",
-      );
-    },
 
-    toggleSettingsSort(index) {
-      if (this.settingsSortIndex === index)
-        this.settingsSortDir = this.settingsSortDir === "asc" ? "desc" : "asc";
-      else {
-        this.settingsSortIndex = index;
-        this.settingsSortDir = index === 4 ? "desc" : "asc";
-      }
 
-      localStorage.setItem(
-        "cp_settings_sort_index",
-        String(this.settingsSortIndex),
-      );
-      localStorage.setItem("cp_settings_sort_dir", this.settingsSortDir);
-      this.applySettingsFilterSort();
-    },
 
-    applySettingsFilterSort() {
-      const q = (this.settingsFilterQuery || "").toLowerCase().trim();
-      let rows = this.settings.slice();
-      if (this.settingsCategoryTab && this.settingsCategoryTab !== "all") {
-        rows = rows.filter(
-          (row) =>
-            String(row?.category || "").trim() === this.settingsCategoryTab,
-        );
-      }
-      if (q) rows = rows.filter((row) => this.settingsRowText(row).includes(q));
 
-      if (this.settingsSortIndex !== null) {
-        const type =
-          this.settingsSortTypeByIndex[this.settingsSortIndex] || "string";
-        const idx = this.settingsSortIndex;
-        const dir = this.settingsSortDir;
 
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.settingsCellText(a, idx));
-          const bv = this.parseValue(type, this.settingsCellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
 
-      this.settingsVisibleRows = rows;
-    },
 
-    persistSettingsFilter() {
-      localStorage.setItem(
-        "cp_settings_filter",
-        this.settingsFilterQuery || "",
-      );
-    },
-
-    settingDraftValue(row) {
-      const key = row?.key;
-      if (!key) return "";
-      if (Object.prototype.hasOwnProperty.call(this.settingsDrafts, key)) {
-        return this.settingsDrafts[key];
-      }
-      return row?.value || "";
-    },
-
-    setSettingDraft(key, value) {
-      if (!key) return;
-      this.settingsDrafts = {
-        ...this.settingsDrafts,
-        [key]: String(value ?? ""),
-      };
-    },
-
-    isSettingDirty(row) {
-      return this.settingDraftValue(row) !== String(row?.value || "");
-    },
-
-    settingValuePreview(row, value) {
-      if (row?.is_secret) return "(hidden)";
-      return String(value ?? "") || "-";
-    },
-
-    settingSourceLabel(row) {
-      return String(row?.value ?? "") === String(row?.default_value ?? "")
-        ? "Default"
-        : "Override";
-    },
-
-    showSettingsToast(message, ok = true) {
-      if (this._settingsToastTimer) {
-        clearTimeout(this._settingsToastTimer);
-        this._settingsToastTimer = null;
-      }
-      this.settingsToast = { message, ok };
-      this._settingsToastTimer = setTimeout(() => {
-        this.settingsToast = { message: "", ok: true };
-        this._settingsToastTimer = null;
-      }, 2600);
-    },
-
-    async refreshSettings() {
-      this.settingsLoading.list = true;
-      this.settingsError = "";
-      try {
-        const existingRowsByKey = Object.fromEntries(
-          this.settings.map((row) => [row.key, row]),
-        );
-        const data = await this.apiFetch("/admin/settings/", { method: "GET" });
-        const rows = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.items)
-            ? data.items
-            : Array.isArray(data?.settings)
-              ? data.settings
-              : [];
-        this.settings = rows;
-        if (
-          this.settingsCategoryTab !== "all" &&
-          !this.settingsCategories().includes(this.settingsCategoryTab)
-        ) {
-          this.settingsCategoryTab = "all";
-          this.persistSettingsCategory();
-        }
-        this.settingsDrafts = Object.fromEntries(
-          this.settings.map((row) => {
-            const existing = existingRowsByKey[row.key];
-            const existingDraft = this.settingsDrafts[row.key];
-            const existingEffective = String(existing?.value || "");
-            const nextEffective = String(row.value || "");
-            if (
-              existingDraft !== undefined &&
-              existingDraft !== existingEffective
-            ) {
-              return [row.key, existingDraft];
-            }
-            return [row.key, nextEffective];
-          }),
-        );
-        this.settingsLastUpdatedUtc = this.utcNowString();
-        this.applySettingsFilterSort();
-      } catch (e) {
-        if (e?.forbidden) {
-          this.handleForbiddenView("settings", { fallback: false });
-        }
-        this.settingsError = this.errorMessage(e, "Failed to load settings.");
-        console.error(e);
-        this.settingsLastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.settingsLoading.list = false;
-      }
-    },
-
-    async saveSetting(row) {
-      const key = row?.key;
-      if (!key) return;
-
-      this.settingsLoading.update = true;
-      try {
-        const savedValue = this.settingDraftValue(row);
-        const updated = await this.apiFetch(
-          `/admin/settings/${encodeURIComponent(key)}`,
-          {
-            method: "PATCH",
-            body: { value: savedValue },
-          },
-        );
-        const savedRow = updated && typeof updated === "object"
-          ? updated
-          : { ...row, key, value: savedValue };
-        this.settings = this.settings.map((entry) =>
-          entry.key === key ? savedRow : entry,
-        );
-        this.setSettingDraft(key, savedRow.value || "");
-        this.settingsLastUpdatedUtc = this.utcNowString();
-        this.applySettingsFilterSort();
-        this.showSettingsToast(`Saved "${key}".`);
-      } catch (e) {
-        console.error(e);
-        this.showSettingsToast(
-          this.errorMessage(e, `Failed to save "${key}".`),
-          false,
-        );
-      } finally {
-        this.settingsLoading.update = false;
-      }
-    },
-
-    openSettingResetConfirm(row) {
-      this.modal.settingResetConfirm.key = row?.key || "";
-      this.modal.settingResetConfirm.category = row?.category || "";
-      this.modal.settingResetConfirm.value_type = row?.value_type || "";
-      this.modal.settingResetConfirm.default_value = row?.default_value || "";
-      this.modal.settingResetConfirm.is_secret = Boolean(row?.is_secret);
-      this.clearModalError("settingResetConfirm");
-      this.modal.settingResetConfirm.open = true;
-    },
-
-    closeSettingResetConfirm() {
-      this.modal.settingResetConfirm.open = false;
-      this.clearModalError("settingResetConfirm");
-    },
-
-    async confirmSettingReset() {
-      const key = String(this.modal.settingResetConfirm.key || "").trim();
-      if (!key) return;
-
-      this.settingsLoading.reset = true;
-      try {
-        await this.apiFetch(
-          `/admin/settings/${encodeURIComponent(key)}/reset`,
-          { method: "PUT" },
-        );
-        this.closeSettingResetConfirm();
-        await this.refreshSettings();
-        this.settingsLastUpdatedUtc = this.utcNowString();
-      } catch (e) {
-        this.setModalError(
-          "settingResetConfirm",
-          e,
-          "Failed to reset setting.",
-        );
-      } finally {
-        this.settingsLoading.reset = false;
-      }
-    },
 
     openServerActionConfirm(server, action) {
       this.modal.serverActionConfirm.hostname = server?.hostname || "";
@@ -7106,45 +5450,6 @@ window.app = function () {
     },
 
     // ---------- Dashboard lifecycle ----------
-    async refreshDashboardOverview({ onlyIfEmpty = false } = {}) {
-      const clusterStatsEmpty =
-        !this.clusterStats ||
-        Object.values(this.clusterStats).every((value) => Number(value || 0) === 0);
-      if ((!onlyIfEmpty || clusterStatsEmpty) && !this.serversLoading.list) {
-        await this.refreshClusterStats();
-      }
-
-      const jobStatsEmpty =
-        !this.jobStats ||
-        Object.values(this.jobStats).every((value) => Number(value || 0) === 0);
-      if ((!onlyIfEmpty || jobStatsEmpty) && !this.jobsLoading.list) {
-        const previousContext = this.jobsContextClusterId;
-        if (previousContext) this.jobsContextClusterId = "";
-        try {
-          await this.refreshJobStats();
-        } finally {
-          this.jobsContextClusterId = previousContext;
-        }
-      }
-
-      if ((!onlyIfEmpty || this.events.length === 0) && !this.eventsLoading.list) {
-        await this.refreshEvents({ limit: 20, offset: 0 });
-      } else {
-        this.applyEventsFilterSort();
-      }
-
-      if ((!onlyIfEmpty || this.alerts.length === 0) && !this.alertsLoading.list) {
-        await this.refreshAlerts({ limit: 20 });
-      } else {
-        this.applyAlertsFilterSort();
-      }
-    },
-
-    async ensureDashboardView() {
-      await this.refreshDashboardOverview({ onlyIfEmpty: false });
-      this.applyFilterSort();
-    },
-
     persistFilter() {
       localStorage.setItem("cp_filter", this.filterQuery || "");
     },
@@ -7152,9 +5457,7 @@ window.app = function () {
     persistServersFilter() {
       localStorage.setItem("cp_servers_filter", this.serversFilterQuery || "");
     },
-    persistEventsFilter() {
-      localStorage.setItem("cp_events_filter", this.eventsFilterQuery || "");
-    },
+
     persistAlertsFilter() {
       localStorage.setItem("cp_alerts_filter", this.alertsFilterQuery || "");
     },
@@ -7654,47 +5957,6 @@ window.app = function () {
       }
     },
 
-    // ---------- Playbooks lifecycle ----------
-    async ensurePlaybooksView() {
-      if (!this.canViewAdmin()) {
-        this.handleForbiddenView("playbooks", { fallback: false });
-        return;
-      }
-      this.ensureAce();
-      if (!this.pbLoading.list) await this.reloadPlaybooks();
-    },
-
-    ensureAce() {
-      if (this._aceReady) return;
-
-      if (!window.ace || !this.$refs.aceContainer) {
-        this.pbToast = {
-          ok: false,
-          message: "Ace not loaded or container missing.",
-        };
-        return;
-      }
-
-      const editor = window.ace.edit(this.$refs.aceContainer);
-      editor.setTheme("ace/theme/cobalt");
-      editor.session.setMode("ace/mode/yaml");
-      editor.setOptions({
-        showPrintMargin: false,
-        useSoftTabs: true,
-        tabSize: 2,
-        wrap: true,
-      });
-
-      // keep reference
-      this._ace = editor;
-      this._aceReady = true;
-      this.pbEditorReady = true;
-      this.pbToast = {
-        ok: true,
-        message: `${this.utcNowString()} - Editor ready.`,
-      };
-    },
-
     ensureDatabaseRoleTemplateAce() {
       if (this._databaseRoleTemplateAceReady) return;
 
@@ -7727,261 +5989,6 @@ window.app = function () {
       });
     },
 
-    async reloadPlaybooks() {
-      this.pbLoading.list = true;
-      try {
-        // Select first by default
-        if (this.playbooks.length && !this.selectedPlaybook) {
-          this.selectedPlaybook = this.playbooks[0];
-        }
-        if (this.selectedPlaybook) await this.onSelectPlaybook();
-
-        this.pbToast = {
-          ok: true,
-          message: `${this.utcNowString()} - Loaded playbooks list (${
-            this.playbooks.length
-          }).`,
-        };
-      } catch (e) {
-        this.pbToast = { ok: false, message: `List failed: ${e.message}` };
-      } finally {
-        this.pbLoading.list = false;
-      }
-    },
-
-    async onSelectPlaybook() {
-      if (!this.selectedPlaybook) return;
-      if (!this._aceReady || !this._ace) {
-        this.pbToast = { ok: false, message: "Editor not ready yet." };
-        return;
-      }
-      await this.loadPlaybookSelection(this.selectedPlaybook);
-    },
-
-    extractPlaybookText(payload) {
-      if (typeof payload === "string") {
-        try {
-          return this.b64decode(payload);
-        } catch {
-          return payload;
-        }
-      }
-
-      if (payload && typeof payload === "object") {
-        const content =
-          payload.modified_content ?? payload.original_content ?? "";
-        return typeof content === "string" ? content : String(content ?? "");
-      }
-
-      return String(payload ?? "");
-    },
-
-    applyPlaybookPayload(name, payload, options = {}) {
-      const text = this.extractPlaybookText(payload);
-      const versions = Array.isArray(payload?.available_versions)
-        ? payload.available_versions.map((item) => String(item))
-        : this.pbVersions;
-      const defaultVersion =
-        payload?.default_version != null
-          ? String(payload.default_version)
-          : this.pbDefaultVersion;
-      const selectedVersion = String(
-        payload?.playbook_version ||
-          options.selectedVersion ||
-          defaultVersion ||
-          versions[versions.length - 1] ||
-          "",
-      );
-
-      this.pbVersions = versions;
-      this.pbDefaultVersion = defaultVersion;
-      this.pbSelectedVersion = selectedVersion;
-      this._ace.setValue(text, -1);
-      this.pbLastUpdatedUtc = this.utcNowString();
-      this.pbToast = {
-        ok: true,
-        message: `${this.utcNowString()} - Loaded "${name}"${
-          selectedVersion ? ` (${selectedVersion})` : ""
-        }.`,
-      };
-    },
-
-    async loadPlaybookSelection(name) {
-      this.pbLoading.load = true;
-      try {
-        const payload = await this.apiFetch(
-          `/admin/playbooks/${encodeURIComponent(name)}`,
-          { method: "GET" },
-        );
-        this.applyPlaybookPayload(name, payload);
-      } catch (e) {
-        this.pbToast = { ok: false, message: `Load failed: ${e.message}` };
-      } finally {
-        this.pbLoading.load = false;
-      }
-    },
-
-    async onSelectPlaybookVersion() {
-      const name = String(this.selectedPlaybook || "").trim();
-      const version = String(this.pbSelectedVersion || "").trim();
-      if (!name || !version) return;
-      if (!this._aceReady || !this._ace) {
-        this.pbToast = { ok: false, message: "Editor not ready yet." };
-        return;
-      }
-
-      this.pbLoading.load = true;
-      try {
-        const payload = await this.apiFetch(
-          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
-          { method: "GET" },
-        );
-        this.applyPlaybookPayload(name, payload, { selectedVersion: version });
-      } catch (e) {
-        this.pbToast = {
-          ok: false,
-          message: `Version load failed: ${e.message}`,
-        };
-      } finally {
-        this.pbLoading.load = false;
-      }
-    },
-
-    // Encode (String → Base64)
-    b64encode(str) {
-      return btoa(String.fromCodePoint(...new TextEncoder().encode(str)));
-    },
-
-    // Decode (Base64 → String)
-    b64decode(b64) {
-      return new TextDecoder().decode(
-        Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)),
-      );
-    },
-
-    async savePlaybook() {
-      if (!this.selectedPlaybook) {
-        this.pbToast = { ok: false, message: "Select a playbook first." };
-        return;
-      }
-      if (!this._aceReady || !this._ace) {
-        this.pbToast = { ok: false, message: "Editor not ready yet." };
-        return;
-      }
-
-      this.pbLoading.save = true;
-
-      try {
-        const payload = await this.apiFetch(
-          `/admin/playbooks/${encodeURIComponent(this.selectedPlaybook)}`,
-          {
-            method: "POST",
-            body: { content: this._ace.getValue() },
-          },
-        );
-        this.applyPlaybookPayload(this.selectedPlaybook, payload);
-
-        this.pbToast = {
-          ok: true,
-          message: `${this.utcNowString()} - Saved "${this.selectedPlaybook}".`,
-        };
-      } catch (e) {
-        this.pbToast = { ok: false, message: `Save failed: ${e.message}` };
-      } finally {
-        this.pbLoading.save = false;
-      }
-    },
-
-    async setDefaultPlaybookVersion() {
-      const name = String(this.selectedPlaybook || "").trim();
-      const version = String(this.pbSelectedVersion || "").trim();
-      if (!name || !version) {
-        this.pbToast = {
-          ok: false,
-          message: "Select a playbook and version first.",
-        };
-        return;
-      }
-
-      this.pbLoading.setDefault = true;
-      try {
-        await this.apiFetch(
-          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
-          {
-            method: "PUT",
-          },
-        );
-        this.pbDefaultVersion = version;
-        this.pbToast = {
-          ok: true,
-          message: `${this.utcNowString()} - Set default for "${name}" to ${version}.`,
-        };
-      } catch (e) {
-        this.pbToast = {
-          ok: false,
-          message: `Set default failed: ${e.message}`,
-        };
-      } finally {
-        this.pbLoading.setDefault = false;
-      }
-    },
-
-    openPlaybookVersionDeleteConfirm() {
-      if (
-        this.pbSelectedVersion &&
-        this.pbDefaultVersion &&
-        this.pbSelectedVersion === this.pbDefaultVersion
-      ) {
-        this.pbToast = {
-          ok: false,
-          message:
-            "Promote another version before deleting the current default.",
-        };
-        return;
-      }
-      this.modal.playbookVersionDeleteConfirm.version = String(
-        this.pbSelectedVersion || "",
-      );
-      this.clearModalError("playbookVersionDeleteConfirm");
-      this.modal.playbookVersionDeleteConfirm.open = true;
-    },
-
-    closePlaybookVersionDeleteConfirm() {
-      this.modal.playbookVersionDeleteConfirm.open = false;
-      this.modal.playbookVersionDeleteConfirm.version = "";
-      this.clearModalError("playbookVersionDeleteConfirm");
-    },
-
-    async confirmPlaybookVersionDelete() {
-      const name = String(this.selectedPlaybook || "").trim();
-      const version = String(
-        this.modal.playbookVersionDeleteConfirm.version || "",
-      ).trim();
-      if (!name || !version) return;
-
-      this.pbLoading.delete = true;
-      this.clearModalError("playbookVersionDeleteConfirm");
-      try {
-        const payload = await this.apiFetch(
-          `/admin/playbooks/${encodeURIComponent(name)}/${encodeURIComponent(version)}`,
-          { method: "DELETE" },
-        );
-        this.closePlaybookVersionDeleteConfirm();
-        this.applyPlaybookPayload(name, payload);
-        this.pbToast = {
-          ok: true,
-          message: `${this.utcNowString()} - Deleted "${name}" version ${version}.`,
-        };
-      } catch (e) {
-        this.setModalError(
-          "playbookVersionDeleteConfirm",
-          e,
-          "Failed to delete playbook version.",
-        );
-      } finally {
-        this.pbLoading.delete = false;
-      }
-    },
   };
 };
 
@@ -8010,53 +6017,6 @@ const CP_LEGACY_APP_FACTORY = window.app;
     "authError",
     "viewNotice",
     "viewNoticeJobId",
-    "jobs",
-    "jobStats",
-    "jobsVisibleRows",
-    "jobsFilterQuery",
-    "jobsLastUpdatedUtc",
-    "jobsSortIndex",
-    "jobsSortDir",
-    "jobsLoading",
-    "jobsAutoRefreshEnabled",
-    "_jobsAutoTimer",
-    "selectedJobId",
-    "selectedJobDetails",
-    "jobLoading",
-    "events",
-    "eventsVisibleRows",
-    "eventsFilterQuery",
-    "eventsLastUpdatedUtc",
-    "eventsSortIndex",
-    "eventsSortDir",
-    "eventsLoading",
-    "eventsAutoRefreshEnabled",
-    "_eventsAutoTimer",
-    "apiKeys",
-    "apiKeysVisibleRows",
-    "apiKeysFilterQuery",
-    "apiKeysLastUpdatedUtc",
-    "apiKeysLoading",
-    "settings",
-    "settingsVisibleRows",
-    "settingsFilterQuery",
-    "settingsCategoryTab",
-    "settingsLastUpdatedUtc",
-    "settingsDrafts",
-    "settingsLoading",
-    "settingsAutoRefreshEnabled",
-    "settingsToast",
-    "_settingsAutoTimer",
-    "_settingsToastTimer",
-    "selectedPlaybook",
-    "pbLoading",
-    "pbToast",
-    "pbLastUpdatedUtc",
-    "pbDefaultVersion",
-    "pbSelectedVersion",
-    "pbVersions",
-    "_ace",
-    "_aceReady",
   ]);
   const CPKIT_METHODS = new Set([
     "loadExtensionHtml",
@@ -8079,61 +6039,14 @@ const CP_LEGACY_APP_FACTORY = window.app;
     "canAccessView",
     "handleForbiddenView",
     "viewLabel",
-    "refreshDashboardOverview",
-    "refreshJobs",
-    "refreshJobStats",
-    "openJob",
-    "refreshSelectedJobDetails",
-    "rescheduleSelectedJob",
-    "jobsCellText",
-    "jobsRowText",
-    "sortJobs",
-    "jobsSortClass",
-    "applyJobsFilterSort",
-    "refreshEvents",
-    "eventsCellText",
-    "eventsRowText",
-    "sortEvents",
-    "eventsSortClass",
-    "applyEventsFilterSort",
-    "recentEvents",
-    "refreshApiKeys",
-    "applyApiKeysFilterSort",
-    "openApiKeyCreateModal",
-    "closeApiKeyCreateModal",
-    "createApiKey",
-    "deleteApiKey",
-    "refreshSettings",
-    "settingsCategories",
-    "setSettingsCategory",
-    "settingDraftValue",
-    "setSettingDraft",
-    "applySettingsFilterSort",
-    "saveSetting",
-    "resetSetting",
-    "showSettingsToast",
-    "ensureAce",
-    "applyPlaybookPayload",
-    "loadPlaybookSelection",
-    "onSelectPlaybookVersion",
-    "savePlaybook",
-    "setDefaultPlaybookVersion",
-    "deletePlaybookVersion",
     "safeJson",
     "formatJson",
     "rolesText",
-    "defaultApiKeyValidUntilLocal",
     "openUserInfoModal",
     "closeUserInfoModal",
   ]);
   const CPKIT_MODAL_KEYS = new Set([
     "userInfo",
-    "apiKeyCreate",
-    "apiKeyDeleteConfirm",
-    "apiKeySecret",
-    "settingResetConfirm",
-    "playbookVersionDeleteConfirm",
-    "jobRescheduleConfirm",
   ]);
 
   function loadLegacyApp() {
@@ -8568,7 +6481,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         await this.refreshClusterRecoveryBackups();
       },
       isAdminSectionView(viewName = this.view) {
-        return CP_ADMIN_VIEWS.has(viewName) || ["admin", "api_keys", "settings", "playbooks"].includes(viewName);
+        return CP_ADMIN_VIEWS.has(viewName) || viewName === "admin";
       },
     },
     async init() {
