@@ -695,6 +695,10 @@ window.app = function () {
         .slice(0, limit);
     },
 
+    alertStatusClass(alert) {
+      return alert?.ends_at ? "status-muted" : "status-offline";
+    },
+
 
     alertNodesText(alert) {
       return Array.isArray(alert?.nodes) && alert.nodes.length
@@ -1809,6 +1813,13 @@ window.app = function () {
     async ensureAlertsView() {
       if (!this.alertsLoading.list) await this.refreshAlerts();
       else this.applyAlertsFilterSort();
+    },
+
+    async ensureCPDashboard() {
+      await Promise.all([
+        this.refreshClusterStats(),
+        this.refreshAlerts({ limit: 10 }),
+      ]);
     },
 
 
@@ -6112,6 +6123,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
 
   window.cpkitWebappExtension = {
     htmlPath: "/app/extension.html",
+    dashboardEnsure: "ensureCPDashboard",
     navItems: [
       { view: "clusters", label: "Clusters" },
       { view: "alerts", label: "Alerts" },

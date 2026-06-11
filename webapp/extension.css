@@ -1865,6 +1865,38 @@ tbody tr:hover {
   font-size: 12px;
 }
 
+.cp-dashboard-grid {
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+.cp-dashboard-cluster-card,
+.cp-dashboard-alert-card {
+  min-height: 0;
+}
+
+.cp-dashboard-stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cp-dashboard-alert-list {
+  max-height: 342px;
+  min-height: 0;
+}
+
+.cp-dashboard-alert-row {
+  min-height: 58px;
+}
+
+.cp-dashboard-alert-summary {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cluster-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2543,7 +2575,8 @@ tbody tr:hover {
   .dashboard-grid-ops,
   .admin-grid,
   .dashboard-feed-grid,
-  .dashboard-kv-grid {
+  .dashboard-kv-grid,
+  .cp-dashboard-stats-grid {
     grid-template-columns: 1fr;
   }
 

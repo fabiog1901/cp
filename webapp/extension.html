@@ -5,6 +5,83 @@
   data-login-subtitle="Authenticate to access the control plane"
 ></template>
 
+<template id="cpkit-extension-dashboard">
+  <section class="dashboard-feed-grid cp-dashboard-grid">
+    <article class="dashboard-card cp-dashboard-cluster-card">
+      <div class="dashboard-card-head">
+        <div>
+          <div class="dashboard-card-kicker">Clusters</div>
+          <h3 class="dashboard-card-title">Cluster Stats</h3>
+        </div>
+        <a class="dashboard-link" :href="routeForView ? routeForView('clusters') : '#/clusters'">View clusters</a>
+      </div>
+
+      <div class="dashboard-kv-grid cp-dashboard-stats-grid">
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Total</div>
+          <div class="dashboard-kv-value" x-text="dashboardClusterCount('total')"></div>
+        </div>
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Active</div>
+          <div class="dashboard-kv-value" x-text="dashboardClusterCount('active')"></div>
+        </div>
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Creating</div>
+          <div class="dashboard-kv-value" x-text="dashboardClusterCount('creating')"></div>
+        </div>
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Unhealthy</div>
+          <div class="dashboard-kv-value" x-text="dashboardClusterCount('unhealthy')"></div>
+        </div>
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Failed</div>
+          <div class="dashboard-kv-value" x-text="dashboardClusterCount('failed')"></div>
+        </div>
+        <div class="dashboard-kv">
+          <div class="dashboard-kv-label">Needs Attention</div>
+          <div class="dashboard-kv-value" x-text="dashboardNeedsAttentionCount()"></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-card dashboard-feed-card cp-dashboard-alert-card">
+      <div class="dashboard-card-head">
+        <div>
+          <div class="dashboard-card-kicker">Alertmanager</div>
+          <h3 class="dashboard-card-title">Latest Alerts</h3>
+        </div>
+        <a class="dashboard-link" :href="routeForView ? routeForView('alerts') : '#/alerts'">View alerts</a>
+      </div>
+
+      <div class="dashboard-feed-list cp-dashboard-alert-list">
+        <template x-for="alert in recentAlerts(10)" :key="alert.alert_id">
+          <a class="dashboard-feed-item cp-dashboard-alert-row" :href="clusterHref(alert.cluster)">
+            <div class="dashboard-feed-topline">
+              <span class="dashboard-feed-title" x-text="alert.alert_type || 'Alert'"></span>
+              <span class="status" :class="alertStatusClass(alert)">
+                <span class="status-dot"></span>
+                <span x-text="alert.ends_at ? 'ENDED' : 'ACTIVE'"></span>
+              </span>
+            </div>
+            <div class="dashboard-feed-meta">
+              <span x-text="alert.cluster || '-'"></span>
+              <span x-text="relativeTime(alert.starts_at || alert.ts)"></span>
+            </div>
+            <div class="cp-dashboard-alert-summary" x-text="alert.summary || alert.description || '-'"></div>
+          </a>
+        </template>
+
+        <template x-if="!alertsLoading.list && recentAlerts(10).length === 0">
+          <div class="dashboard-feed-item dashboard-feed-item-fake">
+            <div class="dashboard-feed-title">No alerts</div>
+            <div class="dashboard-feed-meta">Alertmanager has not returned active alerts.</div>
+          </div>
+        </template>
+      </div>
+    </article>
+  </section>
+</template>
+
 <main class="layout" x-show="view === 'clusters'">
         <aside class="sidebar">
           <div>
