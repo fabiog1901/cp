@@ -6,8 +6,8 @@
 ></template>
 
 <template id="cpkit-extension-dashboard">
-  <section class="dashboard-feed-grid cp-dashboard-grid">
-    <article class="dashboard-card cp-dashboard-cluster-card">
+  <div class="dashboard-grid cp-dashboard-grid">
+    <article class="dashboard-card cp-dashboard-cluster-card" data-dashboard-key="cp-cluster-stats">
       <div class="dashboard-card-head">
         <div>
           <div class="dashboard-card-kicker">Clusters</div>
@@ -44,7 +44,7 @@
       </div>
     </article>
 
-    <article class="dashboard-card dashboard-feed-card cp-dashboard-alert-card">
+    <article class="dashboard-card dashboard-feed-card cp-dashboard-alert-card" data-dashboard-key="cp-latest-alerts">
       <div class="dashboard-card-head">
         <div>
           <div class="dashboard-card-kicker">Alertmanager</div>
@@ -79,7 +79,7 @@
         </template>
       </div>
     </article>
-  </section>
+  </div>
 </template>
 
 <main class="layout" x-show="view === 'clusters'">

@@ -700,7 +700,6 @@ window.app = function () {
       return alert?.ends_at ? "status-muted" : "status-offline";
     },
 
-
     alertNodesText(alert) {
       return Array.isArray(alert?.nodes) && alert.nodes.length
         ? alert.nodes.join(", ")
