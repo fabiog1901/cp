@@ -18,6 +18,7 @@ window.app = function () {
     authError: "",
     viewNotice: "",
     viewNoticeJobId: "",
+    cloudLogoKeys: ["aws", "azr", "gcp", "vmw"],
 
     // Shared UTC timestamps
 
@@ -607,22 +608,22 @@ window.app = function () {
     },
 
     cloudKey(value) {
-      const normalized = String(value || "")
+      return String(value || "")
         .trim()
+        .slice(0, 3)
         .toLowerCase();
-      if (normalized === "azure") return "azr";
-      if (normalized.startsWith("aws")) return "aws";
-      if (normalized.startsWith("azr")) return "azr";
-      if (normalized.startsWith("gcp")) return "gcp";
-      return normalized.slice(0, 3);
+    },
+
+    appStaticAsset(path) {
+      const assetPath = String(path || "").trim().replace(/^\/+/, "");
+      return assetPath ? `/app/static/${assetPath}` : "";
     },
 
     cloudLogoForCloud(cloud) {
       const cloudKey = this.cloudKey(cloud);
-      if (["aws", "azr", "gcp"].includes(cloudKey)) {
-        return `/static/${cloudKey}.png`;
-      }
-      return "";
+      return this.cloudLogoKeys?.includes(cloudKey)
+        ? this.appStaticAsset(`${cloudKey}.png`)
+        : "";
     },
 
     cloudLogoForRegion(regionId) {
@@ -2862,7 +2863,13 @@ window.app = function () {
       const clusterId =
         this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
-      this.openJobsView(clusterId);
+      const filter = String(clusterId).trim();
+      this.jobsFilterQuery = filter;
+      if (typeof this.setView === "function") {
+        this.setView("jobs");
+      } else if (typeof window !== "undefined") {
+        window.location.hash = `/jobs/filter=${encodeURIComponent(filter)}`;
+      }
     },
 
     openClusterDashboard() {
@@ -6119,6 +6126,15 @@ const CP_LEGACY_APP_FACTORY = window.app;
     document.head.appendChild(script);
   }
 
+  function preloadAppStaticAssets(assetPaths = []) {
+    assetPaths.forEach((assetPath) => {
+      const normalized = String(assetPath || "").trim().replace(/^\/+/, "");
+      if (!normalized) return;
+      const image = new Image();
+      image.src = `/app/static/${normalized}`;
+    });
+  }
+
   const legacy = splitLegacyApp(loadLegacyApp());
 
   window.cpkitWebappExtension = {
@@ -6498,6 +6514,11 @@ const CP_LEGACY_APP_FACTORY = window.app;
     },
     async init() {
       ensureScript("https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js");
+      preloadAppStaticAssets([
+        ...((this.cloudLogoKeys || []).map((key) => `${key}.png`)),
+        "favicon.png",
+        "logo.png",
+      ]);
     },
   };
 })();

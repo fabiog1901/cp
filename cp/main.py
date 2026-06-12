@@ -35,7 +35,7 @@ app = create_cpkit_app(
         clusters.router,
         prometheus.router,
     ),
-    # static_directory=".webapp",
+    #static_directory=".webapp",
     static_directory=template_webapp_directory(),
     app_static_directory="webapp",
     default_journald_identifier="cp",
