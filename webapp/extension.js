@@ -3236,6 +3236,18 @@ window.app = function () {
       return Math.max(Math.floor(width || 320), 240);
     },
 
+    clusterDashboardChartHeight(containerId) {
+      if (typeof document === "undefined") return 320;
+      const el = document.getElementById(containerId);
+      const height = Number(
+        el?.clientHeight ||
+          el?.offsetHeight ||
+          el?.parentElement?.clientHeight ||
+          0,
+      );
+      return Math.max(Math.floor(height || 320), 240);
+    },
+
     clusterDashboardAlignedData(seriesKeys) {
       const rows = this.clusterDashboardChartRows();
       const rawX = rows.map((row) => this.clusterDashboardTsToMs(row?.ts));
@@ -3257,7 +3269,7 @@ window.app = function () {
     clusterDashboardChartOptions({ yLabel, containerId, series }) {
       return {
         width: this.clusterDashboardChartWidth(containerId),
-        height: 320,
+        height: this.clusterDashboardChartHeight(containerId),
         legend: { show: true },
         cursor: { drag: { x: true, y: false } },
         scales: { x: { time: false } },
@@ -3303,10 +3315,17 @@ window.app = function () {
     renderClusterDashboardCharts() {
       if (
         typeof window === "undefined" ||
-        typeof window.uPlot !== "function" ||
         !this.clusterDashboardHasData()
       ) {
         this.destroyClusterDashboardCharts();
+        return;
+      }
+      if (typeof window.uPlot !== "function") {
+        ensureUPlotAssets().then(() => {
+          if (this.view === "cluster_dashboard") {
+            this.renderClusterDashboardCharts();
+          }
+        });
         return;
       }
 
@@ -6117,12 +6136,52 @@ const CP_LEGACY_APP_FACTORY = window.app;
     };
   }
 
+  const extensionAssetPromises = {};
+
+  function ensureStylesheet(href) {
+    if (typeof document === "undefined") return Promise.resolve();
+    if ([...document.styleSheets].some((sheet) => sheet.href === href)) {
+      return Promise.resolve();
+    }
+    if ([...document.links].some((link) => link.href === href)) {
+      return Promise.resolve();
+    }
+    if (extensionAssetPromises[href]) return extensionAssetPromises[href];
+
+    extensionAssetPromises[href] = new Promise((resolve) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => resolve();
+      document.head.appendChild(link);
+    });
+    return extensionAssetPromises[href];
+  }
+
   function ensureScript(src) {
-    if ([...document.scripts].some((script) => script.src === src)) return;
-    const script = document.createElement("script");
-    script.src = src;
-    script.defer = true;
-    document.head.appendChild(script);
+    if (typeof document === "undefined") return Promise.resolve();
+    if ([...document.scripts].some((script) => script.src === src)) {
+      return Promise.resolve();
+    }
+    if (extensionAssetPromises[src]) return extensionAssetPromises[src];
+
+    extensionAssetPromises[src] = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => resolve();
+      document.head.appendChild(script);
+    });
+    return extensionAssetPromises[src];
+  }
+
+  function ensureUPlotAssets() {
+    return Promise.all([
+      ensureStylesheet("https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css"),
+      ensureScript("https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"),
+    ]);
   }
 
   function preloadAppStaticAssets(assetPaths = []) {
@@ -6512,7 +6571,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
       },
     },
     async init() {
-      ensureScript("https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js");
+      ensureUPlotAssets();
       preloadAppStaticAssets([
         ...((this.cloudLogoKeys || []).map((key) => `${key}.png`)),
         "favicon.png",

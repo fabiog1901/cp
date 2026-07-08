@@ -97,7 +97,7 @@ class ClusterBackupsService:
                 backup_path_sql = (
                     sql.SQL("LATEST")
                     if backup_path.upper() == "LATEST"
-                    else sql.Literal(backup_path)
+                    else sql.Literal("/"+backup_path)
                 )
                 query = sql.SQL("""
                     SELECT distinct object_type, database_name, parent_schema_name, object_name,

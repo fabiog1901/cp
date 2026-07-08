@@ -2472,7 +2472,13 @@ tbody tr:hover {
 }
 
 .cluster-dashboard-card {
-  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.cluster-dashboard-card-wide {
+  min-height: 460px;
 }
 
 .cluster-dashboard-main {
@@ -2489,16 +2495,25 @@ tbody tr:hover {
 }
 
 .cluster-dashboard-chart {
+  flex: 1 1 auto;
   width: 100%;
+  height: 100%;
   min-height: 320px;
   overflow-x: hidden;
   overflow-y: visible;
 }
 
 .cluster-dashboard-chart .uplot {
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   color: #e5e7eb;
   font-family: inherit;
+}
+
+.cluster-dashboard-chart .u-wrap,
+.cluster-dashboard-chart canvas {
+  max-width: 100%;
 }
 
 .cluster-dashboard-chart .u-title {
@@ -2511,6 +2526,7 @@ tbody tr:hover {
 
 .cluster-dashboard-chart table {
   color: #cbd5e1;
+  width: auto;
 }
 
 .cluster-action-sections {
