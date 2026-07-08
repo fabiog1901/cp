@@ -185,6 +185,63 @@
             </div>
           </div>
 
+          <div class="section-head cluster-deleted-head">
+            <div>
+              <h2>Deleted Clusters</h2>
+              <p>Clusters that have reached the deleted terminal state.</p>
+            </div>
+            <div class="pill">Count: <span x-text="deletedServersVisibleRows.length"></span></div>
+          </div>
+
+          <div class="table-container cluster-deleted-table">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="string" :class="serversSortClass(0)" @click="toggleServersSort(0)">Cluster ID</th>
+                    <th data-sort="string" :class="serversSortClass(1)" @click="toggleServersSort(1)">Group</th>
+                    <th data-sort="string" :class="serversSortClass(2)" @click="toggleServersSort(2)">Created By</th>
+                    <th data-sort="string" :class="serversSortClass(3)" @click="toggleServersSort(3)">Status</th>
+                    <th data-sort="string" :class="serversSortClass(4)" @click="toggleServersSort(4)">Version</th>
+                    <th data-sort="number" :class="serversSortClass(5)" @click="toggleServersSort(5)">Nodes</th>
+                    <th data-sort="number" :class="serversSortClass(6)" @click="toggleServersSort(6)">CPU / Node</th>
+                    <th data-sort="number" :class="serversSortClass(7)" @click="toggleServersSort(7)">Disk GB</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <template x-for="s in deletedServersVisibleRows" :key="`deleted-${s.cluster_id}`">
+                    <tr>
+                      <td>
+                        <a class="dashboard-link" :href="clusterHref(s.cluster_id)" @click="openCluster(s.cluster_id)">
+                          <span class="ip-pill clickable" x-text="s.cluster_id || '-'"></span>
+                        </a>
+                      </td>
+                      <td><span class="service-pill" x-text="s.grp || '-'"></span></td>
+                      <td><span x-text="s.created_by || '-'"></span></td>
+                      <td>
+                        <span class="status" :class="serversStatusClass(s.status)">
+                          <span class="status-dot"></span>
+                          <span x-text="String(s.status || 'unknown').toUpperCase()"></span>
+                        </span>
+                      </td>
+                      <td><span x-text="s.version || '-'"></span></td>
+                      <td><span x-text="s.node_count ?? '-'"></span></td>
+                      <td><span x-text="s.node_cpus ?? '-'"></span></td>
+                      <td><span x-text="s.disk_size ?? '-'"></span></td>
+                    </tr>
+                  </template>
+
+                  <template x-if="!serversLoading.list && deletedServersVisibleRows.length === 0">
+                    <tr>
+                      <td colspan="8" style="padding: 18px; color: var(--muted);">No deleted clusters.</td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </section>
       </main>
 
@@ -1904,31 +1961,6 @@
         </section>
       </main>
 
-<div class="modal-backdrop" x-show="modal.serverDetails.open" x-transition
-        @keydown.escape.window="closeServerDetails()">
-        <div class="modal" @click.outside="closeServerDetails()">
-          <div class="modal-header">
-            <h3 class="modal-title">Server Details</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeServerDetails()">CLOSE</button>
-          </div>
-
-          <div class="modal-body" style="display:grid; gap:10px;">
-            <div style="color: var(--muted); font-size: 13px;">
-              Full record for <span class="ip-pill" x-text="modal.serverDetails.row?.hostname || '-'"></span>
-            </div>
-
-            <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
-              <pre class="inspector-pre" style="max-height: 50vh; white-space: pre-wrap;"
-                x-text="modal.serverDetails.row ? (inspectorFormat === 'json' ? JSON.stringify(modal.serverDetails.row, null, 2) : toYaml(modal.serverDetails.row)) : ''"></pre>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeServerDetails()">CLOSE</button>
-          </div>
-        </div>
-      </div>
-
 <div class="modal-backdrop" x-show="modal.clusterCreate.open" x-transition
         @keydown.escape.window="closeClusterCreateModal()">
         <div class="modal" @click.outside="closeClusterCreateModal()">
@@ -2460,60 +2492,6 @@
               @click="confirmClusterDatabaseObjectDelete()">
               <span x-show="!clusterDatabaseObjectsLoading.delete">DELETE DATABASE</span>
               <span x-show="clusterDatabaseObjectsLoading.delete">DELETING…</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.serverActionConfirm.open" x-transition
-        @keydown.escape.window="closeServerActionConfirm()">
-        <div class="modal" @click.outside="closeServerActionConfirm()">
-          <div class="modal-header">
-            <h3 class="modal-title"
-              x-text="modal.serverActionConfirm.action === 'delete' ? 'Confirm Delete' : 'Confirm Decommission'"></h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeServerActionConfirm()">CLOSE</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-error-banner" x-show="modalErrors.serverActionConfirm"
-              x-text="modalErrors.serverActionConfirm"></div>
-            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
-              <template x-if="modal.serverActionConfirm.action === 'decommission'">
-                <div>
-                  This will start decommissioning for <span class="ip-pill"
-                    x-text="modal.serverActionConfirm.hostname"></span>.
-                </div>
-              </template>
-              <template x-if="modal.serverActionConfirm.action === 'delete'">
-                <div>
-                  This will permanently delete the server record for <span class="ip-pill"
-                    x-text="modal.serverActionConfirm.hostname"></span>.
-                </div>
-              </template>
-            </div>
-
-            <div class="metric" style="display:grid; gap:8px;">
-              <div class="metric-label">Request</div>
-              <div>
-                <template x-if="modal.serverActionConfirm.action === 'decommission'">
-                  <span class="ip-pill">PUT /api/admin/servers/<span
-                      x-text="modal.serverActionConfirm.hostname"></span></span>
-                </template>
-                <template x-if="modal.serverActionConfirm.action === 'delete'">
-                  <span class="ip-pill">DELETE /api/admin/servers/<span
-                      x-text="modal.serverActionConfirm.hostname"></span></span>
-                </template>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeServerActionConfirm()">CANCEL</button>
-            <button class="btn" :class="modal.serverActionConfirm.action === 'delete' ? 'btn-danger' : 'btn-warn'"
-              :disabled="serversLoading.action" @click="confirmServerAction()">
-              <span x-show="!serversLoading.action"
-                x-text="modal.serverActionConfirm.action === 'delete' ? 'YES, DELETE' : 'YES, DECOMMISSION'"></span>
-              <span x-show="serversLoading.action">WORKING…</span>
             </button>
           </div>
         </div>
@@ -3136,235 +3114,6 @@
 
           <div class="modal-footer">
             <button class="btn" @click="closeClusterUserRolesModal()">DONE</button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.allocate.open" x-transition
-        @keydown.escape.window="closeAllocateModal()">
-        <div class="modal" @click.outside="closeAllocateModal()">
-          <div class="modal-header">
-            <h3 class="modal-title">Allocate Compute Unit</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeAllocateModal()">CLOSE</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-error-banner" x-show="modalErrors.allocate" x-text="modalErrors.allocate"></div>
-            <div class="form-grid">
-              <div class="form-row">
-                <div class="label">deployment id</div>
-                <input class="input" x-model="modal.allocate.deployment_id" placeholder="web_app_v1" />
-              </div>
-              <div class="form-row">
-                <div class="label">cpu_count (optional)</div>
-                <input class="input" type="number" min="1" x-model.number="modal.allocate.cpu_count"
-                  placeholder="cpu number" />
-              </div>
-              <div class="form-row">
-                <div class="label">region (optional)</div>
-                <input class="input" x-model="modal.allocate.region" placeholder="e.g. us-east-1" />
-              </div>
-              <div class="form-row">
-                <div class="label">zone (optional)</div>
-                <input class="input" x-model="modal.allocate.zone" placeholder="e.g. us-east-1a" />
-              </div>
-              <div class="form-row">
-                <div class="label">compute_id (optional)</div>
-                <input class="input" x-model="modal.allocate.compute_id"
-                  placeholder="e.g. cu-123 (leave blank for any)" />
-              </div>
-              <div class="form-row" style="grid-column: 1 / -1;">
-                <div class="label">ssh_public_key (required)</div>
-                <textarea class="textarea" x-model="modal.allocate.ssh_public_key"
-                  placeholder="ssh-ed25519 AAAA... user@host"></textarea>
-              </div>
-              <div class="form-row" style="grid-column: 1 / -1;">
-                <div class="label">tags (required, JSON object)</div>
-                <textarea class="textarea" x-model="modal.allocate.tagsText" spellcheck="false"
-                  placeholder='{"owner":"fabio","roles":["db","worker"]}'></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeAllocateModal()">CANCEL</button>
-            <button class="btn" :disabled="loading.allocate" @click="allocate()">
-              <span x-show="!loading.allocate">ALLOCATE</span>
-              <span x-show="loading.allocate">WORKING…</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.init.open" x-transition @keydown.escape.window="closeInitModal()">
-        <div class="modal" @click.outside="closeInitModal()">
-          <div class="modal-header">
-            <h3 class="modal-title">Init Server</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeInitModal()">CLOSE</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-error-banner" x-show="modalErrors.init" x-text="modalErrors.init"></div>
-            <div class="form-grid">
-              <div class="form-row">
-                <div class="label">ip</div>
-                <input class="input" x-model="modal.init.ip" placeholder="10.0.0.12" />
-              </div>
-              <div class="form-row">
-                <div class="label">hostname</div>
-                <input class="input" x-model="modal.init.hostname" placeholder="server-123" />
-              </div>
-              <div class="form-row">
-                <div class="label">user id</div>
-                <input class="input" x-model="modal.init.user_id" placeholder="default = ubuntu" />
-              </div>
-              <div class="form-row">
-                <div class="label">region</div>
-                <input class="input" x-model="modal.init.region" placeholder="us-east-1" />
-              </div>
-              <div class="form-row">
-                <div class="label">zone</div>
-                <input class="input" x-model="modal.init.zone" placeholder="us-east-1a" />
-              </div>
-
-              <div class="form-row" style="grid-column: 1 / -1;">
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                  <div class="label">server cpu count</div>
-                  <div class="label">desired CPUs per compute unit</div>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                  <input class="input" type="number" min="0" x-model.number="modal.init.cpuEnd"
-                    @input="recomputeInitCpuRanges()" placeholder="total server CPUs (e.g. 16)" />
-                  <input class="input" type="number" min="1" x-model.number="modal.init.cpuStep"
-                    @input="recomputeInitCpuRanges()" placeholder="(e.g. 4)" />
-                </div>
-
-                <div style="margin-top:8px; color: var(--muted); font-size: 12px;">
-                  Produces an array of ranges like <span class="ip-pill">["0-3","4-7"]</span> and an expanded CPU set.
-                </div>
-                <div x-show="modal.init.cpuRangesError" style="margin-top:6px; color: var(--danger); font-size: 12px;"
-                  x-text="modal.init.cpuRangesError"></div>
-              </div>
-
-              <div class="form-row" style="grid-column: 1 / -1;">
-                <div class="label">computed cpu_ranges</div>
-                <pre class="inspector-pre" style="max-height: 140px; white-space: pre-wrap;"
-                  x-text="modal.init.cpuRangesPreview || '-'"></pre>
-              </div>
-
-              <details class="form-row" style="grid-column: 1 / -1;">
-                <summary style="cursor:pointer; color: var(--muted); font-size: 12px; user-select:none;">
-                  Advanced: edit cpu_ranges JSON directly
-                </summary>
-                <div style="margin-top:8px;">
-                  <textarea class="textarea" x-model="modal.init.cpuRangesText" spellcheck="false"
-                    @input="recomputeInitCpuRanges(true)" placeholder='["0-3","4-7"]'></textarea>
-                </div>
-              </details>
-
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeInitModal()">CANCEL</button>
-            <button class="btn btn-warn" :disabled="loading.init" @click="initServer()">
-              <span x-show="!loading.init">RUN INIT</span>
-              <span x-show="loading.init">WORKING…</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.decommission.open" x-transition
-        @keydown.escape.window="closeDecommissionModal()">
-        <div class="modal" @click.outside="closeDecommissionModal()">
-          <div class="modal-header">
-            <h3 class="modal-title">Decommission Server</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeDecommissionModal()">CLOSE</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-error-banner" x-show="modalErrors.decommission" x-text="modalErrors.decommission"></div>
-
-            <div class="form-grid">
-              <div class="form-row" style="grid-column: 1 / -1;">
-                <div class="label">hostname</div>
-                <input class="input" x-model="modal.decommission.hostname" placeholder="server-123" />
-              </div>
-            </div>
-
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeDecommissionModal()">CANCEL</button>
-            <button class="btn btn-danger" :disabled="loading.decommission" @click="decommissionByHostname()">
-              <span x-show="!loading.decommission">DECOMMISSION</span>
-              <span x-show="loading.decommission">WORKING…</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.deallocateConfirm.open" x-transition
-        @keydown.escape.window="closeDeallocateConfirm()">
-        <div class="modal" @click.outside="closeDeallocateConfirm()">
-          <div class="modal-header">
-            <h3 class="modal-title">Confirm Deallocate</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeDeallocateConfirm()">CLOSE</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-error-banner" x-show="modalErrors.deallocateConfirm"
-              x-text="modalErrors.deallocateConfirm"></div>
-            <div style="color: var(--muted); font-size: 13px; line-height: 1.5;">
-              This will <span style="color:#e5f4ff;">release the compute unit back to the pool</span>.
-              Any workload depending on it may be disrupted.
-            </div>
-
-            <div class="metric" style="display:grid; gap:8px;">
-              <div class="metric-label">Request</div>
-
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <div class="pill" style="margin:0;">compute_id: <span
-                    x-text="modal.deallocateConfirm.compute_id"></span>
-                </div>
-                <div class="pill" style="margin:0;">hostname: <span
-                    x-text="modal.deallocateConfirm.hostname || '-'"></span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeDeallocateConfirm()">CANCEL</button>
-            <button class="btn btn-warn" :disabled="loading.deallocateConfirm" @click="confirmDeallocate()">
-              <span x-show="!loading.deallocateConfirm">YES, DEALLOCATE</span>
-              <span x-show="loading.deallocateConfirm">WORKING…</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-<div class="modal-backdrop" x-show="modal.computeDetails.open" x-transition
-        @keydown.escape.window="closeComputeDetails()">
-        <div class="modal" @click.outside="closeComputeDetails()">
-          <div class="modal-header">
-            <h3 class="modal-title">Compute Unit Details</h3>
-            <button class="btn" style="padding:7px 12px;" @click="closeComputeDetails()">CLOSE</button>
-          </div>
-
-          <div class="modal-body" style="display:grid; gap:10px;">
-            <div style="color: var(--muted); font-size: 13px;">
-              Full record for <span class="ip-pill" x-text="modal.computeDetails.row?.compute_id || '-'"></span>
-            </div>
-
-            <div class="metric" style="border-color: rgba(148, 163, 184, 0.25);">
-              <pre class="inspector-pre" style="max-height: 50vh; white-space: pre-wrap;"
-                x-text="modal.computeDetails.row ? (inspectorFormat === 'json' ? JSON.stringify(modal.computeDetails.row, null, 2) : toYaml(modal.computeDetails.row)) : ''"></pre>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn" @click="closeComputeDetails()">CLOSE</button>
           </div>
         </div>
       </div>

@@ -1,23 +1,11 @@
-// CP webapp state and interaction layer.
+// CP cpkit webapp extension.
 //
-// This file owns Alpine state, hash routing, API calls, filtering/sorting, and
-// UI-specific data shaping. Backend authorization and business rules must remain
-// enforced by the API/service layer.
+// cpkit owns the shell, auth/session UI, shared pages, notices, and API plumbing.
+// This file contributes only CP-specific state, routes, views, and browser logic.
 
-window.app = function () {
+function createCPExtensionParts() {
   return {
-    // Tabs
-    view: "dashboard",
-    apiBase: "/api",
-    authChecked: false,
-    isAuthenticated: false,
-    authClaims: null,
-    authLoginPath: "/api/auth/login",
-    authDisplayNameClaim: "preferred_username",
-    authSessionCookieName: "cp_session",
-    authError: "",
-    viewNotice: "",
-    viewNoticeJobId: "",
+    // CP asset helpers
     cloudLogoKeys: ["aws", "azr", "gcp", "vmw"],
 
     // Shared UTC timestamps
@@ -32,6 +20,7 @@ window.app = function () {
       failed: 0,
     },
     serversVisibleRows: [],
+    deletedServersVisibleRows: [],
     serversFilterQuery: "",
     serversLastUpdatedUtc: null,
     serversSortIndex: null,
@@ -229,69 +218,8 @@ window.app = function () {
 
     renderedAtUtc: "now",
 
-    // ---------- Dashboard state ----------
-    computeUnits: [],
-    visibleRows: [],
-    filterQuery: "",
-    lastUpdatedUtc: null,
-
-    inspector: null,
-    inspectorFormat: "yaml",
-
-    sortIndex: null,
-    sortDir: "asc",
-    sortTypeByIndex: {
-      0: "string", // deployment_id
-      1: "string", // compute_id
-      2: "string", // region-zone
-      3: "string", // hostname
-      4: "ip",
-      5: "number",
-      6: "string",
-      7: "string",
-      8: "date",
-      9: "string", // status
-    },
-
-    loading: {
-      list: false,
-      allocate: false,
-      init: false,
-      decommission: false,
-      deallocateConfirm: false,
-    },
-    busyKey: null,
-    autoRefreshEnabled: true,
-    _autoTimer: null,
-
     modal: {
-      allocate: {
-        open: false,
-        cpu_count: null,
-        region: "",
-        zone: "",
-        compute_id: "",
-        tagsText: "{}",
-        ssh_public_key: "",
-      },
-      init: {
-        open: false,
-        ip: "",
-        region: "",
-        zone: "",
-        hostname: "",
-        cpuRangesText: '["0-3"]',
-      },
-      decommission: { open: false, hostname: "" },
-      deallocateConfirm: { open: false, compute_id: "", hostname: "" },
-      computeDetails: { open: false, row: null },
       userInfo: { open: false },
-      serverActionConfirm: {
-        open: false,
-        hostname: "",
-        action: "decommission",
-      },
-      serverDetails: { open: false, row: null },
       versionCreate: {
         open: false,
         version: "",
@@ -437,11 +365,6 @@ window.app = function () {
       },
     },
     modalErrors: {
-      allocate: "",
-      init: "",
-      decommission: "",
-      deallocateConfirm: "",
-      serverActionConfirm: "",
       versionCreate: "",
       versionDeleteConfirm: "",
       nodeCountCreate: "",
@@ -554,13 +477,6 @@ window.app = function () {
       "zoinks",
     ],
 
-    utcNowString() {
-      return new Date()
-        .toISOString()
-        .replace("T", " ")
-        .replace(/\.\d{3}Z$/, "");
-    },
-
     getFunnyName() {
       const pick = () =>
         this.funnyWords[Math.floor(Math.random() * this.funnyWords.length)];
@@ -634,28 +550,6 @@ window.app = function () {
       const raw = String(regionId || "").trim();
       if (!raw) return "-";
       return raw.includes(":") ? raw.split(":").slice(1).join(":") : raw;
-    },
-
-    toUtcStringMaybe(value) {
-      if (!value) return "-";
-      const d = new Date(value);
-      if (isNaN(d.getTime())) return String(value);
-      return d
-        .toISOString()
-        .replace("T", " ")
-        .replace(/\.\d{3}Z$/, "");
-    },
-
-    relativeTimeFromNow(value) {
-      if (!value) return "-";
-      const ts = new Date(value);
-      if (isNaN(ts.getTime())) return "-";
-
-      const diffSecs = Math.max(0, Math.floor((Date.now() - ts.getTime()) / 1000));
-      if (diffSecs < 60) return `${diffSecs}s ago`;
-      if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
-      if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
-      return `${Math.floor(diffSecs / 86400)}d ago`;
     },
 
     alertClusterCount() {
@@ -827,16 +721,6 @@ window.app = function () {
       return this.actionPillStyle(alertType);
     },
 
-    errorMessage(err, fallback = "Request failed.") {
-      if (!err) return fallback;
-      const msg =
-        err?.message ||
-        err?.detail ||
-        err?.response?.data?.detail ||
-        err?.response?.data?.message;
-      return String(msg || fallback);
-    },
-
     clearModalError(modalName) {
       if (!modalName) return;
       this.modalErrors[modalName] = "";
@@ -846,17 +730,13 @@ window.app = function () {
       this.modalErrors[modalName] = this.errorMessage(err, fallback);
     },
 
-    // ---------- Auth ----------
+    // ---------- CP refresh lifecycle ----------
     stopAutoRefreshTimers() {
       if (typeof window !== "undefined" && window.__cpAutoRefreshTimers) {
         Object.values(window.__cpAutoRefreshTimers).forEach((timerId) => {
           clearInterval(timerId);
         });
         window.__cpAutoRefreshTimers = {};
-      }
-      if (this._autoTimer) {
-        clearInterval(this._autoTimer);
-        this._autoTimer = null;
       }
       if (this._serversAutoTimer) {
         clearInterval(this._serversAutoTimer);
@@ -913,307 +793,15 @@ window.app = function () {
       this.destroyClusterDashboardCharts();
     },
 
-    setManagedInterval(name, prop, callback, intervalMs) {
-      if (this[prop]) {
-        clearInterval(this[prop]);
-        this[prop] = null;
-      }
-      if (typeof window !== "undefined") {
-        window.__cpAutoRefreshTimers = window.__cpAutoRefreshTimers || {};
-        const existing = window.__cpAutoRefreshTimers[name];
-        if (existing) {
-          clearInterval(existing);
-        }
-        const timerId = setInterval(callback, intervalMs);
-        window.__cpAutoRefreshTimers[name] = timerId;
-        this[prop] = timerId;
-        return;
-      }
-      this[prop] = setInterval(callback, intervalMs);
-    },
-
-    setAuthRequired(loginPath, errorMessage = "Not authenticated.") {
-      this.isAuthenticated = false;
-      this.authClaims = null;
-      this.authDisplayNameClaim = "preferred_username";
-      this.authSessionCookieName = "cp_session";
-      this.authError = String(errorMessage || "Not authenticated.");
-      this.stopAutoRefreshTimers();
-      if (loginPath) this.authLoginPath = loginPath;
-    },
-
-    syncAuthMeta() {
-      const meta =
-        this.authClaims &&
-        typeof this.authClaims === "object" &&
-        this.authClaims._cp &&
-        typeof this.authClaims._cp === "object"
-          ? this.authClaims._cp
-          : null;
-
-      if (
-        meta &&
-        typeof meta.display_name_claim === "string" &&
-        meta.display_name_claim.trim()
-      ) {
-        this.authDisplayNameClaim = meta.display_name_claim.trim();
-      } else {
-        this.authDisplayNameClaim = "preferred_username";
-      }
-
-      if (
-        meta &&
-        typeof meta.session_cookie_name === "string" &&
-        meta.session_cookie_name.trim()
-      ) {
-        this.authSessionCookieName = meta.session_cookie_name.trim();
-      } else {
-        this.authSessionCookieName = "cp_session";
-      }
-    },
-
-    authClaimsWithoutCookies() {
-      const claims =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : null;
-      if (!claims) return {};
-      return Object.fromEntries(
-        Object.entries(claims).filter(
-          ([key]) => key !== "cookies" && !String(key).startsWith("_"),
-        ),
-      );
-    },
-
-    authSessionCookieValue() {
-      const claims =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : null;
-      if (!claims || typeof claims.cookies !== "object" || !claims.cookies) {
-        return "(No cookie data captured yet)";
-      }
-
-      const cookieName = String(this.authSessionCookieName || "").trim();
-      if (!cookieName) return "(No cookie data captured yet)";
-
-      const value = claims.cookies[cookieName];
-      return value ? String(value) : "(No cookie data captured yet)";
-    },
-
-    authIsUnauthenticatedMode() {
-      return Boolean(this.authClaims && this.authClaims.auth_disabled);
-    },
-
-    authGroupsClaimName() {
-      const claims =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : null;
-      const rawName = claims?._groups_claim_name;
-      return typeof rawName === "string" && rawName.trim()
-        ? rawName.trim()
-        : "groups";
-    },
-
-    authGroups() {
-      const claims =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : null;
-      if (!claims) return [];
-      return this.normalizeClaimValues(claims[this.authGroupsClaimName()]);
-    },
-
-    authRoleGroups() {
-      const roleGroups =
-        this.authClaims &&
-        typeof this.authClaims === "object" &&
-        this.authClaims._role_groups &&
-        typeof this.authClaims._role_groups === "object"
-          ? this.authClaims._role_groups
-          : {};
-      return roleGroups;
-    },
-
-    normalizeClaimValues(input) {
-      if (Array.isArray(input)) {
-        return input.map((value) => String(value).trim()).filter(Boolean);
-      }
-      if (typeof input === "string") {
-        return input
-          .split(",")
-          .map((value) => String(value).trim())
-          .filter(Boolean);
-      }
-      return [];
-    },
-
-    authRoles() {
-      const values = [];
-      const roleGroups = this.authRoleGroups();
-      const userGroups = new Set(this.authGroups());
-
-      Object.entries(roleGroups).forEach(([roleName, groups]) => {
-        const normalizedGroups = this.normalizeClaimValues(groups);
-        if (
-          normalizedGroups.some((group) => userGroups.has(String(group).trim()))
-        ) {
-          values.push(roleName);
-        }
-      });
-
-      return [
-        ...new Set(values.map((value) => String(value).trim()).filter(Boolean)),
-      ];
-    },
-
     clusterOwnerGroups() {
-      const userGroups = new Set(this.authGroups());
-      const eligibleGroups = new Set();
-
-      Object.values(this.authRoleGroups()).forEach((groups) => {
-        this.normalizeClaimValues(groups).forEach((group) => {
-          if (userGroups.has(group)) {
-            eligibleGroups.add(group);
-          }
-        });
-      });
-
-      return [...eligibleGroups].sort((a, b) => a.localeCompare(b));
-    },
-
-    authRoleAnalysis() {
-      const claimName = this.authGroupsClaimName();
-      const claims =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : null;
-      return {
-        groups_claim_name: claimName,
-        groups_claim_value: claims ? (claims[claimName] ?? null) : null,
-        normalized_groups: this.authGroups(),
-        role_groups: this.authRoleGroups(),
-        cp_roles: this.authRoles(),
-      };
-    },
-
-    logRoleCheck({
-      checkType = "role-check",
-      requiredRole = "",
-      viewName = this.view,
-      result = false,
-      detail = "",
-    } = {}) {
-      console.info("[cp role check]", {
-        checkType,
-        viewName: String(viewName || "").trim() || this.view,
-        requiredRole: String(requiredRole || "").trim(),
-        result: Boolean(result),
-        detail: detail ? String(detail) : "",
-        ...this.authRoleAnalysis(),
-      });
-    },
-
-    hasRole(role, { viewName = this.view, checkType = "hasRole" } = {}) {
-      if (this.authIsUnauthenticatedMode()) return true;
-      const roleName = String(role || "").trim();
-      if (!roleName) return false;
-
-      const userRoles = this.authRoles();
-      if (userRoles.includes(roleName)) {
-        this.logRoleCheck({
-          checkType,
-          requiredRole: roleName,
-          viewName,
-          result: true,
-          detail: "Matched direct or inferred effective role.",
-        });
-        return true;
-      }
-
-      const userGroups = this.authGroups();
-      const roleGroups = this.normalizeClaimValues(
-        this.authRoleGroups()[roleName],
-      );
-      if (roleGroups.length === 0) {
-        this.logRoleCheck({
-          checkType,
-          requiredRole: roleName,
-          viewName,
-          result: false,
-          detail: "No role-to-group mapping found for required role.",
-        });
-        return false;
-      }
-
-      const result = roleGroups.some((group) => userGroups.includes(group));
-      this.logRoleCheck({
-        checkType,
-        requiredRole: roleName,
-        viewName,
-        result,
-        detail: result
-          ? "Matched required role through group membership."
-          : "No matching user group found for required role.",
-      });
-      return result;
+      return typeof this.authGroups === "function" ? this.authGroups() : [];
     },
 
     canManageCompute() {
       return (
-        this.authIsUnauthenticatedMode() ||
-        this.hasRole("CP_USER", {
-          viewName: this.view,
-          checkType: "canManageCompute",
-        }) ||
-        this.hasRole("CP_ADMIN", {
-          viewName: this.view,
-          checkType: "canManageCompute",
-        })
+        typeof this.hasRole === "function" &&
+        (this.hasRole("CP_USER") || this.hasRole("CP_ADMIN"))
       );
-    },
-
-    canViewAdmin(viewName = this.view) {
-      return (
-        this.authIsUnauthenticatedMode() ||
-        this.hasRole("CP_ADMIN", {
-          viewName,
-          checkType: "canViewAdmin",
-        })
-      );
-    },
-
-    isAdminSectionView(viewName = this.view) {
-      return [
-        "admin",
-        "versions",
-        "node_counts",
-        "cpu_counts",
-        "disk_sizes",
-        "regions",
-      ].includes(viewName);
-    },
-
-    authGroupsClaimName() {
-      return String(
-        this.authClaims?._groups_claim_name ||
-          this.authClaims?._cp?.groups_claim_name ||
-          "groups",
-      );
-    },
-
-    currentUserGroups() {
-      const claimName = this.authGroupsClaimName();
-      const claimValue = this.authClaims?.[claimName];
-      if (Array.isArray(claimValue)) return claimValue.filter(Boolean);
-      if (typeof claimValue === "string" && claimValue.trim()) {
-        return claimValue
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean);
-      }
-      return [];
     },
 
     buildPath(path, params = {}) {
@@ -1375,64 +963,6 @@ window.app = function () {
       window.location.hash = nextHash.slice(1);
     },
 
-    async ensureCurrentView() {
-      if (this.view === "clusters") await this.ensureServersView();
-      else if (this.view === "cluster") await this.ensureClusterDetailView();
-      else if (this.view === "cluster_dashboard")
-        await this.ensureClusterDashboardView();
-      else if (this.view === "cluster_users")
-        await this.ensureClusterUsersView();
-      else if (this.view === "cluster_databases")
-        await this.ensureClusterDatabasesView();
-      else if (this.view === "cluster_backups")
-        await this.ensureClusterBackupsView();
-      else if (this.view === "cluster_artifacts")
-        await this.ensureClusterArtifactsView();
-      else if (this.view === "cluster_recovery")
-        await this.ensureClusterRecoveryView();
-      else if (this.view === "alerts") await this.ensureAlertsView();
-      else if (this.view === "versions") await this.ensureVersionsView();
-      else if (this.view === "node_counts") await this.ensureNodeCountsView();
-      else if (this.view === "cpu_counts") await this.ensureCpuCountsView();
-      else if (this.view === "disk_sizes") await this.ensureDiskSizesView();
-      else if (this.view === "database_role_templates")
-        await this.ensureDatabaseRoleTemplatesView();
-      else if (this.view === "regions") await this.ensureRegionsView();
-      else await this.ensureDashboardView();
-    },
-
-    isViewAccessible(viewName) {
-      if (
-        [
-          "admin",
-          "versions",
-          "node_counts",
-          "cpu_counts",
-          "disk_sizes",
-          "database_role_templates",
-          "regions",
-        ].includes(viewName)
-      ) {
-        const result = this.canViewAdmin(viewName);
-        this.logRoleCheck({
-          checkType: "isViewAccessible",
-          requiredRole: "CP_ADMIN",
-          viewName,
-          result,
-          detail: "Checking admin access for restricted view.",
-        });
-        return result;
-      }
-      this.logRoleCheck({
-        checkType: "isViewAccessible",
-        requiredRole: "",
-        viewName,
-        result: true,
-        detail: "View does not require an admin role.",
-      });
-      return true;
-    },
-
     unauthorizedViewMessage(viewName = this.view) {
       const labels = {
         clusters: "Clusters",
@@ -1447,245 +977,6 @@ window.app = function () {
       };
       const label = labels[viewName] || "This view";
       return `${label} is available only to admin users.`;
-    },
-
-    viewSubtitle() {
-      const subtitles = {
-        dashboard: "Infrastructure landing page and operational navigation",
-        clusters: "Cluster inventory and status",
-        cluster: "Cluster details, access points, and actions",
-        cluster_dashboard: "Cluster dashboard and live time-series metrics",
-        cluster_users: "Cluster database users and role management",
-        cluster_backups: "Cluster backups and backup object details",
-        cluster_artifacts: "Cluster artifacts and diagnostic downloads",
-        cluster_recovery: "Restore a cluster from cataloged full backups",
-        alerts: "Operational alerts and incident signals",
-        admin: "Administrative landing page and tooling",
-        versions: "List database versions",
-        node_counts: "List available node counts",
-        cpu_counts: "List available CPU-per-node options",
-        disk_sizes: "List available disk size options",
-        database_role_templates: "Preconfigured database role templates",
-        regions: "List configured deployment regions",
-      };
-      return subtitles[this.view] || "Control plane workspace";
-    },
-
-
-
-    handleForbiddenView(viewName, { fallback = true } = {}) {
-      this.setActionNotice(this.unauthorizedViewMessage(viewName));
-      if (!fallback) return;
-
-      this.clearClusterDatabaseObjectsState();
-      this.clearClusterUsersState();
-      this.view = "dashboard";
-      localStorage.setItem("cp_view", this.view);
-      this.syncHashFromState(true);
-    },
-
-    clearViewNotice() {
-      this.viewNotice = "";
-      this.viewNoticeJobId = "";
-    },
-
-    setActionNotice(message, jobId = "") {
-      this.viewNotice = String(message || "");
-      this.viewNoticeJobId = String(jobId || "").trim();
-    },
-
-    userDisplayName() {
-      const c =
-        this.authClaims && typeof this.authClaims === "object"
-          ? this.authClaims
-          : {};
-      const claim = String(this.authDisplayNameClaim || "preferred_username");
-      const val =
-        c[claim] || c.preferred_username || c.name || c.email || c.sub || "";
-      if (this.authIsUnauthenticatedMode()) return "Unauthenticated";
-      return String(val || "Unknown user");
-    },
-
-    userIconTitle() {
-      return this.authIsUnauthenticatedMode()
-        ? "Running in unauthenticated mode"
-        : "Authenticated user";
-    },
-
-    async refreshAuthMeSnapshot() {
-      try {
-        const res = await fetch("/api/auth/me", { method: "GET" });
-        const ct = res.headers.get("content-type") || "";
-        const isJson = ct.includes("application/json");
-        const data = isJson
-          ? await res.json().catch(() => null)
-          : await res.text().catch(() => null);
-        if (res.ok && data && typeof data === "object") {
-          this.authClaims = data;
-
-          this.syncAuthMeta();
-        }
-      } catch (_e) {
-        // keep last known authClaims in the modal when refresh fails
-      }
-    },
-
-    async openUserInfoModal() {
-      await this.refreshAuthMeSnapshot();
-      this.modal.userInfo.open = true;
-    },
-
-    closeUserInfoModal() {
-      this.modal.userInfo.open = false;
-    },
-
-    async checkAuthSession() {
-      let res = null;
-      let data = null;
-      try {
-        res = await fetch("/api/auth/me", { method: "GET" });
-      } catch (e) {
-        this.authError = this.errorMessage(e, "Unable to verify session.");
-        this.authChecked = true;
-        return false;
-      }
-
-      const ct = res.headers.get("content-type") || "";
-      const isJson = ct.includes("application/json");
-      data = isJson
-        ? await res.json().catch(() => null)
-        : await res.text().catch(() => null);
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          const loginPath =
-            res.headers.get("x-auth-login-url") ||
-            (data &&
-              ((data.detail && data.detail.auth_login_url) ||
-                data.auth_login_url)) ||
-            "/api/auth/login";
-          this.setAuthRequired(loginPath);
-          this.authChecked = true;
-          return false;
-        }
-
-        this.authError =
-          (data && (data.detail || data.message)) ||
-          (typeof data === "string" && data) ||
-          `Auth check failed (${res.status})`;
-        this.authChecked = true;
-        return false;
-      }
-
-      this.isAuthenticated = true;
-      this.authClaims = data && typeof data === "object" ? data : null;
-      this.syncAuthMeta();
-      this.authError = "";
-      this.authChecked = true;
-      this.clearViewNotice();
-      return true;
-    },
-
-    loginWithSSO() {
-      if (typeof window === "undefined") return;
-      const loginPath = this.authLoginPath || "/api/auth/login";
-      const next = encodeURIComponent(
-        `${window.location.pathname}${window.location.search}${window.location.hash}`,
-      );
-      const sep = String(loginPath).includes("?") ? "&" : "?";
-      window.location.assign(`${loginPath}${sep}next=${next}`);
-    },
-
-    // ---------- Init ----------
-
-
-    setView(next) {
-      if (next === this.view) return;
-      if (!this.isViewAccessible(next)) {
-        this.handleForbiddenView(next, { fallback: false });
-        return;
-      }
-
-      this.clearViewNotice();
-      if (next !== "cluster" && next !== "cluster_databases") {
-        this.clearClusterDatabaseObjectsState();
-      }
-      if (next !== "cluster_users") {
-        this.clearClusterUsersState();
-      }
-      this.view = next;
-      localStorage.setItem("cp_view", this.view);
-      this.syncHashFromState();
-      this.ensureCurrentView();
-    },
-
-
-
-
-    async logout() {
-      try {
-        await fetch("/api/auth/logout", { method: "POST" });
-      } catch (e) {
-        console.error(e);
-      } finally {
-        this.setAuthRequired(this.authLoginPath, "");
-        this.authChecked = true;
-        if (typeof window !== "undefined") window.location.assign("/");
-      }
-    },
-
-    // ---------- Shared API fetch (also feeds inspector on dashboard) ----------
-    async apiFetch(path, { method = "GET", body = null } = {}) {
-      const url = this.apiBase + path;
-      const startedAtUtc = this.utcNowString();
-
-      const opts = { method, headers: {} };
-      if (body !== null && body !== undefined) {
-        opts.headers["Content-Type"] = "application/json";
-        opts.body = JSON.stringify(body);
-      }
-
-      const res = await fetch(url, opts);
-      const ct = res.headers.get("content-type") || "";
-      const isJson = ct.includes("application/json");
-      const data = isJson
-        ? await res.json().catch(() => null)
-        : await res.text().catch(() => null);
-
-      if (this.view === "dashboard") {
-        this.inspector = {
-          startedAtUtc,
-          url,
-          method,
-          status: res.status,
-          ok: res.ok,
-          response: data,
-        };
-      }
-
-      if (!res.ok) {
-        if (res.status === 401 && typeof window !== "undefined") {
-          const loginPath =
-            res.headers.get("x-auth-login-url") ||
-            (data &&
-              ((data.detail && data.detail.auth_login_url) ||
-                data.auth_login_url)) ||
-            "/api/auth/login";
-          this.setAuthRequired(loginPath);
-          throw new Error("Not authenticated.");
-        }
-
-        const msg =
-          (data && (data.detail || data.message)) ||
-          (typeof data === "string" && data) ||
-          `Request failed (${res.status})`;
-        const error = new Error(msg);
-        error.status = res.status;
-        error.forbidden = res.status === 403;
-        throw error;
-      }
-
-      return data;
     },
 
     // ---------- Servers lifecycle ----------
@@ -1917,6 +1208,30 @@ window.app = function () {
       }
     },
 
+    isDeletedCluster(row) {
+      return String(row?.status || "").trim().toLowerCase() === "deleted";
+    },
+
+    sortServerRows(rows) {
+      const sortedRows = rows.slice();
+      if (this.serversSortIndex === null) return sortedRows;
+
+      const type =
+        this.serversSortTypeByIndex[this.serversSortIndex] || "string";
+      const idx = this.serversSortIndex;
+      const dir = this.serversSortDir;
+
+      sortedRows.sort((a, b) => {
+        const av = this.parseValue(type, this.serversCellText(a, idx));
+        const bv = this.parseValue(type, this.serversCellText(b, idx));
+        if (av < bv) return dir === "asc" ? -1 : 1;
+        if (av > bv) return dir === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      return sortedRows;
+    },
+
     serversStatusClass(status) {
       const s = String(status || "").toLowerCase();
 
@@ -1981,22 +1296,12 @@ window.app = function () {
       let rows = this.servers.slice();
       if (q) rows = rows.filter((s) => this.serversRowText(s).includes(q));
 
-      if (this.serversSortIndex !== null) {
-        const type =
-          this.serversSortTypeByIndex[this.serversSortIndex] || "string";
-        const idx = this.serversSortIndex;
-        const dir = this.serversSortDir;
-
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.serversCellText(a, idx));
-          const bv = this.parseValue(type, this.serversCellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
-
-      this.serversVisibleRows = rows;
+      this.serversVisibleRows = this.sortServerRows(
+        rows.filter((row) => !this.isDeletedCluster(row)),
+      );
+      this.deletedServersVisibleRows = this.sortServerRows(
+        rows.filter((row) => this.isDeletedCluster(row)),
+      );
     },
 
     async refreshServers() {
@@ -2422,9 +1727,9 @@ window.app = function () {
         });
         this.closeClusterCreateModal();
         await this.refreshServers();
-        this.setActionNotice(
+        this.showNotice(
           `Cluster '${name}' creation requested.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError("clusterCreate", e, "Failed to create cluster.");
@@ -2444,7 +1749,7 @@ window.app = function () {
       this.clearClusterArtifactsState();
       this.view = "cluster";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterDetailView();
     },
@@ -2465,9 +1770,8 @@ window.app = function () {
         await this.refreshClusterDatabaseObjects();
       } catch (e) {
         console.error(e);
-        this.viewNotice = this.errorMessage(
-          e,
-          "Failed to load cluster details.",
+        this.showNotice(
+          this.errorMessage(e, "Failed to load cluster details."),
         );
         this.selectedCluster = null;
         this.clearClusterDatabaseObjectsState();
@@ -2580,7 +1884,7 @@ window.app = function () {
         console.error(e);
         this.clearClusterDatabaseObjectsState();
         this.clusterDatabaseObjectsLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load database objects."),
         );
       } finally {
@@ -2683,12 +1987,12 @@ window.app = function () {
           },
         );
         await this.refreshClusterDatabaseObjects();
-        this.setActionNotice(
+        this.showNotice(
           `IdP group mapping updated for database role '${roleName}'.`,
         );
       } catch (e) {
         console.error(e);
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to update IdP group mapping."),
         );
       } finally {
@@ -2738,7 +2042,7 @@ window.app = function () {
         this.closeClusterDatabaseObjectCreateModal();
         this.clearClusterUsersState();
         await this.refreshClusterDatabaseObjects();
-        this.setActionNotice(
+        this.showNotice(
           `Database object '${databaseName}' created and default roles materialized.`,
         );
       } catch (e) {
@@ -2785,7 +2089,7 @@ window.app = function () {
         this.closeClusterDatabaseObjectDeleteConfirm();
         this.clearClusterUsersState();
         await this.refreshClusterDatabaseObjects();
-        this.setActionNotice(`Database object '${databaseName}' deleted.`);
+        this.showNotice(`Database object '${databaseName}' deleted.`);
       } catch (e) {
         this.setModalError(
           "clusterDatabaseObjectDeleteConfirm",
@@ -2845,7 +2149,7 @@ window.app = function () {
         document.body.removeChild(el);
       }
       this.clusterConnectCopiedFor = dns;
-      this.setActionNotice(
+      this.showNotice(
         dns
           ? `Cluster endpoint copied for '${dns}'.`
           : "Cluster endpoint copied to clipboard.",
@@ -2881,7 +2185,7 @@ window.app = function () {
       this.clearClusterDatabaseObjectsState();
       this.clearClusterUsersState();
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterDashboardView();
     },
@@ -2907,7 +2211,7 @@ window.app = function () {
       this.clearClusterDatabaseObjectsState();
       this.view = "cluster_users";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterUsersView();
     },
@@ -2921,7 +2225,7 @@ window.app = function () {
       this.clearClusterUsersState();
       this.view = "cluster_databases";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterDatabasesView();
     },
@@ -2936,7 +2240,7 @@ window.app = function () {
       this.clearClusterUsersState();
       this.view = "cluster_backups";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterBackupsView();
     },
@@ -2952,7 +2256,7 @@ window.app = function () {
       this.clearClusterUsersState();
       this.view = "cluster_artifacts";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterArtifactsView();
     },
@@ -2967,7 +2271,7 @@ window.app = function () {
       this.clearClusterUsersState();
       this.view = "cluster_recovery";
       localStorage.setItem("cp_view", this.view);
-      this.clearViewNotice();
+      this.clearNotice();
       this.syncHashFromState();
       this.ensureClusterRecoveryView();
     },
@@ -3138,9 +2442,9 @@ window.app = function () {
         localStorage.removeItem("cp_selected_cluster_id");
         await this.refreshServers();
         this.setView("clusters");
-        this.setActionNotice(
+        this.showNotice(
           `Cluster '${clusterId}' delete requested.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -3169,9 +2473,9 @@ window.app = function () {
           },
         );
         this.closeClusterHealthcheckConfirm();
-        this.setActionNotice(
+        this.showNotice(
           `Cluster '${clusterId}' healthcheck requested.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -3188,7 +2492,7 @@ window.app = function () {
       const clusterId =
         this.selectedCluster?.cluster_id || this.selectedClusterId;
       if (!clusterId) return;
-      this.setActionNotice(
+      this.showNotice(
         `${label} for cluster '${clusterId}' is not wired in the webapp yet.`,
       );
     },
@@ -3447,7 +2751,7 @@ window.app = function () {
       } catch (e) {
         console.error(e);
         this.clusterDashboardLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load cluster dashboard."),
         );
       } finally {
@@ -3533,7 +2837,7 @@ window.app = function () {
         console.error(e);
         this.clearClusterUsersState();
         this.clusterUsersLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load cluster users."),
         );
       } finally {
@@ -3600,7 +2904,7 @@ window.app = function () {
         );
         this.closeClusterUserCreateModal();
         await this.refreshClusterUsers();
-        this.setActionNotice(`Database user '${username}' created.`);
+        this.showNotice(`Database user '${username}' created.`);
       } catch (e) {
         this.setModalError(
           "clusterUserCreate",
@@ -3641,7 +2945,7 @@ window.app = function () {
         );
         this.closeClusterUserDeleteConfirm();
         await this.refreshClusterUsers();
-        this.setActionNotice(`Database user '${username}' deleted.`);
+        this.showNotice(`Database user '${username}' deleted.`);
       } catch (e) {
         this.setModalError(
           "clusterUserDeleteConfirm",
@@ -3696,7 +3000,7 @@ window.app = function () {
           },
         );
         this.closeClusterUserPasswordModal();
-        this.setActionNotice(`Password updated for '${username}'.`);
+        this.showNotice(`Password updated for '${username}'.`);
       } catch (e) {
         this.setModalError(
           "clusterUserPassword",
@@ -3748,7 +3052,7 @@ window.app = function () {
             (entry) => entry !== normalizedDatabaseRole,
           );
         await this.refreshClusterUsers();
-        this.setActionNotice(
+        this.showNotice(
           `Database role '${normalizedDatabaseRole}' revoked from '${username}'.`,
         );
       } catch (e) {
@@ -3800,7 +3104,7 @@ window.app = function () {
         this.modal.clusterUserRoles.databaseRoles = Array.isArray(refreshed?.member_of)
           ? refreshed.member_of.filter(Boolean)
           : this.modal.clusterUserRoles.databaseRoles;
-        this.setActionNotice(`Database roles granted to '${username}'.`);
+        this.showNotice(`Database roles granted to '${username}'.`);
       } catch (e) {
         this.setModalError(
           "clusterUserRoles",
@@ -3834,7 +3138,7 @@ window.app = function () {
         console.error(e);
         this.clusterRecoveryBackups = [];
         this.clusterRecoveryLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load recovery backups."),
         );
       } finally {
@@ -3950,9 +3254,9 @@ window.app = function () {
           },
         });
         this.closeClusterRecoveryRestoreConfirm();
-        this.setActionNotice(
+        this.showNotice(
           `Cluster recovery requested for '${targetClusterId}' from '${sourceClusterId}'.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -4010,7 +3314,7 @@ window.app = function () {
       } catch (e) {
         console.error(e);
         this.clusterBackupsLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load cluster backups."),
         );
       } finally {
@@ -4044,7 +3348,7 @@ window.app = function () {
         this.clusterBackupDetails = Array.isArray(details) ? details : [];
       } catch (e) {
         console.error(e);
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load backup details."),
         );
         this.clusterBackupDetails = [];
@@ -4191,7 +3495,7 @@ window.app = function () {
         console.error(e);
         this.clearClusterArtifactsState();
         this.clusterArtifactsLastUpdatedUtc = this.utcNowString();
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to load cluster artifacts."),
         );
       } finally {
@@ -4233,12 +3537,12 @@ window.app = function () {
         } else if (typeof window !== "undefined") {
           window.location.assign(url);
         }
-        this.setActionNotice(
+        this.showNotice(
           `Download started for '${response?.artifact_name || row?.artifact_name || artifactId}'.`,
         );
       } catch (e) {
         console.error(e);
-        this.setActionNotice(
+        this.showNotice(
           this.errorMessage(e, "Failed to create artifact download URL."),
         );
       } finally {
@@ -4362,9 +3666,9 @@ window.app = function () {
           },
         );
         this.closeClusterBackupObjectRestoreModal();
-        this.setActionNotice(
+        this.showNotice(
           `Restore requested for ${this.backupObjectTypeLabel(objectType).toLowerCase()} '${objectName}'.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -4396,9 +3700,9 @@ window.app = function () {
           },
         });
         this.closeClusterUpgradeModal();
-        this.setActionNotice(
+        this.showNotice(
           `Cluster '${clusterName}' upgrade requested to ${version}.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -4481,9 +3785,9 @@ window.app = function () {
           },
         });
         this.closeClusterScaleModal();
-        this.setActionNotice(
+        this.showNotice(
           `Cluster '${clusterName}' scale requested.`,
-          result?.job_id,
+          { jobId: result?.job_id },
         );
       } catch (e) {
         this.setModalError(
@@ -4648,74 +3952,6 @@ window.app = function () {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    openServerActionConfirm(server, action) {
-      this.modal.serverActionConfirm.hostname = server?.hostname || "";
-      this.modal.serverActionConfirm.action = action || "decommission";
-      this.clearModalError("serverActionConfirm");
-      this.modal.serverActionConfirm.open = true;
-    },
-
-    closeServerActionConfirm() {
-      this.modal.serverActionConfirm.open = false;
-      this.clearModalError("serverActionConfirm");
-    },
-
-    async confirmServerAction() {
-      const hostname = (this.modal.serverActionConfirm.hostname || "").trim();
-      const action = this.modal.serverActionConfirm.action;
-      if (!hostname) return;
-
-      this.serversLoading.action = true;
-      try {
-        if (action === "delete") {
-          await this.apiFetch(
-            `/admin/servers/${encodeURIComponent(hostname)}`,
-            {
-              method: "DELETE",
-            },
-          );
-        } else {
-          await this.apiFetch(
-            `/admin/servers/${encodeURIComponent(hostname)}`,
-            {
-              method: "PUT",
-            },
-          );
-        }
-        this.closeServerActionConfirm();
-        await this.refreshServers();
-      } catch (e) {
-        this.setModalError(
-          "serverActionConfirm",
-          e,
-          "Failed to run server action.",
-        );
-      } finally {
-        this.serversLoading.action = false;
-      }
-    },
-
     versionsRowText(row) {
       return String(row?.version || "").toLowerCase();
     },
@@ -4769,7 +4005,7 @@ window.app = function () {
         });
         this.closeVersionCreateModal();
         await this.refreshVersions();
-        this.setActionNotice(`Version '${version}' created.`);
+        this.showNotice(`Version '${version}' created.`);
       } catch (e) {
         this.setModalError("versionCreate", e, "Failed to create version.");
       } finally {
@@ -4803,7 +4039,7 @@ window.app = function () {
         });
         this.closeVersionDeleteConfirm();
         await this.refreshVersions();
-        this.setActionNotice(`Version '${version}' deleted.`);
+        this.showNotice(`Version '${version}' deleted.`);
       } catch (e) {
         this.setModalError(
           "versionDeleteConfirm",
@@ -4967,7 +4203,7 @@ window.app = function () {
         });
         this.closeClusterOptionCreateModal(kind);
         await this.refreshClusterOption(kind);
-        this.setActionNotice(`${config.singularLabel} '${value}' created.`);
+        this.showNotice(`${config.singularLabel} '${value}' created.`);
       } catch (e) {
         this.setModalError(
           config.createErrorKey,
@@ -4995,7 +4231,7 @@ window.app = function () {
         });
         this.closeClusterOptionDeleteConfirm(kind);
         await this.refreshClusterOption(kind);
-        this.setActionNotice(`${config.singularLabel} '${value}' deleted.`);
+        this.showNotice(`${config.singularLabel} '${value}' deleted.`);
       } catch (e) {
         this.setModalError(
           config.deleteErrorKey,
@@ -5260,7 +4496,7 @@ window.app = function () {
         });
         this.closeDatabaseRoleTemplateCreateModal();
         await this.refreshDatabaseRoleTemplates();
-        this.setActionNotice(`Database role template '${databaseRoleTemplate}' created.`);
+        this.showNotice(`Database role template '${databaseRoleTemplate}' created.`);
       } catch (e) {
         this.setModalError(
           "databaseRoleTemplateCreate",
@@ -5287,7 +4523,7 @@ window.app = function () {
         );
         this.closeDatabaseRoleTemplateDeleteConfirm();
         await this.refreshDatabaseRoleTemplates();
-        this.setActionNotice(`Database role template '${databaseRoleTemplate}' deleted.`);
+        this.showNotice(`Database role template '${databaseRoleTemplate}' deleted.`);
       } catch (e) {
         this.setModalError(
           "databaseRoleTemplateDeleteConfirm",
@@ -5416,7 +4652,7 @@ window.app = function () {
         });
         this.closeRegionCreateModal();
         await this.refreshRegions();
-        this.setActionNotice(`Region '${cloud}/${region}/${zone}' created.`);
+        this.showNotice(`Region '${cloud}/${region}/${zone}' created.`);
       } catch (e) {
         this.setModalError("regionCreate", e, "Failed to create region.");
       } finally {
@@ -5455,7 +4691,7 @@ window.app = function () {
         );
         this.closeRegionDeleteConfirm();
         await this.refreshRegions();
-        this.setActionNotice(`Region '${cloud}/${region}/${zone}' deleted.`);
+        this.showNotice(`Region '${cloud}/${region}/${zone}' deleted.`);
       } catch (e) {
         this.setModalError(
           "regionDeleteConfirm",
@@ -5485,11 +4721,7 @@ window.app = function () {
       }
     },
 
-    // ---------- Dashboard lifecycle ----------
-    persistFilter() {
-      localStorage.setItem("cp_filter", this.filterQuery || "");
-    },
-
+    // ---------- Stored filters ----------
     persistServersFilter() {
       localStorage.setItem("cp_servers_filter", this.serversFilterQuery || "");
     },
@@ -5497,49 +4729,8 @@ window.app = function () {
     persistAlertsFilter() {
       localStorage.setItem("cp_alerts_filter", this.alertsFilterQuery || "");
     },
-    persistInspectorFormat() {
-      localStorage.setItem("cp_inspector_format", this.inspectorFormat);
-    },
 
-    async refreshDashboard() {
-      this.loading.list = true;
-      try {
-        const data = await this.apiFetch("/compute_units/");
-        this.computeUnits = Array.isArray(data) ? data : [];
-        this.computeUnits = this.computeUnits.map((row) => ({
-          ...row,
-          compute_id: `${row.hostname}_${row.cpu_range}`,
-        }));
-        this.lastUpdatedUtc = this.utcNowString();
-        this.applyFilterSort();
-      } catch (e) {
-        console.error(e);
-        this.lastUpdatedUtc = this.utcNowString();
-      } finally {
-        this.loading.list = false;
-      }
-    },
-
-    // ---------- Dashboard sorting/filtering ----------
-    rowText(row) {
-      const parts = [
-        row.compute_id,
-        row.hostname,
-        row.ip,
-        row.region,
-        row.zone,
-        row.status,
-        this.tagValue(row, "deployment_id"),
-      ];
-      const tags =
-        row.tags && typeof row.tags === "object"
-          ? Object.entries(row.tags).map(
-              ([k, v]) => `${k}:${Array.isArray(v) ? v.join(",") : v}`,
-            )
-          : [];
-      return parts.concat(tags).filter(Boolean).join(" ").toLowerCase();
-    },
-
+    // ---------- Shared table sorting ----------
     parseValue(type, value) {
       const v = (value ?? "").toString().trim();
       if (type === "number") {
@@ -5557,440 +4748,6 @@ window.app = function () {
           .join(".");
       }
       return v.toLowerCase();
-    },
-
-    cellText(row, colIndex) {
-      switch (colIndex) {
-        case 0:
-          return this.tagValue(row, "deployment_id") || "";
-        case 1:
-          return row.compute_id;
-        case 2:
-          return `${row.region || "-"}-${row.zone || "-"}`;
-        case 3:
-          return row.hostname || "";
-        case 4:
-          return row.ip || "";
-        case 5:
-          return row.cpu_count;
-        case 6:
-          return row.cpu_range || "";
-        case 7:
-          return row.ports_range || "";
-        case 8:
-          return row.started_at || "";
-        case 9:
-          return row.status || "";
-        default:
-          return "";
-      }
-    },
-
-    applyFilterSort() {
-      const q = (this.filterQuery || "").toLowerCase().trim();
-      let rows = this.computeUnits.slice();
-      if (q) rows = rows.filter((r) => this.rowText(r).includes(q));
-
-      if (this.sortIndex !== null) {
-        const type = this.sortTypeByIndex[this.sortIndex] || "string";
-        const idx = this.sortIndex;
-        const dir = this.sortDir;
-
-        rows.sort((a, b) => {
-          const av = this.parseValue(type, this.cellText(a, idx));
-          const bv = this.parseValue(type, this.cellText(b, idx));
-          if (av < bv) return dir === "asc" ? -1 : 1;
-          if (av > bv) return dir === "asc" ? 1 : -1;
-          return 0;
-        });
-      }
-
-      this.visibleRows = rows;
-    },
-
-    toggleSort(index) {
-      if (this.sortIndex === index)
-        this.sortDir = this.sortDir === "asc" ? "desc" : "asc";
-      else {
-        this.sortIndex = index;
-        this.sortDir = "asc";
-      }
-
-      localStorage.setItem("cp_sort_index", String(this.sortIndex));
-      localStorage.setItem("cp_sort_dir", this.sortDir);
-      this.applyFilterSort();
-    },
-
-    sortClass(index) {
-      if (this.sortIndex !== index) return "";
-      return this.sortDir === "asc" ? "sort-asc" : "sort-desc";
-    },
-
-    tagValue(row, key) {
-      const t = row.tags;
-      if (!t || typeof t !== "object") return null;
-      const v = t[key];
-      if (v === undefined || v === null) return null;
-      return Array.isArray(v) ? v.join(",") : String(v);
-    },
-
-    extraTags(row) {
-      const t = row.tags;
-      if (!t || typeof t !== "object") return [];
-      return Object.entries(t).filter(
-        ([k, _]) => !["deployment_id", "owner"].includes(k),
-      );
-    },
-
-    formatTag(k, v) {
-      if (Array.isArray(v)) return `${k}:[${v.join(",")}]`;
-      return `${k}:${v}`;
-    },
-
-    statusClass(status) {
-      const s = String(status || "").toLowerCase();
-      if (s.includes("free")) return "status-online";
-      if (s.includes("allocated")) return "status-warning";
-      if (s.includes("decommissioned")) return "status-muted";
-      if (s.includes("ing")) return "status-pending status-pulse";
-      if (!s || s === "unknown") return "status-muted";
-      return "status-offline";
-    },
-
-    // ---------- Inspector JSON -> YAML ----------
-    inspectorText() {
-      if (!this.inspector) return "No requests yet.";
-      if (this.inspectorFormat === "json")
-        return JSON.stringify(this.inspector, null, 2);
-      return this.toYaml(this.inspector);
-    },
-
-    toYaml(value) {
-      const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
-      const needsQuotes = (s) =>
-        s === "" ||
-        /[:\-\?\[\]\{\},#&\*!|>'"%@`]/.test(s) ||
-        /^\s|\s$/.test(s) ||
-        /^(true|false|null|~|-?\d+(\.\d+)?)$/i.test(s);
-
-      const quote = (s) =>
-        `"${String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-
-      const scalar = (v) => {
-        if (v === null) return "null";
-        if (v === true) return "true";
-        if (v === false) return "false";
-        if (typeof v === "number")
-          return Number.isFinite(v) ? String(v) : quote(String(v));
-        if (typeof v === "string") return needsQuotes(v) ? quote(v) : v;
-        return quote(String(v));
-      };
-
-      const indent = (n) => "  ".repeat(n);
-
-      const render = (v, depth) => {
-        if (Array.isArray(v)) {
-          if (v.length === 0) return "[]";
-          return v
-            .map((item) => {
-              if (isObj(item) || Array.isArray(item)) {
-                return `${indent(depth)}- ${render(
-                  item,
-                  depth + 1,
-                ).trimStart()}`;
-              }
-              return `${indent(depth)}- ${scalar(item)}`;
-            })
-            .join("\n");
-        }
-
-        if (isObj(v)) {
-          const keys = Object.keys(v);
-          if (keys.length === 0) return "{}";
-          return keys
-            .map((k) => {
-              const val = v[k];
-              const keyStr = needsQuotes(k) ? quote(k) : k;
-              if (isObj(val) || Array.isArray(val)) {
-                return `${indent(depth)}${keyStr}:\n${render(val, depth + 1)}`;
-              }
-              return `${indent(depth)}${keyStr}: ${scalar(val)}`;
-            })
-            .join("\n");
-        }
-
-        return scalar(v);
-      };
-
-      return render(value, 0);
-    },
-
-    // ---------- Dashboard actions ----------
-    openAllocateModal(computeId = "") {
-      this.modal.allocate.compute_id = computeId ? String(computeId) : "";
-      this.clearModalError("allocate");
-      this.modal.allocate.open = true;
-    },
-    closeAllocateModal() {
-      this.modal.allocate.open = false;
-      this.clearModalError("allocate");
-    },
-
-    async allocate() {
-      this.loading.allocate = true;
-      this.clearModalError("allocate");
-      try {
-        const tags = JSON.parse(
-          (this.modal.allocate.tagsText || "{}").trim() || "{}",
-        );
-
-        const payload = {
-          cpu_count: this.modal.allocate.cpu_count ?? null,
-          region: this.modal.allocate.region || null,
-          zone: this.modal.allocate.zone || null,
-          compute_id: (this.modal.allocate.compute_id || "").trim() || null,
-          tags,
-          ssh_public_key: (this.modal.allocate.ssh_public_key || "").trim(),
-        };
-
-        const deployment_id = (this.modal.allocate.deployment_id || "").trim();
-        if (deployment_id)
-          payload.tags = { ...(payload.tags || {}), deployment_id };
-
-        if (!payload.ssh_public_key)
-          throw new Error("ssh_public_key is required.");
-        if (tags === null || typeof tags !== "object" || Array.isArray(tags))
-          throw new Error("tags must be a JSON object.");
-        await this.apiFetch("/compute_units/allocate", {
-          method: "POST",
-          body: payload,
-        });
-        this.closeAllocateModal();
-        await this.refreshDashboard();
-        if (typeof this.refreshServers === "function")
-          await this.refreshServers();
-      } catch (err) {
-        this.setModalError("allocate", err, "Allocation failed.");
-      } finally {
-        this.loading.allocate = false;
-      }
-    },
-
-    openInitModal() {
-      // Keep any existing values, but ensure step has a sane default.
-      if (this.modal.init.cpuStep == null || this.modal.init.cpuStep <= 0)
-        this.modal.init.cpuStep = null;
-
-      this.clearModalError("init");
-      this.modal.init.open = true;
-      this.recomputeInitCpuRanges();
-    },
-    closeInitModal() {
-      this.modal.init.open = false;
-      this.clearModalError("init");
-      this.modal.init.ip = "";
-      this.modal.init.hostname = "";
-      this.modal.init.user_id = "ubuntu";
-      this.modal.init.region = "";
-      this.modal.init.zone = "";
-      this.modal.init.deployment_id = "";
-      this.modal.init.cpuStart = 0;
-      this.modal.init.cpuEnd = 0;
-      this.modal.init.cpuStep = 0;
-      this.modal.init.cpuRangesText = "";
-      this.modal.init.cpuRangesPreview = "";
-      this.modal.init.cpuSetPreview = "";
-      this.modal.init.cpuRangesError = "";
-    },
-
-    recomputeInitCpuRanges(fromTextarea = false) {
-      // If fromTextarea=true, parse cpuRangesText and just update previews.
-      // Otherwise compute ranges from start/end/step and update cpuRangesText + previews.
-      try {
-        this.modal.init.cpuRangesError = "";
-
-        let cpu_ranges = [];
-        let cpu_set = [];
-
-        if (fromTextarea) {
-          const parsed = JSON.parse(
-            (this.modal.init.cpuRangesText || "[]").trim() || "[]",
-          );
-          if (
-            !Array.isArray(parsed) ||
-            parsed.some((x) => typeof x !== "string")
-          )
-            throw new Error("cpu_ranges must be a JSON array of strings.");
-          cpu_ranges = parsed;
-        } else {
-          const start = 0;
-          const end = Number(this.modal.init.cpuEnd) - 1;
-          const step = Number(this.modal.init.cpuStep);
-
-          if (!Number.isInteger(end) || end < 0)
-            throw new Error("end must be a non-negative integer.");
-          if (!Number.isInteger(step) || step <= 0)
-            throw new Error("step must be a positive integer.");
-          if (end < start) throw new Error("end must be >= start.");
-
-          // Build chunks: [start..min(start+step-1,end)], then advance by step.
-          for (let cur = start; cur <= end; cur += step) {
-            const chunkEnd = Math.min(cur + step - 1, end);
-            cpu_ranges.push(`${cur}-${chunkEnd}`);
-          }
-
-          // Keep JSON textarea in sync for transparency / copy-paste.
-          this.modal.init.cpuRangesText = JSON.stringify(cpu_ranges);
-        }
-
-        // Expand to a CPU set preview (best-effort)
-        for (const r of cpu_ranges) {
-          const m = String(r).match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
-          if (!m) continue;
-          const a = Number(m[1]);
-          const b = Number(m[2]);
-          if (!Number.isInteger(a) || !Number.isInteger(b) || b < a) continue;
-          for (let i = a; i <= b; i++) cpu_set.push(i);
-        }
-
-        // De-dup + sort
-        cpu_set = Array.from(new Set(cpu_set)).sort((a, b) => a - b);
-
-        this.modal.init.cpuRangesPreview = JSON.stringify(cpu_ranges, null, 2);
-        this.modal.init.cpuSetPreview = cpu_set.length
-          ? `${cpu_set.join(", ")}\n(count: ${cpu_set.length})`
-          : "-";
-      } catch (e) {
-        this.modal.init.cpuRangesPreview = "";
-        this.modal.init.cpuSetPreview = "";
-        this.modal.init.cpuRangesError = e.message || String(e);
-      }
-    },
-
-    async initServer() {
-      this.loading.init = true;
-      this.clearModalError("init");
-      try {
-        const cpu_ranges = JSON.parse(
-          (this.modal.init.cpuRangesText || "[]").trim() || "[]",
-        );
-        if (
-          !Array.isArray(cpu_ranges) ||
-          cpu_ranges.some((x) => typeof x !== "string")
-        )
-          throw new Error("cpu_ranges must be a JSON array of strings.");
-
-        const payload = {
-          ip: (this.modal.init.ip || "").trim(),
-          region: (this.modal.init.region || "").trim(),
-          zone: (this.modal.init.zone || "").trim(),
-          hostname: (this.modal.init.hostname || "").trim(),
-          user_id: (this.modal.init.user_id || "ubuntu").trim(),
-          cpu_ranges,
-        };
-        for (const [k, v] of Object.entries(payload)) {
-          if ((typeof v === "string" && !v) || v == null)
-            throw new Error(`${k} is required.`);
-        }
-
-        await this.apiFetch("/admin/servers/", {
-          method: "POST",
-          body: payload,
-        });
-        this.closeInitModal();
-        await this.refreshDashboard();
-        if (typeof this.refreshServers === "function")
-          await this.refreshServers();
-      } catch (e) {
-        this.setModalError("init", e, "Server init failed.");
-      } finally {
-        this.loading.init = false;
-      }
-    },
-
-    openDecommissionModal() {
-      this.clearModalError("decommission");
-      this.modal.decommission.open = true;
-    },
-    closeDecommissionModal() {
-      this.modal.decommission.open = false;
-      this.clearModalError("decommission");
-    },
-
-    async decommissionByHostname() {
-      this.loading.decommission = true;
-      this.clearModalError("decommission");
-      try {
-        const payload = {
-          hostname: (this.modal.decommission.hostname || "").trim(),
-        };
-
-        await this.apiFetch("/admin/servers/", {
-          method: "PUT",
-          body: payload,
-        });
-
-        this.closeDecommissionModal();
-        await this.refreshDashboard();
-        if (typeof this.refreshServers === "function")
-          await this.refreshServers();
-      } catch (e) {
-        this.setModalError("decommission", e, "Server decommission failed.");
-      } finally {
-        this.loading.decommission = false;
-      }
-    },
-
-    openDeallocateConfirm(row) {
-      this.modal.deallocateConfirm.compute_id = row.compute_id;
-      this.modal.deallocateConfirm.hostname = row.hostname || "";
-      this.clearModalError("deallocateConfirm");
-      this.modal.deallocateConfirm.open = true;
-    },
-    closeDeallocateConfirm() {
-      this.modal.deallocateConfirm.open = false;
-      this.clearModalError("deallocateConfirm");
-    },
-
-    openComputeDetails(row) {
-      this.modal.computeDetails.row = row || null;
-      this.modal.computeDetails.open = true;
-    },
-    closeComputeDetails() {
-      this.modal.computeDetails.open = false;
-      this.modal.computeDetails.row = null;
-    },
-
-    openServerDetails(row) {
-      this.modal.serverDetails.row = row || null;
-      this.modal.serverDetails.open = true;
-    },
-
-    closeServerDetails() {
-      this.modal.serverDetails.open = false;
-      this.modal.serverDetails.row = null;
-    },
-
-    async confirmDeallocate() {
-      const computeId = this.modal.deallocateConfirm.compute_id;
-      this.loading.deallocateConfirm = true;
-      this.busyKey = computeId;
-      this.clearModalError("deallocateConfirm");
-      try {
-        await this.apiFetch(
-          `/compute_units/deallocate/${encodeURIComponent(computeId)}`,
-          { method: "DELETE" },
-        );
-        this.closeDeallocateConfirm();
-        await this.refreshDashboard();
-        if (typeof this.refreshServers === "function")
-          await this.refreshServers();
-      } catch (e) {
-        this.setModalError("deallocateConfirm", e, "Deallocate failed.");
-      } finally {
-        this.loading.deallocateConfirm = false;
-        this.busyKey = null;
-      }
     },
 
     ensureDatabaseRoleTemplateAce() {
@@ -6026,11 +4783,10 @@ window.app = function () {
     },
 
   };
-};
-
-const CP_LEGACY_APP_FACTORY = window.app;
+}
 
 (function () {
+  // ---------- cpkit extension registration ----------
   const CP_ADMIN_VIEWS = new Set([
     "versions",
     "node_counts",
@@ -6040,7 +4796,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
     "regions",
   ]);
 
-  const EXCLUDED_LEGACY_METHODS = new Set(["init"]);
+  const EXCLUDED_EXTENSION_METHODS = new Set(["init"]);
   const CPKIT_STATE_KEYS = new Set([
     "view",
     "apiBase",
@@ -6072,6 +4828,8 @@ const CP_LEGACY_APP_FACTORY = window.app;
     "parseHashRoute",
     "routeForView",
     "setView",
+    "showNotice",
+    "clearNotice",
     "canAccessView",
     "handleForbiddenView",
     "viewLabel",
@@ -6085,17 +4843,16 @@ const CP_LEGACY_APP_FACTORY = window.app;
     "userInfo",
   ]);
 
-  function loadLegacyApp() {
-    if (typeof CP_LEGACY_APP_FACTORY !== "function") return {};
-    return CP_LEGACY_APP_FACTORY();
+  function loadCPExtensionParts() {
+    return createCPExtensionParts();
   }
 
-  function splitLegacyApp(legacyApp) {
+  function splitExtensionParts(extensionParts) {
     const state = {};
     const methods = {};
-    for (const [key, value] of Object.entries(legacyApp)) {
+    for (const [key, value] of Object.entries(extensionParts)) {
       if (typeof value === "function") {
-        if (!EXCLUDED_LEGACY_METHODS.has(key) && !CPKIT_METHODS.has(key)) methods[key] = value;
+        if (!EXCLUDED_EXTENSION_METHODS.has(key) && !CPKIT_METHODS.has(key)) methods[key] = value;
       } else if (key === "modal" && value && typeof value === "object") {
         state.modal = Object.fromEntries(
           Object.entries(value).filter(([modalKey]) => !CPKIT_MODAL_KEYS.has(modalKey)),
@@ -6193,7 +4950,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
     });
   }
 
-  const legacy = splitLegacyApp(loadLegacyApp());
+  const extensionParts = splitExtensionParts(loadCPExtensionParts());
 
   window.cpkitWebappExtension = {
     htmlPath: "/app/extension.html",
@@ -6341,9 +5098,9 @@ const CP_LEGACY_APP_FACTORY = window.app;
       ),
       regions: route("regions", "/admin/regions", "Regions", "Deployment regions", "ensureRegionsView", true),
     },
-    state: legacy.state,
+    state: extensionParts.state,
     methods: {
-      ...legacy.methods,
+      ...extensionParts.methods,
       syncClusterRouteState() {
         const route =
           typeof this.parseHashRoute === "function"
@@ -6400,7 +5157,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
           this.clearClusterUsersState();
         }
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
       },
       async ensureClusterRouteView() {
         this.syncClusterRouteState();
@@ -6477,7 +5234,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterArtifactsState();
         this.view = "cluster";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(nextId);
         await this.refreshSelectedCluster();
       },
@@ -6490,7 +5247,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterDatabaseObjectsState();
         this.clearClusterUsersState();
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, "dashboard", {
           period: this.clusterDashboardPeriodMins,
           step: this.clusterDashboardIntervalSecs,
@@ -6505,7 +5262,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterDatabaseObjectsState();
         this.view = "cluster_users";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, "users");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterUsers();
@@ -6518,7 +5275,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterUsersState();
         this.view = "cluster_databases";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, "databases");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterDatabaseObjects();
@@ -6532,7 +5289,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterUsersState();
         this.view = "cluster_backups";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, "backups");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterBackups();
@@ -6547,7 +5304,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterUsersState();
         this.view = "cluster_artifacts";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, `artifacts/${encodeURIComponent(this.selectedClusterArtifactKind || "debug_zip")}`);
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterArtifacts();
@@ -6561,7 +5318,7 @@ const CP_LEGACY_APP_FACTORY = window.app;
         this.clearClusterUsersState();
         this.view = "cluster_recovery";
         localStorage.setItem("cp_view", this.view);
-        this.clearViewNotice();
+        this.clearNotice();
         this.setClusterHash(this.selectedClusterId, "recovery");
         if (!this.clusterLoading.details) await this.refreshSelectedCluster();
         await this.refreshClusterRecoveryBackups();
